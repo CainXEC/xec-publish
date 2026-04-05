@@ -9,7 +9,13 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.101.1",
+    "cashtab-connect": "^1.1.0",
+    "chronik-client": "^4.1.0",
+    "ecash-lib": "^4.12.0",
+    "ecashaddrjs": "^2.0.0",
     "next": "16.2.2",
+    "qrcode.react": "^4.2.0",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
