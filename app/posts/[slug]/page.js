@@ -510,9 +510,20 @@ export default function PublicPostPage() {
                     No signup required. Payments go directly to the author. Opens in Cashtab wallet.
                   </p>
                   {pollingActive ? (
-                    <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-500">
-                      Waiting for payment confirmation… checking every 3 seconds.
-                    </p>
+                    <div className="mt-4 rounded-lg border border-zinc-200 bg-white/70 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900/60">
+                      <div className="flex items-center gap-3">
+                        <span
+                          aria-hidden
+                          className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-emerald-500 dark:border-zinc-600 dark:border-t-emerald-400"
+                        />
+                        <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                          Waiting for payment confirmation...
+                        </p>
+                      </div>
+                      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                        This usually takes a few seconds
+                      </p>
+                    </div>
                   ) : null}
                   <div className="mt-4 flex justify-center">
                     <PaymentQrCode value={bip21Url} />
@@ -522,6 +533,7 @@ export default function PublicPostPage() {
                     <button
                       type="button"
                       onClick={() => {
+                        setPollingActive(true)
                         openCashtab(walletAuthCashtabUrl)
                         void startWalletAuthAutoVerify()
                       }}
