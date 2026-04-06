@@ -132,7 +132,7 @@ export default function HomePage() {
                 href="/login"
                 className="text-sm font-medium text-zinc-700 transition hover:text-zinc-900 hover:underline dark:text-zinc-300 dark:hover:text-zinc-100"
               >
-                Login
+                Author Login
               </Link>
               <Link
                 href="/signup"
