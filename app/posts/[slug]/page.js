@@ -3,18 +3,11 @@
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  CashtabAddressDeniedError,
-  CashtabConnect,
-  CashtabExtensionUnavailableError,
-  CashtabTimeoutError,
-} from 'cashtab-connect'
+import { CashtabConnect } from 'cashtab-connect'
 import { buildPaywallBip21, computePaymentSplit } from '@/lib/paymentSplit'
 import { supabase } from '@/lib/supabase'
 import PaymentQrCode from './PaymentQrCode'
-
-const CASHTAB_CHROME_STORE_URL =
-  'https://chromewebstore.google.com/detail/cashtab/obldfcmebhllhjlhjbnghaipekcppeag'
+const WALLET_AUTH_XEC = 5.5
 
 export default function PublicPostPage() {
   const params = useParams()
@@ -41,14 +34,12 @@ export default function PublicPostPage() {
   const [pollingActive, setPollingActive] = useState(false)
   const pollRef = useRef(null)
 
-  const [txidInput, setTxidInput] = useState('')
-  const [verifying, setVerifying] = useState(false)
-  const [verifyError, setVerifyError] = useState(null)
-
-  const [connectBusy, setConnectBusy] = useState(false)
+  const [walletPanelOpen, setWalletPanelOpen] = useState(false)
+  const [walletVerifyBusy, setWalletVerifyBusy] = useState(false)
+  const [walletVerifyWatching, setWalletVerifyWatching] = useState(false)
+  const [walletVerifyError, setWalletVerifyError] = useState(null)
   const [walletNotPaidMessage, setWalletNotPaidMessage] = useState(false)
-  const [extensionMissing, setExtensionMissing] = useState(false)
-  const [connectOtherError, setConnectOtherError] = useState(null)
+  const [copiedPlatformAddress, setCopiedPlatformAddress] = useState(false)
 
   const [payBusy, setPayBusy] = useState(false)
 
@@ -135,6 +126,15 @@ export default function PublicPostPage() {
   }, [post?.id, checkUnlock])
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!post?.id || unlocked) return
+    if (sessionStorage.getItem('pollingActive') === 'true') {
+      setPollingActive(true)
+      sessionStorage.removeItem('pollingActive')
+    }
+  }, [post?.id, unlocked])
+
+  useEffect(() => {
     if (!pollingActive || !post?.id || unlocked) return
 
     pollRef.current = setInterval(() => {
@@ -209,70 +209,110 @@ export default function PublicPostPage() {
   const cashtabUrl = bip21Url
     ? `https://cashtab.com/#/send?bip21=${bip21Url}`
     : ''
+  const platformAddressForAuth = platformXecAddress.replace(/^ecash:/, '')
+  const walletAuthBip21Url = platformAddressForAuth
+    ? `ecash:${platformAddressForAuth}?amount=${WALLET_AUTH_XEC}`
+    : ''
+  const walletAuthCashtabUrl = walletAuthBip21Url
+    ? `https://cashtab.com/#/send?bip21=${walletAuthBip21Url}`
+    : ''
   const unlockPriceLabel = formatXecAmount(priceXec)
 
-  async function handleVerifyTxid(e) {
-    e.preventDefault()
-    if (!post?.id || !txidInput.trim()) return
-
-    setVerifyError(null)
-    setVerifying(true)
-
+  function openExternalCashtab(url, sameTabOnMobile = false) {
+    if (!url || typeof window === 'undefined') return
     try {
-      const res = await fetch('/api/verify-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ txid: txidInput.trim(), postId: post.id }),
-      })
-      const data = await res.json().catch(() => ({}))
-
-      if (res.ok && data.unlocked) {
-        setUnlocked(true)
-        setPollingActive(false)
-        setTxidInput('')
-      } else {
-        setVerifyError(data.error || 'Verification failed')
-      }
-    } catch (err) {
-      setVerifyError(err?.message || 'Verification failed')
-    } finally {
-      setVerifying(false)
+      sessionStorage.setItem('pollingActive', 'true')
+    } catch {
+      /* ignore */
     }
+
+    const isMobile =
+      'ontouchstart' in window || navigator.maxTouchPoints > 0
+
+    if (isMobile && sameTabOnMobile) {
+      const a = document.createElement('a')
+      a.href = url
+      a.rel = 'noopener noreferrer'
+      a.style.display = 'none'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      return
+    }
+
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
-  async function handleConnectCashtabWallet() {
-    const cashtab = getCashtab()
-    if (!post?.id || !cashtab) return
-
-    setConnectBusy(true)
+  async function handleVerifyWalletAuth() {
+    if (!post?.id) return
+    setWalletVerifyError(null)
     setWalletNotPaidMessage(false)
-    setExtensionMissing(false)
-    setConnectOtherError(null)
+    setWalletVerifyBusy(true)
+    setWalletVerifyWatching(true)
 
-    try {
-      await cashtab.waitForExtension()
-      const address = await cashtab.requestAddress()
-      if (address) {
-        localStorage.setItem('walletAddress', address)
+    const es = new EventSource('/api/verify-wallet-auth/stream')
+    let finished = false
+    const finish = () => {
+      if (finished) return
+      finished = true
+      es.close()
+      setWalletVerifyWatching(false)
+      setWalletVerifyBusy(false)
+    }
+
+    es.onmessage = async (event) => {
+      let txid = ''
+      try {
+        txid = JSON.parse(event.data)?.txid ?? ''
+      } catch {
+        txid = ''
       }
-      const ok = await checkUnlock(post.id, address)
-      if (!ok) {
-        setWalletNotPaidMessage(true)
+      if (!txid) return
+
+      finish()
+
+      try {
+        const res = await fetch('/api/verify-wallet-auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ txid }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          setWalletVerifyError(data.error || 'Could not verify wallet payment.')
+          return
+        }
+
+        const walletAddress = data.walletAddress?.trim?.() || ''
+        const unlockedPostIds = Array.isArray(data.unlockedPostIds)
+          ? data.unlockedPostIds
+          : []
+
+        if (walletAddress) {
+          localStorage.setItem('walletAddress', walletAddress)
+        }
+
+        if (!unlockedPostIds.includes(post.id)) {
+          setWalletNotPaidMessage(true)
+          setWalletVerifyError('This wallet has not paid for this article yet.')
+          return
+        }
+
+        await checkUnlock(post.id, walletAddress || undefined)
+        setUnlocked(true)
+        setPollingActive(false)
+        setWalletNotPaidMessage(false)
+        setWalletVerifyError(null)
+      } catch (err) {
+        setWalletVerifyError(
+          err?.message || 'Could not verify wallet payment.',
+        )
       }
-    } catch (err) {
-      if (err instanceof CashtabExtensionUnavailableError) {
-        setExtensionMissing(true)
-      } else if (err instanceof CashtabAddressDeniedError) {
-        setConnectOtherError(err.message || 'Address request was denied.')
-      } else if (err instanceof CashtabTimeoutError) {
-        setConnectOtherError('Request timed out. Please try again.')
-      } else if (err instanceof Error) {
-        setConnectOtherError(err.message)
-      } else {
-        setConnectOtherError('Could not connect to Cashtab.')
-      }
-    } finally {
-      setConnectBusy(false)
+    }
+
+    es.onerror = () => {
+      finish()
+      setWalletVerifyError('Could not verify yet. Please try again.')
     }
   }
 
@@ -283,18 +323,15 @@ export default function PublicPostPage() {
     setPayBusy(true)
     const cashtab = getCashtab()
 
-    const isMobile =
-      typeof window !== 'undefined' &&
-      ('ontouchstart' in window || navigator.maxTouchPoints > 0)
-
     // On mobile, navigate immediately in the same tap call stack.
-    if (isMobile) {
-      window.location.href = cashtabUrl
+    if (typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)) {
+      openExternalCashtab(cashtabUrl, true)
+      setPayBusy(false)
       return
     }
 
     const openCashtabWeb = () => {
-      window.open(cashtabUrl, '_blank', 'noopener,noreferrer')
+      openExternalCashtab(cashtabUrl, false)
     }
 
     try {
@@ -437,77 +474,80 @@ export default function PublicPostPage() {
                   </div>
 
                   <div className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-700">
-                    <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                      Already paid?
-                    </p>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                      If unlock does not appear automatically, paste your transaction ID here.
-                    </p>
-                    <form onSubmit={handleVerifyTxid} className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
-                      <div className="min-w-0 flex-1">
-                        <label htmlFor="txid" className="sr-only">
-                          Transaction ID
-                        </label>
-                        <input
-                          id="txid"
-                          type="text"
-                          value={txidInput}
-                          onChange={(e) => setTxidInput(e.target.value)}
-                          placeholder="Transaction ID (txid)"
-                          disabled={verifying}
-                          className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 font-mono text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-500"
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={verifying || !txidInput.trim()}
-                        className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-                      >
-                        {verifying ? 'Verifying…' : "I've paid — unlock"}
-                      </button>
-                    </form>
-                    {verifyError ? (
-                      <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
-                        {verifyError}
-                      </p>
-                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => setWalletPanelOpen((v) => !v)}
+                      className="rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:hover:bg-zinc-900"
+                    >
+                      Connect Wallet
+                    </button>
 
-                    <div className="mt-6 border-t border-zinc-200 pt-6 dark:border-zinc-700">
-                      <button
-                        type="button"
-                        onClick={handleConnectCashtabWallet}
-                        disabled={connectBusy}
-                        className="rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:hover:bg-zinc-900"
-                      >
-                        {connectBusy ? 'Connecting…' : 'Connect Cashtab Wallet'}
-                      </button>
-
-                      {walletNotPaidMessage ? (
-                        <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-                          This wallet hasn&apos;t paid for this article yet
+                    {walletPanelOpen ? (
+                      <div className="mt-4 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
+                        <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                          Send 5.5 XEC from your wallet to verify ownership
                         </p>
-                      ) : null}
-
-                      {extensionMissing ? (
-                        <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-                          Install the Cashtab browser extension to restore access.{' '}
-                          <a
-                            href={CASHTAB_CHROME_STORE_URL}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-medium text-zinc-900 underline dark:text-zinc-200"
+                        <p className="mt-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                          Platform address
+                        </p>
+                        <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center">
+                          <code className="break-all rounded bg-zinc-100 px-2 py-1 text-xs text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
+                            {platformXecAddress}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(platformXecAddress)
+                                setCopiedPlatformAddress(true)
+                                window.setTimeout(() => setCopiedPlatformAddress(false), 1200)
+                              } catch {
+                                setWalletVerifyError('Could not copy address.')
+                              }
+                            }}
+                            className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
                           >
-                            Chrome Web Store
-                          </a>
-                        </p>
-                      ) : null}
+                            {copiedPlatformAddress ? 'Copied' : 'Copy'}
+                          </button>
+                        </div>
+                        <div className="mt-4 flex justify-center">
+                          <PaymentQrCode value={walletAuthBip21Url} />
+                        </div>
+                        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                          <button
+                            type="button"
+                            onClick={() => openExternalCashtab(walletAuthCashtabUrl, true)}
+                            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:hover:bg-zinc-900"
+                          >
+                            Open in Cashtab
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleVerifyWalletAuth}
+                            disabled={walletVerifyBusy || walletVerifyWatching}
+                            className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+                          >
+                            {walletVerifyWatching
+                              ? 'Waiting for transaction…'
+                              : walletVerifyBusy
+                                ? 'Verifying…'
+                                : "I've sent it — verify"}
+                          </button>
+                        </div>
 
-                      {connectOtherError ? (
-                        <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
-                          {connectOtherError}
-                        </p>
-                      ) : null}
-                    </div>
+                        {walletNotPaidMessage ? (
+                          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+                            This wallet has not paid for this article yet.
+                          </p>
+                        ) : null}
+
+                        {walletVerifyError ? (
+                          <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
+                            {walletVerifyError}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                 </>
               ) : (
