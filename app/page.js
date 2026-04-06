@@ -127,12 +127,20 @@ export default function HomePage() {
               Dashboard
             </Link>
           ) : (
-            <Link
-              href="/signup"
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
-            >
-              Start Writing
-            </Link>
+            <div className="flex items-center gap-5">
+              <Link
+                href="/login"
+                className="text-sm font-medium text-zinc-700 transition hover:text-zinc-900 hover:underline dark:text-zinc-300 dark:hover:text-zinc-100"
+              >
+                Login
+              </Link>
+              <Link
+                href="/signup"
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
+              >
+                Start Writing
+              </Link>
+            </div>
           )}
         </div>
       </header>
