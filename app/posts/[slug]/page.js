@@ -33,6 +33,8 @@ export default function PublicPostPage() {
 
   const [pollingActive, setPollingActive] = useState(false)
   const pollRef = useRef(null)
+  const sseRetryTimeoutRef = useRef(null)
+  const [sseRetryTick, setSseRetryTick] = useState(0)
 
   const [walletPanelOpen, setWalletPanelOpen] = useState(false)
   const [walletVerifyBusy, setWalletVerifyBusy] = useState(false)
@@ -130,6 +132,7 @@ export default function PublicPostPage() {
     if (!post?.id || unlocked) return
     if (sessionStorage.getItem('pollingActive') === 'true') {
       setPollingActive(true)
+      setSseRetryTick((v) => v + 1)
       sessionStorage.removeItem('pollingActive')
     }
   }, [post?.id, unlocked])
@@ -139,7 +142,7 @@ export default function PublicPostPage() {
 
     pollRef.current = setInterval(() => {
       checkUnlock(post.id)
-    }, 2000)
+    }, 3000)
 
     return () => {
       if (pollRef.current) {
@@ -150,12 +153,35 @@ export default function PublicPostPage() {
   }, [pollingActive, post?.id, unlocked, checkUnlock])
 
   useEffect(() => {
+    if (!post?.id || unlocked) return
+
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      setPollingActive(true)
+      setSseRetryTick((v) => v + 1)
+
+      const stored =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('walletAddress')?.trim()
+          : ''
+      void checkUnlock(post.id, stored || undefined)
+      void checkUnlock(post.id)
+    }
+
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [post?.id, unlocked, checkUnlock])
+
+  useEffect(() => {
     if (unlocked || unlockCheckPending || !post?.id) return undefined
 
     const addr = (author?.xec_address ?? '').replace(/^ecash:/, '')
     if (!addr) return undefined
 
     const es = new EventSource(`/api/watch-payment/${encodeURIComponent(post.id)}`)
+    let closedByUs = false
 
     es.onmessage = (event) => {
       try {
@@ -163,6 +189,7 @@ export default function PublicPostPage() {
         if (data.unlocked === true) {
           setUnlocked(true)
           setPollingActive(false)
+          closedByUs = true
           es.close()
         }
       } catch {
@@ -171,13 +198,28 @@ export default function PublicPostPage() {
     }
 
     es.onerror = () => {
+      if (!closedByUs && !unlocked) {
+        if (sseRetryTimeoutRef.current) {
+          clearTimeout(sseRetryTimeoutRef.current)
+        }
+        sseRetryTimeoutRef.current = window.setTimeout(() => {
+          sseRetryTimeoutRef.current = null
+          setSseRetryTick((v) => v + 1)
+        }, 2000)
+      }
+      closedByUs = true
       es.close()
     }
 
     return () => {
+      closedByUs = true
       es.close()
+      if (sseRetryTimeoutRef.current) {
+        clearTimeout(sseRetryTimeoutRef.current)
+        sseRetryTimeoutRef.current = null
+      }
     }
-  }, [post?.id, author?.xec_address, unlocked, unlockCheckPending])
+  }, [post?.id, author?.xec_address, unlocked, unlockCheckPending, sseRetryTick])
 
   const formatXecAmount = (amount) => {
     if (!Number.isFinite(amount)) return '0'
