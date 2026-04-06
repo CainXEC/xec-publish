@@ -95,6 +95,7 @@ export default function PublicPostPage() {
       : `/api/check-unlock/${encodeURIComponent(postId)}`
     const res = await fetch(url)
     const data = await res.json().catch(() => ({}))
+    console.log('check-unlock result:', data)
     if (data.unlocked) {
       setUnlocked(true)
       setPollingActive(false)
@@ -141,6 +142,7 @@ export default function PublicPostPage() {
     if (!pollingActive || !post?.id || unlocked) return
 
     pollRef.current = setInterval(() => {
+      console.log('Polling check-unlock...')
       checkUnlock(post.id)
     }, 3000)
 
@@ -157,6 +159,7 @@ export default function PublicPostPage() {
 
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
+      console.log('Page visible, resuming checks')
       setPollingActive(true)
       setSseRetryTick((v) => v + 1)
 
@@ -181,11 +184,13 @@ export default function PublicPostPage() {
     if (!addr) return undefined
 
     const es = new EventSource(`/api/watch-payment/${encodeURIComponent(post.id)}`)
+    console.log('SSE connected')
     let closedByUs = false
 
     es.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
+        console.log('SSE message:', data)
         if (data.unlocked === true) {
           setUnlocked(true)
           setPollingActive(false)
@@ -198,6 +203,7 @@ export default function PublicPostPage() {
     }
 
     es.onerror = () => {
+      console.log('SSE error, reconnecting...')
       if (!closedByUs && !unlocked) {
         if (sseRetryTimeoutRef.current) {
           clearTimeout(sseRetryTimeoutRef.current)
