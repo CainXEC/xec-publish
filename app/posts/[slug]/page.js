@@ -280,21 +280,38 @@ export default function PublicPostPage() {
     if (!post || !bip21Url || !cashtabUrl) return
 
     setPollingActive(true)
+    setPayBusy(true)
     const cashtab = getCashtab()
+
+    const isMobile =
+      typeof window !== 'undefined' &&
+      ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+
+    // On mobile, navigate immediately in the same tap call stack.
+    if (isMobile) {
+      window.location.href = cashtabUrl
+      return
+    }
 
     const openCashtabWeb = () => {
       window.open(cashtabUrl, '_blank', 'noopener,noreferrer')
     }
 
-    if (!cashtab) {
-      openCashtabWeb()
-      return
-    }
-
-    setPayBusy(true)
     try {
+      if (!cashtab) {
+        openCashtabWeb()
+        return
+      }
+
+      const extensionAvailabilityPromise = cashtab.isExtensionAvailable()
+
       try {
-        await cashtab.waitForExtension(2000)
+        const extensionAvailable = await extensionAvailabilityPromise
+        if (!extensionAvailable) {
+          openCashtabWeb()
+          return
+        }
+        await cashtab.waitForExtension(500)
       } catch {
         openCashtabWeb()
         return
