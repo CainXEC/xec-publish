@@ -28,11 +28,9 @@ export default function PublicPostPage() {
   const payBaselineTxidRef = useRef('')
   const payLastHandledTxidRef = useRef('')
 
-  const [walletPanelOpen, setWalletPanelOpen] = useState(false)
   const [walletVerifyBusy, setWalletVerifyBusy] = useState(false)
   const [walletVerifyError, setWalletVerifyError] = useState(null)
   const [walletNotPaidMessage, setWalletNotPaidMessage] = useState(false)
-  const [copiedPlatformAddress, setCopiedPlatformAddress] = useState(false)
   const walletAuthPollRef = useRef(null)
   const walletAuthBaselineTxidRef = useRef('')
   const walletAuthLastHandledTxidRef = useRef('')
@@ -212,11 +210,8 @@ export default function PublicPostPage() {
     ? `https://cashtab.com/#/send?bip21=${bip21Url}`
     : ''
   const platformAddressForAuth = platformXecAddress.replace(/^ecash:/, '')
-  const walletAuthBip21Url = platformAddressForAuth
-    ? `ecash:${platformAddressForAuth}?amount=${WALLET_AUTH_XEC}`
-    : ''
-  const walletAuthCashtabUrl = walletAuthBip21Url
-    ? `https://cashtab.com/#/send?bip21=${walletAuthBip21Url}`
+  const walletAuthCashtabUrl = platformAddressForAuth
+    ? `https://cashtab.com/#/send?bip21=ecash:${platformAddressForAuth}?amount=${WALLET_AUTH_XEC}`
     : ''
   const unlockPriceLabel = formatXecAmount(priceXec)
 
@@ -526,68 +521,32 @@ export default function PublicPostPage() {
                   <div className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-700">
                     <button
                       type="button"
-                      onClick={() => setWalletPanelOpen((v) => !v)}
-                      className="rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:hover:bg-zinc-900"
+                      onClick={() => {
+                        openCashtab(walletAuthCashtabUrl)
+                        void startWalletAuthAutoVerify()
+                      }}
+                      disabled={walletVerifyBusy || !walletAuthCashtabUrl}
+                      className="rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:hover:bg-zinc-900"
                     >
-                      Connect Wallet
+                      {walletVerifyBusy ? 'Watching for wallet tx…' : 'Connect Wallet'}
                     </button>
 
-                    {walletPanelOpen ? (
-                      <div className="mt-4 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
-                        <p className="text-sm text-zinc-700 dark:text-zinc-300">
-                          Send 5.5 XEC from your wallet to verify ownership
-                        </p>
-                        <p className="mt-3 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                          Platform address
-                        </p>
-                        <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center">
-                          <code className="break-all rounded bg-zinc-100 px-2 py-1 text-xs text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
-                            {platformXecAddress}
-                          </code>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              try {
-                                await navigator.clipboard.writeText(platformXecAddress)
-                                setCopiedPlatformAddress(true)
-                                window.setTimeout(() => setCopiedPlatformAddress(false), 1200)
-                              } catch {
-                                setWalletVerifyError('Could not copy address.')
-                              }
-                            }}
-                            className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                          >
-                            {copiedPlatformAddress ? 'Copied' : 'Copy'}
-                          </button>
-                        </div>
-                        <div className="mt-4 flex justify-center">
-                          <PaymentQrCode value={walletAuthBip21Url} />
-                        </div>
-                        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              openCashtab(walletAuthCashtabUrl)
-                              void startWalletAuthAutoVerify()
-                            }}
-                            className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:hover:bg-zinc-900"
-                          >
-                            Open Cashtab
-                          </button>
-                        </div>
+                    {walletVerifyBusy ? (
+                      <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+                        Waiting for wallet verification payment…
+                      </p>
+                    ) : null}
 
-                        {walletNotPaidMessage ? (
-                          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-                            This wallet has not paid for this article yet.
-                          </p>
-                        ) : null}
+                    {walletNotPaidMessage ? (
+                      <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+                        This wallet has not paid for this article yet
+                      </p>
+                    ) : null}
 
-                        {walletVerifyError ? (
-                          <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
-                            {walletVerifyError}
-                          </p>
-                        ) : null}
-                      </div>
+                    {walletVerifyError ? (
+                      <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
+                        {walletVerifyError}
+                      </p>
                     ) : null}
                   </div>
                 </>
