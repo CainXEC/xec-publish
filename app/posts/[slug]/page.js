@@ -5,7 +5,6 @@ import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { buildPaywallBip21, computePaymentSplit } from '@/lib/paymentSplit'
 import { supabase } from '@/lib/supabase'
-import PaymentQrCode from './PaymentQrCode'
 
 const WALLET_AUTH_XEC = 5.5
 
@@ -24,6 +23,7 @@ export default function PublicPostPage() {
   const [pollingActive, setPollingActive] = useState(false)
   const pollRef = useRef(null)
   const [payBusy, setPayBusy] = useState(false)
+  const [paymentInitiated, setPaymentInitiated] = useState(false)
   const payTxPollRef = useRef(null)
   const payBaselineTxidRef = useRef('')
   const payLastHandledTxidRef = useRef('')
@@ -227,6 +227,7 @@ export default function PublicPostPage() {
 
   function handlePayToUnlock() {
     if (!cashtabUrl) return
+    setPaymentInitiated(true)
     setPollingActive(true)
     setPayBusy(true)
     openCashtab(cashtabUrl)
@@ -509,7 +510,7 @@ export default function PublicPostPage() {
                   <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                     No signup required. Payments go directly to the author. Opens in Cashtab wallet.
                   </p>
-                  {pollingActive ? (
+                  {pollingActive && paymentInitiated ? (
                     <div className="mt-4 rounded-lg border border-zinc-200 bg-white/70 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900/60">
                       <div className="flex items-center gap-3">
                         <span
@@ -525,9 +526,6 @@ export default function PublicPostPage() {
                       </p>
                     </div>
                   ) : null}
-                  <div className="mt-4 flex justify-center">
-                    <PaymentQrCode value={bip21Url} />
-                  </div>
 
                   <div className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-700">
                     <button
