@@ -133,7 +133,10 @@ export default function DashboardPage() {
   return (
     <div className="flex min-h-full flex-1 flex-col bg-zinc-50 px-4 py-10 dark:bg-zinc-950">
       <main className="mx-auto w-full max-w-4xl">
-        <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <Link href="/" className="text-sm font-medium text-emerald-700 underline-offset-4 hover:underline dark:text-emerald-400">
+          ← Home
+        </Link>
+        <div className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Author Dashboard</h1>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Welcome, {email}</p>
 
