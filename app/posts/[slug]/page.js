@@ -207,7 +207,7 @@ export default function PublicPostPage() {
         )
       : ''
   const cashtabUrl = bip21Url
-    ? `https://cashtab.com/#/send?bip21=${encodeURIComponent(bip21Url)}`
+    ? `https://cashtab.com/#/send?bip21=${bip21Url}`
     : ''
   const unlockPriceLabel = formatXecAmount(priceXec)
 
