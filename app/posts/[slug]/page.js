@@ -3,25 +3,15 @@
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CashtabConnect } from 'cashtab-connect'
 import { buildPaywallBip21, computePaymentSplit } from '@/lib/paymentSplit'
 import { supabase } from '@/lib/supabase'
 import PaymentQrCode from './PaymentQrCode'
+
 const WALLET_AUTH_XEC = 5.5
 
 export default function PublicPostPage() {
   const params = useParams()
   const slug = params?.slug
-
-  const cashtabRef = useRef(null)
-
-  function getCashtab() {
-    if (typeof window === 'undefined') return null
-    if (!cashtabRef.current) {
-      cashtabRef.current = new CashtabConnect(30000)
-    }
-    return cashtabRef.current
-  }
 
   const [post, setPost] = useState(null)
   const [author, setAuthor] = useState(null)
@@ -33,17 +23,19 @@ export default function PublicPostPage() {
 
   const [pollingActive, setPollingActive] = useState(false)
   const pollRef = useRef(null)
-  const sseRetryTimeoutRef = useRef(null)
-  const [sseRetryTick, setSseRetryTick] = useState(0)
+  const [payBusy, setPayBusy] = useState(false)
+  const payTxPollRef = useRef(null)
+  const payBaselineTxidRef = useRef('')
+  const payLastHandledTxidRef = useRef('')
 
   const [walletPanelOpen, setWalletPanelOpen] = useState(false)
   const [walletVerifyBusy, setWalletVerifyBusy] = useState(false)
-  const [walletVerifyWatching, setWalletVerifyWatching] = useState(false)
   const [walletVerifyError, setWalletVerifyError] = useState(null)
   const [walletNotPaidMessage, setWalletNotPaidMessage] = useState(false)
   const [copiedPlatformAddress, setCopiedPlatformAddress] = useState(false)
-
-  const [payBusy, setPayBusy] = useState(false)
+  const walletAuthPollRef = useRef(null)
+  const walletAuthBaselineTxidRef = useRef('')
+  const walletAuthLastHandledTxidRef = useRef('')
 
   useEffect(() => {
     if (!slug) return
@@ -93,9 +85,9 @@ export default function PublicPostPage() {
     const url = walletAddress
       ? `/api/check-unlock/${encodeURIComponent(postId)}?walletAddress=${encodeURIComponent(walletAddress)}`
       : `/api/check-unlock/${encodeURIComponent(postId)}`
+
     const res = await fetch(url)
     const data = await res.json().catch(() => ({}))
-    console.log('check-unlock result:', data)
     if (data.unlocked) {
       setUnlocked(true)
       setPollingActive(false)
@@ -133,7 +125,6 @@ export default function PublicPostPage() {
     if (!post?.id || unlocked) return
     if (sessionStorage.getItem('pollingActive') === 'true') {
       setPollingActive(true)
-      setSseRetryTick((v) => v + 1)
       sessionStorage.removeItem('pollingActive')
     }
   }, [post?.id, unlocked])
@@ -142,8 +133,11 @@ export default function PublicPostPage() {
     if (!pollingActive || !post?.id || unlocked) return
 
     pollRef.current = setInterval(() => {
-      console.log('Polling check-unlock...')
-      checkUnlock(post.id)
+      const stored =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('walletAddress')?.trim()
+          : ''
+      void checkUnlock(post.id, stored || undefined)
     }, 3000)
 
     return () => {
@@ -159,16 +153,12 @@ export default function PublicPostPage() {
 
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
-      console.log('Page visible, resuming checks')
-      setPollingActive(true)
-      setSseRetryTick((v) => v + 1)
-
       const stored =
         typeof window !== 'undefined'
           ? localStorage.getItem('walletAddress')?.trim()
           : ''
       void checkUnlock(post.id, stored || undefined)
-      void checkUnlock(post.id)
+      setPollingActive(true)
     }
 
     document.addEventListener('visibilitychange', onVisible)
@@ -178,54 +168,17 @@ export default function PublicPostPage() {
   }, [post?.id, unlocked, checkUnlock])
 
   useEffect(() => {
-    if (unlocked || unlockCheckPending || !post?.id) return undefined
-
-    const addr = (author?.xec_address ?? '').replace(/^ecash:/, '')
-    if (!addr) return undefined
-
-    const es = new EventSource(`/api/watch-payment/${encodeURIComponent(post.id)}`)
-    console.log('SSE connected')
-    let closedByUs = false
-
-    es.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        console.log('SSE message:', data)
-        if (data.unlocked === true) {
-          setUnlocked(true)
-          setPollingActive(false)
-          closedByUs = true
-          es.close()
-        }
-      } catch {
-        /* ignore malformed SSE payloads */
-      }
-    }
-
-    es.onerror = () => {
-      console.log('SSE error, reconnecting...')
-      if (!closedByUs && !unlocked) {
-        if (sseRetryTimeoutRef.current) {
-          clearTimeout(sseRetryTimeoutRef.current)
-        }
-        sseRetryTimeoutRef.current = window.setTimeout(() => {
-          sseRetryTimeoutRef.current = null
-          setSseRetryTick((v) => v + 1)
-        }, 2000)
-      }
-      closedByUs = true
-      es.close()
-    }
-
     return () => {
-      closedByUs = true
-      es.close()
-      if (sseRetryTimeoutRef.current) {
-        clearTimeout(sseRetryTimeoutRef.current)
-        sseRetryTimeoutRef.current = null
+      if (walletAuthPollRef.current) {
+        clearInterval(walletAuthPollRef.current)
+        walletAuthPollRef.current = null
+      }
+      if (payTxPollRef.current) {
+        clearInterval(payTxPollRef.current)
+        payTxPollRef.current = null
       }
     }
-  }, [post?.id, author?.xec_address, unlocked, unlockCheckPending, sseRetryTick])
+  }, [])
 
   const formatXecAmount = (amount) => {
     if (!Number.isFinite(amount)) return '0'
@@ -242,6 +195,7 @@ export default function PublicPostPage() {
   const authorAddrForBip21 =
     author?.xec_address?.trim() ||
     (authorXecAddress ? `ecash:${authorXecAddress}` : '')
+  const authorAddressForLatestTx = author?.xec_address?.trim() || ''
   const bip21Url =
     authorAddrForBip21 &&
     platformXecAddress &&
@@ -266,149 +220,198 @@ export default function PublicPostPage() {
     : ''
   const unlockPriceLabel = formatXecAmount(priceXec)
 
-  function openExternalCashtab(url, sameTabOnMobile = false) {
+  function openCashtab(url) {
     if (!url || typeof window === 'undefined') return
     try {
       sessionStorage.setItem('pollingActive', 'true')
     } catch {
       /* ignore */
     }
-
-    const isMobile =
-      'ontouchstart' in window || navigator.maxTouchPoints > 0
-
-    if (isMobile && sameTabOnMobile) {
-      const a = document.createElement('a')
-      a.href = url
-      a.rel = 'noopener noreferrer'
-      a.style.display = 'none'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      return
-    }
-
     window.open(url, '_blank', 'noopener,noreferrer')
   }
 
-  async function handleVerifyWalletAuth() {
-    if (!post?.id) return
-    setWalletVerifyError(null)
-    setWalletNotPaidMessage(false)
-    setWalletVerifyBusy(true)
-    setWalletVerifyWatching(true)
-
-    const es = new EventSource('/api/verify-wallet-auth/stream')
-    let finished = false
-    const finish = () => {
-      if (finished) return
-      finished = true
-      es.close()
-      setWalletVerifyWatching(false)
-      setWalletVerifyBusy(false)
-    }
-
-    es.onmessage = async (event) => {
-      let txid = ''
-      try {
-        txid = JSON.parse(event.data)?.txid ?? ''
-      } catch {
-        txid = ''
-      }
-      if (!txid) return
-
-      finish()
-
-      try {
-        const res = await fetch('/api/verify-wallet-auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ txid }),
-        })
-        const data = await res.json().catch(() => ({}))
-        if (!res.ok) {
-          setWalletVerifyError(data.error || 'Could not verify wallet payment.')
-          return
-        }
-
-        const walletAddress = data.walletAddress?.trim?.() || ''
-        const unlockedPostIds = Array.isArray(data.unlockedPostIds)
-          ? data.unlockedPostIds
-          : []
-
-        if (walletAddress) {
-          localStorage.setItem('walletAddress', walletAddress)
-        }
-
-        if (!unlockedPostIds.includes(post.id)) {
-          setWalletNotPaidMessage(true)
-          setWalletVerifyError('This wallet has not paid for this article yet.')
-          return
-        }
-
-        await checkUnlock(post.id, walletAddress || undefined)
-        setUnlocked(true)
-        setPollingActive(false)
-        setWalletNotPaidMessage(false)
-        setWalletVerifyError(null)
-      } catch (err) {
-        setWalletVerifyError(
-          err?.message || 'Could not verify wallet payment.',
-        )
-      }
-    }
-
-    es.onerror = () => {
-      finish()
-      setWalletVerifyError('Could not verify yet. Please try again.')
-    }
-  }
-
-  async function handlePayToUnlock() {
-    if (!post || !bip21Url || !cashtabUrl) return
-
+  function handlePayToUnlock() {
+    if (!cashtabUrl) return
     setPollingActive(true)
     setPayBusy(true)
-    const cashtab = getCashtab()
+    openCashtab(cashtabUrl)
+    void startPayTxAutoVerify()
+    setPayBusy(false)
+  }
 
-    // On mobile, navigate immediately in the same tap call stack.
-    if (typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)) {
-      openExternalCashtab(cashtabUrl, true)
-      setPayBusy(false)
-      return
-    }
+  const startPayTxAutoVerify = useCallback(async () => {
+    if (!post?.id || !authorAddressForLatestTx) return
 
-    const openCashtabWeb = () => {
-      openExternalCashtab(cashtabUrl, false)
+    if (payTxPollRef.current) {
+      clearInterval(payTxPollRef.current)
+      payTxPollRef.current = null
     }
 
     try {
-      if (!cashtab) {
-        openCashtabWeb()
-        return
-      }
+      const baselineRes = await fetch(
+        `/api/latest-tx/${encodeURIComponent(authorAddressForLatestTx)}`,
+      )
+      const baselineData = await baselineRes.json().catch(() => ({}))
+      payBaselineTxidRef.current =
+        baselineRes.ok && baselineData.txid ? baselineData.txid : ''
+    } catch {
+      payBaselineTxidRef.current = ''
+    }
 
-      const extensionAvailabilityPromise = cashtab.isExtensionAvailable()
-
+    const checkLatest = async () => {
       try {
-        const extensionAvailable = await extensionAvailabilityPromise
-        if (!extensionAvailable) {
-          openCashtabWeb()
+        const latestTxRes = await fetch(
+          `/api/latest-tx/${encodeURIComponent(authorAddressForLatestTx)}`,
+        )
+        const latestTxData = await latestTxRes.json().catch(() => ({}))
+        const latestTxid = latestTxRes.ok ? latestTxData.txid : ''
+        if (!latestTxid) return
+        if (latestTxid === payBaselineTxidRef.current) return
+        if (latestTxid === payLastHandledTxidRef.current) return
+        payLastHandledTxidRef.current = latestTxid
+
+        const verifyRes = await fetch('/api/verify-payment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ txid: latestTxid, postId: post.id }),
+        })
+        const verifyData = await verifyRes.json().catch(() => ({}))
+
+        if (verifyRes.ok && verifyData.unlocked) {
+          setUnlocked(true)
+          setPollingActive(false)
+          if (payTxPollRef.current) {
+            clearInterval(payTxPollRef.current)
+            payTxPollRef.current = null
+          }
           return
         }
-        await cashtab.waitForExtension(500)
+
+        const verifyError = String(verifyData.error || '').toLowerCase()
+        if (
+          verifyError.includes('already used') ||
+          verifyError.includes('already')
+        ) {
+          const unlockRes = await fetch(
+            `/api/check-unlock/${encodeURIComponent(post.id)}`,
+          )
+          const unlockData = await unlockRes.json().catch(() => ({}))
+          if (unlockData.unlocked) {
+            setUnlocked(true)
+            setPollingActive(false)
+            if (payTxPollRef.current) {
+              clearInterval(payTxPollRef.current)
+              payTxPollRef.current = null
+            }
+          }
+        }
       } catch {
-        openCashtabWeb()
-        return
+        /* ignore transient errors; interval continues */
+      }
+    }
+
+    void checkLatest()
+    payTxPollRef.current = setInterval(() => {
+      void checkLatest()
+    }, 3000)
+  }, [authorAddressForLatestTx, post?.id])
+
+  const processWalletAuthTxid = useCallback(
+    async (txid) => {
+      if (!post?.id || !txid) return
+      if (walletAuthLastHandledTxidRef.current === txid) return
+      walletAuthLastHandledTxidRef.current = txid
+
+      const verifyRes = await fetch('/api/verify-wallet-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ txid }),
+      })
+      const verifyData = await verifyRes.json().catch(() => ({}))
+      if (!verifyRes.ok) {
+        throw new Error(verifyData.error || 'Could not verify wallet payment.')
       }
 
-      await cashtab.sendBip21(bip21Url)
-    } catch {
-      /* User cancelled send in the extension or send failed — extension was available, do not open web */
-    } finally {
-      setPayBusy(false)
+      const walletAddress = verifyData.walletAddress?.trim?.() || ''
+      const unlockedPostIds = Array.isArray(verifyData.unlockedPostIds)
+        ? verifyData.unlockedPostIds
+        : []
+
+      if (walletAddress) {
+        localStorage.setItem('walletAddress', walletAddress)
+      }
+
+      if (!unlockedPostIds.includes(post.id)) {
+        setWalletNotPaidMessage(true)
+        throw new Error('This wallet has not paid for this article yet.')
+      }
+
+      const ok = await checkUnlock(post.id, walletAddress || undefined)
+      if (!ok) {
+        throw new Error(
+          'Wallet verified but unlock cookie could not be set yet. Please try again.',
+        )
+      }
+      setUnlocked(true)
+      setPollingActive(false)
+    },
+    [post?.id, checkUnlock],
+  )
+
+  const startWalletAuthAutoVerify = useCallback(async () => {
+    if (!platformAddressForAuth || !post?.id) return
+
+    if (walletAuthPollRef.current) {
+      clearInterval(walletAuthPollRef.current)
+      walletAuthPollRef.current = null
     }
-  }
+
+    setWalletVerifyBusy(true)
+    setWalletVerifyError(null)
+    setWalletNotPaidMessage(false)
+
+    try {
+      const baselineRes = await fetch(
+        `/api/latest-tx/${encodeURIComponent(platformAddressForAuth)}`,
+      )
+      const baselineData = await baselineRes.json().catch(() => ({}))
+      walletAuthBaselineTxidRef.current =
+        baselineRes.ok && baselineData.txid ? baselineData.txid : ''
+    } catch {
+      walletAuthBaselineTxidRef.current = ''
+    }
+
+    const checkLatest = async () => {
+      try {
+        const latestTxRes = await fetch(
+          `/api/latest-tx/${encodeURIComponent(platformAddressForAuth)}`,
+        )
+        const latestTxData = await latestTxRes.json().catch(() => ({}))
+        const latestTxid = latestTxRes.ok ? latestTxData.txid : ''
+        if (!latestTxid) return
+        if (latestTxid === walletAuthBaselineTxidRef.current) return
+
+        await processWalletAuthTxid(latestTxid)
+        if (walletAuthPollRef.current) {
+          clearInterval(walletAuthPollRef.current)
+          walletAuthPollRef.current = null
+        }
+        setWalletVerifyBusy(false)
+      } catch (err) {
+        setWalletVerifyError(err?.message || 'Could not verify wallet payment.')
+        if (walletAuthPollRef.current) {
+          clearInterval(walletAuthPollRef.current)
+          walletAuthPollRef.current = null
+        }
+        setWalletVerifyBusy(false)
+      }
+    }
+
+    void checkLatest()
+    walletAuthPollRef.current = setInterval(() => {
+      void checkLatest()
+    }, 3000)
+  }, [platformAddressForAuth, post?.id, processWalletAuthTxid])
 
   if (loadingPost) {
     return (
@@ -513,8 +516,7 @@ export default function PublicPostPage() {
                   </p>
                   {pollingActive ? (
                     <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-500">
-                      Waiting for payment confirmation… checking every 2 seconds and listening for new
-                      transactions to the author address.
+                      Waiting for payment confirmation… checking every 3 seconds.
                     </p>
                   ) : null}
                   <div className="mt-4 flex justify-center">
@@ -564,22 +566,13 @@ export default function PublicPostPage() {
                         <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                           <button
                             type="button"
-                            onClick={() => openExternalCashtab(walletAuthCashtabUrl, true)}
+                            onClick={() => {
+                              openCashtab(walletAuthCashtabUrl)
+                              void startWalletAuthAutoVerify()
+                            }}
                             className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:hover:bg-zinc-900"
                           >
-                            Open in Cashtab
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleVerifyWalletAuth}
-                            disabled={walletVerifyBusy || walletVerifyWatching}
-                            className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-                          >
-                            {walletVerifyWatching
-                              ? 'Waiting for transaction…'
-                              : walletVerifyBusy
-                                ? 'Verifying…'
-                                : "I've sent it — verify"}
+                            Open Cashtab
                           </button>
                         </div>
 

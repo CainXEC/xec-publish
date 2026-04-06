@@ -4,17 +4,6 @@ import { supabase } from '@/lib/supabase'
 export async function GET(_request, { params }) {
   const { postId } = await params
   const cookieName = `unlock_${postId}`
-  const withUnlockCookie = () => {
-    const response = NextResponse.json({ unlocked: true })
-    response.cookies.set({
-      name: cookieName,
-      value: 'true',
-      maxAge: 60 * 60 * 24 * 30,
-      path: '/',
-      sameSite: 'lax',
-    })
-    return response
-  }
 
   if (_request.cookies.get(cookieName)?.value) {
     return NextResponse.json({ unlocked: true })
@@ -22,22 +11,7 @@ export async function GET(_request, { params }) {
 
   const walletAddress = _request.nextUrl.searchParams.get('walletAddress')
   if (!walletAddress) {
-    const { data: anyUnlock, error: anyUnlockError } = await supabase
-      .from('unlocks')
-      .select('id')
-      .eq('post_id', postId)
-      .limit(1)
-      .maybeSingle()
-
-    if (anyUnlockError) {
-      return NextResponse.json({ error: anyUnlockError.message }, { status: 500 })
-    }
-
-    if (!anyUnlock) {
-      return NextResponse.json({ unlocked: false })
-    }
-
-    return withUnlockCookie()
+    return NextResponse.json({ unlocked: false })
   }
 
   const { data, error } = await supabase
@@ -56,6 +30,14 @@ export async function GET(_request, { params }) {
     return NextResponse.json({ unlocked: false })
   }
 
-  return withUnlockCookie()
+  const response = NextResponse.json({ unlocked: true })
+  response.cookies.set({
+    name: cookieName,
+    value: 'true',
+    maxAge: 60 * 60 * 24 * 30,
+    path: '/',
+    sameSite: 'lax',
+  })
+  return response
 }
 
