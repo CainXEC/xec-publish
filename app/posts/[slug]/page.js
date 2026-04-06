@@ -504,7 +504,7 @@ export default function PublicPostPage() {
                     Pay with XEC to unlock the full story.
                   </p>
                   <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
-                    (5% of all payments go to support the platform)
+                    (6% of all payments go to support the platform)
                   </p>
                   <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                     No signup required. Payments go directly to the author. Opens in Cashtab wallet.
