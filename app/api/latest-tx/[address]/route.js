@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { ChronikClient } from 'chronik-client'
 
-const chronik = new ChronikClient(['https://chronik.e.cash'])
+const chronik = new ChronikClient([
+  'https://chronik.e.cash',
+  'https://chronik.fabien.cash',
+  'https://chronik2.fabien.cash',
+])
 
 export async function GET(_request, { params }) {
   try {

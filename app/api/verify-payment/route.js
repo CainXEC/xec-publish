@@ -3,7 +3,11 @@ import { ChronikClient } from 'chronik-client'
 import { supabase } from '@/lib/supabase'
 import { verifyAndRecordUnlock } from '@/lib/verifyPaymentUnlock'
 
-const chronik = new ChronikClient(['https://chronik.e.cash'])
+const chronik = new ChronikClient([
+  'https://chronik.e.cash',
+  'https://chronik.fabien.cash',
+  'https://chronik2.fabien.cash',
+])
 
 export async function POST(request) {
   try {
