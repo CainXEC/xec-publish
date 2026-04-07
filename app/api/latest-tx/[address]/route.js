@@ -11,8 +11,10 @@ export async function GET(_request, { params }) {
       return NextResponse.json({ error: 'Missing address' }, { status: 400 })
     }
 
-    const decoded = decodeURIComponent(address).trim()
-    const ecashAddress = decoded.startsWith('ecash:') ? decoded : `ecash:${decoded}`
+    const decodedAddress = decodeURIComponent(address).trim()
+    const ecashAddress = decodedAddress.startsWith('ecash:')
+      ? decodedAddress
+      : `ecash:${decodedAddress}`
 
     let targetScript
     try {

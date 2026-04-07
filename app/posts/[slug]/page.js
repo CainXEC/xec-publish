@@ -184,7 +184,9 @@ export default function PublicPostPage() {
   }
 
   const priceXec = Number(post?.price_xec ?? 0)
-  const authorXecAddress = (author?.xec_address ?? '').replace(/^ecash:/, '')
+  const authorXecAddress = (author?.xec_address ?? '')
+    .trim()
+    .replace(/^ecash:/, '')
   const platformXecAddress =
     typeof process.env.NEXT_PUBLIC_PLATFORM_XEC_ADDRESS === 'string'
       ? process.env.NEXT_PUBLIC_PLATFORM_XEC_ADDRESS.trim()
@@ -193,7 +195,6 @@ export default function PublicPostPage() {
   const authorAddrForBip21 =
     author?.xec_address?.trim() ||
     (authorXecAddress ? `ecash:${authorXecAddress}` : '')
-  const authorAddressForLatestTx = author?.xec_address?.trim() || ''
   const bip21Url =
     authorAddrForBip21 &&
     platformXecAddress &&
@@ -236,7 +237,7 @@ export default function PublicPostPage() {
   }
 
   const startPayTxAutoVerify = useCallback(async () => {
-    if (!post?.id || !authorAddressForLatestTx) return
+    if (!post?.id || !authorXecAddress) return
 
     if (payTxPollRef.current) {
       clearInterval(payTxPollRef.current)
@@ -245,7 +246,7 @@ export default function PublicPostPage() {
 
     try {
       const baselineRes = await fetch(
-        `/api/latest-tx/${encodeURIComponent(authorAddressForLatestTx)}`,
+        `/api/latest-tx/${encodeURIComponent(authorXecAddress)}`,
       )
       const baselineData = await baselineRes.json().catch(() => ({}))
       payBaselineTxidRef.current =
@@ -257,7 +258,7 @@ export default function PublicPostPage() {
     const checkLatest = async () => {
       try {
         const latestTxRes = await fetch(
-          `/api/latest-tx/${encodeURIComponent(authorAddressForLatestTx)}`,
+          `/api/latest-tx/${encodeURIComponent(authorXecAddress)}`,
         )
         const latestTxData = await latestTxRes.json().catch(() => ({}))
         const latestTxid = latestTxRes.ok ? latestTxData.txid : ''
@@ -310,7 +311,7 @@ export default function PublicPostPage() {
     payTxPollRef.current = setInterval(() => {
       void checkLatest()
     }, 3000)
-  }, [authorAddressForLatestTx, post?.id])
+  }, [authorXecAddress, post?.id])
 
   const processWalletAuthTxid = useCallback(
     async (txid) => {
