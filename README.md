@@ -16,6 +16,12 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Environment variables
+
+- **`COOKIE_SECRET`** — Random secret (e.g. 32+ hex characters) used to HMAC-sign per-post unlock cookies. Required for `/api/verify-payment` and `/api/check-unlock` to set cookies. Copy the value from `.env.local` for local dev.
+
+**Vercel:** In the project on [vercel.com](https://vercel.com), open **Settings → Environment Variables**, add `COOKIE_SECRET` with the same kind of random value (generate a new secret for production; do not commit it). Apply to Production, Preview, and Development as needed, then redeploy.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

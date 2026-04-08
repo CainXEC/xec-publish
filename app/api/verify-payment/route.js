@@ -2,6 +2,7 @@ export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
 import { ChronikClient } from 'chronik-client'
+import { signCookieValue } from '@/lib/cookieSigner'
 import { supabase } from '@/lib/supabase'
 import { verifyAndRecordUnlock } from '@/lib/verifyPaymentUnlock'
 
@@ -79,13 +80,25 @@ export async function POST(request) {
       )
     }
 
+    let cookieValue
+    try {
+      cookieValue = signCookieValue(postId, result.txid)
+    } catch (signErr) {
+      console.error('[verify-payment] unlock cookie signing failed', signErr)
+      return NextResponse.json(
+        { error: 'Server configuration error: could not set unlock cookie' },
+        { status: 500 },
+      )
+    }
+
     const response = NextResponse.json({ unlocked: true })
     response.cookies.set({
       name: `unlock_${postId}`,
-      value: 'true',
+      value: cookieValue,
       maxAge: 60 * 60 * 24 * 30,
       path: '/',
       sameSite: 'lax',
+      httpOnly: true,
     })
     return response
   } catch (err) {

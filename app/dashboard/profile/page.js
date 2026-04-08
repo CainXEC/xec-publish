@@ -78,6 +78,15 @@ export default function AuthorProfileSettingsPage() {
     }
   }, [router])
 
+  function formatSupabaseErrorForUser(err) {
+    if (!err) return 'Update failed.'
+    const bits = [err.message].filter(Boolean)
+    if (err.code) bits.push(`[${err.code}]`)
+    if (err.details) bits.push(String(err.details))
+    if (err.hint) bits.push(`Hint: ${err.hint}`)
+    return bits.join(' ')
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setSubmitError(null)
@@ -87,11 +96,16 @@ export default function AuthorProfileSettingsPage() {
     try {
       const { data: userData, error: userError } = await supabase.auth.getUser()
       if (userError) {
+        console.error('[profile] getUser failed before update', {
+          message: userError.message,
+          name: userError.name,
+        })
         setSubmitError(userError.message)
         return
       }
       const user = userData.user
       if (!user) {
+        console.error('[profile] no authenticated user before update')
         router.replace('/login')
         return
       }
@@ -107,6 +121,11 @@ export default function AuthorProfileSettingsPage() {
         return
       }
 
+      console.log('[profile] authors.update', {
+        authorRowId: user.id,
+        filter: { id: user.id },
+      })
+
       const { data: updated, error: updateError } = await supabase
         .from('authors')
         .update({
@@ -119,12 +138,26 @@ export default function AuthorProfileSettingsPage() {
         .maybeSingle()
 
       if (updateError) {
-        setSubmitError(updateError.message)
+        console.error('[profile] Supabase authors.update failed', {
+          message: updateError.message,
+          code: updateError.code,
+          details: updateError.details,
+          hint: updateError.hint,
+          authorId: user.id,
+        })
+        setSubmitError(formatSupabaseErrorForUser(updateError))
         return
       }
 
       if (!updated) {
-        setSubmitError('Could not update profile.')
+        console.error('[profile] authors.update returned no row (0 matches)', {
+          authorId: user.id,
+          note:
+            'Often caused by RLS denying UPDATE, or missing authors row for this user.',
+        })
+        setSubmitError(
+          'No profile row was updated. Your account is signed in, but the update matched 0 rows. Check that an authors row exists for your user id, and in Supabase that RLS policies allow UPDATE on authors where id = auth.uid().',
+        )
         return
       }
 
