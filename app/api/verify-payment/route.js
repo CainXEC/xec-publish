@@ -1,50 +1,14 @@
 import { NextResponse } from 'next/server'
+import { ChronikClient } from 'chronik-client'
 import { supabase } from '@/lib/supabase'
 import { verifyAndRecordUnlock } from '@/lib/verifyPaymentUnlock'
 
-const CHRONIK_URLS = [
+const chronik = new ChronikClient([
   'https://chronik.e.cash',
   'https://chronik-native1.fabien.cash',
   'https://chronik-native2.fabien.cash',
   'https://chronik-native3.fabien.cash',
-]
-
-const chronik = {
-  async tx(txid) {
-    let lastError = null
-    for (const baseUrl of CHRONIK_URLS) {
-      try {
-        const response = await fetch(`${baseUrl}/tx/${txid}`, {
-          cache: 'no-store',
-        })
-        if (!response.ok) {
-          let details = ''
-          try {
-            details = await response.text()
-          } catch {
-            details = ''
-          }
-          throw new Error(
-            `Chronik REST tx fetch failed at ${baseUrl} (${response.status})${details ? `: ${details}` : ''}`,
-          )
-        }
-        const tx = await response.json()
-        return {
-          ...tx,
-          outputs: Array.isArray(tx?.outputs)
-            ? tx.outputs.map((output) => ({
-                ...output,
-                sats: BigInt(output.sats),
-              }))
-            : [],
-        }
-      } catch (err) {
-        lastError = err
-      }
-    }
-    throw lastError || new Error('Chronik REST tx fetch failed')
-  },
-}
+])
 
 export async function POST(request) {
   try {

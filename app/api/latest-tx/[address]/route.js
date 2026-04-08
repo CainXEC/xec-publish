@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
-import { decodeCashAddress } from 'ecashaddrjs'
-const CHRONIK_URLS = [
+import { ChronikClient } from 'chronik-client'
+
+const chronik = new ChronikClient([
   'https://chronik.e.cash',
   'https://chronik-native1.fabien.cash',
   'https://chronik-native2.fabien.cash',
   'https://chronik-native3.fabien.cash',
-]
+])
 
 export async function GET(_request, { params }) {
   try {
@@ -16,7 +17,6 @@ export async function GET(_request, { params }) {
 
     let decodedAddress
     try {
-      // Next.js may pass the path segment still encoded (e.g. ecash%3A...).
       decodedAddress = decodeURIComponent(resolvedParams.address).trim()
     } catch {
       return NextResponse.json(
@@ -49,52 +49,8 @@ export async function GET(_request, { params }) {
       ? decodedAddress
       : `ecash:${decodedAddress}`
 
-    let scriptType
-    let payload
-    try {
-      const { type, hash } = decodeCashAddress(ecashAddress)
-      scriptType = type === 'p2pkh' ? 'p2pkh' : 'p2sh'
-      // ecashaddrjs returns hash as hex string; support Uint8Array if that ever changes
-      payload =
-        typeof hash === 'string'
-          ? hash
-          : Buffer.from(hash).toString('hex')
-    } catch (e) {
-      return NextResponse.json(
-        {
-          error: `Invalid eCash address: ${ecashAddress}. ${e?.message || ''}`.trim(),
-        },
-        { status: 400 },
-      )
-    }
-
-    let data = null
-    let lastError = null
-    for (const baseUrl of CHRONIK_URLS) {
-      try {
-        const url = `${baseUrl}/script/${scriptType}/${payload}/history?page=0&page_size=5`
-        const response = await fetch(url, { cache: 'no-store' })
-        if (!response.ok) {
-          let details = ''
-          try {
-            details = await response.text()
-          } catch {
-            details = ''
-          }
-          throw new Error(
-            `Chronik REST history fetch failed at ${baseUrl} (${response.status})${details ? `: ${details}` : ''}`,
-          )
-        }
-        data = await response.json()
-        break
-      } catch (err) {
-        lastError = err
-      }
-    }
-    if (!data) {
-      throw lastError || new Error('Chronik REST history fetch failed')
-    }
-    const txid = data?.txs?.[0]?.txid
+    const history = await chronik.address(ecashAddress).history(0, 5)
+    const txid = history?.txs?.[0]?.txid
 
     if (txid) {
       return NextResponse.json({ txid })
