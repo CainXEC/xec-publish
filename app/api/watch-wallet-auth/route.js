@@ -1,7 +1,8 @@
+export const runtime = 'nodejs'
+
 import { ChronikClient } from 'chronik-client'
 import { getOutputScriptFromAddress } from 'ecashaddrjs'
 
-export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request) {

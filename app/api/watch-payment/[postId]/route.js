@@ -1,8 +1,9 @@
+export const runtime = 'nodejs'
+
 import { ChronikClient } from 'chronik-client'
 import { supabase } from '@/lib/supabase'
 import { verifyAndRecordUnlock } from '@/lib/verifyPaymentUnlock'
 
-export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request, { params }) {
