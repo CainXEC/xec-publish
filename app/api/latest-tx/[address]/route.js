@@ -48,13 +48,13 @@ export async function GET(_request, { params }) {
       ? decodedAddress
       : `ecash:${decodedAddress}`
 
-    const encodedAddress = ecashAddress
+    const addressForUrl = ecashAddress.replace(/^ecash:/, '')
     let data = null
     let lastError = null
     for (const baseUrl of CHRONIK_URLS) {
       try {
         const response = await fetch(
-          `${baseUrl}/address/${encodedAddress}/history?page=0&page_size=5`,
+          `${baseUrl}/address/${addressForUrl}/history?page=0&page_size=5`,
           { cache: 'no-store' },
         )
         if (!response.ok) {
