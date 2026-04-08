@@ -8,24 +8,29 @@ const CHRONIK_URLS = [
 
 export async function GET(_request, { params }) {
   try {
-    const { address } = await params
-    if (!address || typeof address !== 'string') {
+    const resolvedParams = await params
+    if (!resolvedParams?.address || typeof resolvedParams.address !== 'string') {
       return NextResponse.json({ error: 'Missing address' }, { status: 400 })
     }
 
     let decodedAddress
     try {
-      decodedAddress = decodeURIComponent(address).trim()
+      // Next.js may pass the path segment still encoded (e.g. ecash%3A...).
+      decodedAddress = decodeURIComponent(resolvedParams.address).trim()
     } catch {
       return NextResponse.json(
-        { error: `Invalid URL-encoded address received: ${String(address)}` },
+        {
+          error: `Invalid URL-encoded address received: ${String(resolvedParams.address)}`,
+        },
         { status: 400 },
       )
     }
 
     if (!decodedAddress) {
       return NextResponse.json(
-        { error: `Address is empty after decoding. Received: ${String(address)}` },
+        {
+          error: `Address is empty after decoding. Received: ${String(resolvedParams.address)}`,
+        },
         { status: 400 },
       )
     }
