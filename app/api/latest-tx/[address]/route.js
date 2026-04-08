@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { decodeCashAddress } from 'ecashaddrjs'
 const CHRONIK_URLS = [
   'https://chronik.e.cash',
   'https://chronik-native1.fabien.cash',
@@ -48,15 +49,31 @@ export async function GET(_request, { params }) {
       ? decodedAddress
       : `ecash:${decodedAddress}`
 
-    const addressForUrl = ecashAddress.replace(/^ecash:/, '')
+    let scriptType
+    let payload
+    try {
+      const { type, hash } = decodeCashAddress(ecashAddress)
+      scriptType = type === 'p2pkh' ? 'p2pkh' : 'p2sh'
+      // ecashaddrjs returns hash as hex string; support Uint8Array if that ever changes
+      payload =
+        typeof hash === 'string'
+          ? hash
+          : Buffer.from(hash).toString('hex')
+    } catch (e) {
+      return NextResponse.json(
+        {
+          error: `Invalid eCash address: ${ecashAddress}. ${e?.message || ''}`.trim(),
+        },
+        { status: 400 },
+      )
+    }
+
     let data = null
     let lastError = null
     for (const baseUrl of CHRONIK_URLS) {
       try {
-        const response = await fetch(
-          `${baseUrl}/address/${addressForUrl}/history?page=0&page_size=5`,
-          { cache: 'no-store' },
-        )
+        const url = `${baseUrl}/script/${scriptType}/${payload}/history?page=0&page_size=5`
+        const response = await fetch(url, { cache: 'no-store' })
         if (!response.ok) {
           let details = ''
           try {

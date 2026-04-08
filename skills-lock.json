@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "ecash": {
+      "source": "alitayin/ecashskill",
+      "sourceType": "github",
+      "computedHash": "d27245d9e8ff63de5891a38b5e6a9c54b7c86493f5c3054cd12a0a4da6c0e9a6"
+    }
+  }
+}
