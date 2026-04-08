@@ -195,6 +195,7 @@ export default function PublicPostPage() {
   const authorAddrForBip21 =
     author?.xec_address?.trim() ||
     (authorXecAddress ? `ecash:${authorXecAddress}` : '')
+  const authorAddressForLatestTx = authorAddrForBip21
   const bip21Url =
     authorAddrForBip21 &&
     platformXecAddress &&
@@ -237,7 +238,7 @@ export default function PublicPostPage() {
   }
 
   const startPayTxAutoVerify = useCallback(async () => {
-    if (!post?.id || !authorXecAddress) return
+    if (!post?.id || !authorAddressForLatestTx) return
 
     if (payTxPollRef.current) {
       clearInterval(payTxPollRef.current)
@@ -246,7 +247,7 @@ export default function PublicPostPage() {
 
     try {
       const baselineRes = await fetch(
-        `/api/latest-tx/${encodeURIComponent(authorXecAddress)}`,
+        `/api/latest-tx/${encodeURIComponent(authorAddressForLatestTx)}`,
       )
       const baselineData = await baselineRes.json().catch(() => ({}))
       payBaselineTxidRef.current =
@@ -258,7 +259,7 @@ export default function PublicPostPage() {
     const checkLatest = async () => {
       try {
         const latestTxRes = await fetch(
-          `/api/latest-tx/${encodeURIComponent(authorXecAddress)}`,
+          `/api/latest-tx/${encodeURIComponent(authorAddressForLatestTx)}`,
         )
         const latestTxData = await latestTxRes.json().catch(() => ({}))
         const latestTxid = latestTxRes.ok ? latestTxData.txid : ''
@@ -311,7 +312,7 @@ export default function PublicPostPage() {
     payTxPollRef.current = setInterval(() => {
       void checkLatest()
     }, 3000)
-  }, [authorXecAddress, post?.id])
+  }, [authorAddressForLatestTx, post?.id])
 
   const processWalletAuthTxid = useCallback(
     async (txid) => {

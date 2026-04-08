@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 function formatXec(amount) {
@@ -60,18 +60,171 @@ const sortBtnActive =
   'rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400'
 const sortBtnInactive =
   'rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900'
+const filterBtnActive =
+  'rounded-lg bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-200 dark:hover:bg-emerald-900'
+const filterBtnInactive =
+  'rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800'
+
+function truncateAddress(address) {
+  if (!address || address.length < 14) return address
+  return `${address.slice(0, 9)}...${address.slice(-3)}`
+}
 
 export default function HomePage() {
   const [fetchedPosts, setFetchedPosts] = useState([])
   const [sortMode, setSortMode] = useState('unlocks')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
-  const [loggedIn, setLoggedIn] = useState(false)
+  const [authorLoggedIn, setAuthorLoggedIn] = useState(false)
+  const [readerWalletAddress, setReaderWalletAddress] = useState('')
+  const [readerUnlockedPostIds, setReaderUnlockedPostIds] = useState([])
+  const [readerFilterMode, setReaderFilterMode] = useState('all')
+  const [readerLoginBusy, setReaderLoginBusy] = useState(false)
+  const [readerLoginError, setReaderLoginError] = useState('')
+  const latestTxPollRef = useRef(null)
+  const baselineTxidRef = useRef('')
+  const lastHandledTxidRef = useRef('')
+  const platformAddress = useMemo(
+    () => process.env.NEXT_PUBLIC_PLATFORM_XEC_ADDRESS?.trim() ?? '',
+    [],
+  )
+  const platformAddressForLatestTx = useMemo(
+    () => platformAddress.replace(/^ecash:/, ''),
+    [platformAddress],
+  )
 
   const posts = useMemo(() => {
     if (sortMode === 'newest') return sortPostsByNewest(fetchedPosts)
     return sortPostsByUnlocksThenNewest(fetchedPosts)
   }, [fetchedPosts, sortMode])
+
+  const visiblePosts = useMemo(() => {
+    if (!readerWalletAddress || readerFilterMode === 'all') return posts
+    const unlockedSet = new Set(readerUnlockedPostIds)
+    if (readerFilterMode === 'unlocked') {
+      return posts.filter((post) => unlockedSet.has(post.id))
+    }
+    return posts.filter((post) => !unlockedSet.has(post.id))
+  }, [posts, readerFilterMode, readerUnlockedPostIds, readerWalletAddress])
+
+  const stopReaderTxPolling = useCallback(() => {
+    if (latestTxPollRef.current) {
+      clearInterval(latestTxPollRef.current)
+      latestTxPollRef.current = null
+    }
+  }, [])
+
+  const fetchReaderUnlocks = useCallback(async (walletAddress) => {
+    if (!walletAddress) return []
+    const res = await fetch(
+      `/api/reader-unlocks?walletAddress=${encodeURIComponent(walletAddress)}`,
+      { cache: 'no-store' },
+    )
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      throw new Error(data?.error || 'Could not fetch reader unlocks')
+    }
+    return Array.isArray(data?.unlockedPostIds) ? data.unlockedPostIds : []
+  }, [])
+
+  const applyReaderWallet = useCallback(
+    async (walletAddress, unlockedPostIdsFromVerify) => {
+      setReaderWalletAddress(walletAddress)
+      localStorage.setItem('readerWalletAddress', walletAddress)
+      if (Array.isArray(unlockedPostIdsFromVerify)) {
+        setReaderUnlockedPostIds(unlockedPostIdsFromVerify)
+      } else {
+        const ids = await fetchReaderUnlocks(walletAddress)
+        setReaderUnlockedPostIds(ids)
+      }
+    },
+    [fetchReaderUnlocks],
+  )
+
+  const startReaderLoginPolling = useCallback(async () => {
+    if (!platformAddressForLatestTx) return
+    stopReaderTxPolling()
+    setReaderLoginBusy(true)
+    setReaderLoginError('')
+    try {
+      const baselineRes = await fetch(
+        `/api/latest-tx/${encodeURIComponent(platformAddressForLatestTx)}`,
+        { cache: 'no-store' },
+      )
+      const baselineData = await baselineRes.json().catch(() => ({}))
+      baselineTxidRef.current =
+        baselineRes.ok && baselineData?.txid ? baselineData.txid : ''
+    } catch {
+      baselineTxidRef.current = ''
+    }
+
+    const checkLatest = async () => {
+      try {
+        const latestRes = await fetch(
+          `/api/latest-tx/${encodeURIComponent(platformAddressForLatestTx)}`,
+          { cache: 'no-store' },
+        )
+        const latestData = await latestRes.json().catch(() => ({}))
+        const txid = latestRes.ok ? latestData?.txid : ''
+        if (!txid) return
+        if (txid === baselineTxidRef.current) return
+        if (txid === lastHandledTxidRef.current) return
+        lastHandledTxidRef.current = txid
+
+        const verifyRes = await fetch('/api/verify-wallet-auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ txid }),
+        })
+        const verifyData = await verifyRes.json().catch(() => ({}))
+        if (!verifyRes.ok || !verifyData?.walletAddress) {
+          setReaderLoginError(
+            verifyData?.error || 'Wallet verification failed. Try again.',
+          )
+          return
+        }
+        await applyReaderWallet(
+          verifyData.walletAddress,
+          verifyData.unlockedPostIds,
+        )
+        stopReaderTxPolling()
+        setReaderLoginBusy(false)
+      } catch {
+        /* ignore transient polling errors */
+      }
+    }
+
+    void checkLatest()
+    latestTxPollRef.current = setInterval(() => {
+      void checkLatest()
+    }, 3000)
+  }, [
+    applyReaderWallet,
+    platformAddressForLatestTx,
+    stopReaderTxPolling,
+  ])
+
+  const handleReaderLogin = useCallback(() => {
+    if (!platformAddressForLatestTx) {
+      setReaderLoginError('Platform payment address is not configured.')
+      return
+    }
+    const cashtabUrl = `https://cashtab.com/#/send?bip21=ecash:${platformAddressForLatestTx}?amount=5.5`
+    window.open(cashtabUrl, '_blank', 'noopener,noreferrer')
+    void startReaderLoginPolling()
+  }, [platformAddressForLatestTx, startReaderLoginPolling])
+
+  const handleReaderLogout = useCallback(() => {
+    stopReaderTxPolling()
+    localStorage.removeItem('readerWalletAddress')
+    setReaderWalletAddress('')
+    setReaderUnlockedPostIds([])
+    setReaderFilterMode('all')
+    setReaderLoginBusy(false)
+    setReaderLoginError('')
+    baselineTxidRef.current = ''
+    lastHandledTxidRef.current = ''
+  }, [stopReaderTxPolling])
 
   useEffect(() => {
     let cancelled = false
@@ -81,7 +234,7 @@ export default function HomePage() {
       setLoadError(null)
 
       const { data: sessionData } = await supabase.auth.getSession()
-      if (!cancelled) setLoggedIn(!!sessionData.session)
+      if (!cancelled) setAuthorLoggedIn(!!sessionData.session)
 
       const { data, error } = await supabase
         .from('posts')
@@ -101,15 +254,25 @@ export default function HomePage() {
 
     load()
 
+    try {
+      const storedWalletAddress = localStorage.getItem('readerWalletAddress') || ''
+      if (storedWalletAddress) {
+        void applyReaderWallet(storedWalletAddress)
+      }
+    } catch {
+      /* ignore localStorage errors */
+    }
+
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setLoggedIn(!!session)
+      setAuthorLoggedIn(!!session)
     })
 
     return () => {
       cancelled = true
       sub.subscription.unsubscribe()
+      stopReaderTxPolling()
     }
-  }, [])
+  }, [applyReaderWallet, stopReaderTxPolling])
 
   return (
     <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
@@ -121,15 +284,38 @@ export default function HomePage() {
           >
             XEC Publish
           </Link>
-          {loggedIn ? (
-            <Link
-              href="/dashboard"
-              className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-            >
-              Dashboard
-            </Link>
-          ) : (
-            <div className="flex items-center gap-5">
+          <div className="flex items-center gap-3">
+            {readerWalletAddress ? (
+              <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden />
+                <span>{truncateAddress(readerWalletAddress)}</span>
+                <button
+                  type="button"
+                  onClick={handleReaderLogout}
+                  className="rounded px-1.5 py-0.5 text-zinc-700 transition hover:bg-emerald-100 hover:text-zinc-900 dark:text-emerald-100 dark:hover:bg-emerald-900"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleReaderLogin}
+                disabled={readerLoginBusy}
+                className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950"
+              >
+                {readerLoginBusy ? 'Waiting for payment...' : 'Reader Login'}
+              </button>
+            )}
+            {authorLoggedIn ? (
+              <Link
+                href="/dashboard"
+                className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <div className="flex items-center gap-5">
               <Link
                 href="/login"
                 className="text-sm font-medium text-zinc-700 transition hover:text-zinc-900 hover:underline dark:text-zinc-300 dark:hover:text-zinc-100"
@@ -142,8 +328,9 @@ export default function HomePage() {
               >
                 Start Writing
               </Link>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -189,8 +376,46 @@ export default function HomePage() {
                 🕐 Newest First
               </button>
             </div>
+            {readerLoginError ? (
+              <p className="mb-4 text-sm text-red-700 dark:text-red-300">{readerLoginError}</p>
+            ) : null}
+            {readerWalletAddress ? (
+              <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label="Filter posts">
+                <button
+                  type="button"
+                  aria-pressed={readerFilterMode === 'all'}
+                  onClick={() => setReaderFilterMode('all')}
+                  className={readerFilterMode === 'all' ? filterBtnActive : filterBtnInactive}
+                >
+                  All Posts
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={readerFilterMode === 'unlocked'}
+                  onClick={() => setReaderFilterMode('unlocked')}
+                  className={readerFilterMode === 'unlocked' ? filterBtnActive : filterBtnInactive}
+                >
+                  Unlocked
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={readerFilterMode === 'locked'}
+                  onClick={() => setReaderFilterMode('locked')}
+                  className={readerFilterMode === 'locked' ? filterBtnActive : filterBtnInactive}
+                >
+                  Locked
+                </button>
+              </div>
+            ) : null}
+            {visiblePosts.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-8 py-12 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
+                <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                  No posts match this filter.
+                </p>
+              </div>
+            ) : null}
             <ul className="flex flex-col gap-6">
-            {posts.map((post) => {
+            {visiblePosts.map((post) => {
               const author = authorFromPost(post)
               const username = author?.username?.trim() || 'Unknown'
               const authorHref =

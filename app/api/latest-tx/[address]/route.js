@@ -13,7 +13,32 @@ export async function GET(_request, { params }) {
       return NextResponse.json({ error: 'Missing address' }, { status: 400 })
     }
 
-    const decodedAddress = decodeURIComponent(address).trim()
+    let decodedAddress
+    try {
+      decodedAddress = decodeURIComponent(address).trim()
+    } catch {
+      return NextResponse.json(
+        { error: `Invalid URL-encoded address received: ${String(address)}` },
+        { status: 400 },
+      )
+    }
+
+    if (!decodedAddress) {
+      return NextResponse.json(
+        { error: `Address is empty after decoding. Received: ${String(address)}` },
+        { status: 400 },
+      )
+    }
+
+    if (decodedAddress.includes(':') && !decodedAddress.startsWith('ecash:')) {
+      return NextResponse.json(
+        {
+          error: `Unsupported address prefix. Received: ${decodedAddress}. Expected ecash:`,
+        },
+        { status: 400 },
+      )
+    }
+
     const ecashAddress = decodedAddress.startsWith('ecash:')
       ? decodedAddress
       : `ecash:${decodedAddress}`
