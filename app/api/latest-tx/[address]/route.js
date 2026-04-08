@@ -48,7 +48,7 @@ export async function GET(_request, { params }) {
       ? decodedAddress
       : `ecash:${decodedAddress}`
 
-    const encodedAddress = encodeURIComponent(ecashAddress)
+    const encodedAddress = ecashAddress
     let data = null
     let lastError = null
     for (const baseUrl of CHRONIK_URLS) {
