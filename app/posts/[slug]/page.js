@@ -215,6 +215,11 @@ export default function PublicPostPage() {
   const walletAuthCashtabUrl = platformAddressForAuth
     ? `https://cashtab.com/#/send?bip21=ecash:${platformAddressForAuth}?amount=${WALLET_AUTH_XEC}`
     : ''
+  const platformAddressForLatestTx = platformXecAddress.startsWith('ecash:')
+    ? platformXecAddress
+    : platformXecAddress
+      ? `ecash:${platformXecAddress}`
+      : ''
   const unlockPriceLabel = formatXecAmount(priceXec)
 
   function openCashtab(url) {
@@ -357,7 +362,7 @@ export default function PublicPostPage() {
   )
 
   const startWalletAuthAutoVerify = useCallback(async () => {
-    if (!platformAddressForAuth || !post?.id) return
+    if (!platformAddressForLatestTx || !post?.id) return
 
     if (walletAuthPollRef.current) {
       clearInterval(walletAuthPollRef.current)
@@ -370,7 +375,7 @@ export default function PublicPostPage() {
 
     try {
       const baselineRes = await fetch(
-        `/api/latest-tx/${encodeURIComponent(platformAddressForAuth)}`,
+        `/api/latest-tx/${encodeURIComponent(platformAddressForLatestTx)}`,
       )
       const baselineData = await baselineRes.json().catch(() => ({}))
       walletAuthBaselineTxidRef.current =
@@ -382,7 +387,7 @@ export default function PublicPostPage() {
     const checkLatest = async () => {
       try {
         const latestTxRes = await fetch(
-          `/api/latest-tx/${encodeURIComponent(platformAddressForAuth)}`,
+          `/api/latest-tx/${encodeURIComponent(platformAddressForLatestTx)}`,
         )
         const latestTxData = await latestTxRes.json().catch(() => ({}))
         const latestTxid = latestTxRes.ok ? latestTxData.txid : ''
@@ -409,7 +414,7 @@ export default function PublicPostPage() {
     walletAuthPollRef.current = setInterval(() => {
       void checkLatest()
     }, 3000)
-  }, [platformAddressForAuth, post?.id, processWalletAuthTxid])
+  }, [platformAddressForLatestTx, post?.id, processWalletAuthTxid])
 
   if (loadingPost) {
     return (
