@@ -140,12 +140,20 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Author Dashboard</h1>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Welcome, {email}</p>
 
-          <Link
-            href="/dashboard/new-post"
-            className="mt-5 inline-flex rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-          >
-            Write New Post
-          </Link>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Link
+              href="/dashboard/new-post"
+              className="inline-flex rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+            >
+              Write New Post
+            </Link>
+            <Link
+              href="/dashboard/profile"
+              className="inline-flex rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            >
+              Edit Profile
+            </Link>
+          </div>
         </div>
 
         <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">

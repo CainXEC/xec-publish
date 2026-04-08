@@ -8,6 +8,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
+  const [bio, setBio] = useState('')
   const [xecAddress, setXecAddress] = useState('')
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
@@ -36,11 +37,13 @@ export default function SignupPage() {
         return
       }
 
+      const bioTrimmed = bio.trim()
       const { error: insertError } = await supabase.from('authors').insert({
         id: user.id,
         email: email.trim(),
         username: username.trim(),
         xec_address: xecAddress.trim(),
+        ...(bioTrimmed ? { bio: bioTrimmed } : {}),
       })
 
       if (insertError) {
@@ -123,6 +126,23 @@ export default function SignupPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-500"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="bio"
+                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+              >
+                Bio <span className="font-normal text-zinc-500">(optional)</span>
+              </label>
+              <textarea
+                id="bio"
+                name="bio"
+                rows={4}
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                className="mt-1 w-full resize-y rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-500"
+                placeholder="A short introduction for your public author page"
               />
             </div>
             <div>
