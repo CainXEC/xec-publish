@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server'
-import { ChronikClient } from 'chronik-client'
-
-const chronik = new ChronikClient([
+const CHRONIK_URLS = [
   'https://chronik.e.cash',
-  'https://chronik.fabien.cash',
-  'https://chronik2.fabien.cash',
-])
+  'https://chronik-native1.fabien.cash',
+  'https://chronik-native2.fabien.cash',
+  'https://chronik-native3.fabien.cash',
+]
 
 export async function GET(_request, { params }) {
   try {
@@ -19,7 +18,35 @@ export async function GET(_request, { params }) {
       ? decodedAddress
       : `ecash:${decodedAddress}`
 
-    const data = await chronik.address(ecashAddress).history(0, 5)
+    const encodedAddress = encodeURIComponent(ecashAddress)
+    let data = null
+    let lastError = null
+    for (const baseUrl of CHRONIK_URLS) {
+      try {
+        const response = await fetch(
+          `${baseUrl}/address/${encodedAddress}/history?page=0&page_size=5`,
+          { cache: 'no-store' },
+        )
+        if (!response.ok) {
+          let details = ''
+          try {
+            details = await response.text()
+          } catch {
+            details = ''
+          }
+          throw new Error(
+            `Chronik REST history fetch failed at ${baseUrl} (${response.status})${details ? `: ${details}` : ''}`,
+          )
+        }
+        data = await response.json()
+        break
+      } catch (err) {
+        lastError = err
+      }
+    }
+    if (!data) {
+      throw lastError || new Error('Chronik REST history fetch failed')
+    }
     const txid = data?.txs?.[0]?.txid
 
     if (txid) {
