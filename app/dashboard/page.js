@@ -191,14 +191,22 @@ export default function DashboardPage() {
                         Price: {post.price_xec ?? 0} XEC
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleDeletePost(post.id)}
-                      disabled={deletingId !== null}
-                      className="shrink-0 rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:opacity-50 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300 dark:hover:bg-red-950"
-                    >
-                      {deletingId === post.id ? 'Deleting…' : 'Delete'}
-                    </button>
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
+                      <Link
+                        href={`/dashboard/edit/${encodeURIComponent(post.id)}`}
+                        className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePost(post.id)}
+                        disabled={deletingId !== null}
+                        className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:opacity-50 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300 dark:hover:bg-red-950"
+                      >
+                        {deletingId === post.id ? 'Deleting…' : 'Delete'}
+                      </button>
+                    </div>
                   </div>
                 </li>
               ))}
