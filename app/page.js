@@ -481,24 +481,31 @@ export default function HomePage() {
               const commentStat =
                 commentsN === 1 ? '💬 1 comment' : `💬 ${commentsN} comments`
 
+              const titleId = `post-card-title-${post.id}`
+
               return (
                 <li key={post.id}>
-                  <article className="group rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0 flex-1">
-                        <h2 className="text-xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
-                          <Link
-                            href={postHref}
-                            className="transition hover:text-emerald-700 dark:hover:text-emerald-400"
-                          >
-                            {post.title}
-                          </Link>
+                  <article className="relative rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-[box-shadow,border-color] duration-200 hover:border-zinc-400 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-500 dark:hover:shadow-lg/20">
+                    <Link
+                      href={postHref}
+                      className="absolute inset-0 z-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
+                      aria-labelledby={titleId}
+                    >
+                      <span className="sr-only">Read article: {post.title}</span>
+                    </Link>
+                    <div className="relative z-10 flex flex-col gap-3">
+                      <div className="min-w-0 pointer-events-none">
+                        <h2
+                          id={titleId}
+                          className="text-xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50"
+                        >
+                          {post.title}
                         </h2>
-                        <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
+                        <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400 pointer-events-auto">
                           {username !== 'Unknown' ? (
                             <Link
                               href={authorHref}
-                              className="font-medium text-zinc-700 underline-offset-2 hover:text-zinc-900 hover:underline dark:text-zinc-300 dark:hover:text-zinc-100"
+                              className="relative z-20 font-medium text-zinc-700 underline-offset-2 hover:text-zinc-900 hover:underline dark:text-zinc-300 dark:hover:text-zinc-100"
                             >
                               {username}
                             </Link>
@@ -526,14 +533,6 @@ export default function HomePage() {
                             {commentStat}
                           </span>
                         </p>
-                      </div>
-                      <div className="flex shrink-0 sm:pt-1">
-                        <Link
-                          href={postHref}
-                          className="inline-flex w-full items-center justify-center rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition group-hover:bg-zinc-800 sm:w-auto dark:bg-zinc-100 dark:text-zinc-900 dark:group-hover:bg-white"
-                        >
-                          Read Article
-                        </Link>
                       </div>
                     </div>
                   </article>
