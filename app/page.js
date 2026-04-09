@@ -250,7 +250,7 @@ export default function HomePage() {
     void startReaderLoginPolling()
   }, [platformAddressForLatestTx, startReaderLoginPolling])
 
-  const handleReaderLogout = useCallback(() => {
+  const handleReaderLogout = useCallback(async () => {
     stopReaderTxPolling()
     localStorage.removeItem('readerWalletAddress')
     setReaderWalletAddress('')
@@ -260,6 +260,14 @@ export default function HomePage() {
     setReaderLoginError('')
     baselineTxidRef.current = ''
     lastHandledTxidRef.current = ''
+    try {
+      await fetch('/api/reader-logout', {
+        method: 'POST',
+        cache: 'no-store',
+      })
+    } catch {
+      /* ignore cookie cleanup errors */
+    }
   }, [stopReaderTxPolling])
 
   useEffect(() => {
@@ -411,7 +419,7 @@ export default function HomePage() {
                   </span>
                   <button
                     type="button"
-                    onClick={handleReaderLogout}
+                    onClick={() => void handleReaderLogout()}
                     className="shrink-0 rounded px-1.5 py-0.5 text-zinc-700 transition hover:bg-emerald-100 hover:text-zinc-900 dark:text-emerald-100 dark:hover:bg-emerald-900"
                   >
                     Logout
@@ -510,7 +518,7 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={() => {
-                    handleReaderLogout()
+                      void handleReaderLogout()
                     closeMobileNav()
                   }}
                   title={readerWalletAddress}
