@@ -173,9 +173,12 @@ export default function PublicPostPage() {
       setUnlockCheckPending(true)
       let ok = await checkUnlock(post.id)
       if (!ok && typeof window !== 'undefined') {
-        const stored = localStorage.getItem('walletAddress')
-        if (stored?.trim()) {
-          ok = await checkUnlock(post.id, stored.trim())
+        const storedWallet =
+          localStorage.getItem('walletAddress') ||
+          localStorage.getItem('readerWalletAddress') ||
+          ''
+        if (storedWallet.trim()) {
+          ok = await checkUnlock(post.id, storedWallet.trim())
         }
       }
       if (!cancelled) setUnlockCheckPending(false)
@@ -228,11 +231,15 @@ export default function PublicPostPage() {
     if (!pollingActive || !post?.id || unlocked) return
 
     pollRef.current = setInterval(() => {
-      const stored =
+      const storedWallet =
         typeof window !== 'undefined'
-          ? localStorage.getItem('walletAddress')?.trim()
+          ? (
+              localStorage.getItem('walletAddress') ||
+              localStorage.getItem('readerWalletAddress') ||
+              ''
+            ).trim()
           : ''
-      void checkUnlock(post.id, stored || undefined)
+      void checkUnlock(post.id, storedWallet || undefined)
     }, 3000)
 
     return () => {
@@ -248,11 +255,15 @@ export default function PublicPostPage() {
 
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
-      const stored =
+      const storedWallet =
         typeof window !== 'undefined'
-          ? localStorage.getItem('walletAddress')?.trim()
+          ? (
+              localStorage.getItem('walletAddress') ||
+              localStorage.getItem('readerWalletAddress') ||
+              ''
+            ).trim()
           : ''
-      void checkUnlock(post.id, stored || undefined)
+      void checkUnlock(post.id, storedWallet || undefined)
       setPollingActive(true)
     }
 
