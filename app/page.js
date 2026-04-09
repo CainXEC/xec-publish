@@ -89,6 +89,7 @@ export default function HomePage() {
   const [readerWalletAddress, setReaderWalletAddress] = useState('')
   const [readerUnlockedPostIds, setReaderUnlockedPostIds] = useState([])
   const [readerFilterMode, setReaderFilterMode] = useState('all')
+  const [postSearchQuery, setPostSearchQuery] = useState('')
   const [readerLoginBusy, setReaderLoginBusy] = useState(false)
   const [readerLoginError, setReaderLoginError] = useState('')
   const latestTxPollRef = useRef(null)
@@ -108,7 +109,7 @@ export default function HomePage() {
     return sortPostsByUnlocksThenNewest(fetchedPosts)
   }, [fetchedPosts, sortMode])
 
-  const visiblePosts = useMemo(() => {
+  const readerFilteredPosts = useMemo(() => {
     if (!readerWalletAddress || readerFilterMode === 'all') return posts
     const unlockedSet = new Set(readerUnlockedPostIds)
     if (readerFilterMode === 'unlocked') {
@@ -116,6 +117,19 @@ export default function HomePage() {
     }
     return posts.filter((post) => !unlockedSet.has(post.id))
   }, [posts, readerFilterMode, readerUnlockedPostIds, readerWalletAddress])
+
+  const trimmedPostSearch = postSearchQuery.trim()
+  const displayPosts = useMemo(() => {
+    if (!trimmedPostSearch) return readerFilteredPosts
+    const q = trimmedPostSearch.toLowerCase()
+    return readerFilteredPosts.filter((post) => {
+      const title = String(post.title ?? '').toLowerCase()
+      const teaser = String(post.teaser ?? '').toLowerCase()
+      const author = authorFromPost(post)
+      const username = String(author?.username ?? '').toLowerCase()
+      return title.includes(q) || teaser.includes(q) || username.includes(q)
+    })
+  }, [readerFilteredPosts, trimmedPostSearch])
 
   const stopReaderTxPolling = useCallback(() => {
     if (latestTxPollRef.current) {
@@ -369,6 +383,30 @@ export default function HomePage() {
           </div>
         ) : (
           <>
+            <div className="relative mb-6 max-w-xl">
+              <label htmlFor="post-search" className="sr-only">
+                Search posts
+              </label>
+              <input
+                id="post-search"
+                type="search"
+                value={postSearchQuery}
+                onChange={(e) => setPostSearchQuery(e.target.value)}
+                placeholder="Search title, teaser, or author…"
+                autoComplete="off"
+                className="w-full rounded-lg border border-zinc-300 bg-white py-2.5 pl-3 pr-10 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:ring-zinc-500"
+              />
+              {postSearchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setPostSearchQuery('')}
+                  className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                  aria-label="Clear search"
+                >
+                  ×
+                </button>
+              ) : null}
+            </div>
             <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label="Sort posts">
               <button
                 type="button"
@@ -418,15 +456,18 @@ export default function HomePage() {
                 </button>
               </div>
             ) : null}
-            {visiblePosts.length === 0 ? (
+            {displayPosts.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-8 py-12 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
                 <p className="text-sm text-zinc-700 dark:text-zinc-300">
-                  No posts match this filter.
+                  {trimmedPostSearch && readerFilteredPosts.length > 0
+                    ? `No posts found for '${trimmedPostSearch}'`
+                    : 'No posts match this filter.'}
                 </p>
               </div>
             ) : null}
+            {displayPosts.length > 0 ? (
             <ul className="flex flex-col gap-6">
-            {visiblePosts.map((post) => {
+            {displayPosts.map((post) => {
               const author = authorFromPost(post)
               const username = author?.username?.trim() || 'Unknown'
               const authorHref =
@@ -500,6 +541,7 @@ export default function HomePage() {
               )
             })}
             </ul>
+            ) : null}
           </>
         )}
       </main>

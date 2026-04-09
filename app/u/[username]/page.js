@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import ThemeToggle from '@/components/ThemeToggle'
 import { supabase } from '@/lib/supabase'
 
 function formatXec(amount) {
@@ -65,12 +66,15 @@ export default async function AuthorProfilePage({ params }) {
   return (
     <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
       <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
-        <Link
-          href="/"
-          className="inline-block text-sm font-medium text-emerald-700 underline-offset-4 hover:underline dark:text-emerald-400"
-        >
-          ← Back to home
-        </Link>
+        <div className="flex items-center justify-between gap-3">
+          <Link
+            href="/"
+            className="text-sm font-medium text-emerald-700 underline-offset-4 hover:underline dark:text-emerald-400"
+          >
+            ← Back to home
+          </Link>
+          <ThemeToggle />
+        </div>
 
         <header className="mt-8 border-b border-zinc-200 pb-10 dark:border-zinc-800">
           <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
