@@ -21,6 +21,15 @@ function formatPublishedDate(iso) {
   })
 }
 
+function commentCountFromPost(post) {
+  const c = post.comments
+  if (!c) return 0
+  const row = Array.isArray(c) ? c[0] : c
+  const count = row?.count
+  const n = typeof count === 'number' ? count : Number(count)
+  return Number.isFinite(n) ? n : 0
+}
+
 export default async function AuthorProfilePage({ params }) {
   const { username: raw } = await params
   if (typeof raw !== 'string' || !raw.trim()) {
@@ -41,7 +50,7 @@ export default async function AuthorProfilePage({ params }) {
 
   const { data: posts, error: postsError } = await supabase
     .from('posts')
-    .select('id, title, slug, teaser, price_xec, created_at')
+    .select('id, title, slug, teaser, price_xec, created_at, comments(count)')
     .eq('author_id', author.id)
     .eq('published', true)
     .order('created_at', { ascending: false })
@@ -97,6 +106,9 @@ export default async function AuthorProfilePage({ params }) {
               {postList.map((post) => {
                 const postHref = `/posts/${encodeURIComponent(post.slug)}`
                 const priceLabel = formatXec(post.price_xec)
+                const commentsN = commentCountFromPost(post)
+                const commentStat =
+                  commentsN === 1 ? '💬 1 comment' : `💬 ${commentsN} comments`
 
                 return (
                   <li key={post.id}>
@@ -118,6 +130,12 @@ export default async function AuthorProfilePage({ params }) {
                         </span>
                         <span className="font-medium text-zinc-700 dark:text-zinc-300">
                           {priceLabel} XEC
+                        </span>
+                        <span aria-hidden className="mx-2 text-zinc-300 dark:text-zinc-600">
+                          ·
+                        </span>
+                        <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                          {commentStat}
                         </span>
                       </p>
                       <p className="mt-4 line-clamp-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-400">

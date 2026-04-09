@@ -38,6 +38,15 @@ function unlockCountFromPost(post) {
   return Number.isFinite(n) ? n : 0
 }
 
+function commentCountFromPost(post) {
+  const c = post.comments
+  if (!c) return 0
+  const row = Array.isArray(c) ? c[0] : c
+  const count = row?.count
+  const n = typeof count === 'number' ? count : Number(count)
+  return Number.isFinite(n) ? n : 0
+}
+
 function sortPostsByUnlocksThenNewest(rows) {
   return [...rows].sort((a, b) => {
     const diff = unlockCountFromPost(b) - unlockCountFromPost(a)
@@ -238,7 +247,7 @@ export default function HomePage() {
 
       const { data, error } = await supabase
         .from('posts')
-        .select('*, authors(username), unlocks(count)')
+        .select('*, authors(username), unlocks(count), comments(count)')
         .eq('published', true)
 
       if (cancelled) return
@@ -423,8 +432,11 @@ export default function HomePage() {
               const postHref = `/posts/${encodeURIComponent(post.slug)}`
               const priceLabel = formatXec(post.price_xec)
               const unlocksN = unlockCountFromPost(post)
+              const commentsN = commentCountFromPost(post)
               const unlockStat =
                 unlocksN === 1 ? '🔓 1 unlock' : `🔓 ${unlocksN} unlocks`
+              const commentStat =
+                commentsN === 1 ? '💬 1 comment' : `💬 ${commentsN} comments`
 
               return (
                 <li key={post.id}>
@@ -466,6 +478,9 @@ export default function HomePage() {
                           <span>{priceLabel} XEC</span>
                           <span className="font-normal text-zinc-600 dark:text-zinc-400">
                             {unlockStat}
+                          </span>
+                          <span className="font-normal text-zinc-600 dark:text-zinc-400">
+                            {commentStat}
                           </span>
                         </p>
                       </div>
