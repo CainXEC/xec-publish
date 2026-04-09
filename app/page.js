@@ -67,13 +67,13 @@ function sortPostsByNewest(rows) {
 }
 
 const sortBtnActive =
-  'rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400'
+  'rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 md:px-4 md:py-2 md:text-sm dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400'
 const sortBtnInactive =
-  'rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900'
+  'rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-800 transition hover:bg-zinc-50 md:px-4 md:py-2 md:text-sm dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900'
 const filterBtnActive =
-  'rounded-lg bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-200 dark:hover:bg-emerald-900'
+  'rounded-lg bg-emerald-100 px-2 py-1 text-[11px] font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-200 md:px-3 md:py-1.5 md:text-xs dark:bg-emerald-900/50 dark:text-emerald-200 dark:hover:bg-emerald-900'
 const filterBtnInactive =
-  'rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800'
+  'rounded-lg border border-zinc-300 bg-white px-2 py-1 text-[11px] font-medium text-zinc-700 transition hover:bg-zinc-50 md:px-3 md:py-1.5 md:text-xs dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800'
 
 function truncateAddress(address) {
   if (!address || address.length < 14) return address
@@ -92,6 +92,8 @@ export default function HomePage() {
   const [postSearchQuery, setPostSearchQuery] = useState('')
   const [readerLoginBusy, setReaderLoginBusy] = useState(false)
   const [readerLoginError, setReaderLoginError] = useState('')
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const mobileNavRef = useRef(null)
   const latestTxPollRef = useRef(null)
   const baselineTxidRef = useRef('')
   const lastHandledTxidRef = useRef('')
@@ -298,36 +300,184 @@ export default function HomePage() {
     }
   }, [applyReaderWallet, stopReaderTxPolling])
 
+  const closeMobileNav = useCallback(() => setMobileNavOpen(false), [])
+
+  useEffect(() => {
+    if (!mobileNavOpen) return
+    function onKey(e) {
+      if (e.key === 'Escape') setMobileNavOpen(false)
+    }
+    function onPointerDown(e) {
+      if (
+        mobileNavRef.current &&
+        e.target instanceof Node &&
+        !mobileNavRef.current.contains(e.target)
+      ) {
+        setMobileNavOpen(false)
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onPointerDown)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onPointerDown)
+    }
+  }, [mobileNavOpen])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return
+    const mq = window.matchMedia('(min-width: 768px)')
+    function onChange() {
+      if (mq.matches) setMobileNavOpen(false)
+    }
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  const showPostSearch = !loading && !loadError && fetchedPosts.length > 0
+
+  const searchInputClassName =
+    'w-full rounded-md border border-zinc-300 bg-white py-1.5 pl-2 pr-7 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:ring-zinc-500'
+
   return (
     <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
-      <header className="sticky top-0 z-10 border-b border-zinc-200/80 bg-white/90 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-2 px-4 sm:gap-3 sm:px-6">
-          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
-            <Link
-              href="/"
-              className="shrink-0 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
+      <header
+        ref={mobileNavRef}
+        className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/90 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90"
+      >
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-2 px-4 md:px-6">
+          <Link
+            href="/"
+            className="shrink-0 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
+          >
+            XEC Publish
+          </Link>
+
+          <div className="hidden min-w-0 flex-1 items-center justify-between gap-3 md:flex">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <Link
+                href="/leaderboard"
+                className="shrink-0 text-sm font-medium text-zinc-700 transition hover:text-zinc-900 hover:underline dark:text-zinc-300 dark:hover:text-zinc-100"
+              >
+                Leaderboard
+              </Link>
+              {showPostSearch ? (
+                <div className="relative min-w-0 md:w-52 lg:w-64">
+                  <label htmlFor="post-search-desktop" className="sr-only">
+                    Search posts
+                  </label>
+                  <input
+                    id="post-search-desktop"
+                    type="search"
+                    value={postSearchQuery}
+                    onChange={(e) => setPostSearchQuery(e.target.value)}
+                    placeholder="Search…"
+                    autoComplete="off"
+                    className={`h-8 min-h-8 ${searchInputClassName}`}
+                  />
+                  {postSearchQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => setPostSearchQuery('')}
+                      className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-base leading-none text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                      aria-label="Clear search"
+                    >
+                      ×
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+            <div className="flex shrink-0 items-center gap-3">
+              <ThemeToggle />
+              {readerWalletAddress ? (
+                <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
+                  <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+                  <span className="max-w-[10rem] truncate sm:max-w-none">
+                    {truncateAddress(readerWalletAddress)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleReaderLogout}
+                    className="shrink-0 rounded px-1.5 py-0.5 text-zinc-700 transition hover:bg-emerald-100 hover:text-zinc-900 dark:text-emerald-100 dark:hover:bg-emerald-900"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleReaderLogin}
+                  disabled={readerLoginBusy}
+                  className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950"
+                >
+                  {readerLoginBusy ? 'Waiting for payment...' : 'Reader Login'}
+                </button>
+              )}
+              {authorLoggedIn ? (
+                <Link
+                  href="/dashboard"
+                  className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+                >
+                  Dashboard
+                </Link>
+              ) : (
+                <div className="flex items-center gap-5">
+                  <Link
+                    href="/login"
+                    className="text-sm font-medium text-zinc-700 transition hover:text-zinc-900 hover:underline dark:text-zinc-300 dark:hover:text-zinc-100"
+                  >
+                    Author Login
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
+                  >
+                    Start Writing
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 md:hidden">
+            <ThemeToggle />
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white text-lg leading-none text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              aria-expanded={mobileNavOpen}
+              aria-controls="mobile-nav-menu"
+              onClick={() => setMobileNavOpen((o) => !o)}
             >
-              XEC Publish
-            </Link>
-            <Link
-              href="/leaderboard"
-              className="shrink-0 text-sm font-medium text-zinc-700 transition hover:text-zinc-900 hover:underline dark:text-zinc-300 dark:hover:text-zinc-100"
-            >
-              Leaderboard
-            </Link>
-            {!loading && !loadError && fetchedPosts.length > 0 ? (
-              <div className="relative w-40 min-w-0 sm:w-52 md:w-64">
-                <label htmlFor="post-search" className="sr-only">
+              <span aria-hidden>☰</span>
+              <span className="sr-only">{mobileNavOpen ? 'Close menu' : 'Open menu'}</span>
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="mobile-nav-menu"
+          className={`border-t border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-950 md:hidden ${
+            mobileNavOpen ? 'block' : 'hidden'
+          }`}
+        >
+          <nav
+            className="mx-auto max-w-5xl space-y-4 px-4 py-4"
+            aria-label="Mobile navigation"
+          >
+            {showPostSearch ? (
+              <div className="relative w-full">
+                <label htmlFor="post-search-mobile" className="sr-only">
                   Search posts
                 </label>
                 <input
-                  id="post-search"
+                  id="post-search-mobile"
                   type="search"
                   value={postSearchQuery}
                   onChange={(e) => setPostSearchQuery(e.target.value)}
-                  placeholder="Search…"
+                  placeholder="Search title, teaser, or author…"
                   autoComplete="off"
-                  className="h-8 w-full rounded-md border border-zinc-300 bg-white py-1 pl-2 pr-7 text-xs text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:ring-zinc-500 sm:text-sm"
+                  className={`min-h-10 ${searchInputClassName}`}
                 />
                 {postSearchQuery ? (
                   <button
@@ -341,55 +491,85 @@ export default function HomePage() {
                 ) : null}
               </div>
             ) : null}
-          </div>
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <ThemeToggle />
-            {readerWalletAddress ? (
-              <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
-                <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden />
-                <span>{truncateAddress(readerWalletAddress)}</span>
+
+            <div className="flex flex-col gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Reader
+              </p>
+              {readerWalletAddress ? (
+                <div className="flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+                    <span className="min-w-0 break-all">{readerWalletAddress}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleReaderLogout()
+                      closeMobileNav()
+                    }}
+                    className="w-full rounded-md border border-emerald-300 bg-white py-2 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-100 dark:border-emerald-800 dark:bg-zinc-900 dark:text-emerald-100 dark:hover:bg-emerald-950"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
                 <button
                   type="button"
-                  onClick={handleReaderLogout}
-                  className="rounded px-1.5 py-0.5 text-zinc-700 transition hover:bg-emerald-100 hover:text-zinc-900 dark:text-emerald-100 dark:hover:bg-emerald-900"
+                  onClick={() => {
+                    handleReaderLogin()
+                    closeMobileNav()
+                  }}
+                  disabled={readerLoginBusy}
+                  className="w-full rounded-lg border border-emerald-300 bg-emerald-50 py-2.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950"
                 >
-                  Logout
+                  {readerLoginBusy ? 'Waiting for payment...' : 'Reader Login'}
                 </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={handleReaderLogin}
-                disabled={readerLoginBusy}
-                className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950"
-              >
-                {readerLoginBusy ? 'Waiting for payment...' : 'Reader Login'}
-              </button>
-            )}
-            {authorLoggedIn ? (
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Author
+              </p>
+              {authorLoggedIn ? (
+                <Link
+                  href="/dashboard"
+                  onClick={closeMobileNav}
+                  className="block rounded-lg bg-zinc-900 py-2.5 text-center text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+                >
+                  Dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    onClick={closeMobileNav}
+                    className="block rounded-lg border border-zinc-300 bg-white py-2.5 text-center text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                  >
+                    Author Login
+                  </Link>
+                  <Link
+                    href="/signup"
+                    onClick={closeMobileNav}
+                    className="block rounded-lg bg-emerald-600 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
+                  >
+                    Start Writing
+                  </Link>
+                </>
+              )}
+            </div>
+
+            <div className="border-t border-zinc-200 pt-4 dark:border-zinc-800">
               <Link
-                href="/dashboard"
-                className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+                href="/leaderboard"
+                onClick={closeMobileNav}
+                className="block py-1 text-sm font-medium text-zinc-700 transition hover:text-zinc-900 hover:underline dark:text-zinc-300 dark:hover:text-zinc-100"
               >
-                Dashboard
+                Leaderboard
               </Link>
-            ) : (
-              <div className="flex items-center gap-5">
-              <Link
-                href="/login"
-                className="text-sm font-medium text-zinc-700 transition hover:text-zinc-900 hover:underline dark:text-zinc-300 dark:hover:text-zinc-100"
-              >
-                Author Login
-              </Link>
-              <Link
-                href="/signup"
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
-              >
-                Start Writing
-              </Link>
-              </div>
-            )}
-          </div>
+            </div>
+          </nav>
         </div>
       </header>
 
@@ -417,7 +597,7 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label="Sort posts">
+            <div className="mb-6 flex flex-wrap gap-1.5 md:gap-2" role="group" aria-label="Sort posts">
               <button
                 type="button"
                 aria-pressed={sortMode === 'unlocks'}
@@ -439,7 +619,7 @@ export default function HomePage() {
               <p className="mb-4 text-sm text-red-700 dark:text-red-300">{readerLoginError}</p>
             ) : null}
             {readerWalletAddress ? (
-              <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label="Filter posts">
+              <div className="mb-6 flex flex-wrap gap-1.5 md:gap-2" role="group" aria-label="Filter posts">
                 <button
                   type="button"
                   aria-pressed={readerFilterMode === 'all'}
