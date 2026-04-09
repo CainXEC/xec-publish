@@ -309,6 +309,12 @@ export default function HomePage() {
             >
               XEC Publish
             </Link>
+            <Link
+              href="/leaderboard"
+              className="shrink-0 text-sm font-medium text-zinc-700 transition hover:text-zinc-900 hover:underline dark:text-zinc-300 dark:hover:text-zinc-100"
+            >
+              Leaderboard
+            </Link>
             {!loading && !loadError && fetchedPosts.length > 0 ? (
               <div className="relative w-40 min-w-0 sm:w-52 md:w-64">
                 <label htmlFor="post-search" className="sr-only">
