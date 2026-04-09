@@ -301,14 +301,42 @@ export default function HomePage() {
   return (
     <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
       <header className="sticky top-0 z-10 border-b border-zinc-200/80 bg-white/90 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
-          <Link
-            href="/"
-            className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
-          >
-            XEC Publish
-          </Link>
-          <div className="flex items-center gap-3">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-2 px-4 sm:gap-3 sm:px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+            <Link
+              href="/"
+              className="shrink-0 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50"
+            >
+              XEC Publish
+            </Link>
+            {!loading && !loadError && fetchedPosts.length > 0 ? (
+              <div className="relative w-40 min-w-0 sm:w-52 md:w-64">
+                <label htmlFor="post-search" className="sr-only">
+                  Search posts
+                </label>
+                <input
+                  id="post-search"
+                  type="search"
+                  value={postSearchQuery}
+                  onChange={(e) => setPostSearchQuery(e.target.value)}
+                  placeholder="Search…"
+                  autoComplete="off"
+                  className="h-8 w-full rounded-md border border-zinc-300 bg-white py-1 pl-2 pr-7 text-xs text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:ring-zinc-500 sm:text-sm"
+                />
+                {postSearchQuery ? (
+                  <button
+                    type="button"
+                    onClick={() => setPostSearchQuery('')}
+                    className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-base leading-none text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                    aria-label="Clear search"
+                  >
+                    ×
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <ThemeToggle />
             {readerWalletAddress ? (
               <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
@@ -383,30 +411,6 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            <div className="relative mb-6 max-w-xl">
-              <label htmlFor="post-search" className="sr-only">
-                Search posts
-              </label>
-              <input
-                id="post-search"
-                type="search"
-                value={postSearchQuery}
-                onChange={(e) => setPostSearchQuery(e.target.value)}
-                placeholder="Search title, teaser, or author…"
-                autoComplete="off"
-                className="w-full rounded-lg border border-zinc-300 bg-white py-2.5 pl-3 pr-10 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:ring-zinc-500"
-              />
-              {postSearchQuery ? (
-                <button
-                  type="button"
-                  onClick={() => setPostSearchQuery('')}
-                  className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-lg leading-none text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                  aria-label="Clear search"
-                >
-                  ×
-                </button>
-              ) : null}
-            </div>
             <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label="Sort posts">
               <button
                 type="button"
