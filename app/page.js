@@ -470,8 +470,6 @@ export default function HomePage() {
             {displayPosts.map((post) => {
               const author = authorFromPost(post)
               const username = author?.username?.trim() || 'Unknown'
-              const authorHref =
-                username !== 'Unknown' ? `/u/${encodeURIComponent(username)}` : '#'
               const postHref = `/posts/${encodeURIComponent(post.slug)}`
               const priceLabel = formatXec(post.price_xec)
               const unlocksN = unlockCountFromPost(post)
@@ -481,61 +479,39 @@ export default function HomePage() {
               const commentStat =
                 commentsN === 1 ? '💬 1 comment' : `💬 ${commentsN} comments`
 
-              const titleId = `post-card-title-${post.id}`
-
               return (
                 <li key={post.id}>
-                  <article className="relative rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-[box-shadow,border-color] duration-200 hover:border-zinc-400 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-500 dark:hover:shadow-lg/20">
-                    <Link
-                      href={postHref}
-                      className="absolute inset-0 z-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
-                      aria-labelledby={titleId}
-                    >
-                      <span className="sr-only">Read article: {post.title}</span>
-                    </Link>
-                    <div className="relative z-10 flex flex-col gap-3">
-                      <div className="min-w-0 pointer-events-none">
-                        <h2
-                          id={titleId}
-                          className="text-xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50"
-                        >
-                          {post.title}
-                        </h2>
-                        <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400 pointer-events-auto">
-                          {username !== 'Unknown' ? (
-                            <Link
-                              href={authorHref}
-                              className="relative z-20 font-medium text-zinc-700 underline-offset-2 hover:text-zinc-900 hover:underline dark:text-zinc-300 dark:hover:text-zinc-100"
-                            >
-                              {username}
-                            </Link>
-                          ) : (
-                            <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                              {username}
-                            </span>
-                          )}
-                          <span aria-hidden className="text-zinc-300 dark:text-zinc-600">
-                            ·
-                          </span>
-                          <time dateTime={post.created_at ?? undefined}>
-                            {formatPublishedDate(post.created_at)}
-                          </time>
-                        </p>
-                        <p className="mt-4 line-clamp-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
-                          {post.teaser}
-                        </p>
-                        <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                          <span>{priceLabel} XEC</span>
-                          <span className="font-normal text-zinc-600 dark:text-zinc-400">
-                            {unlockStat}
-                          </span>
-                          <span className="font-normal text-zinc-600 dark:text-zinc-400">
-                            {commentStat}
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-                  </article>
+                  <Link
+                    href={postHref}
+                    className="block rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-[box-shadow,border-color] duration-200 hover:border-zinc-400 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-500 dark:hover:shadow-lg/20 dark:focus-visible:ring-offset-zinc-950"
+                  >
+                    <h2 className="text-xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+                      {post.title}
+                    </h2>
+                    <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
+                      <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                        {username}
+                      </span>
+                      <span aria-hidden className="text-zinc-300 dark:text-zinc-600">
+                        ·
+                      </span>
+                      <time dateTime={post.created_at ?? undefined}>
+                        {formatPublishedDate(post.created_at)}
+                      </time>
+                    </p>
+                    <p className="mt-4 line-clamp-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
+                      {post.teaser}
+                    </p>
+                    <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                      <span>{priceLabel} XEC</span>
+                      <span className="font-normal text-zinc-600 dark:text-zinc-400">
+                        {unlockStat}
+                      </span>
+                      <span className="font-normal text-zinc-600 dark:text-zinc-400">
+                        {commentStat}
+                      </span>
+                    </p>
+                  </Link>
                 </li>
               )
             })}
