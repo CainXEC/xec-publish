@@ -80,6 +80,13 @@ function truncateAddress(address) {
   return `${address.slice(0, 9)}...${address.slice(-3)}`
 }
 
+const TEASER_CARD_MAX = 500
+function truncateTeaserPreview(text, maxLen = TEASER_CARD_MAX) {
+  const s = text != null ? String(text) : ''
+  if (s.length <= maxLen) return s
+  return `${s.slice(0, maxLen)}...`
+}
+
 export default function HomePage() {
   const [fetchedPosts, setFetchedPosts] = useState([])
   const [sortMode, setSortMode] = useState('unlocks')
@@ -689,8 +696,8 @@ export default function HomePage() {
                         {formatPublishedDate(post.created_at)}
                       </time>
                     </p>
-                    <p className="mt-4 line-clamp-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
-                      {post.teaser}
+                    <p className="mt-4 whitespace-pre-wrap text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
+                      {truncateTeaserPreview(post.teaser)}
                     </p>
                     <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
                       <span>{priceLabel} XEC</span>

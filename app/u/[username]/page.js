@@ -31,6 +31,13 @@ function commentCountFromPost(post) {
   return Number.isFinite(n) ? n : 0
 }
 
+const TEASER_CARD_MAX = 500
+function truncateTeaserPreview(text, maxLen = TEASER_CARD_MAX) {
+  const s = text != null ? String(text) : ''
+  if (s.length <= maxLen) return s
+  return `${s.slice(0, maxLen)}...`
+}
+
 export default async function AuthorProfilePage({ params }) {
   const { username: raw } = await params
   if (typeof raw !== 'string' || !raw.trim()) {
@@ -142,8 +149,8 @@ export default async function AuthorProfilePage({ params }) {
                           {commentStat}
                         </span>
                       </p>
-                      <p className="mt-4 line-clamp-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
-                        {post.teaser}
+                      <p className="mt-4 whitespace-pre-wrap text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
+                        {truncateTeaserPreview(post.teaser)}
                       </p>
                     </article>
                   </li>
