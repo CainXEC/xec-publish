@@ -525,7 +525,11 @@ export default function PublicPostPage() {
     try {
       const payerAddress =
         typeof window !== 'undefined'
-          ? localStorage.getItem('walletAddress')?.trim() || ''
+          ? (
+              localStorage.getItem('walletAddress') ||
+              localStorage.getItem('readerWalletAddress') ||
+              ''
+            ).trim()
           : ''
 
       const res = await fetch(`/api/comments/${encodeURIComponent(post.id)}`, {
@@ -556,7 +560,11 @@ export default function PublicPostPage() {
     try {
       const payerAddress =
         typeof window !== 'undefined'
-          ? localStorage.getItem('walletAddress')?.trim() || ''
+          ? (
+              localStorage.getItem('walletAddress') ||
+              localStorage.getItem('readerWalletAddress') ||
+              ''
+            ).trim()
           : ''
       const headers = { 'Content-Type': 'application/json' }
       if (authorAccessToken) {
@@ -725,7 +733,11 @@ export default function PublicPostPage() {
                     {comments.map((comment) => {
                       const localWallet =
                         typeof window !== 'undefined'
-                          ? localStorage.getItem('walletAddress')?.trim() || ''
+                          ? (
+                              localStorage.getItem('walletAddress') ||
+                              localStorage.getItem('readerWalletAddress') ||
+                              ''
+                            ).trim()
                           : ''
                       const canDelete =
                         isAuthorSession ||
