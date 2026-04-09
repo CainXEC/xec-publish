@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import ThemeToggle from '@/components/ThemeToggle'
 import { supabase } from '@/lib/supabase'
 
 function formatXec(amount) {
@@ -294,6 +295,7 @@ export default function HomePage() {
             XEC Publish
           </Link>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             {readerWalletAddress ? (
               <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden />
