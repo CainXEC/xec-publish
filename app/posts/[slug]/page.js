@@ -173,12 +173,11 @@ export default function PublicPostPage() {
       setUnlockCheckPending(true)
       let ok = await checkUnlock(post.id)
       if (!ok && typeof window !== 'undefined') {
-        const storedWallet =
-          localStorage.getItem('readerWalletAddress') ||
-          localStorage.getItem('walletAddress') ||
-          ''
-        if (storedWallet.trim()) {
-          ok = await checkUnlock(post.id, storedWallet.trim())
+        const storedWallet = (
+          localStorage.getItem('readerWalletAddress') || ''
+        ).trim()
+        if (storedWallet) {
+          ok = await checkUnlock(post.id, storedWallet)
         }
       }
       if (!cancelled) setUnlockCheckPending(false)
@@ -233,11 +232,7 @@ export default function PublicPostPage() {
     pollRef.current = setInterval(() => {
       const storedWallet =
         typeof window !== 'undefined'
-          ? (
-              localStorage.getItem('readerWalletAddress') ||
-              localStorage.getItem('walletAddress') ||
-              ''
-            ).trim()
+          ? (localStorage.getItem('readerWalletAddress') || '').trim()
           : ''
       void checkUnlock(post.id, storedWallet || undefined)
     }, 3000)
@@ -257,11 +252,7 @@ export default function PublicPostPage() {
       if (document.visibilityState !== 'visible') return
       const storedWallet =
         typeof window !== 'undefined'
-          ? (
-              localStorage.getItem('readerWalletAddress') ||
-              localStorage.getItem('walletAddress') ||
-              ''
-            ).trim()
+          ? (localStorage.getItem('readerWalletAddress') || '').trim()
           : ''
       void checkUnlock(post.id, storedWallet || undefined)
       setPollingActive(true)
@@ -449,7 +440,7 @@ export default function PublicPostPage() {
         : []
 
       if (walletAddress) {
-        localStorage.setItem('walletAddress', walletAddress)
+        localStorage.setItem('readerWalletAddress', walletAddress)
       }
 
       if (!unlockedPostIds.includes(post.id)) {
@@ -536,11 +527,7 @@ export default function PublicPostPage() {
     try {
       const payerAddress =
         typeof window !== 'undefined'
-          ? (
-              localStorage.getItem('readerWalletAddress') ||
-              localStorage.getItem('walletAddress') ||
-              ''
-            ).trim()
+          ? (localStorage.getItem('readerWalletAddress') || '').trim()
           : ''
 
       const res = await fetch(`/api/comments/${encodeURIComponent(post.id)}`, {
@@ -571,11 +558,7 @@ export default function PublicPostPage() {
     try {
       const payerAddress =
         typeof window !== 'undefined'
-          ? (
-              localStorage.getItem('readerWalletAddress') ||
-              localStorage.getItem('walletAddress') ||
-              ''
-            ).trim()
+          ? (localStorage.getItem('readerWalletAddress') || '').trim()
           : ''
       const headers = { 'Content-Type': 'application/json' }
       if (authorAccessToken) {
@@ -744,11 +727,7 @@ export default function PublicPostPage() {
                     {comments.map((comment) => {
                       const localWallet =
                         typeof window !== 'undefined'
-                          ? (
-                              localStorage.getItem('readerWalletAddress') ||
-                              localStorage.getItem('walletAddress') ||
-                              ''
-                            ).trim()
+                          ? (localStorage.getItem('readerWalletAddress') || '').trim()
                           : ''
                       const canDelete =
                         isAuthorSession ||
