@@ -500,9 +500,6 @@ export default function HomePage() {
             ) : null}
 
             <div className="flex flex-col gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                Reader
-              </p>
               {readerWalletAddress ? (
                 <div className="flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
                   <div className="flex items-center gap-2">
@@ -536,9 +533,6 @@ export default function HomePage() {
             </div>
 
             <div className="flex flex-col gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                Author
-              </p>
               {authorLoggedIn ? (
                 <Link
                   href="/dashboard"
@@ -571,7 +565,7 @@ export default function HomePage() {
               <Link
                 href="/leaderboard"
                 onClick={closeMobileNav}
-                className="block py-1 text-sm font-medium text-zinc-700 transition hover:text-zinc-900 hover:underline dark:text-zinc-300 dark:hover:text-zinc-100"
+                className="block w-full rounded-lg border border-zinc-300 bg-white py-2.5 text-center text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
               >
                 Leaderboard
               </Link>
