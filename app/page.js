@@ -76,8 +76,11 @@ const filterBtnInactive =
   'rounded-lg border border-zinc-300 bg-white px-2 py-1 text-[11px] font-medium text-zinc-700 transition hover:bg-zinc-50 md:px-3 md:py-1.5 md:text-xs dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800'
 
 function truncateAddress(address) {
-  if (!address || address.length < 14) return address
-  return `${address.slice(0, 9)}...${address.slice(-3)}`
+  if (address == null || address === '') return ''
+  const t = String(address).trim()
+  if (!t) return ''
+  if (t.length <= 13) return t
+  return `${t.slice(0, 6)}...${t.slice(-4)}`
 }
 
 const TEASER_CARD_MAX = 500
@@ -398,9 +401,12 @@ export default function HomePage() {
             <div className="flex shrink-0 items-center gap-3">
               <ThemeToggle />
               {readerWalletAddress ? (
-                <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
+                <div className="flex flex-nowrap items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-800 whitespace-nowrap dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
                   <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-                  <span className="max-w-[10rem] truncate sm:max-w-none">
+                  <span
+                    className="min-w-0 flex-1 truncate text-center font-mono"
+                    title={readerWalletAddress}
+                  >
                     {truncateAddress(readerWalletAddress)}
                   </span>
                   <button
@@ -501,22 +507,21 @@ export default function HomePage() {
 
             <div className="flex flex-col gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
               {readerWalletAddress ? (
-                <div className="flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-                    <span className="min-w-0 break-all">{readerWalletAddress}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleReaderLogout()
-                      closeMobileNav()
-                    }}
-                    className="w-full rounded-md border border-emerald-300 bg-white py-2 text-sm font-semibold text-emerald-900 transition hover:bg-emerald-100 dark:border-emerald-800 dark:bg-zinc-900 dark:text-emerald-100 dark:hover:bg-emerald-950"
-                  >
-                    Logout
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleReaderLogout()
+                    closeMobileNav()
+                  }}
+                  title={readerWalletAddress}
+                  className="flex w-full flex-nowrap items-center justify-between gap-2 whitespace-nowrap rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-left text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/50"
+                >
+                  <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+                  <span className="min-w-0 flex-1 truncate text-center font-mono">
+                    {truncateAddress(readerWalletAddress)}
+                  </span>
+                  <span className="shrink-0 text-zinc-700 dark:text-emerald-100">Logout</span>
+                </button>
               ) : (
                 <button
                   type="button"
