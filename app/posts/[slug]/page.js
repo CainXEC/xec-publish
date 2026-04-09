@@ -174,8 +174,8 @@ export default function PublicPostPage() {
       let ok = await checkUnlock(post.id)
       if (!ok && typeof window !== 'undefined') {
         const storedWallet =
-          localStorage.getItem('walletAddress') ||
           localStorage.getItem('readerWalletAddress') ||
+          localStorage.getItem('walletAddress') ||
           ''
         if (storedWallet.trim()) {
           ok = await checkUnlock(post.id, storedWallet.trim())
@@ -234,8 +234,8 @@ export default function PublicPostPage() {
       const storedWallet =
         typeof window !== 'undefined'
           ? (
-              localStorage.getItem('walletAddress') ||
               localStorage.getItem('readerWalletAddress') ||
+              localStorage.getItem('walletAddress') ||
               ''
             ).trim()
           : ''
@@ -258,8 +258,8 @@ export default function PublicPostPage() {
       const storedWallet =
         typeof window !== 'undefined'
           ? (
-              localStorage.getItem('walletAddress') ||
               localStorage.getItem('readerWalletAddress') ||
+              localStorage.getItem('walletAddress') ||
               ''
             ).trim()
           : ''
@@ -537,8 +537,8 @@ export default function PublicPostPage() {
       const payerAddress =
         typeof window !== 'undefined'
           ? (
-              localStorage.getItem('walletAddress') ||
               localStorage.getItem('readerWalletAddress') ||
+              localStorage.getItem('walletAddress') ||
               ''
             ).trim()
           : ''
@@ -572,8 +572,8 @@ export default function PublicPostPage() {
       const payerAddress =
         typeof window !== 'undefined'
           ? (
-              localStorage.getItem('walletAddress') ||
               localStorage.getItem('readerWalletAddress') ||
+              localStorage.getItem('walletAddress') ||
               ''
             ).trim()
           : ''
@@ -745,8 +745,8 @@ export default function PublicPostPage() {
                       const localWallet =
                         typeof window !== 'undefined'
                           ? (
-                              localStorage.getItem('walletAddress') ||
                               localStorage.getItem('readerWalletAddress') ||
+                              localStorage.getItem('walletAddress') ||
                               ''
                             ).trim()
                           : ''
