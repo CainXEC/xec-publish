@@ -27,6 +27,8 @@ export default function ProfileSettingsForm({
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
   const [savedMessage, setSavedMessage] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState(null)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -106,6 +108,34 @@ export default function ProfileSettingsForm({
       router.refresh()
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function handleDeleteAccount() {
+    const confirmed = window.confirm(
+      'Are you sure? This will permanently delete your account and all your posts. This cannot be undone.',
+    )
+    if (!confirmed) return
+
+    setDeleteError(null)
+    setDeleting(true)
+    try {
+      const res = await fetch('/api/author/delete-account', { method: 'DELETE' })
+      let data = {}
+      try {
+        data = await res.json()
+      } catch {
+        /* ignore */
+      }
+      if (!res.ok) {
+        setDeleteError(data.error || 'Could not delete account.')
+        return
+      }
+      await supabase.auth.signOut()
+      router.push('/')
+      router.refresh()
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -209,6 +239,26 @@ export default function ProfileSettingsForm({
             >
               {submitting ? 'Saving…' : 'Save changes'}
             </button>
+
+            <div className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-700">
+              <h2 className="text-sm font-semibold text-red-700 dark:text-red-400">Danger zone</h2>
+              <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+                Permanently delete your account and all posts. This cannot be undone.
+              </p>
+              {deleteError ? (
+                <p className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert">
+                  {deleteError}
+                </p>
+              ) : null}
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={deleting || submitting}
+                className="mt-3 rounded-lg border border-red-300 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-800 transition hover:bg-red-100 disabled:opacity-50 dark:border-red-800 dark:bg-red-950/50 dark:text-red-200 dark:hover:bg-red-950"
+              >
+                {deleting ? 'Deleting…' : 'Delete account'}
+              </button>
+            </div>
           </div>
         </form>
       </main>
