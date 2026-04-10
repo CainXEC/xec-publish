@@ -15,6 +15,7 @@
     "test:all": "vitest run && playwright test"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.101.1",
     "cashtab-connect": "^1.1.0",
     "chronik-client": "^4.1.0",

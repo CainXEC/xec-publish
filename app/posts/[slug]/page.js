@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import ThemeToggle from '@/components/ThemeToggle'
 import { buildPaywallBip21, computePaymentSplit } from '@/lib/paymentSplit'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase-browser'
 
 const WALLET_AUTH_XEC = 5.5
 

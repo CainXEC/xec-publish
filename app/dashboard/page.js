@@ -1,246 +1,28 @@
-'use client'
+import { redirect } from 'next/navigation'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
+import DashboardClient from '@/components/dashboard/DashboardClient'
 
-import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import ThemeToggle from '@/components/ThemeToggle'
-import { supabase } from '@/lib/supabase'
+export default async function DashboardPage() {
+  const supabase = await createSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-const DELETE_CONFIRM =
-  'Are you sure you want to delete this post? This cannot be undone.'
-
-export default function DashboardPage() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [email, setEmail] = useState('')
-  const [posts, setPosts] = useState([])
-  const [deleteError, setDeleteError] = useState(null)
-  const [deletingId, setDeletingId] = useState(null)
-
-  useEffect(() => {
-    let isMounted = true
-
-    async function loadDashboard() {
-      setLoading(true)
-      setError(null)
-
-      const { data: userData, error: userError } = await supabase.auth.getUser()
-
-      if (userError) {
-        if (isMounted) {
-          setError(userError.message)
-          setLoading(false)
-        }
-        return
-      }
-
-      const user = userData.user
-      if (!user) {
-        router.replace('/login')
-        return
-      }
-
-      const { data: postsData, error: postsError } = await supabase
-        .from('posts')
-        .select('*')
-        .eq('author_id', user.id)
-        .order('created_at', { ascending: false })
-
-      if (postsError) {
-        if (isMounted) {
-          setError(postsError.message)
-          setLoading(false)
-        }
-        return
-      }
-
-      if (isMounted) {
-        setEmail(user.email ?? '')
-        setPosts(postsData ?? [])
-        setLoading(false)
-      }
-    }
-
-    loadDashboard()
-
-    return () => {
-      isMounted = false
-    }
-  }, [router])
-
-  const handleDeletePost = useCallback(async (postId) => {
-    if (!window.confirm(DELETE_CONFIRM)) return
-
-    setDeleteError(null)
-    setDeletingId(postId)
-
-    try {
-      const { data: userData, error: userError } = await supabase.auth.getUser()
-      if (userError || !userData.user) {
-        setDeleteError(userError?.message || 'You must be signed in to delete a post.')
-        return
-      }
-
-      const userId = userData.user.id
-
-      const { error: deleteErrorResult, count } = await supabase
-        .from('posts')
-        .delete({ count: 'exact' })
-        .eq('id', postId)
-        .eq('author_id', userId)
-
-      if (deleteErrorResult) {
-        setDeleteError(deleteErrorResult.message)
-        return
-      }
-
-      if (typeof count === 'number' && count === 0) {
-        setDeleteError('Could not delete this post. It may have already been removed.')
-        return
-      }
-
-      setPosts((prev) => prev.filter((p) => p.id !== postId))
-    } catch (err) {
-      setDeleteError(
-        err instanceof Error ? err.message : 'Something went wrong while deleting.',
-      )
-    } finally {
-      setDeletingId(null)
-    }
-  }, [])
-
-  const handleLogout = useCallback(async () => {
-    await supabase.auth.signOut()
-    router.push('/')
-  }, [router])
-
-  if (loading) {
-    return (
-      <div className="flex min-h-full flex-1 items-center justify-center bg-zinc-50 px-4 py-16 dark:bg-zinc-950">
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading dashboard...</p>
-      </div>
-    )
+  if (!user) {
+    redirect('/login')
   }
 
-  if (error) {
-    return (
-      <div className="flex min-h-full flex-1 items-center justify-center bg-zinc-50 px-4 py-16 dark:bg-zinc-950">
-        <div className="w-full max-w-xl rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          <Link href="/login" className="mt-4 inline-block text-sm font-medium text-zinc-900 underline dark:text-zinc-200">
-            Go to login
-          </Link>
-        </div>
-      </div>
-    )
-  }
+  const { data: posts, error: postsError } = await supabase
+    .from('posts')
+    .select('*')
+    .eq('author_id', user.id)
+    .order('created_at', { ascending: false })
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-zinc-50 px-4 py-10 dark:bg-zinc-950">
-      <main className="mx-auto w-full max-w-4xl">
-        <div className="flex items-center justify-between gap-3">
-          <Link href="/" className="text-sm font-medium text-emerald-700 underline-offset-4 hover:underline dark:text-emerald-400">
-            ← Home
-          </Link>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <button
-              type="button"
-              onClick={() => void handleLogout()}
-              className="rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-        <div className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Author Dashboard</h1>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Welcome, {email}</p>
-
-          <div className="mt-5 flex flex-wrap gap-3">
-            <Link
-              href="/dashboard/new-post"
-              className="inline-flex rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-            >
-              Write New Post
-            </Link>
-            <Link
-              href="/dashboard/profile"
-              className="inline-flex rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-            >
-              Edit Profile
-            </Link>
-          </div>
-        </div>
-
-        <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Your Posts</h2>
-
-          {deleteError ? (
-            <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/50 dark:text-red-200" role="alert">
-              {deleteError}
-            </p>
-          ) : null}
-
-          {posts.length === 0 ? (
-            <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
-              You have not created any posts yet.
-            </p>
-          ) : (
-            <ul className="mt-4 space-y-3">
-              {posts.map((post) => (
-                <li
-                  key={post.id}
-                  className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-950"
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0 flex-1">
-                      {post.slug ? (
-                        <Link
-                          href={`/posts/${encodeURIComponent(post.slug)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-block text-base font-medium text-emerald-700 underline-offset-2 hover:text-emerald-600 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
-                        >
-                          {post.title ?? 'Untitled post'}
-                        </Link>
-                      ) : (
-                        <p className="text-base font-medium text-zinc-900 dark:text-zinc-50">
-                          {post.title ?? 'Untitled post'}
-                        </p>
-                      )}
-                      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                        Status: {post.published ? 'Published' : 'Draft'}
-                      </p>
-                      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                        Price: {post.price_xec ?? 0} XEC
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 flex-wrap items-center gap-2">
-                      <Link
-                        href={`/dashboard/edit/${encodeURIComponent(post.id)}`}
-                        className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                      >
-                        Edit
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => handleDeletePost(post.id)}
-                        disabled={deletingId !== null}
-                        className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:opacity-50 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300 dark:hover:bg-red-950"
-                      >
-                        {deletingId === post.id ? 'Deleting…' : 'Delete'}
-                      </button>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </main>
-    </div>
+    <DashboardClient
+      email={user.email ?? ''}
+      initialPosts={posts ?? []}
+      loadError={postsError?.message ?? null}
+    />
   )
 }
-

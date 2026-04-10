@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import ThemeToggle from '@/components/ThemeToggle'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase-browser'
 
 export default function SignupPage() {
   const [email, setEmail] = useState('')
