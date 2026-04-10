@@ -327,7 +327,7 @@ export default function Nav({
         <div className="hidden min-w-0 flex-1 items-center gap-3 md:flex">
           <div className="min-w-0 flex-1" aria-hidden />
           <div className="flex shrink-0 flex-col items-end gap-1">
-            <div className="flex shrink-0 items-center gap-3">
+            <div className="flex shrink-0 items-center gap-2">
               {showPostSearch && typeof onPostSearchChange === 'function' ? (
                 <div ref={desktopSearchRef} className="relative">
                   <div
@@ -430,7 +430,7 @@ export default function Nav({
               ) : (
                 <Link
                   href="/login"
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
+                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
                 >
                   Start Writing
                 </Link>
