@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import ThemeToggle from '@/components/ThemeToggle'
+import Nav from '@/components/Nav'
 import { buildPaywallBip21, computePaymentSplit } from '@/lib/paymentSplit'
 import { supabase } from '@/lib/supabase-browser'
 
@@ -661,9 +661,7 @@ export default function PublicPostPage() {
   if (loadingPost) {
     return (
       <div className="flex min-h-full flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
-        <div className="flex justify-end px-4 pt-4 sm:px-6">
-          <ThemeToggle />
-        </div>
+        <Nav />
         <div className="flex flex-1 items-center justify-center px-4 py-16">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading post...</p>
         </div>
@@ -674,18 +672,13 @@ export default function PublicPostPage() {
   if (loadError || !post) {
     return (
       <div className="flex min-h-full flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
-        <div className="flex justify-end px-4 pt-4 sm:px-6">
-          <ThemeToggle />
-        </div>
+        <Nav />
         <div className="flex flex-1 items-center justify-center px-4 py-16">
           <div className="w-full max-w-2xl rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">404 - Post not found</h1>
             <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
               This post does not exist or is not published yet.
             </p>
-            <Link href="/" className="mt-5 inline-block text-sm font-medium text-zinc-900 underline dark:text-zinc-200">
-              Back to home
-            </Link>
           </div>
         </div>
       </div>
@@ -695,17 +688,9 @@ export default function PublicPostPage() {
   const showPaywall = !unlocked && !unlockCheckPending
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-zinc-50 px-4 py-10 dark:bg-zinc-950">
-      <main className="mx-auto w-full max-w-3xl">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <Link
-            href="/"
-            className="text-sm font-medium text-emerald-700 underline-offset-4 hover:underline dark:text-emerald-400"
-          >
-            ← Back to home
-          </Link>
-          <ThemeToggle />
-        </div>
+    <div className="flex min-h-full flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
+      <Nav />
+      <main className="mx-auto w-full max-w-3xl px-4 py-10">
         <article className="rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h1 className="text-3xl font-semibold leading-tight text-zinc-900 dark:text-zinc-50">
             {post.title}

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import ThemeToggle from '@/components/ThemeToggle'
+import Nav from '@/components/Nav'
 import { supabase } from '@/lib/supabase-browser'
 
 export default function SignupPage() {
@@ -60,17 +60,7 @@ export default function SignupPage() {
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
-      <header className="sticky top-0 z-10 border-b border-zinc-200/80 bg-white/90 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
-          <Link
-            href="/"
-            className="text-sm font-medium text-zinc-700 transition hover:text-zinc-900 hover:underline dark:text-zinc-300 dark:hover:text-zinc-100"
-          >
-            Home
-          </Link>
-          <ThemeToggle />
-        </div>
-      </header>
+      <Nav />
       <div className="flex flex-1 flex-col items-center justify-center px-4 py-16">
       <div className="w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
