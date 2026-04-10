@@ -342,6 +342,70 @@ export default function PublicPostPage() {
     setPayBusy(false)
   }
 
+  const persistReaderAfterPaywallUnlock = useCallback(
+    async (confirmedTxid) => {
+      if (
+        typeof window === 'undefined' ||
+        !authorAddressForLatestTx ||
+        !confirmedTxid
+      ) {
+        return
+      }
+
+      let txidForWallet = confirmedTxid
+      try {
+        const latestRes = await fetch(
+          `/api/latest-tx/${encodeURIComponent(authorAddressForLatestTx)}`,
+        )
+        const latestData = await latestRes.json().catch(() => ({}))
+        if (latestRes.ok && latestData.txid) {
+          txidForWallet = latestData.txid
+        }
+      } catch {
+        /* keep confirmedTxid */
+      }
+
+      const tryVerifyWallet = async (txid) => {
+        const verifyWalletRes = await fetch('/api/verify-wallet-auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ txid }),
+        })
+        const verifyWalletData = await verifyWalletRes.json().catch(() => ({}))
+        return { verifyWalletRes, verifyWalletData }
+      }
+
+      let { verifyWalletRes, verifyWalletData } = await tryVerifyWallet(
+        txidForWallet,
+      )
+      if (
+        (!verifyWalletRes.ok || !verifyWalletData.walletAddress) &&
+        txidForWallet !== confirmedTxid
+      ) {
+        ;({ verifyWalletRes, verifyWalletData } =
+          await tryVerifyWallet(confirmedTxid))
+      }
+
+      const walletAddress = verifyWalletData.walletAddress?.trim?.() || ''
+      if (!verifyWalletRes.ok || !walletAddress) {
+        return
+      }
+
+      try {
+        localStorage.setItem('readerWalletAddress', walletAddress)
+      } catch {
+        /* ignore quota / private mode */
+      }
+
+      window.dispatchEvent(
+        new CustomEvent('readerLoggedIn', {
+          detail: { walletAddress },
+        }),
+      )
+    },
+    [authorAddressForLatestTx],
+  )
+
   const startPayTxAutoVerify = useCallback(async () => {
     if (!post?.id || !authorAddressForLatestTx) return
 
@@ -387,6 +451,7 @@ export default function PublicPostPage() {
             clearInterval(payTxPollRef.current)
             payTxPollRef.current = null
           }
+          void persistReaderAfterPaywallUnlock(latestTxid)
           return
         }
 
@@ -406,6 +471,7 @@ export default function PublicPostPage() {
               clearInterval(payTxPollRef.current)
               payTxPollRef.current = null
             }
+            void persistReaderAfterPaywallUnlock(latestTxid)
           }
         }
       } catch {
@@ -417,7 +483,7 @@ export default function PublicPostPage() {
     payTxPollRef.current = setInterval(() => {
       void checkLatest()
     }, 3000)
-  }, [authorAddressForLatestTx, post?.id])
+  }, [authorAddressForLatestTx, persistReaderAfterPaywallUnlock, post?.id])
 
   const processWalletAuthTxid = useCallback(
     async (txid) => {

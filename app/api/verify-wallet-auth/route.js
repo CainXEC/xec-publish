@@ -33,6 +33,32 @@ export async function POST(request) {
       )
     }
 
+    const { data: unlockByTxid } = await supabase
+      .from('unlocks')
+      .select('payer_address')
+      .eq('txid', txid)
+      .maybeSingle()
+
+    const payerFromUnlock = unlockByTxid?.payer_address?.trim?.() || ''
+    if (payerFromUnlock) {
+      const { data: unlockRows, error: unlockListError } = await supabase
+        .from('unlocks')
+        .select('post_id')
+        .eq('payer_address', payerFromUnlock)
+
+      if (unlockListError) {
+        return NextResponse.json(
+          { error: unlockListError.message },
+          { status: 500 },
+        )
+      }
+
+      return NextResponse.json({
+        walletAddress: payerFromUnlock,
+        unlockedPostIds: (unlockRows ?? []).map((row) => row.post_id),
+      })
+    }
+
     let platformOutputScript
     try {
       platformOutputScript = getOutputScriptFromAddress(platformAddress)

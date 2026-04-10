@@ -318,6 +318,22 @@ export default function HomePage() {
     }
   }, [applyReaderWallet, stopReaderTxPolling])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    function onReaderLoggedIn(event) {
+      const w = event.detail?.walletAddress
+      const trimmed = typeof w === 'string' ? w.trim() : ''
+      if (!trimmed) return
+      void applyReaderWallet(trimmed)
+    }
+
+    window.addEventListener('readerLoggedIn', onReaderLoggedIn)
+    return () => {
+      window.removeEventListener('readerLoggedIn', onReaderLoggedIn)
+    }
+  }, [applyReaderWallet])
+
   const closeMobileNav = useCallback(() => setMobileNavOpen(false), [])
 
   useEffect(() => {
