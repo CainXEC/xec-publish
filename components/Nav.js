@@ -344,7 +344,7 @@ export default function Nav({
                 <div ref={desktopSearchRef} className="relative">
                   <div
                     className={`overflow-hidden transition-[width,opacity] duration-200 ${
-                      desktopSearchOpen ? 'w-64 opacity-100' : 'w-9 opacity-100'
+                      desktopSearchOpen ? 'w-64 opacity-100' : 'w-8 opacity-100'
                     }`}
                   >
                     {desktopSearchOpen ? (
