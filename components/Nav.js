@@ -318,6 +318,7 @@ export default function Nav({
               fontWeight: 700,
               color: 'var(--color-text-primary)',
               letterSpacing: '-0.02em',
+              textTransform: 'uppercase',
             }}
           >
             Proof Of Writing
