@@ -193,11 +193,14 @@ export default function HomePage() {
         onReaderLogoutExtra={handleReaderLogoutExtra}
       />
 
-      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+      <main className="mx-auto max-w-5xl px-4 pt-5 pb-10 sm:px-6 sm:pt-7 sm:pb-14">
         <div className="mb-10 max-w-2xl">
-          <p className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
-            Latest articles by independent writers for independent thinkers. Pay with eCash to
-            unlock the full story.
+          <p
+            className="text-base leading-relaxed md:whitespace-nowrap"
+            style={{ color: 'var(--color-text-primary)' }}
+          >
+            Read the latest articles by independent writers for independent thinkers. Pay with
+            eCash to unlock the full story.
           </p>
         </div>
 
