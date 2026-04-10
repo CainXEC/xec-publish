@@ -67,7 +67,7 @@ export default function SignupPage() {
           Author signup
         </h1>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Create an account to publish with your XEC wallet.
+          Create an account to publish and earn XEC.
         </p>
 
         {!success && (

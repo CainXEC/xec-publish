@@ -57,7 +57,7 @@ export default function LoginPage() {
           Author login
         </h1>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Sign in to publish with your XEC wallet.
+          Sign in to publish and earn XEC.
         </p>
         <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
           Don&apos;t have an account?{' '}
