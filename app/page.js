@@ -293,77 +293,81 @@ export default function HomePage() {
               </div>
             ) : null}
             {displayPosts.length > 0 ? (
-            <ul className="flex flex-col gap-6">
-            {displayPosts.map((post) => {
-              const author = authorFromPost(post)
-              const username = author?.username?.trim() || 'Unknown'
-              const postHref = `/posts/${encodeURIComponent(post.slug)}`
-              const priceLabel = formatXec(post.price_xec)
-              const unlocksN = unlockCountFromPost(post)
-              const commentsN = commentCountFromPost(post)
-              const unlockStat =
-                unlocksN === 1 ? '🔓 1 unlock' : `🔓 ${unlocksN} unlocks`
-              const commentStat =
-                commentsN === 1 ? '💬 1 comment' : `💬 ${commentsN} comments`
+              <>
+                <ul className="flex flex-col gap-6">
+                  {displayPosts.map((post) => {
+                    const author = authorFromPost(post)
+                    const username = author?.username?.trim() || 'Unknown'
+                    const postHref = `/posts/${encodeURIComponent(post.slug)}`
+                    const priceLabel = formatXec(post.price_xec)
+                    const unlocksN = unlockCountFromPost(post)
+                    const commentsN = commentCountFromPost(post)
+                    const unlockStat =
+                      unlocksN === 1 ? '🔓 1 unlock' : `🔓 ${unlocksN} unlocks`
+                    const commentStat =
+                      commentsN === 1 ? '💬 1 comment' : `💬 ${commentsN} comments`
 
-              return (
-                <li key={post.id}>
-                  <Link
-                    href={postHref}
-                    className="block rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-[box-shadow,border-color] duration-200 hover:border-zinc-400 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-500 dark:hover:shadow-lg/20 dark:focus-visible:ring-offset-zinc-950"
-                  >
-                    <h2 className="text-xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
-                      {post.title}
-                    </h2>
-                    <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
-                      <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                        {username}
-                      </span>
-                      <span aria-hidden className="text-zinc-300 dark:text-zinc-600">
-                        ·
-                      </span>
-                      <time dateTime={post.created_at ?? undefined}>
-                        {formatPublishedDate(post.created_at)}
-                      </time>
-                    </p>
-                    <p className="mt-4 whitespace-pre-wrap text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
-                      {truncateTeaserPreview(post.teaser)}
-                    </p>
-                    <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                      <span>{priceLabel} XEC</span>
-                      <span className="font-normal text-zinc-600 dark:text-zinc-400">
-                        {unlockStat}
-                      </span>
-                      <span className="font-normal text-zinc-600 dark:text-zinc-400">
-                        {commentStat}
-                      </span>
-                    </p>
-                  </Link>
-                </li>
-              )
-            })}
-            </ul>
+                    return (
+                      <li key={post.id}>
+                        <Link
+                          href={postHref}
+                          className="block rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-[box-shadow,border-color] duration-200 hover:border-zinc-400 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-500 dark:hover:shadow-lg/20 dark:focus-visible:ring-offset-zinc-950"
+                        >
+                          <h2 className="text-xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+                            {post.title}
+                          </h2>
+                          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
+                            <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                              {username}
+                            </span>
+                            <span aria-hidden className="text-zinc-300 dark:text-zinc-600">
+                              ·
+                            </span>
+                            <time dateTime={post.created_at ?? undefined}>
+                              {formatPublishedDate(post.created_at)}
+                            </time>
+                          </p>
+                          <p className="mt-4 whitespace-pre-wrap text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
+                            {truncateTeaserPreview(post.teaser)}
+                          </p>
+                          <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                            <span>{priceLabel} XEC</span>
+                            <span className="font-normal text-zinc-600 dark:text-zinc-400">
+                              {unlockStat}
+                            </span>
+                            <span className="font-normal text-zinc-600 dark:text-zinc-400">
+                              {commentStat}
+                            </span>
+                          </p>
+                        </Link>
+                      </li>
+                    )
+                  })}
+                </ul>
+                <div className="mt-8 flex items-center justify-between border-t border-zinc-200 pt-4 dark:border-zinc-800">
+                  {currentPage > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                    >
+                      ← Page {currentPage - 1}
+                    </button>
+                  ) : (
+                    <span />
+                  )}
+                  {hasNextPage ? (
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => p + 1)}
+                      className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                    >
+                      Page {currentPage + 1} →
+                    </button>
+                  ) : null}
+                </div>
+              </>
             ) : null}
-            <div className="mt-8 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-              >
-                ← Previous
-              </button>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">Page {currentPage}</p>
-              {hasNextPage ? (
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage((p) => p + 1)}
-                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                >
-                  Next →
-                </button>
-              ) : null}
-            </div>
           </>
         )}
       </main>
