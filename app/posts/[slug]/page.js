@@ -328,7 +328,7 @@ export default function PublicPostPage() {
   const cashtabUrl = bip21Url
     ? `https://cashtab.com/#/send?bip21=${bip21Url}`
     : ''
-  const unlockPriceLabel = formatXecAmount(priceXec)
+  const unlockPriceLabel = Number(priceXec).toLocaleString()
 
   function openCashtab(url) {
     if (!url || typeof window === 'undefined') return
@@ -772,10 +772,12 @@ export default function PublicPostPage() {
                     onClick={handlePayToUnlock}
                     className="inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60 dark:bg-emerald-400 dark:text-emerald-950"
                   >
-                    {payBusy ? 'Opening wallet…' : `${unlockPriceLabel} XEC`}
+                    {payBusy
+                      ? 'Opening wallet…'
+                      : `Pay ${unlockPriceLabel} XEC to unlock`}
                   </button>
-                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
-                    (6% of all payments go to support the platform)
+                  <p className="mt-1 text-center text-xs text-zinc-500 dark:text-zinc-500">
+                    (6% of payment goes to support the platform)
                   </p>
                   {pollingActive && paymentInitiated ? (
                     <div className="mt-4 rounded-lg border border-zinc-200 bg-white/70 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900/60">
