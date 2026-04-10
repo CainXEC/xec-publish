@@ -313,23 +313,20 @@ export default function Nav({
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-2 px-4 md:px-6">
         <Link
           href="/"
-          className="inline-flex min-w-0 shrink-0 items-center"
-          aria-label="Proof of Writing home"
+          className="inline-flex shrink-0 items-center"
+          aria-label="Proof Of Writing home"
         >
-          {/* h-9 (36px) matches ThemeToggle and hamburger button height */}
           <div
-            className="flex h-9 shrink-0 items-center"
             style={{
               fontSize: '28px',
               fontWeight: 700,
               letterSpacing: '-0.02em',
               lineHeight: 1,
+              display: 'flex',
+              alignItems: 'center',
             }}
           >
-            <span style={{ color: '#1D9E75' }}>Proof Of</span>
-            <span aria-hidden className="select-none">
-              {' '}
-            </span>
+            <span style={{ color: '#1D9E75' }}>Proof Of&nbsp;</span>
             <span style={{ color: 'var(--color-text-primary)' }}>Writing</span>
           </div>
         </Link>
