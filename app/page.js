@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Nav from '@/components/Nav'
 import { supabase } from '@/lib/supabase-browser'
 
+const PAGE_SIZE = 100
+
 function formatXec(amount) {
   const n = Number(amount)
   if (!Number.isFinite(n)) return '0'
@@ -85,6 +87,8 @@ function truncateTeaserPreview(text, maxLen = TEASER_CARD_MAX) {
 export default function HomePage() {
   const [fetchedPosts, setFetchedPosts] = useState([])
   const [sortMode, setSortMode] = useState('unlocks')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hasNextPage, setHasNextPage] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [readerWalletAddress, setReaderWalletAddress] = useState('')
@@ -152,24 +156,39 @@ export default function HomePage() {
   }, [])
 
   useEffect(() => {
+    setCurrentPage(1)
+  }, [sortMode, postSearchQuery])
+
+  useEffect(() => {
     let cancelled = false
 
     async function load() {
       setLoading(true)
       setLoadError(null)
+      const start = (currentPage - 1) * PAGE_SIZE
+      const end = start + PAGE_SIZE - 1
 
+      // Suggested indexes to run in Supabase SQL editor:
+      // CREATE INDEX IF NOT EXISTS idx_posts_published_created ON posts (published, created_at DESC);
+      // CREATE INDEX IF NOT EXISTS idx_posts_published_author ON posts (published, author_id);
+      // CREATE INDEX IF NOT EXISTS idx_unlocks_post_id ON unlocks (post_id);
       const { data, error } = await supabase
         .from('posts')
         .select('*, authors(username), unlocks(count), comments(count)')
         .eq('published', true)
+        .order('created_at', { ascending: false })
+        .range(start, end)
 
       if (cancelled) return
 
       if (error) {
         setLoadError(error.message)
         setFetchedPosts([])
+        setHasNextPage(false)
       } else {
-        setFetchedPosts(data ?? [])
+        const rows = data ?? []
+        setFetchedPosts(rows)
+        setHasNextPage(rows.length === PAGE_SIZE)
       }
       setLoading(false)
     }
@@ -179,7 +198,7 @@ export default function HomePage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [currentPage])
 
   const showPostSearch = !loading && !loadError && fetchedPosts.length > 0
 
@@ -325,6 +344,26 @@ export default function HomePage() {
             })}
             </ul>
             ) : null}
+            <div className="mt-8 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              >
+                ← Previous
+              </button>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">Page {currentPage}</p>
+              {hasNextPage ? (
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                >
+                  Next →
+                </button>
+              ) : null}
+            </div>
           </>
         )}
       </main>
