@@ -371,7 +371,7 @@ export default function Nav({
                 </Link>
               ) : (
                 <Link
-                  href="/signup"
+                  href="/login"
                   className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
                 >
                   Start Writing
@@ -491,7 +491,7 @@ export default function Nav({
             </Link>
           ) : (
               <Link
-                href="/signup"
+                href="/login"
                 onClick={closeMobileNav}
                 className="block rounded-lg bg-emerald-600 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
               >

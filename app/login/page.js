@@ -60,18 +60,6 @@ export default function LoginPage() {
           Sign in to publish and earn XEC.
         </p>
 
-        <div className="mt-5 rounded-xl border-2 border-emerald-600 bg-emerald-50 p-4 text-center dark:border-emerald-500 dark:bg-emerald-950/40">
-          <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-            New here? Create an author account to get started.
-          </p>
-          <Link
-            href="/signup"
-            className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
-          >
-            Create an account
-          </Link>
-        </div>
-
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           {error ? (
             <div
@@ -136,6 +124,16 @@ export default function LoginPage() {
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
+
+        <p className="mt-4 text-center text-xs text-zinc-500 dark:text-zinc-400">
+          New here?{' '}
+          <Link
+            href="/signup"
+            className="font-medium text-zinc-600 underline-offset-2 hover:text-zinc-800 hover:underline dark:text-zinc-300 dark:hover:text-zinc-200"
+          >
+            Create an account
+          </Link>
+        </p>
       </div>
       </div>
     </div>
