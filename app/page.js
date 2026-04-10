@@ -293,7 +293,6 @@ export default function HomePage() {
               </div>
             ) : null}
             {displayPosts.length > 0 ? (
-              <>
                 <ul className="flex flex-col gap-6">
                   {displayPosts.map((post) => {
                     const author = authorFromPost(post)
@@ -344,32 +343,48 @@ export default function HomePage() {
                     )
                   })}
                 </ul>
-                <div className="mt-8 flex items-center justify-between border-t border-zinc-200 pt-4 dark:border-zinc-800">
-                  {currentPage > 1 ? (
-                    <button
-                      type="button"
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                    >
-                      ← Page {currentPage - 1}
-                    </button>
-                  ) : (
-                    <span />
-                  )}
-                  {hasNextPage ? (
-                    <button
-                      type="button"
-                      onClick={() => setCurrentPage((p) => p + 1)}
-                      className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                    >
-                      Page {currentPage + 1} →
-                    </button>
-                  ) : null}
-                </div>
-              </>
             ) : null}
           </>
         )}
+        <div className="mt-8 flex items-center justify-between border-t border-zinc-200 pt-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+          <div className="min-w-[7.5rem]">
+            {displayPosts.length > 0 && currentPage > 1 ? (
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              >
+                ← Page {currentPage - 1}
+              </button>
+            ) : null}
+          </div>
+          <div className="text-center">
+            <Link
+              href="/about"
+              className="transition hover:text-zinc-700 hover:underline dark:hover:text-zinc-200"
+            >
+              About
+            </Link>{' '}
+            |{' '}
+            <Link
+              href="/leaderboard"
+              className="transition hover:text-zinc-700 hover:underline dark:hover:text-zinc-200"
+            >
+              Leaderboard
+            </Link>
+          </div>
+          <div className="min-w-[7.5rem] text-right">
+            {displayPosts.length > 0 && hasNextPage ? (
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => p + 1)}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              >
+                Page {currentPage + 1} →
+              </button>
+            ) : null}
+          </div>
+        </div>
       </main>
     </div>
   )
