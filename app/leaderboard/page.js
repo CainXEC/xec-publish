@@ -135,8 +135,7 @@ export default function LeaderboardPage() {
             Author leaderboard
           </h1>
           <p className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
-            Rankings by unlocks and estimated author earnings (94% of recorded unlock amounts; 6%
-            platform share).
+            Rankings by unlocks or author earnings.
           </p>
         </div>
 
