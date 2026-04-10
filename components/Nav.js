@@ -40,7 +40,10 @@ export default function Nav({
   const [readerLoginBusy, setReaderLoginBusy] = useState(false)
   const [readerLoginError, setReaderLoginError] = useState('')
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [desktopSearchOpen, setDesktopSearchOpen] = useState(false)
   const mobileNavRef = useRef(null)
+  const desktopSearchRef = useRef(null)
+  const desktopSearchInputRef = useRef(null)
   const latestTxPollRef = useRef(null)
   const baselineTxidRef = useRef('')
   const lastHandledTxidRef = useRef('')
@@ -275,6 +278,33 @@ export default function Nav({
     return () => mq.removeEventListener('change', onChange)
   }, [])
 
+  useEffect(() => {
+    if (!desktopSearchOpen) return
+    desktopSearchInputRef.current?.focus()
+  }, [desktopSearchOpen])
+
+  useEffect(() => {
+    if (!desktopSearchOpen) return
+    function onPointerDown(e) {
+      if (
+        desktopSearchRef.current &&
+        e.target instanceof Node &&
+        !desktopSearchRef.current.contains(e.target)
+      ) {
+        setDesktopSearchOpen(false)
+      }
+    }
+    function onKeyDown(e) {
+      if (e.key === 'Escape') setDesktopSearchOpen(false)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [desktopSearchOpen])
+
   return (
     <header
       ref={mobileNavRef}
@@ -295,36 +325,70 @@ export default function Nav({
         </Link>
 
         <div className="hidden min-w-0 flex-1 items-center gap-3 md:flex">
-          {showPostSearch && typeof onPostSearchChange === 'function' ? (
-            <div className="relative min-w-0 flex-1 md:max-w-md lg:max-w-lg">
-              <label htmlFor="post-search-desktop" className="sr-only">
-                Search posts
-              </label>
-              <input
-                id="post-search-desktop"
-                type="search"
-                value={postSearchQuery}
-                onChange={(e) => onPostSearchChange(e.target.value)}
-                placeholder="Search…"
-                autoComplete="off"
-                className={`h-8 min-h-8 ${searchInputClassName}`}
-              />
-              {postSearchQuery ? (
-                <button
-                  type="button"
-                  onClick={() => onPostSearchChange('')}
-                  className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-base leading-none text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                  aria-label="Clear search"
-                >
-                  ×
-                </button>
-              ) : null}
-            </div>
-          ) : (
-            <div className="min-w-0 flex-1" aria-hidden />
-          )}
+          <div className="min-w-0 flex-1" aria-hidden />
           <div className="flex shrink-0 flex-col items-end gap-1">
             <div className="flex shrink-0 items-center gap-3">
+              {showPostSearch && typeof onPostSearchChange === 'function' ? (
+                <div ref={desktopSearchRef} className="relative">
+                  <div
+                    className={`overflow-hidden transition-[width,opacity] duration-200 ${
+                      desktopSearchOpen ? 'w-64 opacity-100' : 'w-9 opacity-100'
+                    }`}
+                  >
+                    {desktopSearchOpen ? (
+                      <div className="relative">
+                        <label htmlFor="post-search-desktop" className="sr-only">
+                          Search posts
+                        </label>
+                        <input
+                          ref={desktopSearchInputRef}
+                          id="post-search-desktop"
+                          type="search"
+                          value={postSearchQuery}
+                          onChange={(e) => onPostSearchChange(e.target.value)}
+                          placeholder="Search…"
+                          autoComplete="off"
+                          className={`h-9 min-h-9 w-64 ${searchInputClassName}`}
+                        />
+                        {postSearchQuery ? (
+                          <button
+                            type="button"
+                            onClick={() => onPostSearchChange('')}
+                            className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-base leading-none text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                            aria-label="Clear search"
+                          >
+                            ×
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setDesktopSearchOpen(true)}
+                        className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-300 bg-white text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                        aria-label="Open search"
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          aria-hidden
+                          className="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <circle cx="11" cy="11" r="7" />
+                          <path d="m20 20-3.5-3.5" />
+                        </svg>
+                        {postSearchQuery ? (
+                          <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-emerald-500" />
+                        ) : null}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : null}
               <ThemeToggle />
               {readerWalletAddress ? (
                 <div className="flex flex-nowrap items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
