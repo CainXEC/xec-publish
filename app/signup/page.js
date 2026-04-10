@@ -80,10 +80,32 @@ export default function SignupPage() {
           Create an account to publish with your XEC wallet.
         </p>
 
+        {!success && (
+          <div className="mt-5 rounded-xl border-2 border-emerald-600 bg-emerald-50 p-4 text-center dark:border-emerald-500 dark:bg-emerald-950/40">
+            <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+              Already have an author account?
+            </p>
+            <Link
+              href="/login"
+              className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
+            >
+              Sign in
+            </Link>
+          </div>
+        )}
+
         {success ? (
-          <p className="mt-6 text-sm text-green-700 dark:text-green-400">
-            Account created. You can sign in when ready.
-          </p>
+          <div className="mt-6 space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/40">
+            <p className="text-sm font-medium text-emerald-900 dark:text-emerald-200">
+              Account created. You can sign in when you&apos;re ready.
+            </p>
+            <Link
+              href="/login"
+              className="inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
+            >
+              Go to author login
+            </Link>
+          </div>
         ) : (
           <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
             <div>

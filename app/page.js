@@ -464,20 +464,12 @@ export default function HomePage() {
                   Dashboard
                 </Link>
               ) : (
-                <div className="flex items-center gap-5">
-                  <Link
-                    href="/login"
-                    className="text-sm font-medium text-zinc-700 transition hover:text-zinc-900 hover:underline dark:text-zinc-300 dark:hover:text-zinc-100"
-                  >
-                    Author Login
-                  </Link>
-                  <Link
-                    href="/signup"
-                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
-                  >
-                    Start Writing
-                  </Link>
-                </div>
+                <Link
+                  href="/signup"
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
+                >
+                  Start Writing
+                </Link>
               )}
             </div>
           </div>
@@ -539,7 +531,7 @@ export default function HomePage() {
                 <button
                   type="button"
                   onClick={() => {
-                      void handleReaderLogout()
+                    void handleReaderLogout()
                     closeMobileNav()
                   }}
                   title={readerWalletAddress}
@@ -576,22 +568,13 @@ export default function HomePage() {
                   Dashboard
                 </Link>
               ) : (
-                <>
-                  <Link
-                    href="/login"
-                    onClick={closeMobileNav}
-                    className="block rounded-lg border border-zinc-300 bg-white py-2.5 text-center text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                  >
-                    Author Login
-                  </Link>
-                  <Link
-                    href="/signup"
-                    onClick={closeMobileNav}
-                    className="block rounded-lg bg-emerald-600 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
-                  >
-                    Start Writing
-                  </Link>
-                </>
+                <Link
+                  href="/signup"
+                  onClick={closeMobileNav}
+                  className="block rounded-lg bg-emerald-600 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
+                >
+                  Start Writing
+                </Link>
               )}
             </div>
 
