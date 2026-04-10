@@ -346,8 +346,8 @@ export default function HomePage() {
             ) : null}
           </>
         )}
-        <div className="mt-8 flex items-center justify-between border-t border-zinc-200 pt-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-          <div className="min-w-[7.5rem]">
+        <div className="mt-8 flex items-center justify-between gap-2 border-t border-zinc-200 pt-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+          <div className="min-w-0 flex-1">
             {displayPosts.length > 0 && currentPage > 1 ? (
               <button
                 type="button"
@@ -358,7 +358,7 @@ export default function HomePage() {
               </button>
             ) : null}
           </div>
-          <div className="text-center">
+          <div className="flex-shrink-0 whitespace-nowrap text-center">
             <Link
               href="/about"
               className="transition hover:text-zinc-700 hover:underline dark:hover:text-zinc-200"
@@ -373,7 +373,7 @@ export default function HomePage() {
               Leaderboard
             </Link>
           </div>
-          <div className="min-w-[7.5rem] text-right">
+          <div className="min-w-0 flex-1 text-right">
             {displayPosts.length > 0 && hasNextPage ? (
               <button
                 type="button"
