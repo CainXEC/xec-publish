@@ -107,9 +107,33 @@ function truncateTeaserPreview(text, maxLen = TEASER_CARD_MAX) {
   return `${s.slice(0, maxLen)}...`
 }
 
+function getSinceTimestamp(timeFilter) {
+  if (timeFilter === 'all') return null
+  const now = new Date()
+  if (timeFilter === '24h') now.setHours(now.getHours() - 24)
+  if (timeFilter === '7d') now.setDate(now.getDate() - 7)
+  if (timeFilter === '30d') now.setDate(now.getDate() - 30)
+  if (timeFilter === '1y') now.setFullYear(now.getFullYear() - 1)
+  return now.toISOString()
+}
+
+const TIME_FILTER_OPTIONS = [
+  { id: '24h', label: '24h' },
+  { id: '7d', label: '7d' },
+  { id: '30d', label: '30d' },
+  { id: '1y', label: '1y' },
+  { id: 'all', label: 'All time' },
+]
+
+const timeFilterBtnActive =
+  'rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 md:px-3 md:py-2 md:text-sm dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400'
+const timeFilterBtnInactive =
+  'rounded-lg border border-zinc-300 bg-transparent px-2.5 py-1.5 text-xs font-medium text-zinc-800 transition hover:bg-zinc-50 md:px-3 md:py-2 md:text-sm dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-900'
+
 export default function HomePage() {
   const [fetchedPosts, setFetchedPosts] = useState([])
   const [sortMode, setSortMode] = useState('unlocks')
+  const [timeFilter, setTimeFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [hasNextPage, setHasNextPage] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -180,7 +204,13 @@ export default function HomePage() {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [sortMode, postSearchQuery])
+  }, [sortMode, postSearchQuery, timeFilter])
+
+  useEffect(() => {
+    if (sortMode !== 'unlocks') {
+      setTimeFilter('all')
+    }
+  }, [sortMode])
 
   useEffect(() => {
     let cancelled = false
@@ -195,7 +225,7 @@ export default function HomePage() {
       // CREATE INDEX IF NOT EXISTS idx_posts_published_created ON posts (published, created_at DESC);
       // CREATE INDEX IF NOT EXISTS idx_posts_published_author ON posts (published, author_id);
       // CREATE INDEX IF NOT EXISTS idx_unlocks_post_id ON unlocks (post_id);
-      // Requires RPCs: get_unlock_counts(post_ids), get_comment_counts(post_ids) returning { post_id, count }.
+      // Requires RPCs: get_unlock_counts(post_ids, since), get_comment_counts(post_ids) returning { post_id, count }.
       const { data, error } = await supabase
         .from('posts')
         .select(
@@ -217,7 +247,12 @@ export default function HomePage() {
         const postIds = rows.map((p) => p.id).filter(Boolean)
         if (postIds.length > 0) {
           const [{ data: unlockCounts }, { data: commentCounts }] = await Promise.all([
-            supabase.rpc('get_unlock_counts', { post_ids: postIds }),
+            supabase.rpc('get_unlock_counts', {
+              post_ids: postIds,
+              since: getSinceTimestamp(
+                sortMode === 'unlocks' ? timeFilter : 'all',
+              ),
+            }),
             supabase.rpc('get_comment_counts', { post_ids: postIds }),
           ])
           if (cancelled) return
@@ -234,7 +269,7 @@ export default function HomePage() {
     return () => {
       cancelled = true
     }
-  }, [currentPage])
+  }, [currentPage, timeFilter, sortMode])
 
   const showPostSearch = !loading && !loadError && fetchedPosts.length > 0
 
@@ -291,6 +326,27 @@ export default function HomePage() {
                 🕐 Newest First
               </button>
             </div>
+            {sortMode === 'unlocks' ? (
+              <div
+                className="mb-6 flex flex-wrap items-center gap-1.5 md:gap-2"
+                role="group"
+                aria-label="Unlock time range"
+              >
+                {TIME_FILTER_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    aria-pressed={timeFilter === opt.id}
+                    onClick={() => setTimeFilter(opt.id)}
+                    className={
+                      timeFilter === opt.id ? timeFilterBtnActive : timeFilterBtnInactive
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             {readerWalletAddress ? (
               <div className="mb-6 flex flex-wrap gap-1.5 md:gap-2" role="group" aria-label="Filter posts">
                 <button
