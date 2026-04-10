@@ -24,10 +24,12 @@ export default function AboutPage() {
             </p>
             <p>
               The platform never touches your funds and only charges a 6% fee. By comparison,
-              Substack charges 10% plus an additional 3-6% for credit card processing. Furthermore,
-              only Proof Of Writing allows users to unlock content on a per article basis, and by
-              leveraging the eCash network, authors can charge as little or as much as they want
-              while keeping a greater percentage of their revenue.
+              Substack charges 10% plus an additional 3-6% for credit card processing.
+            </p>
+            <p>
+              Furthermore, only Proof Of Writing allows users to unlock content on a per article
+              basis, and by leveraging the eCash network, authors can charge as little or as much as
+              they want while keeping a greater percentage of their revenue.
             </p>
             <p>
               If you believe in the power of words, and a world that values substance over slop,
