@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Nav from '@/components/Nav'
 import { supabase } from '@/lib/supabase-browser'
 
-const PAGE_SIZE = 100
+const PAGE_SIZE = 10
 
 function formatXec(amount) {
   const n = Number(amount)
