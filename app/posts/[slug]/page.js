@@ -772,16 +772,10 @@ export default function PublicPostPage() {
                     onClick={handlePayToUnlock}
                     className="inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60 dark:bg-emerald-400 dark:text-emerald-950"
                   >
-                    {payBusy ? 'Opening wallet…' : `Pay ${unlockPriceLabel} XEC to Unlock`}
+                    {payBusy ? 'Opening wallet…' : `${unlockPriceLabel} XEC`}
                   </button>
-                  <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-                    Pay with XEC to unlock the full story.
-                  </p>
                   <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
                     (6% of all payments go to support the platform)
-                  </p>
-                  <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                    No signup required. Payments go directly to the author. Opens in Cashtab wallet.
                   </p>
                   {pollingActive && paymentInitiated ? (
                     <div className="mt-4 rounded-lg border border-zinc-200 bg-white/70 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900/60">
