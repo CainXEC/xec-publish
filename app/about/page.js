@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import Nav from '@/components/Nav'
 
 export default function AboutPage() {
@@ -13,7 +12,8 @@ export default function AboutPage() {
             className="text-3xl sm:text-4xl"
             style={{ fontWeight: 700, letterSpacing: '-0.02em' }}
           >
-            <span style={{ color: '#1D9E75' }}>About Proof Of </span>
+            <span style={{ color: 'var(--color-text-primary)' }}>About </span>
+            <span style={{ color: '#1D9E75' }}>Proof Of </span>
             <span style={{ color: 'var(--color-text-primary)' }}>Writing</span>
           </h1>
           <div className="mt-5 space-y-4 text-base leading-relaxed text-zinc-700 dark:text-zinc-300">
@@ -31,14 +31,25 @@ export default function AboutPage() {
               for each article while keeping a greater percentage of their revenue.
             </p>
           </div>
-          <div className="mt-8">
-            <Link
-              href="/login"
-              className="inline-flex rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
+          <p className="mt-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
+            <a
+              href="https://t.me/proofofwriting"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition hover:text-zinc-700 hover:underline dark:hover:text-zinc-200"
             >
-              Start Writing
-            </Link>
-          </div>
+              Telegram
+            </a>{' '}
+            |{' '}
+            <a
+              href="https://x.com/ProofofWriting"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition hover:text-zinc-700 hover:underline dark:hover:text-zinc-200"
+            >
+              X (Twitter)
+            </a>
+          </p>
         </section>
       </main>
     </div>
