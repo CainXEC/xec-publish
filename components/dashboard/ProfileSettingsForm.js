@@ -240,27 +240,28 @@ export default function ProfileSettingsForm({
               {submitting ? 'Saving…' : 'Save changes'}
             </button>
 
-            <div className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-700">
-              <h2 className="text-sm font-semibold text-red-700 dark:text-red-400">Danger zone</h2>
-              <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-                Permanently delete your account and all posts. This cannot be undone.
-              </p>
-              {deleteError ? (
-                <p className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert">
-                  {deleteError}
-                </p>
-              ) : null}
-              <button
-                type="button"
-                onClick={handleDeleteAccount}
-                disabled={deleting || submitting}
-                className="mt-3 rounded-lg border border-red-300 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-800 transition hover:bg-red-100 disabled:opacity-50 dark:border-red-800 dark:bg-red-950/50 dark:text-red-200 dark:hover:bg-red-950"
-              >
-                {deleting ? 'Deleting…' : 'Delete account'}
-              </button>
-            </div>
           </div>
         </form>
+
+        <section className="mt-6 rounded-xl border border-red-200 bg-white p-6 shadow-sm dark:border-red-900/60 dark:bg-zinc-900">
+          <h2 className="text-sm font-semibold text-red-700 dark:text-red-400">Danger zone</h2>
+          <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+            Permanently delete your account and all posts. This cannot be undone.
+          </p>
+          {deleteError ? (
+            <p className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert">
+              {deleteError}
+            </p>
+          ) : null}
+          <button
+            type="button"
+            onClick={handleDeleteAccount}
+            disabled={deleting}
+            className="mt-3 rounded-lg border border-red-300 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-800 transition hover:bg-red-100 disabled:opacity-50 dark:border-red-800 dark:bg-red-950/50 dark:text-red-200 dark:hover:bg-red-950"
+          >
+            {deleting ? 'Deleting…' : 'Delete account'}
+          </button>
+        </section>
       </main>
     </div>
   )
