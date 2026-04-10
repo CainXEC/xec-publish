@@ -19,16 +19,19 @@ export default function AboutPage() {
           <div className="mt-5 space-y-4 text-base leading-relaxed text-zinc-700 dark:text-zinc-300">
             <p>
               Proof Of Writing is a writing app that runs on crypto rails. All you need is an email
-              address to sign up to publish and an eCash wallet to receive payments and pay for
+              address to sign up as an author, and an eCash wallet to receive payments and pay for
               content.
             </p>
             <p>
-              Proof Of Writing never touches your funds and only charges a 6% platform fee. By
-              comparison, Substack charges 10% plus an additional 3-6% for credit card processing.
+              The platform never touches your funds and only charges a 6% fee. By comparison,
+              Substack charges 10% plus an additional 3-6% for credit card processing. Furthermore,
+              only Proof Of Writing allows users to unlock content on a per article basis, and by
+              leveraging the eCash network, authors can charge as little or as much as they want
+              while keeping a greater percentage of their revenue.
             </p>
             <p>
-              By leveraging the eCash network, authors can charge as little or as much as they want
-              for each article while keeping a greater percentage of their revenue.
+              If you believe in the power of words, and a world that values substance over slop,
+              Proof Of Writing is for you.
             </p>
           </div>
           <p className="mt-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
