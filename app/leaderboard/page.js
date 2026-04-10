@@ -141,7 +141,7 @@ export default function LeaderboardPage() {
         </div>
 
         <div
-          className="mb-6 flex w-full flex-col gap-2 md:flex-row md:flex-wrap"
+          className="mb-6 flex w-full gap-2"
           role="group"
           aria-label="Sort leaderboard"
         >
@@ -149,7 +149,7 @@ export default function LeaderboardPage() {
             type="button"
             aria-pressed={sortMode === 'unlocks'}
             onClick={() => setSortMode('unlocks')}
-            className={`w-full md:w-auto ${sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}`}
+            className={`min-w-0 flex-1 text-center ${sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}`}
           >
             🔓 Most Unlocked
           </button>
@@ -157,7 +157,7 @@ export default function LeaderboardPage() {
             type="button"
             aria-pressed={sortMode === 'earned'}
             onClick={() => setSortMode('earned')}
-            className={`w-full md:w-auto ${sortMode === 'earned' ? sortBtnActive : sortBtnInactive}`}
+            className={`min-w-0 flex-1 text-center ${sortMode === 'earned' ? sortBtnActive : sortBtnInactive}`}
           >
             💰 Most Earned
           </button>
