@@ -41,6 +41,10 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
         setSubmitError('Minimum price is 100 XEC')
         return
       }
+      if (price > 1_000_000) {
+        setSubmitError('Maximum price is 1,000,000 XEC')
+        return
+      }
 
       const { error: insertError } = await supabase.from('posts').insert({
         author_id: user.id,
@@ -165,14 +169,14 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
                 type="number"
                 required
                 min={100}
+                max={1_000_000}
                 step="any"
                 value={priceXec}
                 onChange={(e) => setPriceXec(e.target.value)}
                 className="mt-1 w-full max-w-xs rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-500"
               />
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">Minimum 100 XEC</p>
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
-                (6% of all payments go to support the platform)
+                Minimum 100 XEC · Maximum 1,000,000 XEC (6% platform fee)
               </p>
             </div>
 
