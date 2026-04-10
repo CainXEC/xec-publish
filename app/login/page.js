@@ -125,11 +125,11 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="mt-4 text-center text-xs text-zinc-500 dark:text-zinc-400">
+        <p className="mt-4 text-center text-sm text-zinc-600 dark:text-zinc-400">
           New here?{' '}
           <Link
             href="/signup"
-            className="font-medium text-zinc-600 underline-offset-2 hover:text-zinc-800 hover:underline dark:text-zinc-300 dark:hover:text-zinc-200"
+            className="font-medium text-zinc-800 underline underline-offset-2 hover:text-zinc-950 dark:text-zinc-200 dark:hover:text-zinc-50"
           >
             Create an account
           </Link>
