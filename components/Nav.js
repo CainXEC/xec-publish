@@ -279,32 +279,16 @@ export default function Nav({
     >
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-2 px-4 md:px-6">
         <Link href="/" className="min-w-0 shrink-0" aria-label="Proof of Writing home">
-          <div
+          <span
             style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              gap: '8px',
+              fontSize: '20px',
+              fontWeight: 700,
+              color: 'var(--color-text-primary)',
+              letterSpacing: '-0.02em',
             }}
           >
-            <span
-              style={{
-                fontSize: '17px',
-                fontWeight: 500,
-                color: 'var(--color-text-primary)',
-              }}
-            >
-              Proof of Writing
-            </span>
-            <span
-              style={{
-                fontSize: '11px',
-                color: 'var(--color-text-secondary)',
-                fontFamily: 'monospace',
-              }}
-            >
-              powered by eCash
-            </span>
-          </div>
+            Proof of Writing
+          </span>
         </Link>
 
         <div className="hidden min-w-0 flex-1 items-center justify-between gap-3 md:flex">
