@@ -49,6 +49,7 @@ export default function PublicPostPage() {
   const payLastHandledTxidRef = useRef('')
 
   const [commentCount, setCommentCount] = useState(0)
+  const [unlockCount, setUnlockCount] = useState(0)
   const [comments, setComments] = useState([])
   const [commentsLoading, setCommentsLoading] = useState(false)
   const [commentsError, setCommentsError] = useState(null)
@@ -134,6 +135,22 @@ export default function PublicPostPage() {
     }
   }, [])
 
+  const fetchUnlockCount = useCallback(async (postId) => {
+    if (!postId) return
+    try {
+      const res = await fetch(
+        `/api/unlock-count/${encodeURIComponent(postId)}`,
+        { cache: 'no-store' },
+      )
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && Number.isFinite(Number(data?.count))) {
+        setUnlockCount(Number(data.count))
+      }
+    } catch {
+      /* ignore count fetch errors */
+    }
+  }, [])
+
   const fetchComments = useCallback(async (postId) => {
     if (!postId) return
     setCommentsLoading(true)
@@ -197,7 +214,8 @@ export default function PublicPostPage() {
   useEffect(() => {
     if (!post?.id) return
     void fetchCommentCount(post.id)
-  }, [post?.id, fetchCommentCount])
+    void fetchUnlockCount(post.id)
+  }, [post?.id, fetchCommentCount, fetchUnlockCount])
 
   useEffect(() => {
     if (!post?.author_id) return
@@ -442,6 +460,7 @@ export default function PublicPostPage() {
             payTxPollRef.current = null
           }
           void persistReaderAfterPaywallUnlock(latestTxid)
+          void fetchUnlockCount(post.id)
           return
         }
 
@@ -462,6 +481,7 @@ export default function PublicPostPage() {
               payTxPollRef.current = null
             }
             void persistReaderAfterPaywallUnlock(latestTxid)
+            void fetchUnlockCount(post.id)
           }
         }
       } catch {
@@ -473,7 +493,12 @@ export default function PublicPostPage() {
     payTxPollRef.current = setInterval(() => {
       void checkLatest()
     }, 3000)
-  }, [authorAddressForLatestTx, persistReaderAfterPaywallUnlock, post?.id])
+  }, [
+    authorAddressForLatestTx,
+    fetchUnlockCount,
+    persistReaderAfterPaywallUnlock,
+    post?.id,
+  ])
 
   const handlePostComment = useCallback(async () => {
     if (!post?.id || !unlocked) return
@@ -601,6 +626,17 @@ export default function PublicPostPage() {
               'Unknown author'
             )}
           </p>
+          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium text-zinc-600 dark:text-zinc-400">
+            <span>
+              🔓 {unlockCount} {unlockCount === 1 ? 'unlock' : 'unlocks'}
+            </span>
+            <span aria-hidden className="text-zinc-300 dark:text-zinc-600">
+              ·
+            </span>
+            <span>
+              💬 {commentCount} {commentCount === 1 ? 'comment' : 'comments'}
+            </span>
+          </p>
 
           <section className="mt-8">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
@@ -608,9 +644,6 @@ export default function PublicPostPage() {
             </h2>
             <p className="mt-2 whitespace-pre-wrap text-base leading-7 text-zinc-800 dark:text-zinc-200">
               {post.teaser}
-            </p>
-            <p className="mt-4 text-sm font-medium text-zinc-600 dark:text-zinc-400">
-              💬 {commentCount} {commentCount === 1 ? 'comment' : 'comments'}
             </p>
           </section>
 
