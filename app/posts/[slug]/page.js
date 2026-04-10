@@ -192,6 +192,17 @@ export default function PublicPostPage() {
   }, [post?.id, checkUnlock])
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    function onReaderLoggedOut() {
+      setUnlocked(false)
+    }
+    window.addEventListener('readerLoggedOut', onReaderLoggedOut)
+    return () => {
+      window.removeEventListener('readerLoggedOut', onReaderLoggedOut)
+    }
+  }, [])
+
+  useEffect(() => {
     if (!post?.id) return
     void fetchCommentCount(post.id)
   }, [post?.id, fetchCommentCount])

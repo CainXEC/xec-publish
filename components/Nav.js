@@ -182,6 +182,9 @@ export default function Nav({
     } catch {
       /* ignore */
     }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('readerLoggedOut'))
+    }
     onReaderLogoutExtraRef.current?.()
   }, [stopReaderTxPolling])
 
