@@ -50,12 +50,15 @@ function commentCountFromPost(post) {
   return Number.isFinite(n) ? n : 0
 }
 
+/** Maps RPC rows `{ post_id, count }` (from get_unlock_counts / get_comment_counts) by post id. */
 function countRowsByPostId(rows) {
   const map = {}
   if (!Array.isArray(rows)) return map
   for (const r of rows) {
     const id = r.post_id
-    if (id != null) map[id] = (map[id] ?? 0) + 1
+    if (id == null) continue
+    const n = typeof r.count === 'number' ? r.count : Number(r.count)
+    map[id] = Number.isFinite(n) ? n : 0
   }
   return map
 }
@@ -192,6 +195,7 @@ export default function HomePage() {
       // CREATE INDEX IF NOT EXISTS idx_posts_published_created ON posts (published, created_at DESC);
       // CREATE INDEX IF NOT EXISTS idx_posts_published_author ON posts (published, author_id);
       // CREATE INDEX IF NOT EXISTS idx_unlocks_post_id ON unlocks (post_id);
+      // Requires RPCs: get_unlock_counts(post_ids), get_comment_counts(post_ids) returning { post_id, count }.
       const { data, error } = await supabase
         .from('posts')
         .select(
@@ -212,16 +216,12 @@ export default function HomePage() {
         let merged = rows
         const postIds = rows.map((p) => p.id).filter(Boolean)
         if (postIds.length > 0) {
-          const [unlockRes, commentRes] = await Promise.all([
-            supabase.from('unlocks').select('post_id').in('post_id', postIds),
-            supabase.from('comments').select('post_id').in('post_id', postIds),
+          const [{ data: unlockCounts }, { data: commentCounts }] = await Promise.all([
+            supabase.rpc('get_unlock_counts', { post_ids: postIds }),
+            supabase.rpc('get_comment_counts', { post_ids: postIds }),
           ])
           if (cancelled) return
-          merged = mergeUnlockAndCommentCounts(
-            rows,
-            unlockRes.error ? [] : unlockRes.data,
-            commentRes.error ? [] : commentRes.data,
-          )
+          merged = mergeUnlockAndCommentCounts(rows, unlockCounts, commentCounts)
         }
         setFetchedPosts(merged)
         setHasNextPage(rows.length === PAGE_SIZE)
