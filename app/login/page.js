@@ -59,15 +59,18 @@ export default function LoginPage() {
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           Sign in to publish and earn XEC.
         </p>
-        <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-          Don&apos;t have an account?{' '}
+
+        <div className="mt-5 rounded-xl border-2 border-emerald-600 bg-emerald-50 p-4 text-center dark:border-emerald-500 dark:bg-emerald-950/40">
+          <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+            New here? Create an author account to get started.
+          </p>
           <Link
             href="/signup"
-            className="font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
+            className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
           >
-            Sign up
+            Create an account
           </Link>
-        </p>
+        </div>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           {error ? (
@@ -133,13 +136,6 @@ export default function LoginPage() {
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
-
-        <p className="mt-6 text-center text-sm text-zinc-600 dark:text-zinc-400">
-          New here?{' '}
-          <Link href="/signup" className="font-medium text-zinc-900 underline dark:text-zinc-200">
-            Create an account
-          </Link>
-        </p>
       </div>
       </div>
     </div>
