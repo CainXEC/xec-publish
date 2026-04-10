@@ -278,45 +278,27 @@ export default function Nav({
       className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/90 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90"
     >
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-2 px-4 md:px-6">
-        <Link
-          href="/"
-          className="min-w-0 shrink-0"
-          aria-label="Proof of Writing home"
-        >
+        <Link href="/" className="min-w-0 shrink-0" aria-label="Proof of Writing home">
           <div
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
+              display: 'flex',
+              alignItems: 'baseline',
               gap: '8px',
-              padding: '8px 12px',
-              borderRadius: '10px',
-              background:
-                'linear-gradient(135deg, #2ab87e 0%, #178a58 60%, #1fa36a 100%)',
-              border: '1px solid #148050',
             }}
           >
             <span
               style={{
                 fontSize: '17px',
                 fontWeight: 500,
-                color: '#fff',
-                letterSpacing: '-0.01em',
+                color: 'var(--color-text-primary)',
               }}
             >
               Proof of Writing
             </span>
-            <div
-              style={{
-                width: '1px',
-                height: '18px',
-                background: 'rgba(255,255,255,0.35)',
-              }}
-              aria-hidden
-            />
             <span
               style={{
                 fontSize: '11px',
-                color: 'rgba(255,255,255,0.75)',
+                color: 'var(--color-text-secondary)',
                 fontFamily: 'monospace',
               }}
             >
