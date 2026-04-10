@@ -311,28 +311,22 @@ export default function Nav({
       className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/90 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90"
     >
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-2 px-4 md:px-6">
-        <Link href="/" className="min-w-0 shrink-0" aria-label="Proof of Writing home">
-          <span>
-            <span
-              style={{
-                fontSize: '26px',
-                fontWeight: 700,
-                color: '#1D9E75',
-                letterSpacing: '-0.02em',
-              }}
-            >
-              Proof Of{' '}
-            </span>
-            <span
-              style={{
-                fontSize: '26px',
-                fontWeight: 700,
-                color: 'var(--color-text-primary)',
-                letterSpacing: '-0.02em',
-              }}
-            >
-              Writing
-            </span>
+        <Link
+          href="/"
+          className="inline-flex min-w-0 shrink-0 items-center"
+          aria-label="Proof of Writing home"
+        >
+          <span
+            className="inline-flex items-center"
+            style={{
+              fontSize: '28px',
+              fontWeight: 700,
+              letterSpacing: '-0.02em',
+              lineHeight: '36px',
+            }}
+          >
+            <span style={{ color: '#1D9E75' }}>Proof Of </span>
+            <span style={{ color: 'var(--color-text-primary)' }}>Writing</span>
           </span>
         </Link>
 
