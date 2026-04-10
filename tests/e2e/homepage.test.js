@@ -7,7 +7,7 @@ test.describe('Homepage', () => {
 
   test('loads and shows latest articles', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('Latest articles')).toBeVisible()
+    await expect(page.getByText('Read articles by independent writers')).toBeVisible()
   })
 
   test('search filters posts', async ({ page }) => {
