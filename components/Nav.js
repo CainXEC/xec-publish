@@ -280,30 +280,49 @@ export default function Nav({
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-2 px-4 md:px-6">
         <Link
           href="/"
-          className="flex min-w-0 shrink-0 items-center gap-2 text-zinc-900 dark:text-zinc-50"
+          className="min-w-0 shrink-0"
           aria-label="Proof of Writing home"
         >
-          <span
-            className="flex h-7 w-9 shrink-0 items-center justify-center rounded-none bg-[#1D9E75] font-mono text-xs font-semibold leading-none text-white"
-            aria-hidden
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '10px 20px',
+              borderRadius: '10px',
+              background:
+                'linear-gradient(135deg, #2ab87e 0%, #178a58 60%, #1fa36a 100%)',
+              border: '1px solid #148050',
+            }}
           >
-            PoW
-          </span>
-          <span className="flex min-w-0 items-center gap-1.5">
-            <span className="text-[17px] font-medium leading-tight text-zinc-900 dark:text-zinc-50">
+            <span
+              style={{
+                fontSize: '17px',
+                fontWeight: 500,
+                color: '#fff',
+                letterSpacing: '-0.01em',
+              }}
+            >
               Proof of Writing
             </span>
-            <span
-              className="h-[5px] w-[5px] shrink-0 rounded-full bg-[#1D9E75]"
+            <div
+              style={{
+                width: '1px',
+                height: '18px',
+                background: 'rgba(255,255,255,0.35)',
+              }}
               aria-hidden
             />
             <span
-              className="font-mono text-xs leading-tight text-zinc-600 dark:text-zinc-400"
-              style={{ wordSpacing: '-2px' }}
+              style={{
+                fontSize: '11px',
+                color: 'rgba(255,255,255,0.75)',
+                fontFamily: 'monospace',
+              }}
             >
               powered by eCash
             </span>
-          </span>
+          </div>
         </Link>
 
         <div className="hidden min-w-0 flex-1 items-center justify-between gap-3 md:flex">
