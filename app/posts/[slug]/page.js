@@ -7,8 +7,6 @@ import Nav from '@/components/Nav'
 import { buildPaywallBip21, computePaymentSplit } from '@/lib/paymentSplit'
 import { supabase } from '@/lib/supabase-browser'
 
-const WALLET_AUTH_XEC = 5.5
-
 function truncateWallet(address) {
   if (!address || typeof address !== 'string') return 'Anonymous'
   const trimmed = address.trim()
@@ -50,12 +48,6 @@ export default function PublicPostPage() {
   const payBaselineTxidRef = useRef('')
   const payLastHandledTxidRef = useRef('')
 
-  const [walletVerifyBusy, setWalletVerifyBusy] = useState(false)
-  const [walletVerifyError, setWalletVerifyError] = useState(null)
-  const [walletNotPaidMessage, setWalletNotPaidMessage] = useState(false)
-  const walletAuthPollRef = useRef(null)
-  const walletAuthBaselineTxidRef = useRef('')
-  const walletAuthLastHandledTxidRef = useRef('')
   const [commentCount, setCommentCount] = useState(0)
   const [comments, setComments] = useState([])
   const [commentsLoading, setCommentsLoading] = useState(false)
@@ -278,10 +270,6 @@ export default function PublicPostPage() {
 
   useEffect(() => {
     return () => {
-      if (walletAuthPollRef.current) {
-        clearInterval(walletAuthPollRef.current)
-        walletAuthPollRef.current = null
-      }
       if (payTxPollRef.current) {
         clearInterval(payTxPollRef.current)
         payTxPollRef.current = null
@@ -322,15 +310,6 @@ export default function PublicPostPage() {
   const cashtabUrl = bip21Url
     ? `https://cashtab.com/#/send?bip21=${bip21Url}`
     : ''
-  const platformAddressForAuth = platformXecAddress.replace(/^ecash:/, '')
-  const walletAuthCashtabUrl = platformAddressForAuth
-    ? `https://cashtab.com/#/send?bip21=ecash:${platformAddressForAuth}?amount=${WALLET_AUTH_XEC}`
-    : ''
-  const platformAddressForLatestTx = platformXecAddress.startsWith('ecash:')
-    ? platformXecAddress
-    : platformXecAddress
-      ? `ecash:${platformXecAddress}`
-      : ''
   const unlockPriceLabel = formatXecAmount(priceXec)
 
   function openCashtab(url) {
@@ -495,103 +474,6 @@ export default function PublicPostPage() {
       void checkLatest()
     }, 3000)
   }, [authorAddressForLatestTx, persistReaderAfterPaywallUnlock, post?.id])
-
-  const processWalletAuthTxid = useCallback(
-    async (txid) => {
-      if (!post?.id || !txid) return
-      if (walletAuthLastHandledTxidRef.current === txid) return
-      walletAuthLastHandledTxidRef.current = txid
-
-      const verifyRes = await fetch('/api/verify-wallet-auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ txid }),
-      })
-      const verifyData = await verifyRes.json().catch(() => ({}))
-      if (!verifyRes.ok) {
-        throw new Error(verifyData.error || 'Could not verify wallet payment.')
-      }
-
-      const walletAddress = verifyData.walletAddress?.trim?.() || ''
-      const unlockedPostIds = Array.isArray(verifyData.unlockedPostIds)
-        ? verifyData.unlockedPostIds
-        : []
-
-      if (walletAddress) {
-        localStorage.setItem('readerWalletAddress', walletAddress)
-      }
-
-      if (!unlockedPostIds.includes(post.id)) {
-        setWalletNotPaidMessage(true)
-        throw new Error('This wallet has not paid for this article yet.')
-      }
-
-      const ok = await checkUnlock(post.id, walletAddress || undefined)
-      if (!ok) {
-        throw new Error(
-          'Wallet verified but unlock cookie could not be set yet. Please try again.',
-        )
-      }
-      setUnlocked(true)
-      setPollingActive(false)
-    },
-    [post?.id, checkUnlock],
-  )
-
-  const startWalletAuthAutoVerify = useCallback(async () => {
-    if (!platformAddressForLatestTx || !post?.id) return
-
-    if (walletAuthPollRef.current) {
-      clearInterval(walletAuthPollRef.current)
-      walletAuthPollRef.current = null
-    }
-
-    setWalletVerifyBusy(true)
-    setWalletVerifyError(null)
-    setWalletNotPaidMessage(false)
-
-    try {
-      const baselineRes = await fetch(
-        `/api/latest-tx/${encodeURIComponent(platformAddressForLatestTx)}`,
-      )
-      const baselineData = await baselineRes.json().catch(() => ({}))
-      walletAuthBaselineTxidRef.current =
-        baselineRes.ok && baselineData.txid ? baselineData.txid : ''
-    } catch {
-      walletAuthBaselineTxidRef.current = ''
-    }
-
-    const checkLatest = async () => {
-      try {
-        const latestTxRes = await fetch(
-          `/api/latest-tx/${encodeURIComponent(platformAddressForLatestTx)}`,
-        )
-        const latestTxData = await latestTxRes.json().catch(() => ({}))
-        const latestTxid = latestTxRes.ok ? latestTxData.txid : ''
-        if (!latestTxid) return
-        if (latestTxid === walletAuthBaselineTxidRef.current) return
-
-        await processWalletAuthTxid(latestTxid)
-        if (walletAuthPollRef.current) {
-          clearInterval(walletAuthPollRef.current)
-          walletAuthPollRef.current = null
-        }
-        setWalletVerifyBusy(false)
-      } catch (err) {
-        setWalletVerifyError(err?.message || 'Could not verify wallet payment.')
-        if (walletAuthPollRef.current) {
-          clearInterval(walletAuthPollRef.current)
-          walletAuthPollRef.current = null
-        }
-        setWalletVerifyBusy(false)
-      }
-    }
-
-    void checkLatest()
-    walletAuthPollRef.current = setInterval(() => {
-      void checkLatest()
-    }, 3000)
-  }, [platformAddressForLatestTx, post?.id, processWalletAuthTxid])
 
   const handlePostComment = useCallback(async () => {
     if (!post?.id || !unlocked) return
@@ -849,16 +731,13 @@ export default function PublicPostPage() {
 
           {showPaywall ? (
             <section className="mt-10 rounded-xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-700 dark:bg-zinc-950">
-              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                Pay {unlockPriceLabel} XEC to Unlock
-              </h3>
               {bip21Url ? (
                 <>
                   <button
                     type="button"
                     disabled={payBusy}
                     onClick={handlePayToUnlock}
-                    className="mt-5 inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60 dark:bg-emerald-400 dark:text-emerald-950"
+                    className="inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60 dark:bg-emerald-400 dark:text-emerald-950"
                   >
                     {payBusy ? 'Opening wallet…' : `Pay ${unlockPriceLabel} XEC to Unlock`}
                   </button>
@@ -887,39 +766,6 @@ export default function PublicPostPage() {
                       </p>
                     </div>
                   ) : null}
-
-                  <div className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-700">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPollingActive(true)
-                        openCashtab(walletAuthCashtabUrl)
-                        void startWalletAuthAutoVerify()
-                      }}
-                      disabled={walletVerifyBusy || !walletAuthCashtabUrl}
-                      className="rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:hover:bg-zinc-900"
-                    >
-                      {walletVerifyBusy ? 'Watching for wallet tx…' : 'Connect Wallet'}
-                    </button>
-
-                    {walletVerifyBusy ? (
-                      <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-                        Waiting for wallet verification payment…
-                      </p>
-                    ) : null}
-
-                    {walletNotPaidMessage ? (
-                      <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-                        This wallet has not paid for this article yet
-                      </p>
-                    ) : null}
-
-                    {walletVerifyError ? (
-                      <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
-                        {walletVerifyError}
-                      </p>
-                    ) : null}
-                  </div>
                 </>
               ) : (
                 <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
