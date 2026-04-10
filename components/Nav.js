@@ -410,7 +410,7 @@ export default function Nav({
         }`}
       >
         <nav
-          className="mx-auto max-w-5xl space-y-4 px-4 py-4"
+          className="mx-auto flex max-w-5xl flex-col gap-2 px-4 pt-2 pb-3"
           aria-label="Mobile navigation"
         >
           {showPostSearch && typeof onPostSearchChange === 'function' ? (
@@ -446,72 +446,66 @@ export default function Nav({
             </p>
           ) : null}
 
-          <div className="flex flex-col gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-            {readerWalletAddress ? (
-              <button
-                type="button"
-                onClick={() => {
-                  void handleReaderLogout()
-                  closeMobileNav()
-                }}
-                title={readerWalletAddress}
-                className="flex w-full flex-nowrap items-center justify-between gap-2 whitespace-nowrap rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-left text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/50"
-              >
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
-                  aria-hidden
-                />
-                <span className="min-w-0 flex-1 truncate text-center font-mono">
-                  {truncateAddress(readerWalletAddress)}
-                </span>
-                <span className="shrink-0 text-zinc-700 dark:text-emerald-100">
-                  Logout
-                </span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  handleReaderLogin()
-                  closeMobileNav()
-                }}
-                disabled={readerLoginBusy}
-                className="w-full rounded-lg border border-emerald-300 bg-emerald-50 py-2.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950"
-              >
-                {readerLoginBusy ? 'Waiting for payment...' : 'Reader Login'}
-              </button>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-            {authorLoggedIn ? (
-              <Link
-                href="/dashboard"
-                onClick={closeMobileNav}
-                className="block rounded-lg bg-zinc-900 py-2.5 text-center text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-              >
-                Dashboard
-              </Link>
-            ) : (
-              <Link
-                href="/signup"
-                onClick={closeMobileNav}
-                className="block rounded-lg bg-emerald-600 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
-              >
-                Start Writing
-              </Link>
-            )}
-          </div>
-
-          <div className="border-t border-zinc-200 pt-4 dark:border-zinc-800">
-            <Link
-              href="/leaderboard"
-              onClick={closeMobileNav}
-              className="block w-full rounded-lg border border-zinc-300 bg-white py-2.5 text-center text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          {readerWalletAddress ? (
+            <button
+              type="button"
+              onClick={() => {
+                void handleReaderLogout()
+                closeMobileNav()
+              }}
+              title={readerWalletAddress}
+              className="flex w-full flex-nowrap items-center justify-between gap-2 whitespace-nowrap rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-left text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/50"
             >
-              Leaderboard
+              <span
+                className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
+                aria-hidden
+              />
+              <span className="min-w-0 flex-1 truncate text-center font-mono">
+                {truncateAddress(readerWalletAddress)}
+              </span>
+              <span className="shrink-0 text-zinc-700 dark:text-emerald-100">
+                Logout
+              </span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                handleReaderLogin()
+                closeMobileNav()
+              }}
+              disabled={readerLoginBusy}
+              className="w-full rounded-lg border border-emerald-300 bg-emerald-50 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950"
+            >
+              {readerLoginBusy ? 'Waiting for payment...' : 'Reader Login'}
+            </button>
+          )}
+
+          {authorLoggedIn ? (
+            <Link
+              href="/dashboard"
+              onClick={closeMobileNav}
+              className="block rounded-lg bg-zinc-900 py-2 text-center text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+            >
+              Dashboard
             </Link>
-          </div>
+          ) : (
+            <Link
+              href="/signup"
+              onClick={closeMobileNav}
+              className="block rounded-lg bg-emerald-600 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
+            >
+              Start Writing
+            </Link>
+          )}
+
+          <Link
+            href="/leaderboard"
+            onClick={closeMobileNav}
+            className="block w-full rounded-lg border border-zinc-300 bg-white py-2 text-center text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          >
+            Leaderboard
+          </Link>
         </nav>
       </div>
     </header>
