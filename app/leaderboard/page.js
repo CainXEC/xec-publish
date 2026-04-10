@@ -140,12 +140,16 @@ export default function LeaderboardPage() {
           </p>
         </div>
 
-        <div className="mb-6 flex flex-wrap gap-2" role="group" aria-label="Sort leaderboard">
+        <div
+          className="mb-6 flex w-full flex-col gap-2 md:flex-row md:flex-wrap"
+          role="group"
+          aria-label="Sort leaderboard"
+        >
           <button
             type="button"
             aria-pressed={sortMode === 'unlocks'}
             onClick={() => setSortMode('unlocks')}
-            className={sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}
+            className={`w-full md:w-auto ${sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}`}
           >
             🔓 Most Unlocked
           </button>
@@ -153,7 +157,7 @@ export default function LeaderboardPage() {
             type="button"
             aria-pressed={sortMode === 'earned'}
             onClick={() => setSortMode('earned')}
-            className={sortMode === 'earned' ? sortBtnActive : sortBtnInactive}
+            className={`w-full md:w-auto ${sortMode === 'earned' ? sortBtnActive : sortBtnInactive}`}
           >
             💰 Most Earned
           </button>
@@ -172,54 +176,99 @@ export default function LeaderboardPage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <table className="w-full min-w-[32rem] text-left text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
-                  <th className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-50">Rank</th>
-                  <th className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-50">Author</th>
-                  <th className="px-4 py-3 text-right font-semibold text-zinc-900 dark:text-zinc-50">
-                    Posts
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold text-zinc-900 dark:text-zinc-50">
-                    Unlocks
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold text-zinc-900 dark:text-zinc-50">
-                    XEC earned (est.)
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
+          <>
+            <div className="md:hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+              <div
+                className="grid grid-cols-[2.5rem_minmax(0,1fr)_2.75rem_5.75rem] items-center gap-x-2 border-b border-zinc-200 bg-zinc-50 px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400"
+                role="row"
+              >
+                <span className="tabular-nums">#</span>
+                <span>Author</span>
+                <span className="text-right">Posts</span>
+                <span className="text-right">
+                  {sortMode === 'unlocks' ? 'Unlocks' : 'Earned'}
+                </span>
+              </div>
+              <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
                 {sortedRows.map((row, index) => (
-                  <tr
-                    key={row.authorId}
-                    className="border-b border-zinc-100 last:border-0 dark:border-zinc-800"
-                  >
-                    <td className="px-4 py-3 font-medium tabular-nums text-zinc-600 dark:text-zinc-400">
-                      #{index + 1}
-                    </td>
-                    <td className="px-4 py-3">
+                  <li key={row.authorId} role="row">
+                    <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_2.75rem_5.75rem] items-center gap-x-2 px-3 py-2.5 text-sm">
+                      <span className="font-medium tabular-nums text-zinc-600 dark:text-zinc-400">
+                        #{index + 1}
+                      </span>
                       <Link
                         href={`/u/${encodeURIComponent(row.username)}`}
-                        className="font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
+                        className="min-w-0 truncate font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
                       >
                         @{row.username}
                       </Link>
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-zinc-800 dark:text-zinc-200">
-                      {row.postCount}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-zinc-800 dark:text-zinc-200">
-                      {row.unlockCount}
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium tabular-nums text-zinc-900 dark:text-zinc-50">
-                      {formatXec(row.earnedXec)} XEC
-                    </td>
-                  </tr>
+                      <span className="text-right tabular-nums text-zinc-800 dark:text-zinc-200">
+                        {row.postCount}
+                      </span>
+                      <span className="text-right tabular-nums text-zinc-900 dark:text-zinc-50">
+                        {sortMode === 'unlocks' ? (
+                          row.unlockCount
+                        ) : (
+                          <span className="block truncate text-xs font-semibold leading-tight">
+                            {formatXec(row.earnedXec)} XEC
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </li>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </ul>
+            </div>
+
+            <div className="hidden overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm md:block dark:border-zinc-800 dark:bg-zinc-900">
+              <table className="w-full min-w-[32rem] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
+                    <th className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-50">Rank</th>
+                    <th className="px-4 py-3 font-semibold text-zinc-900 dark:text-zinc-50">Author</th>
+                    <th className="px-4 py-3 text-right font-semibold text-zinc-900 dark:text-zinc-50">
+                      Posts
+                    </th>
+                    <th className="px-4 py-3 text-right font-semibold text-zinc-900 dark:text-zinc-50">
+                      Unlocks
+                    </th>
+                    <th className="px-4 py-3 text-right font-semibold text-zinc-900 dark:text-zinc-50">
+                      XEC Earned
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedRows.map((row, index) => (
+                    <tr
+                      key={row.authorId}
+                      className="border-b border-zinc-100 last:border-0 dark:border-zinc-800"
+                    >
+                      <td className="px-4 py-3 font-medium tabular-nums text-zinc-600 dark:text-zinc-400">
+                        #{index + 1}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`/u/${encodeURIComponent(row.username)}`}
+                          className="font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
+                        >
+                          @{row.username}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-zinc-800 dark:text-zinc-200">
+                        {row.postCount}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-zinc-800 dark:text-zinc-200">
+                        {row.unlockCount}
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium tabular-nums text-zinc-900 dark:text-zinc-50">
+                        {formatXec(row.earnedXec)} XEC
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </main>
     </div>
