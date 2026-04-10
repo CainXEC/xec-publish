@@ -195,11 +195,9 @@ export default function HomePage() {
 
       <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="mb-10 max-w-2xl">
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
-            Latest articles
-          </h1>
           <p className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
-            Independent writers for independent thinkers. Pay with XEC to unlock the full story.
+            Latest articles by independent writers for independent thinkers. Pay with eCash to
+            unlock the full story.
           </p>
         </div>
 
