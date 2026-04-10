@@ -312,16 +312,27 @@ export default function Nav({
     >
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-2 px-4 md:px-6">
         <Link href="/" className="min-w-0 shrink-0" aria-label="Proof of Writing home">
-          <span
-            style={{
-              fontSize: '22px',
-              fontWeight: 700,
-              color: 'var(--color-text-primary)',
-              letterSpacing: '-0.02em',
-              textTransform: 'uppercase',
-            }}
-          >
-            Proof Of Writing
+          <span>
+            <span
+              style={{
+                fontSize: '26px',
+                fontWeight: 700,
+                color: '#1D9E75',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              Proof Of{' '}
+            </span>
+            <span
+              style={{
+                fontSize: '26px',
+                fontWeight: 700,
+                color: 'var(--color-text-primary)',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              Writing
+            </span>
           </span>
         </Link>
 
