@@ -12,7 +12,9 @@ test.describe('Homepage', () => {
 
   test('search filters posts', async ({ page }) => {
     await page.goto('/')
-    const search = page.locator('#post-search-desktop')
+    const searchButton = page.getByRole('button', { name: /search/i })
+    await searchButton.click()
+    const search = page.getByPlaceholder(/search/i)
     await expect(search).toBeVisible()
     await search.fill('nonexistent post xyz')
     await expect(page.getByText(/No posts found/)).toBeVisible()
