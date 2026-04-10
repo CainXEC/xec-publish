@@ -287,8 +287,8 @@ export default function Nav({
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '10px',
-              padding: '10px 20px',
+              gap: '8px',
+              padding: '8px 12px',
               borderRadius: '10px',
               background:
                 'linear-gradient(135deg, #2ab87e 0%, #178a58 60%, #1fa36a 100%)',
