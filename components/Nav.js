@@ -317,13 +317,12 @@ export default function Nav({
           aria-label="Proof Of Writing home"
         >
           <div
+            className="h-9 flex items-center"
             style={{
-              fontSize: '28px',
+              fontSize: '32px',
               fontWeight: 700,
               letterSpacing: '-0.02em',
-              lineHeight: 1,
-              display: 'flex',
-              alignItems: 'center',
+              lineHeight: '36px',
             }}
           >
             <span style={{ color: '#1D9E75' }}>Proof Of&nbsp;</span>
