@@ -281,51 +281,51 @@ export default function Nav({
         <Link href="/" className="min-w-0 shrink-0" aria-label="Proof of Writing home">
           <span
             style={{
-              fontSize: '20px',
+              fontSize: '22px',
               fontWeight: 700,
               color: 'var(--color-text-primary)',
               letterSpacing: '-0.02em',
             }}
           >
-            Proof of Writing
+            Proof Of Writing
           </span>
         </Link>
 
-        <div className="hidden min-w-0 flex-1 items-center justify-between gap-3 md:flex">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            <Link
-              href="/leaderboard"
-              className="shrink-0 text-sm font-medium text-zinc-700 transition hover:text-zinc-900 hover:underline dark:text-zinc-300 dark:hover:text-zinc-100"
-            >
-              Leaderboard
-            </Link>
-            {showPostSearch && typeof onPostSearchChange === 'function' ? (
-              <div className="relative min-w-0 md:w-52 lg:w-64">
-                <label htmlFor="post-search-desktop" className="sr-only">
-                  Search posts
-                </label>
-                <input
-                  id="post-search-desktop"
-                  type="search"
-                  value={postSearchQuery}
-                  onChange={(e) => onPostSearchChange(e.target.value)}
-                  placeholder="Search…"
-                  autoComplete="off"
-                  className={`h-8 min-h-8 ${searchInputClassName}`}
-                />
-                {postSearchQuery ? (
-                  <button
-                    type="button"
-                    onClick={() => onPostSearchChange('')}
-                    className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-base leading-none text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                    aria-label="Clear search"
-                  >
-                    ×
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
+        <div className="hidden min-w-0 flex-1 items-center gap-3 md:flex">
+          {showPostSearch && typeof onPostSearchChange === 'function' ? (
+            <div className="relative min-w-0 flex-1 md:max-w-md lg:max-w-lg">
+              <label htmlFor="post-search-desktop" className="sr-only">
+                Search posts
+              </label>
+              <input
+                id="post-search-desktop"
+                type="search"
+                value={postSearchQuery}
+                onChange={(e) => onPostSearchChange(e.target.value)}
+                placeholder="Search…"
+                autoComplete="off"
+                className={`h-8 min-h-8 ${searchInputClassName}`}
+              />
+              {postSearchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => onPostSearchChange('')}
+                  className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-base leading-none text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                  aria-label="Clear search"
+                >
+                  ×
+                </button>
+              ) : null}
+            </div>
+          ) : (
+            <div className="min-w-0 flex-1" aria-hidden />
+          )}
+          <Link
+            href="/leaderboard"
+            className="shrink-0 text-sm font-medium text-zinc-700 transition hover:text-zinc-900 hover:underline dark:text-zinc-300 dark:hover:text-zinc-100"
+          >
+            Leaderboard
+          </Link>
           <div className="flex shrink-0 flex-col items-end gap-1">
             <div className="flex shrink-0 items-center gap-3">
               <ThemeToggle />
