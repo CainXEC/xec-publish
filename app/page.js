@@ -368,7 +368,7 @@ export default function HomePage() {
     }
   }, [currentPage, timeFilter, sortMode])
 
-  const showPostSearch = !loading && !loadError && fetchedPosts.length > 0
+  const showPostSearch = !loading && !loadError
   const showPaginationRow =
     displayPosts.length > 0 && (currentPage > 1 || hasNextPage)
 
@@ -404,7 +404,9 @@ export default function HomePage() {
         ) : fetchedPosts.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-8 py-16 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
             <p className="text-lg text-zinc-700 dark:text-zinc-300">
-              No posts yet. Be the first to write something.
+              {trimmedPostSearch
+                ? `No posts found for '${trimmedPostSearch}'`
+                : 'No posts yet. Be the first to write something.'}
             </p>
           </div>
         ) : (
@@ -479,7 +481,7 @@ export default function HomePage() {
             {displayPosts.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-8 py-12 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
                 <p className="text-sm text-zinc-700 dark:text-zinc-300">
-                  {trimmedPostSearch && readerFilteredPosts.length > 0
+                  {trimmedPostSearch
                     ? `No posts found for '${trimmedPostSearch}'`
                     : 'No posts match this filter.'}
                 </p>

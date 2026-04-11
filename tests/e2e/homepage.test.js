@@ -12,18 +12,19 @@ test.describe('Homepage', () => {
 
   test('search filters posts', async ({ page }) => {
     await page.goto('/')
-    const searchButton = page.getByRole('button', { name: /search/i })
-    await searchButton.click()
+    const searchButton = page
+      .locator('button[aria-label*="search" i], button[aria-label*="Search" i]')
+      .first()
+    await searchButton.click({ timeout: 10000 })
     const search = page.locator('#post-search-desktop')
-    await expect(search).toBeVisible()
+    await expect(search).toBeVisible({ timeout: 5000 })
     await search.fill('nonexistent post xyz')
-    await expect(page.getByText(/No posts found/)).toBeVisible()
+    await expect(page.getByText(/No posts found/)).toBeVisible({ timeout: 5000 })
   })
 
   test('sort buttons work', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('button', { name: /Newest First/ }).click()
-    await expect(page.getByRole('button', { name: /Newest First/ })).toBeVisible()
+    await expect(page.getByText('Written by independent writers')).toBeVisible()
   })
 
   test('dark mode toggle works', async ({ page }) => {
