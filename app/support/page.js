@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import Nav from '@/components/Nav'
 
 const faqItems = [
@@ -29,14 +28,25 @@ const faqItems = [
     q: "I paid but the article didn't unlock — what do I do?",
     a: (
       <>
-        Reach out to us on Telegram or X. Links can be found on the{' '}
-        <Link
-          href="/about"
+        Reach out on{' '}
+        <a
+          href="https://t.me/proofofwriting"
+          target="_blank"
+          rel="noopener noreferrer"
           className="font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
         >
-          About
-        </Link>{' '}
-        page.
+          Telegram
+        </a>{' '}
+        or{' '}
+        <a
+          href="https://x.com/ProofofWriting"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
+        >
+          X
+        </a>{' '}
+        and we&apos;ll make it right.
       </>
     ),
   },
