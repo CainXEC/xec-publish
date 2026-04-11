@@ -3,7 +3,20 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { isValidCashAddress } from 'ecashaddrjs'
 import { supabase } from '@/lib/supabase-browser'
+
+function isValidXecAddress(address) {
+  try {
+    return isValidCashAddress(address.trim(), 'ecash')
+  } catch {
+    return false
+  }
+}
+
+const XEC_ADDRESS_INVALID_MESSAGE =
+  'Please enter a valid eCash (XEC) wallet address. It should start with ecash:q...'
+const XEC_WALLET_ADDRESS_HELPER = 'Your address should start with ecash:q'
 
 function formatSupabaseErrorForUser(err) {
   if (!err) return 'Update failed.'
@@ -61,6 +74,10 @@ export default function ProfileSettingsForm({
       }
       if (!xecTrimmed) {
         setSubmitError('XEC wallet address is required.')
+        return
+      }
+      if (!isValidXecAddress(xecAddress)) {
+        setSubmitError(XEC_ADDRESS_INVALID_MESSAGE)
         return
       }
 
@@ -218,6 +235,9 @@ export default function ProfileSettingsForm({
                 onChange={(e) => setXecAddress(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 font-mono text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-500"
               />
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
+                {XEC_WALLET_ADDRESS_HELPER}
+              </p>
             </div>
 
             {submitError ? (
