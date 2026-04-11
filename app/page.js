@@ -369,6 +369,8 @@ export default function HomePage() {
   }, [currentPage, timeFilter, sortMode])
 
   const showPostSearch = !loading && !loadError && fetchedPosts.length > 0
+  const showPaginationRow =
+    displayPosts.length > 0 && (currentPage > 1 || hasNextPage)
 
   return (
     <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
@@ -537,18 +539,38 @@ export default function HomePage() {
             ) : null}
           </>
         )}
-        <div className="mt-8 flex items-center justify-between gap-2 border-t border-zinc-200 pt-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-          <div className="min-w-0 flex-1">
-            {displayPosts.length > 0 && currentPage > 1 ? (
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                className="cursor-pointer rounded px-0.5 py-0 text-sm text-zinc-500 transition hover:text-zinc-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 dark:text-zinc-400 dark:hover:text-zinc-200 dark:focus-visible:ring-zinc-500 dark:focus-visible:ring-offset-zinc-950"
-              >
-                ← Page {currentPage - 1}
-              </button>
-            ) : null}
-          </div>
+        {showPaginationRow ? (
+          <nav
+            aria-label="Pagination"
+            className="mt-8 flex items-center justify-between gap-3 border-t border-zinc-200 pt-2.5 text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-500"
+          >
+            <div className="min-w-0 flex-1">
+              {currentPage > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="cursor-pointer p-0 text-left font-normal text-inherit underline-offset-2 transition hover:text-zinc-700 hover:underline focus:outline-none focus-visible:underline dark:hover:text-zinc-300"
+                >
+                  ← Page {currentPage - 1}
+                </button>
+              ) : null}
+            </div>
+            <div className="min-w-0 flex-1 text-right">
+              {hasNextPage ? (
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                  className="cursor-pointer p-0 text-right font-normal text-inherit underline-offset-2 transition hover:text-zinc-700 hover:underline focus:outline-none focus-visible:underline dark:hover:text-zinc-300"
+                >
+                  Page {currentPage + 1} →
+                </button>
+              ) : null}
+            </div>
+          </nav>
+        ) : null}
+        <div
+          className={`flex justify-center border-t border-zinc-200 pt-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400 ${showPaginationRow ? 'mt-3' : 'mt-8'}`}
+        >
           <div className="flex-shrink-0 whitespace-nowrap text-center">
             <Link
               href="/about"
@@ -570,17 +592,6 @@ export default function HomePage() {
             >
               Leaderboard
             </Link>
-          </div>
-          <div className="min-w-0 flex-1 text-right">
-            {displayPosts.length > 0 && hasNextPage ? (
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => p + 1)}
-                className="cursor-pointer rounded px-0.5 py-0 text-sm text-zinc-500 transition hover:text-zinc-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 dark:text-zinc-400 dark:hover:text-zinc-200 dark:focus-visible:ring-zinc-500 dark:focus-visible:ring-offset-zinc-950"
-              >
-                Page {currentPage + 1} →
-              </button>
-            ) : null}
           </div>
         </div>
       </main>
