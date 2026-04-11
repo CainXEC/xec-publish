@@ -5,111 +5,72 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Nav from '@/components/Nav'
 import { supabase } from '@/lib/supabase-browser'
 
-const AUTHOR_SHARE = 0.94
-
 function formatXec(amount) {
   const n = Number(amount)
   if (!Number.isFinite(n)) return '0'
   return n.toFixed(8).replace(/\.?0+$/, '')
 }
 
+function getSinceTimestamp(timeFilter) {
+  if (timeFilter === 'all') return null
+  const now = new Date()
+  if (timeFilter === '24h') now.setHours(now.getHours() - 24)
+  if (timeFilter === '7d') now.setDate(now.getDate() - 7)
+  if (timeFilter === '30d') now.setDate(now.getDate() - 30)
+  if (timeFilter === '1y') now.setFullYear(now.getFullYear() - 1)
+  return now.toISOString()
+}
+
+const TIME_FILTER_OPTIONS = [
+  { id: '24h', label: '24h' },
+  { id: '7d', label: '7d' },
+  { id: '30d', label: '30d' },
+  { id: '1y', label: '1y' },
+  { id: 'all', label: 'All time' },
+]
+
 const sortBtnActive =
   'rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400'
 const sortBtnInactive =
   'rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900'
 
-async function fetchUnlocksBatched(postIds) {
-  if (postIds.length === 0) return []
-  const chunkSize = 500
-  const rows = []
-  for (let i = 0; i < postIds.length; i += chunkSize) {
-    const chunk = postIds.slice(i, i + chunkSize)
-    const { data, error } = await supabase
-      .from('unlocks')
-      .select('post_id, amount_xec')
-      .in('post_id', chunk)
-    if (error) throw new Error(error.message)
-    rows.push(...(data ?? []))
-  }
-  return rows
-}
+const timeFilterBtnActive =
+  'rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 md:px-3 md:py-2 md:text-sm dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400'
+const timeFilterBtnInactive =
+  'rounded-lg border border-zinc-300 bg-transparent px-2.5 py-1.5 text-xs font-medium text-zinc-800 transition hover:bg-zinc-50 md:px-3 md:py-2 md:text-sm dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-900'
 
 export default function LeaderboardPage() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [sortMode, setSortMode] = useState('unlocks')
+  const [timeFilter, setTimeFilter] = useState('all')
 
   const load = useCallback(async () => {
     setLoading(true)
     setLoadError(null)
     try {
-      const { data: posts, error: postsError } = await supabase
-        .from('posts')
-        .select('id, author_id')
-        .eq('published', true)
+      const since = getSinceTimestamp(timeFilter)
+      const { data, error } = await supabase.rpc('get_leaderboard', { since })
 
-      if (postsError) throw new Error(postsError.message)
+      if (error) throw new Error(error.message)
 
-      const postList = posts ?? []
-      if (postList.length === 0) {
-        setRows([])
-        setLoading(false)
-        return
-      }
+      const list = (data ?? []).map((r) => ({
+        author_id: r.author_id,
+        username: String(r.username ?? '').trim() || 'unknown',
+        post_count: Number(r.post_count) || 0,
+        total_unlocks: Number(r.total_unlocks) || 0,
+        total_xec: Number(r.total_xec) || 0,
+      }))
 
-      const postById = new Map(postList.map((p) => [p.id, p]))
-      const authorIds = [...new Set(postList.map((p) => p.author_id).filter(Boolean))]
-
-      const { data: authors, error: authorsError } = await supabase
-        .from('authors')
-        .select('id, username')
-        .in('id', authorIds)
-
-      if (authorsError) throw new Error(authorsError.message)
-
-      const authorUsername = new Map((authors ?? []).map((a) => [a.id, a.username ?? '']))
-
-      const postCountByAuthor = new Map()
-      for (const p of postList) {
-        const aid = p.author_id
-        if (!aid) continue
-        postCountByAuthor.set(aid, (postCountByAuthor.get(aid) || 0) + 1)
-      }
-
-      const unlockRows = await fetchUnlocksBatched(postList.map((p) => p.id))
-      const unlockCountByAuthor = new Map()
-      const rawXecByAuthor = new Map()
-
-      for (const u of unlockRows) {
-        const post = postById.get(u.post_id)
-        if (!post?.author_id) continue
-        const aid = post.author_id
-        const amt = Number(u.amount_xec)
-        const safeAmt = Number.isFinite(amt) ? amt : 0
-        unlockCountByAuthor.set(aid, (unlockCountByAuthor.get(aid) || 0) + 1)
-        rawXecByAuthor.set(aid, (rawXecByAuthor.get(aid) || 0) + safeAmt)
-      }
-
-      const built = authorIds.map((authorId) => {
-        const username = (authorUsername.get(authorId) || '').trim() || 'unknown'
-        return {
-          authorId,
-          username,
-          postCount: postCountByAuthor.get(authorId) || 0,
-          unlockCount: unlockCountByAuthor.get(authorId) || 0,
-          earnedXec: (rawXecByAuthor.get(authorId) || 0) * AUTHOR_SHARE,
-        }
-      })
-
-      setRows(built)
+      setRows(list)
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : 'Failed to load leaderboard')
       setRows([])
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [timeFilter])
 
   useEffect(() => {
     void load()
@@ -118,9 +79,17 @@ export default function LeaderboardPage() {
   const sortedRows = useMemo(() => {
     const copy = [...rows]
     if (sortMode === 'earned') {
-      copy.sort((a, b) => b.earnedXec - a.earnedXec || b.unlockCount - a.unlockCount)
+      copy.sort(
+        (a, b) =>
+          b.total_xec - a.total_xec ||
+          b.total_unlocks - a.total_unlocks,
+      )
     } else {
-      copy.sort((a, b) => b.unlockCount - a.unlockCount || b.earnedXec - a.earnedXec)
+      copy.sort(
+        (a, b) =>
+          b.total_unlocks - a.total_unlocks ||
+          b.total_xec - a.total_xec,
+      )
     }
     return copy
   }, [rows, sortMode])
@@ -140,7 +109,7 @@ export default function LeaderboardPage() {
         </div>
 
         <div
-          className="mb-6 flex w-full gap-2"
+          className="mb-4 flex w-full gap-2"
           role="group"
           aria-label="Sort leaderboard"
         >
@@ -160,6 +129,26 @@ export default function LeaderboardPage() {
           >
             💰 Most Earned
           </button>
+        </div>
+
+        <div
+          className="mb-6 flex flex-wrap items-center gap-1.5 md:gap-2"
+          role="group"
+          aria-label="Leaderboard time range"
+        >
+          {TIME_FILTER_OPTIONS.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              aria-pressed={timeFilter === opt.id}
+              onClick={() => setTimeFilter(opt.id)}
+              className={
+                timeFilter === opt.id ? timeFilterBtnActive : timeFilterBtnInactive
+              }
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
 
         {loading ? (
@@ -190,7 +179,7 @@ export default function LeaderboardPage() {
               </div>
               <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
                 {sortedRows.map((row, index) => (
-                  <li key={row.authorId} role="row">
+                  <li key={row.author_id} role="row">
                     <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_2.75rem_5.75rem] items-center gap-x-2 px-3 py-2.5 text-sm">
                       <span className="font-medium tabular-nums text-zinc-600 dark:text-zinc-400">
                         #{index + 1}
@@ -202,14 +191,14 @@ export default function LeaderboardPage() {
                         @{row.username}
                       </Link>
                       <span className="text-right tabular-nums text-zinc-800 dark:text-zinc-200">
-                        {row.postCount}
+                        {row.post_count}
                       </span>
                       <span className="text-right tabular-nums text-zinc-900 dark:text-zinc-50">
                         {sortMode === 'unlocks' ? (
-                          row.unlockCount
+                          row.total_unlocks
                         ) : (
                           <span className="block truncate text-xs font-semibold leading-tight">
-                            {formatXec(row.earnedXec)} XEC
+                            {formatXec(row.total_xec)} XEC
                           </span>
                         )}
                       </span>
@@ -239,7 +228,7 @@ export default function LeaderboardPage() {
                 <tbody>
                   {sortedRows.map((row, index) => (
                     <tr
-                      key={row.authorId}
+                      key={row.author_id}
                       className="border-b border-zinc-100 last:border-0 dark:border-zinc-800"
                     >
                       <td className="px-4 py-3 font-medium tabular-nums text-zinc-600 dark:text-zinc-400">
@@ -254,13 +243,13 @@ export default function LeaderboardPage() {
                         </Link>
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums text-zinc-800 dark:text-zinc-200">
-                        {row.postCount}
+                        {row.post_count}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums text-zinc-800 dark:text-zinc-200">
-                        {row.unlockCount}
+                        {row.total_unlocks}
                       </td>
                       <td className="px-4 py-3 text-right font-medium tabular-nums text-zinc-900 dark:text-zinc-50">
-                        {formatXec(row.earnedXec)} XEC
+                        {formatXec(row.total_xec)} XEC
                       </td>
                     </tr>
                   ))}
