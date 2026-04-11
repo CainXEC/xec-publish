@@ -8,13 +8,8 @@ export default function AboutPage() {
       <Nav />
       <main className="mx-auto max-w-2xl px-4 py-12 sm:px-6 sm:py-16">
         <section className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-10">
-          <h1
-            className="text-3xl sm:text-4xl"
-            style={{ fontWeight: 700, letterSpacing: '-0.02em' }}
-          >
-            <span style={{ color: 'var(--color-text-primary)' }}>About </span>
-            <span style={{ color: '#1D9E75' }}>Proof Of </span>
-            <span style={{ color: 'var(--color-text-primary)' }}>Writing</span>
+          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
+            About
           </h1>
           <div className="mt-5 space-y-4 text-base leading-relaxed text-zinc-700 dark:text-zinc-300">
             <p>
@@ -23,17 +18,20 @@ export default function AboutPage() {
               content.
             </p>
             <p>
-              The platform never touches your funds and only charges a 6% fee. By comparison,
-              Substack charges 10% plus an additional 3-6% for credit card processing.
+              While platforms like Substack charge a 10% fee (plus 3-6% on top for credit card
+              processing), Proof of Writing only charges 6% total. In addition, since this platform
+              runs on eCash, when a reader sends a transaction, their wallet automatically splits the
+              payment between the author&apos;s address and the platform address so Proof of Writing
+              never touches your funds. Notably, eCash transaction fees are essentially free.
             </p>
             <p>
               Furthermore, only Proof Of Writing allows users to unlock content on a per article
-              basis, and by leveraging the eCash network, authors can charge as little or as much as
-              they want while keeping a greater percentage of their revenue.
+              basis, not to mention authors can charge as little or as much as they want while keeping
+              a greater percentage of their revenue.
             </p>
             <p>
-              If you believe in the power of words, and a world that values substance over slop,
-              Proof Of Writing is for you.
+              If you believe in the power of words, and want a world that values substance over slop,
+              Proof Of Writing was made for you.
             </p>
           </div>
           <p className="mt-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
