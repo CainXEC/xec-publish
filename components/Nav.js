@@ -308,42 +308,20 @@ export default function Nav({
   const navLogo = (
     <Link
       href="/"
-      className="pointer-events-auto inline-flex h-9 items-center"
-      aria-label="PROOF of WRITING home"
-      style={{ color: 'var(--color-text-primary)' }}
+      className="pointer-events-auto inline-flex items-center"
+      aria-label="Proof Of Writing home"
     >
       <span
-        className="inline-flex items-baseline whitespace-nowrap"
-        style={{ letterSpacing: '-0.02em' }}
+        style={{
+          fontSize: '38px',
+          fontFamily: "'American Typewriter', serif",
+          color: 'var(--color-text-primary)',
+          letterSpacing: '0.04em',
+          lineHeight: '1',
+          textTransform: 'uppercase',
+        }}
       >
-        <span
-          style={{
-            fontSize: '34px',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-          }}
-        >
-          PROOF
-        </span>
-        <span
-          style={{
-            fontSize: '30px',
-            fontWeight: 400,
-            textTransform: 'lowercase',
-          }}
-        >
-          {' '}
-          of{' '}
-        </span>
-        <span
-          style={{
-            fontSize: '34px',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-          }}
-        >
-          WRITING
-        </span>
+        proof of writing
       </span>
     </Link>
   )
