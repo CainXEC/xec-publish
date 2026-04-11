@@ -18,6 +18,9 @@ const XEC_ADDRESS_INVALID_MESSAGE =
   'Please enter a valid eCash (XEC) wallet address. It should start with ecash:q...'
 const XEC_WALLET_ADDRESS_HELPER = 'Your address should start with ecash:q'
 
+const SIGNUP_SUCCESS_MESSAGE =
+  "Account created! Please check your email and click the confirmation link to activate your account. Don't forget to check your spam folder."
+
 export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -57,6 +60,11 @@ export default function SignupPage() {
         return
       }
 
+      setEmail('')
+      setPassword('')
+      setUsername('')
+      setBio('')
+      setXecAddress('')
       setSuccess(true)
     } finally {
       setLoading(false)
@@ -76,19 +84,17 @@ export default function SignupPage() {
         </p>
 
         {success ? (
-          <div className="mt-6 space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/40">
+          <div
+            className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/40"
+            role="status"
+          >
             <p className="text-sm font-medium text-emerald-900 dark:text-emerald-200">
-              Please check your email to confirm your account.
+              {SIGNUP_SUCCESS_MESSAGE}
             </p>
-            <Link
-              href="/login"
-              className="inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
-            >
-              Go to author login
-            </Link>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+        ) : null}
+
+        <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
             <div>
               <label
                 htmlFor="email"
@@ -197,9 +203,12 @@ export default function SignupPage() {
               {loading ? 'Creating account…' : 'Sign up'}
             </button>
           </form>
-        )}
 
         <p className="mt-6 text-center text-sm text-zinc-600 dark:text-zinc-400">
+          <Link href="/login" className="font-medium text-zinc-900 underline dark:text-zinc-200">
+            Author login
+          </Link>
+          {' · '}
           <Link href="/" className="font-medium text-zinc-900 underline dark:text-zinc-200">
             Back to home
           </Link>
