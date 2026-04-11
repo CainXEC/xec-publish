@@ -1,13 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Nav from '@/components/Nav'
 import { supabase } from '@/lib/supabase-browser'
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const emailJustConfirmed = searchParams.get('confirmed') === 'true'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -61,6 +63,17 @@ export default function LoginPage() {
         </p>
 
         <form method="post" onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+          {emailJustConfirmed ? (
+            <div
+              className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 dark:border-emerald-900/50 dark:bg-emerald-950/40"
+              role="status"
+            >
+              <p className="text-sm font-medium text-emerald-900 dark:text-emerald-200">
+                Email confirmed! Please sign in.
+              </p>
+            </div>
+          ) : null}
+
           {error ? (
             <div
               className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 dark:border-red-900/60 dark:bg-red-950/50"
@@ -137,5 +150,26 @@ export default function LoginPage() {
       </div>
       </div>
     </div>
+  )
+}
+
+function LoginPageFallback() {
+  return (
+    <div className="flex min-h-full flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
+      <Nav />
+      <div className="flex flex-1 flex-col items-center justify-center px-4 py-16">
+        <div className="w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading…</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginPageFallback />}>
+      <LoginPageContent />
+    </Suspense>
   )
 }
