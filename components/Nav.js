@@ -305,194 +305,71 @@ export default function Nav({
     }
   }, [desktopSearchOpen])
 
-  return (
-    <header
-      ref={mobileNavRef}
-      className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/90 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90"
+  const navLogo = (
+    <Link
+      href="/"
+      className="pointer-events-auto inline-flex h-9 items-center"
+      aria-label="PROOF of WRITING home"
+      style={{ color: 'var(--color-text-primary)' }}
     >
-      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-2 px-4 md:px-6">
-        <Link
-          href="/"
-          className="inline-flex shrink-0 items-center"
-          aria-label="Proof Of Writing home"
-        >
-          <div
-            className="h-9 flex items-center"
-            style={{
-              fontSize: '32px',
-              fontWeight: 700,
-              letterSpacing: '-0.02em',
-              lineHeight: '36px',
-              background: 'linear-gradient(to bottom, #1D9E75 0%, #111111 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}
-          >
-            Proof Of Writing
-          </div>
-        </Link>
-
-        <div className="hidden min-w-0 flex-1 items-center gap-3 md:flex">
-          <div className="min-w-0 flex-1" aria-hidden />
-          <div className="flex shrink-0 flex-col items-end gap-1">
-            <div className="flex shrink-0 items-center gap-2">
-              {showPostSearch && typeof onPostSearchChange === 'function' ? (
-                <div ref={desktopSearchRef} className="relative">
-                  <div
-                    className={`overflow-hidden transition-[width,opacity] duration-200 ${
-                      desktopSearchOpen ? 'w-64 opacity-100' : 'w-8 opacity-100'
-                    }`}
-                  >
-                    {desktopSearchOpen ? (
-                      <div className="relative">
-                        <label htmlFor="post-search-desktop" className="sr-only">
-                          Search posts
-                        </label>
-                        <input
-                          ref={desktopSearchInputRef}
-                          id="post-search-desktop"
-                          type="search"
-                          value={postSearchQuery}
-                          onChange={(e) => onPostSearchChange(e.target.value)}
-                          placeholder="Search…"
-                          autoComplete="off"
-                          className={`h-9 min-h-9 w-64 ${searchInputClassName}`}
-                        />
-                        {postSearchQuery ? (
-                          <button
-                            type="button"
-                            onClick={() => onPostSearchChange('')}
-                            className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-base leading-none text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                            aria-label="Clear search"
-                          >
-                            ×
-                          </button>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setDesktopSearchOpen(true)}
-                        className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white text-base leading-none text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-                        aria-label="Open search"
-                      >
-                        <svg
-                          viewBox="0 0 24 24"
-                          aria-hidden
-                          className="h-4 w-4"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <circle cx="11" cy="11" r="7" />
-                          <path d="m20 20-3.5-3.5" />
-                        </svg>
-                        {postSearchQuery ? (
-                          <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-emerald-500" />
-                        ) : null}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ) : null}
-              <ThemeToggle />
-              {readerWalletAddress ? (
-                <div className="flex flex-nowrap items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
-                  <span
-                    className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
-                    aria-hidden
-                  />
-                  <span
-                    className="min-w-0 flex-1 truncate text-center font-mono"
-                    title={readerWalletAddress}
-                  >
-                    {truncateAddress(readerWalletAddress)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => void handleReaderLogout()}
-                    className="shrink-0 rounded px-1.5 py-0.5 text-zinc-700 transition hover:bg-emerald-100 hover:text-zinc-900 dark:text-emerald-100 dark:hover:bg-emerald-900"
-                  >
-                    Logout
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleReaderLogin}
-                  disabled={readerLoginBusy}
-                  className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950"
-                >
-                  {readerLoginBusy ? 'Waiting for payment...' : 'Reader Login'}
-                </button>
-              )}
-              {authorLoggedIn ? (
-                <Link
-                  href="/dashboard"
-                  className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-                >
-                  Dashboard
-                </Link>
-              ) : (
-                <Link
-                  href="/login"
-                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
-                >
-                  Start Writing
-                </Link>
-              )}
-            </div>
-            {readerLoginError ? (
-              <p className="max-w-[14rem] text-right text-xs text-red-600 dark:text-red-400">
-                {readerLoginError}
-              </p>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 md:hidden">
-          <ThemeToggle />
-          <button
-            type="button"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white text-lg leading-none text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-            aria-expanded={mobileNavOpen}
-            aria-controls="mobile-nav-menu"
-            onClick={() => setMobileNavOpen((o) => !o)}
-          >
-            <span aria-hidden>☰</span>
-            <span className="sr-only">
-              {mobileNavOpen ? 'Close menu' : 'Open menu'}
-            </span>
-          </button>
-        </div>
-      </div>
-
-      <div
-        id="mobile-nav-menu"
-        className={`border-t border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-950 md:hidden ${
-          mobileNavOpen ? 'block' : 'hidden'
-        }`}
+      <span
+        className="inline-flex items-baseline whitespace-nowrap"
+        style={{ letterSpacing: '-0.02em' }}
       >
-        <nav
-          className="mx-auto flex max-w-5xl flex-col gap-2 px-4 pt-2 pb-3"
-          aria-label="Mobile navigation"
+        <span
+          style={{
+            fontSize: '34px',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+          }}
         >
-          {showPostSearch && typeof onPostSearchChange === 'function' ? (
-            <div className="relative w-full">
-              <label htmlFor="post-search-mobile" className="sr-only">
+          PROOF
+        </span>
+        <span
+          style={{
+            fontSize: '30px',
+            fontWeight: 400,
+            textTransform: 'lowercase',
+          }}
+        >
+          {' '}
+          of{' '}
+        </span>
+        <span
+          style={{
+            fontSize: '34px',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+          }}
+        >
+          WRITING
+        </span>
+      </span>
+    </Link>
+  )
+
+  const desktopSearch =
+    showPostSearch && typeof onPostSearchChange === 'function' ? (
+      <div ref={desktopSearchRef} className="relative">
+        <div
+          className={`overflow-hidden transition-[width,opacity] duration-200 ${
+            desktopSearchOpen ? 'w-64 opacity-100' : 'w-9 opacity-100'
+          }`}
+        >
+          {desktopSearchOpen ? (
+            <div className="relative">
+              <label htmlFor="post-search-desktop" className="sr-only">
                 Search posts
               </label>
               <input
-                id="post-search-mobile"
+                ref={desktopSearchInputRef}
+                id="post-search-desktop"
                 type="search"
                 value={postSearchQuery}
                 onChange={(e) => onPostSearchChange(e.target.value)}
-                placeholder="Search title, teaser, or author…"
+                placeholder="Search…"
                 autoComplete="off"
-                className={`min-h-10 ${searchInputClassName}`}
+                className={`h-9 min-h-9 w-64 ${searchInputClassName}`}
               />
               {postSearchQuery ? (
                 <button
@@ -505,8 +382,135 @@ export default function Nav({
                 </button>
               ) : null}
             </div>
-          ) : null}
+          ) : (
+            <button
+              type="button"
+              onClick={() => setDesktopSearchOpen(true)}
+              className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white text-base leading-none text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+              aria-label="Open search"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
+              {postSearchQuery ? (
+                <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-emerald-500" />
+              ) : null}
+            </button>
+          )}
+        </div>
+      </div>
+    ) : null
 
+  const readerBlockDesktop = readerWalletAddress ? (
+    <div className="flex flex-nowrap items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
+      <span
+        className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
+        aria-hidden
+      />
+      <span
+        className="min-w-0 flex-1 truncate text-center font-mono"
+        title={readerWalletAddress}
+      >
+        {truncateAddress(readerWalletAddress)}
+      </span>
+      <button
+        type="button"
+        onClick={() => void handleReaderLogout()}
+        className="shrink-0 rounded px-1.5 py-0.5 text-zinc-700 transition hover:bg-emerald-100 hover:text-zinc-900 dark:text-emerald-100 dark:hover:bg-emerald-900"
+      >
+        Logout
+      </button>
+    </div>
+  ) : (
+    <button
+      type="button"
+      onClick={handleReaderLogin}
+      disabled={readerLoginBusy}
+      className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950"
+    >
+      {readerLoginBusy ? 'Waiting for payment...' : 'Reader Login'}
+    </button>
+  )
+
+  const authorCtaDesktop = authorLoggedIn ? (
+    <Link
+      href="/dashboard"
+      className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+    >
+      Dashboard
+    </Link>
+  ) : (
+    <Link
+      href="/login"
+      className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
+    >
+      Start Writing
+    </Link>
+  )
+
+  return (
+    <header
+      ref={mobileNavRef}
+      className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/90 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90"
+    >
+      <div className="relative mx-auto flex h-14 max-w-5xl items-center px-4 md:px-6">
+        <div className="flex min-w-0 flex-1 items-center justify-start gap-2">
+          <button
+            type="button"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white text-lg leading-none text-zinc-800 transition hover:bg-zinc-50 md:hidden dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            aria-expanded={mobileNavOpen}
+            aria-controls="mobile-nav-menu"
+            onClick={() => setMobileNavOpen((o) => !o)}
+          >
+            <span aria-hidden>☰</span>
+            <span className="sr-only">
+              {mobileNavOpen ? 'Close menu' : 'Open menu'}
+            </span>
+          </button>
+          <div className="hidden items-center gap-2 md:flex">
+            {authorCtaDesktop}
+            {readerBlockDesktop}
+          </div>
+        </div>
+
+        <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
+          {navLogo}
+        </div>
+
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+          <div className="hidden items-center gap-2 md:flex">
+            {desktopSearch}
+          </div>
+          <ThemeToggle />
+        </div>
+      </div>
+
+      {readerLoginError ? (
+        <div className="mx-auto hidden max-w-5xl px-4 pb-2 text-end md:block md:px-6">
+          <p className="text-xs text-red-600 dark:text-red-400">{readerLoginError}</p>
+        </div>
+      ) : null}
+
+      <div
+        id="mobile-nav-menu"
+        className={`border-t border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-950 md:hidden ${
+          mobileNavOpen ? 'block' : 'hidden'
+        }`}
+      >
+        <nav
+          className="mx-auto flex max-w-5xl flex-col gap-2 px-4 pt-2 pb-3"
+          aria-label="Mobile navigation"
+        >
           {readerLoginError ? (
             <p className="text-sm text-red-600 dark:text-red-400">
               {readerLoginError}
@@ -557,15 +561,29 @@ export default function Nav({
               Dashboard
             </Link>
           ) : (
-              <Link
-                href="/login"
-                onClick={closeMobileNav}
-                className="block rounded-lg bg-emerald-600 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
-              >
-                Start Writing
-              </Link>
+            <Link
+              href="/login"
+              onClick={closeMobileNav}
+              className="block rounded-lg bg-emerald-600 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
+            >
+              Start Writing
+            </Link>
           )}
 
+          <Link
+            href="/about"
+            onClick={closeMobileNav}
+            className="block w-full rounded-lg border border-zinc-300 bg-white py-2 text-center text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          >
+            About
+          </Link>
+          <Link
+            href="/leaderboard"
+            onClick={closeMobileNav}
+            className="block w-full rounded-lg border border-zinc-300 bg-white py-2 text-center text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          >
+            Leaderboard
+          </Link>
         </nav>
       </div>
     </header>
