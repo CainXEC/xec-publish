@@ -384,11 +384,11 @@ export default function HomePage() {
 
       <main className="mx-auto max-w-5xl px-4 pt-2 pb-10 sm:px-6 sm:pt-2.5 sm:pb-14">
         <div
-          className="w-full max-w-2xl mx-auto text-center"
+          className="max-w-2xl"
           style={{ marginBottom: 'calc(0.375rem * 1.25)' }}
         >
           <p
-            className="text-base leading-relaxed text-zinc-600 dark:text-zinc-400 md:whitespace-nowrap"
+            className="text-base leading-relaxed text-zinc-600 dark:text-zinc-400"
             style={{ fontFamily: 'Georgia, serif' }}
           >
             Written by independent writers for independent thinkers. Pay with eCash to unlock the full story.
