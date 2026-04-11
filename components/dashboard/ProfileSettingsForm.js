@@ -105,7 +105,11 @@ export default function ProfileSettingsForm({
           hint: updateError.hint,
           authorId: user.id,
         })
-        setSubmitError(formatSupabaseErrorForUser(updateError))
+        if (updateError.code === '23505' && updateError.message.includes('username')) {
+          setSubmitError('This username is already taken. Please choose a different one.')
+        } else {
+          setSubmitError(formatSupabaseErrorForUser(updateError))
+        }
         return
       }
 

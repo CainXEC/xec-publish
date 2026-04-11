@@ -67,7 +67,11 @@ export default function SignupPage() {
       })
 
       if (insertError) {
-        setError(insertError.message)
+        if (insertError.code === '23505' && insertError.message.includes('username')) {
+          setError('This username is already taken. Please choose a different one.')
+        } else {
+          setError(insertError.message)
+        }
         return
       }
 
