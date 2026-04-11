@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Nav from '@/components/Nav'
 import { buildPaywallBip21, computePaymentSplit } from '@/lib/paymentSplit'
+import { sanitizePostBodyHtml } from '@/lib/sanitizePostBodyHtml'
 import { supabase } from '@/lib/supabase-browser'
 
 function truncateWallet(address) {
@@ -656,9 +657,12 @@ export default function PublicPostPage() {
               <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                 Full article
               </h2>
-              <div className="mt-4 whitespace-pre-wrap text-base leading-7 text-zinc-800 dark:text-zinc-200">
-                {post.body}
-              </div>
+              <div
+                className="article-body-html mt-4 text-base text-zinc-800 dark:text-zinc-200"
+                dangerouslySetInnerHTML={{
+                  __html: sanitizePostBodyHtml(post.body ?? ''),
+                }}
+              />
 
               <section className="mt-10 border-t border-zinc-200 pt-8 dark:border-zinc-700">
                 <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
