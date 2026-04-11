@@ -265,7 +265,7 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
           ) : (
             <>
               <div
-                className="mt-4 flex flex-wrap gap-1.5 md:gap-2"
+                className="mt-4 mb-2 flex flex-wrap gap-1.5 md:gap-2"
                 role="group"
                 aria-label="Sort posts"
               >
@@ -289,7 +289,7 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
 
               {sortMode === 'unlocks' ? (
                 <div
-                  className="mt-3 flex flex-wrap items-center gap-1.5 md:gap-2"
+                  className="mb-2 flex flex-wrap items-center gap-1.5 md:gap-2"
                   role="group"
                   aria-label="Unlock time range"
                 >
@@ -311,7 +311,7 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
                 </div>
               ) : null}
 
-              <ul className="mt-4 space-y-3">
+              <ul className="space-y-3">
                 {sortedPosts.map((post) => {
                   const n = unlockCountFromPost(post)
                   const unlockLabel = n === 1 ? '1 unlock' : `${n} unlocks`

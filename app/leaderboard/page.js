@@ -109,7 +109,7 @@ export default function LeaderboardPage() {
         </div>
 
         <div
-          className="mb-4 flex w-full gap-2"
+          className="mb-2 flex w-full gap-2"
           role="group"
           aria-label="Sort leaderboard"
         >
@@ -132,7 +132,7 @@ export default function LeaderboardPage() {
         </div>
 
         <div
-          className="mb-6 flex flex-wrap items-center gap-1.5 md:gap-2"
+          className="mb-2 flex flex-wrap items-center gap-1.5 md:gap-2"
           role="group"
           aria-label="Leaderboard time range"
         >
