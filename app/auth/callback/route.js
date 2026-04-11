@@ -8,8 +8,7 @@ export async function GET(request) {
   if (code) {
     const supabase = await createSupabaseServerClient()
     await supabase.auth.exchangeCodeForSession(code)
-    await supabase.auth.signOut()
   }
 
-  return NextResponse.redirect(new URL('/login?confirmed=true', request.url))
+  return NextResponse.redirect(new URL('/auth/confirmed', request.url))
 }
