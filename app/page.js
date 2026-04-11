@@ -542,7 +542,7 @@ export default function HomePage() {
         {showPaginationRow ? (
           <nav
             aria-label="Pagination"
-            className="mt-1.5 flex items-center justify-between gap-3 border-t border-zinc-200 pt-1.5 text-xs text-zinc-500 md:mt-2 md:pt-2 dark:border-zinc-800 dark:text-zinc-500"
+            className="mt-1.5 flex items-center justify-between gap-3 text-xs text-zinc-500 md:mt-2 dark:text-zinc-500"
           >
             <div className="min-w-0 flex-1">
               {currentPage > 1 ? (
