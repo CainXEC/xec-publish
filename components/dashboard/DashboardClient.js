@@ -275,9 +275,17 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
           ) : null}
 
           {posts.length === 0 ? (
-            <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
-              You have not created any posts yet.
-            </p>
+            <div className="mt-4">
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                Welcome to Proof Of Writing! Create your first post to get started.
+              </p>
+              <Link
+                href="/dashboard/new-post"
+                className="mt-4 inline-flex rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+              >
+                Create your first post
+              </Link>
+            </div>
           ) : (
             <>
               <div
