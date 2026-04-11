@@ -1,10 +1,11 @@
 'use client'
 
-import { useId, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import RichTextEditor from '@/components/RichTextEditor'
 import { supabase } from '@/lib/supabase-browser'
+import { generateSlug, isUrlSafeSlug } from '@/lib/generateSlug'
 import { postBodyHasMeaningfulText } from '@/lib/sanitizePostBodyHtml'
 
 export default function NewPostForm({ xecAddress: initialXecAddress }) {
@@ -14,6 +15,7 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
 
   const [title, setTitle] = useState('')
   const [slug, setSlug] = useState('')
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
   const [teaser, setTeaser] = useState('')
   const [body, setBody] = useState('')
   const [priceXec, setPriceXec] = useState('100')
@@ -21,6 +23,15 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
+
+  const slugFieldError = useMemo(() => {
+    const t = slug.trim()
+    if (!t) return null
+    if (!isUrlSafeSlug(t)) {
+      return 'Slug can only contain lowercase letters, numbers, and hyphens (no spaces or special characters).'
+    }
+    return null
+  }, [slug])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -54,10 +65,16 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
         return
       }
 
+      let finalSlug = slug.trim()
+      if (!finalSlug || !isUrlSafeSlug(finalSlug)) {
+        finalSlug = generateSlug(title.trim() || 'post')
+      }
+      setSlug(finalSlug)
+
       const { error: insertError } = await supabase.from('posts').insert({
         author_id: user.id,
         title: title.trim(),
-        slug: slug.trim(),
+        slug: finalSlug,
         teaser: teaser.trim(),
         body: body.trim(),
         price_xec: price,
@@ -115,7 +132,14 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
                 type="text"
                 required
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setTitle(v)
+                  if (!slugManuallyEdited) {
+                    const trimmed = v.trim()
+                    setSlug(trimmed ? generateSlug(trimmed) : '')
+                  }
+                }}
                 className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-500"
               />
             </div>
@@ -128,11 +152,24 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
                 id="slug"
                 name="slug"
                 type="text"
-                required
                 value={slug}
-                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-                className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 font-mono text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-500"
+                onChange={(e) => {
+                  setSlugManuallyEdited(true)
+                  setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))
+                }}
+                aria-invalid={slugFieldError ? 'true' : 'false'}
+                aria-describedby={slugFieldError ? 'slug-field-error' : undefined}
+                className={`mt-1 w-full rounded-lg border bg-white px-3 py-2 font-mono text-sm text-zinc-900 outline-none focus:ring-2 dark:bg-zinc-950 dark:text-zinc-50 ${
+                  slugFieldError
+                    ? 'border-red-500 focus:border-red-500 focus:ring-red-400 dark:border-red-500 dark:focus:ring-red-500'
+                    : 'border-zinc-300 focus:border-zinc-400 focus:ring-zinc-400 dark:border-zinc-600 dark:focus:ring-zinc-500'
+                }`}
               />
+              {slugFieldError ? (
+                <p id="slug-field-error" className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
+                  {slugFieldError}
+                </p>
+              ) : null}
             </div>
 
             <div>
