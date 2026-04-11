@@ -308,7 +308,7 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            <div className="mb-6 flex flex-wrap gap-1.5 md:gap-2" role="group" aria-label="Sort posts">
+            <div className="mb-2 flex flex-wrap gap-1.5 md:gap-2" role="group" aria-label="Sort posts">
               <button
                 type="button"
                 aria-pressed={sortMode === 'unlocks'}
@@ -328,7 +328,7 @@ export default function HomePage() {
             </div>
             {sortMode === 'unlocks' ? (
               <div
-                className="mb-6 flex flex-wrap items-center gap-1.5 md:gap-2"
+                className="mb-2 flex flex-wrap items-center gap-1.5 md:gap-2"
                 role="group"
                 aria-label="Unlock time range"
               >
@@ -348,7 +348,7 @@ export default function HomePage() {
               </div>
             ) : null}
             {readerWalletAddress ? (
-              <div className="mb-6 flex flex-wrap gap-1.5 md:gap-2" role="group" aria-label="Filter posts">
+              <div className="mb-2 flex flex-wrap gap-1.5 md:gap-2" role="group" aria-label="Filter posts">
                 <button
                   type="button"
                   aria-pressed={readerFilterMode === 'all'}
