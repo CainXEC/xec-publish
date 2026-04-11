@@ -26,8 +26,8 @@ jobs:
         run: npm test
         env:
           COOKIE_SECRET: test-secret-key-for-ci-only
-          PLATFORM_XEC_ADDRESS: ecash:qp54xhk40f3fewpkp80pa9v28jr6940fmv38nxlahf
-          NEXT_PUBLIC_PLATFORM_XEC_ADDRESS: ecash:qp54xhk40f3fewpkp80pa9v28jr6940fmv38nxlahf
+          NEXT_PUBLIC_PLATFORM_XEC_ADDRESS: ${{ secrets.NEXT_PUBLIC_PLATFORM_XEC_ADDRESS }}
+          PLATFORM_XEC_ADDRESS: ${{ secrets.NEXT_PUBLIC_PLATFORM_XEC_ADDRESS }}
 
       - name: Upload coverage
         uses: actions/upload-artifact@v4
