@@ -313,15 +313,24 @@ export default function Nav({
     >
       <span
         style={{
-          fontSize: '38px',
           fontFamily: "'American Typewriter', serif",
           color: 'var(--color-text-primary)',
           letterSpacing: '0.04em',
           lineHeight: '1',
-          textTransform: 'uppercase',
         }}
       >
-        proof of writing
+        <span
+          className="hidden md:inline"
+          style={{ fontSize: '38px', textTransform: 'uppercase' }}
+        >
+          PROOF <span style={{ textTransform: 'none' }}>of</span> WRITING
+        </span>
+        <span
+          className="inline md:hidden"
+          style={{ fontSize: '24px', textTransform: 'uppercase' }}
+        >
+          PROOF <span style={{ textTransform: 'none' }}>of</span> WRITING
+        </span>
       </span>
     </Link>
   )
