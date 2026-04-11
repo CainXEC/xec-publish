@@ -12,6 +12,13 @@ export default function Footer() {
         </Link>{' '}
         |{' '}
         <Link
+          href="/support"
+          className="transition hover:text-zinc-700 hover:underline dark:hover:text-zinc-200"
+        >
+          Support
+        </Link>{' '}
+        |{' '}
+        <Link
           href="/leaderboard"
           className="transition hover:text-zinc-700 hover:underline dark:hover:text-zinc-200"
         >
