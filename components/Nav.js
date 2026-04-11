@@ -323,10 +323,13 @@ export default function Nav({
               fontWeight: 700,
               letterSpacing: '-0.02em',
               lineHeight: '36px',
+              background: 'linear-gradient(to bottom, #1D9E75 0%, #111111 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
             }}
           >
-            <span style={{ color: '#1D9E75' }}>Proof Of&nbsp;</span>
-            <span style={{ color: 'var(--color-text-primary)' }}>Writing</span>
+            Proof Of Writing
           </div>
         </Link>
 
