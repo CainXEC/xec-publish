@@ -289,7 +289,7 @@ export default function HomePage() {
             className="text-base leading-relaxed md:whitespace-nowrap"
             style={{ color: 'var(--color-text-primary)' }}
           >
-            Read articles by independent writers for independent thinkers. Pay with eCash to unlock the full story.
+            Read articles written by independent writers for independent thinkers. Pay with eCash to unlock the full story.
           </p>
         </div>
 
