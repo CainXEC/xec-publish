@@ -94,7 +94,7 @@ export default function SignupPage() {
           </div>
         ) : null}
 
-        <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+        <form method="post" onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
             <div>
               <label
                 htmlFor="email"
@@ -143,7 +143,7 @@ export default function SignupPage() {
                 id="username"
                 name="username"
                 type="text"
-                autoComplete="username"
+                autoComplete="nickname"
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}

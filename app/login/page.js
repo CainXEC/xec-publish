@@ -60,7 +60,7 @@ export default function LoginPage() {
           Sign in to publish and earn XEC.
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+        <form method="post" onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           {error ? (
             <div
               className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 dark:border-red-900/60 dark:bg-red-950/50"
