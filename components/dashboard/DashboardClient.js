@@ -5,6 +5,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ThemeToggle from '@/components/ThemeToggle'
 import { supabase } from '@/lib/supabase-browser'
+import { fetchAllUnlockCountRows } from '@/lib/supabaseUnlockCounts'
+
+const PAGE_SIZE = 10
 
 const DELETE_CONFIRM =
   'Are you sure you want to delete this post? This cannot be undone.'
@@ -84,6 +87,7 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
   const [unlockCountMap, setUnlockCountMap] = useState({})
   const [deleteError, setDeleteError] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     setPosts(initialPosts)
@@ -109,10 +113,11 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
         sortMode === 'unlocks' ? timeFilter : 'all',
       )
 
-      const { data, error } = await supabase.rpc('get_unlock_counts', {
-        post_ids: postIds,
+      const { error, rows } = await fetchAllUnlockCountRows(
+        supabase,
+        postIds,
         since,
-      })
+      )
 
       if (cancelled) return
 
@@ -121,7 +126,7 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
         return
       }
 
-      setUnlockCountMap(countRowsByPostId(data))
+      setUnlockCountMap(countRowsByPostId(rows ?? []))
     }
 
     void loadUnlockCounts()
@@ -139,6 +144,17 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
     if (sortMode === 'newest') return sortPostsByNewest(withCounts)
     return sortPostsByUnlocksThenNewest(withCounts)
   }, [posts, unlockCountMap, sortMode])
+
+  const totalPages = Math.max(1, Math.ceil(sortedPosts.length / PAGE_SIZE))
+  const effectivePage = Math.max(1, Math.min(currentPage, totalPages))
+
+  const pagedSortedPosts = useMemo(() => {
+    const start = (effectivePage - 1) * PAGE_SIZE
+    return sortedPosts.slice(start, start + PAGE_SIZE)
+  }, [sortedPosts, effectivePage])
+
+  const hasPrevPage = effectivePage > 1 && sortedPosts.length > 0
+  const hasNextPage = effectivePage < totalPages
 
   const handleDeletePost = useCallback(async (postId) => {
     if (!window.confirm(DELETE_CONFIRM)) return
@@ -272,7 +288,10 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
                 <button
                   type="button"
                   aria-pressed={sortMode === 'unlocks'}
-                  onClick={() => setSortMode('unlocks')}
+                  onClick={() => {
+                    setCurrentPage(1)
+                    setSortMode('unlocks')
+                  }}
                   className={sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}
                 >
                   🔓 Most Unlocked
@@ -280,7 +299,10 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
                 <button
                   type="button"
                   aria-pressed={sortMode === 'newest'}
-                  onClick={() => setSortMode('newest')}
+                  onClick={() => {
+                    setCurrentPage(1)
+                    setSortMode('newest')
+                  }}
                   className={sortMode === 'newest' ? sortBtnActive : sortBtnInactive}
                 >
                   🕐 Newest First
@@ -298,7 +320,10 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
                       key={opt.id}
                       type="button"
                       aria-pressed={timeFilter === opt.id}
-                      onClick={() => setTimeFilter(opt.id)}
+                      onClick={() => {
+                        setCurrentPage(1)
+                        setTimeFilter(opt.id)
+                      }}
                       className={
                         timeFilter === opt.id
                           ? timeFilterBtnActive
@@ -312,7 +337,7 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
               ) : null}
 
               <ul className="flex flex-col gap-1.5 md:gap-2">
-                {sortedPosts.map((post) => {
+                {pagedSortedPosts.map((post) => {
                   const n = unlockCountFromPost(post)
                   const unlockLabel = n === 1 ? '1 unlock' : `${n} unlocks`
 
@@ -368,6 +393,35 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
                   )
                 })}
               </ul>
+              {sortedPosts.length > PAGE_SIZE ? (
+                <div className="mt-6 flex items-center justify-between gap-2 border-t border-zinc-200 pt-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                  <div className="min-w-0 flex-1">
+                    {hasPrevPage ? (
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage(effectivePage - 1)}
+                        className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                      >
+                        ← Page {effectivePage - 1}
+                      </button>
+                    ) : null}
+                  </div>
+                  <span className="flex-shrink-0 tabular-nums">
+                    Page {effectivePage} of {totalPages}
+                  </span>
+                  <div className="min-w-0 flex-1 text-right">
+                    {hasNextPage ? (
+                      <button
+                        type="button"
+                        onClick={() => setCurrentPage(effectivePage + 1)}
+                        className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                      >
+                        Page {effectivePage + 1} →
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
             </>
           )}
         </section>

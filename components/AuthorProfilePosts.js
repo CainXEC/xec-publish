@@ -3,6 +3,9 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase-browser'
+import { fetchAllUnlockCountRows } from '@/lib/supabaseUnlockCounts'
+
+const PAGE_SIZE = 10
 
 function formatXec(amount) {
   const n = Number(amount)
@@ -121,6 +124,7 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
   const [timeFilter, setTimeFilter] = useState('all')
   const [mergedPosts, setMergedPosts] = useState([])
   const [countsLoading, setCountsLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
 
   const basePosts = useMemo(() => initialPosts ?? [], [initialPosts])
 
@@ -146,22 +150,23 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
         sortMode === 'unlocks' ? timeFilter : 'all',
       )
 
-      const [{ data: unlockCounts }, { data: commentCounts }] = await Promise.all([
-        supabase.rpc('get_unlock_counts', {
-          post_ids: postIds,
-          since,
-        }),
-        supabase.rpc('get_comment_counts', { post_ids: postIds }),
-      ])
+      const { error: unlockErr, rows: unlockRows } = await fetchAllUnlockCountRows(
+        supabase,
+        postIds,
+        since,
+      )
+      const { data: commentCounts, error: commentErr } = await supabase.rpc(
+        'get_comment_counts',
+        { post_ids: postIds },
+      )
 
       if (cancelled) return
 
+      const unlockRowsSafe = unlockErr ? [] : (unlockRows ?? [])
+      const commentRowsSafe = commentErr ? [] : (commentCounts ?? [])
+
       setMergedPosts(
-        mergeUnlockAndCommentCounts(
-          basePosts,
-          unlockCounts,
-          commentCounts,
-        ),
+        mergeUnlockAndCommentCounts(basePosts, unlockRowsSafe, commentRowsSafe),
       )
       setCountsLoading(false)
     }
@@ -177,6 +182,17 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
     if (sortMode === 'newest') return sortPostsByNewest(mergedPosts)
     return sortPostsByUnlocksThenNewest(mergedPosts)
   }, [mergedPosts, sortMode])
+
+  const totalPages = Math.max(1, Math.ceil(displayPosts.length / PAGE_SIZE))
+  const effectivePage = Math.max(1, Math.min(currentPage, totalPages))
+
+  const pagedPosts = useMemo(() => {
+    const start = (effectivePage - 1) * PAGE_SIZE
+    return displayPosts.slice(start, start + PAGE_SIZE)
+  }, [displayPosts, effectivePage])
+
+  const hasPrevPage = effectivePage > 1 && displayPosts.length > 0
+  const hasNextPage = effectivePage < totalPages
 
   if (postsErrorMessage) {
     return (
@@ -218,7 +234,10 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
         <button
           type="button"
           aria-pressed={sortMode === 'unlocks'}
-          onClick={() => setSortMode('unlocks')}
+          onClick={() => {
+            setCurrentPage(1)
+            setSortMode('unlocks')
+          }}
           className={sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}
         >
           🔓 Most Unlocked
@@ -226,7 +245,10 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
         <button
           type="button"
           aria-pressed={sortMode === 'newest'}
-          onClick={() => setSortMode('newest')}
+          onClick={() => {
+            setCurrentPage(1)
+            setSortMode('newest')
+          }}
           className={sortMode === 'newest' ? sortBtnActive : sortBtnInactive}
         >
           🕐 Newest First
@@ -244,7 +266,10 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
               key={opt.id}
               type="button"
               aria-pressed={timeFilter === opt.id}
-              onClick={() => setTimeFilter(opt.id)}
+              onClick={() => {
+                setCurrentPage(1)
+                setTimeFilter(opt.id)
+              }}
               className={
                 timeFilter === opt.id ? timeFilterBtnActive : timeFilterBtnInactive
               }
@@ -258,8 +283,9 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
       {countsLoading && mergedPosts.length === 0 ? (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading posts…</p>
       ) : (
+        <>
         <ul className="flex flex-col gap-1.5 md:gap-2">
-          {displayPosts.map((post) => {
+          {pagedPosts.map((post) => {
             const postHref = `/posts/${encodeURIComponent(post.slug)}`
             const priceLabel = formatXec(post.price_xec)
             const unlocksN = unlockCountFromPost(post)
@@ -311,6 +337,36 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
             )
           })}
         </ul>
+        {displayPosts.length > PAGE_SIZE ? (
+          <div className="mt-6 flex items-center justify-between gap-2 border-t border-zinc-200 pt-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+            <div className="min-w-0 flex-1">
+              {hasPrevPage ? (
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(effectivePage - 1)}
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                >
+                  ← Page {effectivePage - 1}
+                </button>
+              ) : null}
+            </div>
+            <span className="flex-shrink-0 tabular-nums">
+              Page {effectivePage} of {totalPages}
+            </span>
+            <div className="min-w-0 flex-1 text-right">
+              {hasNextPage ? (
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(effectivePage + 1)}
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                >
+                  Page {effectivePage + 1} →
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+        </>
       )}
     </section>
   )

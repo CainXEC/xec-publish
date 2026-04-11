@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Nav from '@/components/Nav'
 import { supabase } from '@/lib/supabase-browser'
+import { fetchAllUnlockCountRows } from '@/lib/supabaseUnlockCounts'
 
 const PAGE_SIZE = 10
 
@@ -73,16 +74,6 @@ function mergeUnlockAndCommentCounts(posts, unlockRows, commentRows) {
   }))
 }
 
-function sortPostsByUnlocksThenNewest(rows) {
-  return [...rows].sort((a, b) => {
-    const diff = unlockCountFromPost(b) - unlockCountFromPost(a)
-    if (diff !== 0) return diff
-    const ta = new Date(a.created_at).getTime()
-    const tb = new Date(b.created_at).getTime()
-    return tb - ta
-  })
-}
-
 function sortPostsByNewest(rows) {
   return [...rows].sort((a, b) => {
     const tb = new Date(b.created_at).getTime()
@@ -144,7 +135,7 @@ export default function HomePage() {
   const [postSearchQuery, setPostSearchQuery] = useState('')
   const posts = useMemo(() => {
     if (sortMode === 'newest') return sortPostsByNewest(fetchedPosts)
-    return sortPostsByUnlocksThenNewest(fetchedPosts)
+    return fetchedPosts
   }, [fetchedPosts, sortMode])
 
   const readerFilteredPosts = useMemo(() => {
@@ -226,41 +217,147 @@ export default function HomePage() {
       // CREATE INDEX IF NOT EXISTS idx_posts_published_author ON posts (published, author_id);
       // CREATE INDEX IF NOT EXISTS idx_unlocks_post_id ON unlocks (post_id);
       // Requires RPCs: get_unlock_counts(post_ids, since), get_comment_counts(post_ids) returning { post_id, count }.
-      const { data, error } = await supabase
+
+      if (sortMode === 'newest') {
+        const { data, error } = await supabase
+          .from('posts')
+          .select(
+            'id, title, slug, teaser, price_xec, created_at, author_id, authors(username)',
+          )
+          .eq('published', true)
+          .order('created_at', { ascending: false })
+          .range(start, end)
+
+        if (cancelled) return
+
+        if (error) {
+          setLoadError(error.message)
+          setFetchedPosts([])
+          setHasNextPage(false)
+        } else {
+          const rows = data ?? []
+          let merged = rows
+          const postIds = rows.map((p) => p.id).filter(Boolean)
+          if (postIds.length > 0) {
+            const [{ data: unlockCounts }, { data: commentCounts }] = await Promise.all([
+              supabase.rpc('get_unlock_counts', {
+                post_ids: postIds,
+                since: null,
+              }),
+              supabase.rpc('get_comment_counts', { post_ids: postIds }),
+            ])
+            if (cancelled) return
+            merged = mergeUnlockAndCommentCounts(rows, unlockCounts, commentCounts)
+          }
+          setFetchedPosts(merged)
+          setHasNextPage(rows.length === PAGE_SIZE)
+        }
+        setLoading(false)
+        return
+      }
+
+      const since = getSinceTimestamp(timeFilter)
+      const { data: idRows, error: idError } = await supabase
+        .from('posts')
+        .select('id, created_at')
+        .eq('published', true)
+
+      if (cancelled) return
+
+      if (idError) {
+        setLoadError(idError.message)
+        setFetchedPosts([])
+        setHasNextPage(false)
+        setLoading(false)
+        return
+      }
+
+      const allMeta = idRows ?? []
+      if (allMeta.length === 0) {
+        setFetchedPosts([])
+        setHasNextPage(false)
+        setLoading(false)
+        return
+      }
+
+      const createdAtById = {}
+      const allIds = []
+      for (const row of allMeta) {
+        if (row?.id == null) continue
+        allIds.push(row.id)
+        createdAtById[row.id] = row.created_at
+      }
+
+      const { error: unlockRpcError, rows: unlockRowsAll } = await fetchAllUnlockCountRows(
+        supabase,
+        allIds,
+        since,
+      )
+
+      if (cancelled) return
+
+      if (unlockRpcError) {
+        setLoadError(unlockRpcError.message)
+        setFetchedPosts([])
+        setHasNextPage(false)
+        setLoading(false)
+        return
+      }
+
+      const countById = countRowsByPostId(unlockRowsAll)
+      const sortedIds = [...allIds].sort((a, b) => {
+        const cb = countById[b] ?? 0
+        const ca = countById[a] ?? 0
+        if (cb !== ca) return cb - ca
+        const tb = new Date(createdAtById[b]).getTime()
+        const ta = new Date(createdAtById[a]).getTime()
+        return tb - ta
+      })
+
+      const pageIds = sortedIds.slice(start, start + PAGE_SIZE)
+      const hasNext = start + PAGE_SIZE < sortedIds.length
+
+      if (pageIds.length === 0) {
+        setFetchedPosts([])
+        setHasNextPage(false)
+        setLoading(false)
+        return
+      }
+
+      const { data: pageRows, error: pageError } = await supabase
         .from('posts')
         .select(
           'id, title, slug, teaser, price_xec, created_at, author_id, authors(username)',
         )
-        .eq('published', true)
-        .order('created_at', { ascending: false })
-        .range(start, end)
+        .in('id', pageIds)
 
       if (cancelled) return
 
-      if (error) {
-        setLoadError(error.message)
+      if (pageError) {
+        setLoadError(pageError.message)
         setFetchedPosts([])
         setHasNextPage(false)
-      } else {
-        const rows = data ?? []
-        let merged = rows
-        const postIds = rows.map((p) => p.id).filter(Boolean)
-        if (postIds.length > 0) {
-          const [{ data: unlockCounts }, { data: commentCounts }] = await Promise.all([
-            supabase.rpc('get_unlock_counts', {
-              post_ids: postIds,
-              since: getSinceTimestamp(
-                sortMode === 'unlocks' ? timeFilter : 'all',
-              ),
-            }),
-            supabase.rpc('get_comment_counts', { post_ids: postIds }),
-          ])
-          if (cancelled) return
-          merged = mergeUnlockAndCommentCounts(rows, unlockCounts, commentCounts)
-        }
-        setFetchedPosts(merged)
-        setHasNextPage(rows.length === PAGE_SIZE)
+        setLoading(false)
+        return
       }
+
+      const orderIndex = new Map(pageIds.map((id, idx) => [id, idx]))
+      const ordered = (pageRows ?? [])
+        .filter((p) => p?.id != null)
+        .sort((a, b) => orderIndex.get(a.id) - orderIndex.get(b.id))
+
+      const { data: commentCounts } = await supabase.rpc('get_comment_counts', {
+        post_ids: pageIds,
+      })
+      if (cancelled) return
+
+      const merged = mergeUnlockAndCommentCounts(
+        ordered,
+        unlockRowsAll,
+        commentCounts,
+      )
+      setFetchedPosts(merged)
+      setHasNextPage(hasNext)
       setLoading(false)
     }
 
