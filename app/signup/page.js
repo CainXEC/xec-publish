@@ -41,37 +41,19 @@ export default function SignupPage() {
     setLoading(true)
 
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      const { error: authError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
+        options: {
+          data: {
+            username: username.trim(),
+            xec_address: xecAddress.trim(),
+          },
+        },
       })
 
       if (authError) {
         setError(authError.message)
-        return
-      }
-
-      const user = authData.user
-      if (!user) {
-        setError('Could not create account. Please try again.')
-        return
-      }
-
-      const bioTrimmed = bio.trim()
-      const { error: insertError } = await supabase.from('authors').insert({
-        id: user.id,
-        email: email.trim(),
-        username: username.trim(),
-        xec_address: xecAddress.trim(),
-        ...(bioTrimmed ? { bio: bioTrimmed } : {}),
-      })
-
-      if (insertError) {
-        if (insertError.code === '23505' && insertError.message.includes('username')) {
-          setError('This username is already taken. Please choose a different one.')
-        } else {
-          setError(insertError.message)
-        }
         return
       }
 
@@ -96,7 +78,7 @@ export default function SignupPage() {
         {success ? (
           <div className="mt-6 space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/40">
             <p className="text-sm font-medium text-emerald-900 dark:text-emerald-200">
-              Account created. You can sign in when you&apos;re ready.
+              Please check your email to confirm your account.
             </p>
             <Link
               href="/login"
