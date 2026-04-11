@@ -13,7 +13,7 @@ const chronik = new ChronikClient([
 
 export async function GET(request, { params }) {
   const ip = request.headers.get('x-forwarded-for') || 'unknown'
-  if (!rateLimit(ip, 60, 60_000, 'latest-tx')) {
+  if (!(await rateLimit(ip, 60, 60, 'latest-tx'))) {
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },
       { status: 429 },

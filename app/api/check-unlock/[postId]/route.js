@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase'
 
 export async function GET(request, { params }) {
   const ip = request.headers.get('x-forwarded-for') || 'unknown'
-  if (!rateLimit(ip, 60, 60_000, 'check-unlock')) {
+  if (!(await rateLimit(ip, 60, 60, 'check-unlock'))) {
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },
       { status: 429 },

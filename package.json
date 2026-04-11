@@ -23,6 +23,8 @@
     "@tiptap/pm": "^3.22.3",
     "@tiptap/react": "^3.22.3",
     "@tiptap/starter-kit": "^3.22.3",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.37.0",
     "cashtab-connect": "^1.1.0",
     "chronik-client": "^4.1.0",
     "ecash-lib": "^4.12.0",

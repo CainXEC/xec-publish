@@ -11,7 +11,7 @@ const REQUIRED_PLATFORM_SATS = 550n
 
 export async function POST(request) {
   const ip = request.headers.get('x-forwarded-for') || 'unknown'
-  if (!rateLimit(ip, 10, 60_000, 'verify-wallet-auth')) {
+  if (!(await rateLimit(ip, 10, 60, 'verify-wallet-auth'))) {
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },
       { status: 429 },
