@@ -311,7 +311,7 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
                 </div>
               ) : null}
 
-              <ul className="space-y-3">
+              <ul className="flex flex-col gap-1.5 md:gap-2">
                 {sortedPosts.map((post) => {
                   const n = unlockCountFromPost(post)
                   const unlockLabel = n === 1 ? '1 unlock' : `${n} unlocks`

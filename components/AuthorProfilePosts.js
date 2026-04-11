@@ -258,7 +258,7 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
       {countsLoading && mergedPosts.length === 0 ? (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading posts…</p>
       ) : (
-        <ul className="flex flex-col gap-6">
+        <ul className="flex flex-col gap-1.5 md:gap-2">
           {displayPosts.map((post) => {
             const postHref = `/posts/${encodeURIComponent(post.slug)}`
             const priceLabel = formatXec(post.price_xec)

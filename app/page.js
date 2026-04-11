@@ -385,7 +385,7 @@ export default function HomePage() {
               </div>
             ) : null}
             {displayPosts.length > 0 ? (
-                <ul className="flex flex-col gap-6">
+                <ul className="flex flex-col gap-1.5 md:gap-2">
                   {displayPosts.map((post) => {
                     const author = authorFromPost(post)
                     const username = author?.username?.trim() || 'Unknown'
