@@ -558,21 +558,6 @@ export default function Nav({
               Start Writing
             </Link>
           )}
-
-          <Link
-            href="/about"
-            onClick={closeMobileNav}
-            className="block w-full rounded-lg border border-zinc-300 bg-white py-2 text-center text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-          >
-            About
-          </Link>
-          <Link
-            href="/leaderboard"
-            onClick={closeMobileNav}
-            className="block w-full rounded-lg border border-zinc-300 bg-white py-2 text-center text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-          >
-            Leaderboard
-          </Link>
         </nav>
       </div>
     </header>
