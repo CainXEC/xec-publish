@@ -329,7 +329,7 @@ export default function Nav({
         </span>
         <span
           className="inline md:hidden"
-          style={{ fontSize: '20px', textTransform: 'uppercase' }}
+          style={{ fontSize: '26px', textTransform: 'uppercase' }}
         >
           PROOF <span style={{ textTransform: 'none' }}>of</span> WRITING
         </span>
