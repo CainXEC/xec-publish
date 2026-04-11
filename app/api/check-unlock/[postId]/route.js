@@ -2,13 +2,22 @@ export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
 import { signCookieValue, verifyCookieValue } from '@/lib/cookieSigner'
+import { rateLimit } from '@/lib/rateLimit'
 import { supabase } from '@/lib/supabase'
 
-export async function GET(_request, { params }) {
+export async function GET(request, { params }) {
+  const ip = request.headers.get('x-forwarded-for') || 'unknown'
+  if (!rateLimit(ip, 60, 60_000, 'check-unlock')) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429 },
+    )
+  }
+
   const { postId } = await params
   const cookieName = `unlock_${postId}`
 
-  const rawCookie = _request.cookies.get(cookieName)?.value
+  const rawCookie = request.cookies.get(cookieName)?.value
   if (rawCookie) {
     const { valid } = verifyCookieValue(postId, rawCookie)
     if (valid) {
@@ -16,7 +25,7 @@ export async function GET(_request, { params }) {
     }
   }
 
-  const walletAddress = _request.nextUrl.searchParams.get('walletAddress')
+  const walletAddress = request.nextUrl.searchParams.get('walletAddress')
   if (!walletAddress) {
     return NextResponse.json({ unlocked: false })
   }

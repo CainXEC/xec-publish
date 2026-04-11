@@ -30,6 +30,7 @@ describe('/api/check-unlock/[postId]', () => {
     const { GET } = await import('@/app/api/check-unlock/[postId]/route')
 
     const req = {
+      headers: { get: vi.fn(() => null) },
       cookies: { get: vi.fn(() => null) },
       nextUrl: new URL('http://localhost/api/check-unlock/abc'),
     }
@@ -44,6 +45,7 @@ describe('/api/check-unlock/[postId]', () => {
     const { GET } = await import('@/app/api/check-unlock/[postId]/route')
 
     const req = {
+      headers: { get: vi.fn(() => null) },
       cookies: { get: vi.fn(() => ({ value: 'signed-cookie' })) },
       nextUrl: new URL('http://localhost/api/check-unlock/abc'),
     }
@@ -60,6 +62,7 @@ describe('/api/check-unlock/[postId]', () => {
 
     const { GET } = await import('@/app/api/check-unlock/[postId]/route')
     const req = {
+      headers: { get: vi.fn(() => null) },
       cookies: { get: vi.fn(() => null) },
       nextUrl: new URL('http://localhost/api/check-unlock/abc?walletAddress=ecash:qxyz'),
     }

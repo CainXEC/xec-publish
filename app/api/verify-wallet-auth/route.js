@@ -3,12 +3,21 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { ChronikClient } from 'chronik-client'
 import { encodeOutputScript, getOutputScriptFromAddress } from 'ecashaddrjs'
+import { rateLimit } from '@/lib/rateLimit'
 import { supabase } from '@/lib/supabase'
 
 const chronik = new ChronikClient(['https://chronik.e.cash'])
 const REQUIRED_PLATFORM_SATS = 550n
 
 export async function POST(request) {
+  const ip = request.headers.get('x-forwarded-for') || 'unknown'
+  if (!rateLimit(ip, 10, 60_000, 'verify-wallet-auth')) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429 },
+    )
+  }
+
   try {
     const { txid } = await request.json()
     if (!txid || typeof txid !== 'string') {

@@ -32,7 +32,10 @@ describe('/api/verify-payment', () => {
 
   it('returns 400 when txid or postId is missing', async () => {
     const { POST } = await import('@/app/api/verify-payment/route')
-    const req = { json: vi.fn(async () => ({ txid: '', postId: '' })) }
+    const req = {
+      headers: { get: vi.fn(() => null) },
+      json: vi.fn(async () => ({ txid: '', postId: '' })),
+    }
 
     const res = await POST(req)
     expect(res.status).toBe(400)
@@ -52,7 +55,10 @@ describe('/api/verify-payment', () => {
     verifyAndRecordUnlock.mockResolvedValueOnce({ ok: true, txid: 'abc123' })
 
     const { POST } = await import('@/app/api/verify-payment/route')
-    const req = { json: vi.fn(async () => ({ txid: 'abc123', postId: 'p1' })) }
+    const req = {
+      headers: { get: vi.fn(() => null) },
+      json: vi.fn(async () => ({ txid: 'abc123', postId: 'p1' })),
+    }
     const res = await POST(req)
 
     expect(res.status).toBe(200)

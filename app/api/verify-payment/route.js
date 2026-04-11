@@ -3,6 +3,7 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { ChronikClient } from 'chronik-client'
 import { signCookieValue } from '@/lib/cookieSigner'
+import { rateLimit } from '@/lib/rateLimit'
 import { supabase } from '@/lib/supabase'
 import { verifyAndRecordUnlock } from '@/lib/verifyPaymentUnlock'
 
@@ -14,6 +15,14 @@ const chronik = new ChronikClient([
 ])
 
 export async function POST(request) {
+  const ip = request.headers.get('x-forwarded-for') || 'unknown'
+  if (!rateLimit(ip, 10, 60_000, 'verify-payment')) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429 },
+    )
+  }
+
   try {
     const { txid, postId } = await request.json()
     console.log('[verify-payment] request received', { txid, postId })
