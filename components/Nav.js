@@ -310,6 +310,7 @@ export default function Nav({
       href="/"
       className="pointer-events-auto inline-flex items-center"
       aria-label="Proof Of Writing home"
+      style={{ flexShrink: 0, minWidth: 0 }}
     >
       <span
         style={{
@@ -317,6 +318,7 @@ export default function Nav({
           color: 'var(--color-text-primary)',
           letterSpacing: '0.04em',
           lineHeight: '1',
+          whiteSpace: 'nowrap',
         }}
       >
         <span
@@ -327,7 +329,7 @@ export default function Nav({
         </span>
         <span
           className="inline md:hidden"
-          style={{ fontSize: '24px', textTransform: 'uppercase' }}
+          style={{ fontSize: '20px', textTransform: 'uppercase' }}
         >
           PROOF <span style={{ textTransform: 'none' }}>of</span> WRITING
         </span>
