@@ -5,10 +5,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Nav from '@/components/Nav'
 import { supabase } from '@/lib/supabase-browser'
 
-function formatXec(amount) {
-  const n = Number(amount)
-  if (!Number.isFinite(n)) return '0'
-  return n.toFixed(8).replace(/\.?0+$/, '')
+/** `total_xec` from the leaderboard RPC is in satoshis (1 XEC = 100 satoshis). */
+function formatXec(satoshis) {
+  const n = Number(satoshis)
+  const xec = Number.isFinite(n) ? n / 100 : 0
+  return xec.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' XEC'
 }
 
 function getSinceTimestamp(timeFilter) {
@@ -198,7 +199,7 @@ export default function LeaderboardPage() {
                           row.total_unlocks
                         ) : (
                           <span className="block truncate text-xs font-semibold leading-tight">
-                            {formatXec(row.total_xec)} XEC
+                            {formatXec(row.total_xec)}
                           </span>
                         )}
                       </span>
@@ -249,7 +250,7 @@ export default function LeaderboardPage() {
                         {row.total_unlocks}
                       </td>
                       <td className="px-4 py-3 text-right font-medium tabular-nums text-zinc-900 dark:text-zinc-50">
-                        {formatXec(row.total_xec)} XEC
+                        {formatXec(row.total_xec)}
                       </td>
                     </tr>
                   ))}
