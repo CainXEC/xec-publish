@@ -3,6 +3,11 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ThemeToggle from '@/components/ThemeToggle'
+import {
+  getSharedAudioContext,
+  playSuccessChime,
+  primeAudioContextOnUserGesture,
+} from '@/lib/webAudioUnlock'
 import { supabase } from '@/lib/supabase-browser'
 
 function truncateAddress(address) {
@@ -138,6 +143,7 @@ export default function Nav({
           ? verifyData.unlockedPostIds
           : undefined
         persistReaderWallet(verifyData.walletAddress, ids)
+        playSuccessChime(getSharedAudioContext())
         stopReaderTxPolling()
         setReaderLoginBusy(false)
       } catch {
@@ -159,6 +165,10 @@ export default function Nav({
     if (!platformAddressForLatestTx) {
       setReaderLoginError('Platform payment address is not configured.')
       return
+    }
+    if (typeof window !== 'undefined') {
+      const ctx = getSharedAudioContext()
+      void primeAudioContextOnUserGesture(ctx)
     }
     const cashtabUrl = `https://cashtab.com/#/send?bip21=ecash:${platformAddressForLatestTx}?amount=5.5`
     window.open(cashtabUrl, '_blank', 'noopener,noreferrer')
