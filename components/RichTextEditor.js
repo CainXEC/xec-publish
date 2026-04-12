@@ -5,7 +5,6 @@ import { EditorContent, useEditor } from '@tiptap/react'
 import Heading from '@tiptap/extension-heading'
 import StarterKit from '@tiptap/starter-kit'
 import TextAlign from '@tiptap/extension-text-align'
-import Underline from '@tiptap/extension-underline'
 
 const toolbarBtnBase =
   'rounded border px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide transition disabled:pointer-events-none disabled:opacity-40 md:px-2 md:text-xs'
@@ -57,7 +56,6 @@ export default function RichTextEditor({
         heading: false,
       }),
       Heading.configure({ levels: [1, 2, 3] }),
-      Underline,
       TextAlign.configure({
         types: ['heading', 'paragraph'],
       }),
