@@ -23,6 +23,7 @@ export const metadata: Metadata = {
   description: defaultDescription,
   icons: {
     icon: "/favicon.svg",
+    apple: "/favicon.svg",
   },
   openGraph: {
     title: "Proof Of Writing",
@@ -62,6 +63,7 @@ export default function RootLayout({
     >
       <head>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="apple-touch-icon" href="/favicon.svg" />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="min-h-full flex flex-col">
