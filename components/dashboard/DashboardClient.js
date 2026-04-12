@@ -366,23 +366,31 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
                     >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0 flex-1">
-                          {post.slug ? (
-                            <Link
-                              href={`/posts/${encodeURIComponent(post.slug)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-block text-base font-medium text-emerald-700 underline-offset-2 hover:text-emerald-600 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
-                            >
-                              {post.title ?? 'Untitled post'}
-                            </Link>
-                          ) : (
-                            <p className="text-base font-medium text-zinc-900 dark:text-zinc-50">
-                              {post.title ?? 'Untitled post'}
-                            </p>
-                          )}
-                          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                            Status: {post.published ? 'Published' : 'Draft'}
-                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {post.slug ? (
+                              <Link
+                                href={`/posts/${encodeURIComponent(post.slug)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="min-w-0 text-base font-medium text-emerald-700 underline-offset-2 hover:text-emerald-600 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
+                              >
+                                {post.title ?? 'Untitled post'}
+                              </Link>
+                            ) : (
+                              <p className="min-w-0 text-base font-medium text-zinc-900 dark:text-zinc-50">
+                                {post.title ?? 'Untitled post'}
+                              </p>
+                            )}
+                            {post.published ? (
+                              <span className="inline-flex shrink-0 items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200">
+                                Published
+                              </span>
+                            ) : (
+                              <span className="inline-flex shrink-0 items-center rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
+                                Draft
+                              </span>
+                            )}
+                          </div>
                           <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
                             <span>{priceLabel} XEC</span>
                             <span className="font-normal text-zinc-600 dark:text-zinc-400">
