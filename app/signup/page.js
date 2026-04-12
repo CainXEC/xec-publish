@@ -83,17 +83,6 @@ export default function SignupPage() {
           Create an account to publish and earn XEC.
         </p>
 
-        {success ? (
-          <div
-            className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/40"
-            role="status"
-          >
-            <p className="text-sm font-medium text-emerald-900 dark:text-emerald-200">
-              {SIGNUP_SUCCESS_MESSAGE}
-            </p>
-          </div>
-        ) : null}
-
         <form method="post" onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
             <div>
               <label
@@ -202,6 +191,17 @@ export default function SignupPage() {
             >
               {loading ? 'Creating account…' : 'Sign up'}
             </button>
+
+            {success ? (
+              <div
+                className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/40"
+                role="status"
+              >
+                <p className="text-sm font-medium text-emerald-900 dark:text-emerald-200">
+                  {SIGNUP_SUCCESS_MESSAGE}
+                </p>
+              </div>
+            ) : null}
           </form>
 
         <p className="mt-6 text-center text-sm text-zinc-600 dark:text-zinc-400">
