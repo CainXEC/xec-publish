@@ -13,12 +13,37 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = "https://www.proofofwriting.com";
+const defaultDescription =
+  "Written by independent writers for independent thinkers. Pay with eCash to unlock the full story.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "Proof Of Writing",
-  description:
-    "Read articles by independent writers for independent thinkers. Pay with eCash to unlock the full story.",
+  description: defaultDescription,
   icons: {
     icon: "/favicon.svg",
+  },
+  openGraph: {
+    title: "Proof Of Writing",
+    description: defaultDescription,
+    url: siteUrl,
+    siteName: "Proof Of Writing",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Proof Of Writing",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Proof Of Writing",
+    description: defaultDescription,
+    images: ["/og-image.png"],
   },
 };
 
