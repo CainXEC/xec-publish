@@ -36,7 +36,14 @@ export async function POST(request, { params }) {
   }
 
   const body = await request.json().catch(() => ({}))
-  const content = typeof body?.content === 'string' ? body.content.trim() : ''
+  const rawContent = typeof body?.content === 'string' ? body.content : ''
+  if (rawContent.length > 500) {
+    return NextResponse.json(
+      { error: 'Comment must be 500 characters or less' },
+      { status: 400 },
+    )
+  }
+  const content = rawContent.trim()
   const payerAddress = truncateWallet(body?.payer_address)
 
   if (!content) {

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Nav from '@/components/Nav'
+import { charCounterClassName } from '@/lib/charCounterClassName'
 import { buildPaywallBip21, computePaymentSplit } from '@/lib/paymentSplit'
 import {
   ensureAudioContextRunning,
@@ -13,6 +14,9 @@ import {
 } from '@/lib/webAudioUnlock'
 import { sanitizePostBodyHtml } from '@/lib/sanitizePostBodyHtml'
 import { supabase } from '@/lib/supabase-browser'
+
+const COMMENT_MAX_LEN = 500
+const COMMENT_WARN_WITHIN = 50
 
 function truncateWallet(address) {
   if (!address || typeof address !== 'string') return 'Anonymous'
@@ -732,11 +736,19 @@ export default function PublicPostPage() {
                   <textarea
                     id="new-comment"
                     rows={4}
+                    maxLength={COMMENT_MAX_LEN}
                     value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
+                    onChange={(e) =>
+                      setCommentText(e.target.value.slice(0, COMMENT_MAX_LEN))
+                    }
                     className="mt-2 w-full resize-y rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-500"
                     placeholder="Share your thoughts..."
                   />
+                  <p
+                    className={`mt-1 text-right text-xs tabular-nums ${charCounterClassName(commentText.length, COMMENT_MAX_LEN, COMMENT_WARN_WITHIN)}`}
+                  >
+                    {commentText.length}/{COMMENT_MAX_LEN}
+                  </p>
                   <button
                     type="button"
                     onClick={() => void handlePostComment()}
