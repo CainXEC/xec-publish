@@ -4,10 +4,17 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ThemeToggle from '@/components/ThemeToggle'
+import { getReadingTime } from '@/lib/getReadingTime'
 import { supabase } from '@/lib/supabase-browser'
 import { fetchAllUnlockCountRows } from '@/lib/supabaseUnlockCounts'
 
 const PAGE_SIZE = 10
+
+function formatXec(amount) {
+  const n = Number(amount)
+  if (!Number.isFinite(n)) return '0'
+  return n.toFixed(8).replace(/\.?0+$/, '')
+}
 
 const DELETE_CONFIRM =
   'Are you sure you want to delete this post? This cannot be undone.'
@@ -347,7 +354,10 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
               <ul className="flex flex-col gap-1.5 md:gap-2">
                 {pagedSortedPosts.map((post) => {
                   const n = unlockCountFromPost(post)
-                  const unlockLabel = n === 1 ? '1 unlock' : `${n} unlocks`
+                  const unlockStat =
+                    n === 1 ? '🔓 1 unlock' : `🔓 ${n} unlocks`
+                  const readTime = getReadingTime(post.body)
+                  const priceLabel = formatXec(post.price_xec)
 
                   return (
                     <li
@@ -373,11 +383,16 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
                           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                             Status: {post.published ? 'Published' : 'Draft'}
                           </p>
-                          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                            Price: {post.price_xec ?? 0} XEC
-                          </p>
-                          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                            🔓 {unlockLabel}
+                          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                            <span>{priceLabel} XEC</span>
+                            <span className="font-normal text-zinc-600 dark:text-zinc-400">
+                              {unlockStat}
+                            </span>
+                            {readTime ? (
+                              <span className="font-normal text-zinc-600 dark:text-zinc-400">
+                                {readTime}
+                              </span>
+                            ) : null}
                           </p>
                         </div>
                         <div className="flex shrink-0 flex-wrap items-center gap-2">

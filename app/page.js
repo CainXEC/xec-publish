@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Nav from '@/components/Nav'
+import { getReadingTime } from '@/lib/getReadingTime'
 import { supabase } from '@/lib/supabase-browser'
 import { fetchAllUnlockCountRows } from '@/lib/supabaseUnlockCounts'
 
@@ -222,7 +223,7 @@ export default function HomePage() {
         const { data, error } = await supabase
           .from('posts')
           .select(
-            'id, title, slug, teaser, price_xec, created_at, author_id, authors(username)',
+            'id, title, slug, teaser, body, price_xec, created_at, author_id, authors(username)',
           )
           .eq('published', true)
           .order('created_at', { ascending: false })
@@ -327,7 +328,7 @@ export default function HomePage() {
       const { data: pageRows, error: pageError } = await supabase
         .from('posts')
         .select(
-          'id, title, slug, teaser, price_xec, created_at, author_id, authors(username)',
+          'id, title, slug, teaser, body, price_xec, created_at, author_id, authors(username)',
         )
         .in('id', pageIds)
 
@@ -500,6 +501,7 @@ export default function HomePage() {
                       unlocksN === 1 ? '🔓 1 unlock' : `🔓 ${unlocksN} unlocks`
                     const commentStat =
                       commentsN === 1 ? '💬 1 comment' : `💬 ${commentsN} comments`
+                    const readTime = getReadingTime(post.body)
 
                     return (
                       <li key={post.id}>
@@ -532,6 +534,11 @@ export default function HomePage() {
                             <span className="font-normal text-zinc-600 dark:text-zinc-400">
                               {commentStat}
                             </span>
+                            {readTime ? (
+                              <span className="font-normal text-zinc-600 dark:text-zinc-400">
+                                {readTime}
+                              </span>
+                            ) : null}
                           </p>
                         </Link>
                       </li>

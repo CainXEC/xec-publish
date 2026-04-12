@@ -23,7 +23,7 @@ export default async function AuthorProfilePage({ params }) {
 
   const { data: posts, error: postsError } = await supabase
     .from('posts')
-    .select('id, title, slug, teaser, price_xec, created_at')
+    .select('id, title, slug, teaser, body, price_xec, created_at')
     .eq('author_id', author.id)
     .eq('published', true)
     .order('created_at', { ascending: false })

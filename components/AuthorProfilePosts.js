@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
+import { getReadingTime } from '@/lib/getReadingTime'
 import { supabase } from '@/lib/supabase-browser'
 import { fetchAllUnlockCountRows } from '@/lib/supabaseUnlockCounts'
 
@@ -294,6 +295,7 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
               unlocksN === 1 ? '🔓 1 unlock' : `🔓 ${unlocksN} unlocks`
             const commentStat =
               commentsN === 1 ? '💬 1 comment' : `💬 ${commentsN} comments`
+            const readTime = getReadingTime(post.body)
 
             return (
               <li key={post.id}>
@@ -328,6 +330,16 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
                     <span className="font-medium text-zinc-700 dark:text-zinc-300">
                       {commentStat}
                     </span>
+                    {readTime ? (
+                      <>
+                        <span aria-hidden className="mx-2 text-zinc-300 dark:text-zinc-600">
+                          ·
+                        </span>
+                        <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                          {readTime}
+                        </span>
+                      </>
+                    ) : null}
                   </p>
                   <p className="mt-4 whitespace-pre-wrap text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
                     {truncateTeaserPreview(post.teaser)}
