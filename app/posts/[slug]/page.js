@@ -213,6 +213,22 @@ export default function PublicPostPage() {
 
     async function initialUnlock() {
       setUnlockCheckPending(true)
+
+      const { data: userData } = await supabase.auth.getUser()
+      const user = userData?.user
+      if (user && !cancelled) {
+        const { data: authorData } = await supabase
+          .from('authors')
+          .select('is_admin')
+          .eq('id', user.id)
+          .maybeSingle()
+        if (!cancelled && authorData?.is_admin === true) {
+          setUnlocked(true)
+          setUnlockCheckPending(false)
+          return
+        }
+      }
+
       let ok = await checkUnlock(post.id)
       if (!ok && typeof window !== 'undefined') {
         const storedWallet = (
