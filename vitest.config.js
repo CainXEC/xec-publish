@@ -5,7 +5,11 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: 'jsdom',
+    environment: 'node',
+    environmentMatchGlobs: [
+      ['tests/unit/**/*.test.js', 'jsdom'],
+      ['tests/integration/**/*.test.js', 'jsdom'],
+    ],
     setupFiles: ['./tests/setup.js'],
     include: ['tests/unit/**/*.test.js', 'tests/integration/**/*.test.js'],
     coverage: {
