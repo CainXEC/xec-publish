@@ -5,6 +5,12 @@ import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Nav from '@/components/Nav'
 import { buildPaywallBip21, computePaymentSplit } from '@/lib/paymentSplit'
+import {
+  ensureAudioContextRunning,
+  getSharedAudioContext,
+  playSuccessChime,
+  primeAudioContextOnUserGesture,
+} from '@/lib/webAudioUnlock'
 import { sanitizePostBodyHtml } from '@/lib/sanitizePostBodyHtml'
 import { supabase } from '@/lib/supabase-browser'
 
@@ -29,51 +35,6 @@ function formatCommentDate(iso) {
   })
 }
 
-/** Uses `audioContext` from the pay-button gesture (required on mobile). */
-function playUnlockSound(audioContext) {
-  if (typeof window === 'undefined' || !audioContext) return
-  const ctx = audioContext
-  try {
-    const schedule = () => {
-      try {
-        const oscillator1 = ctx.createOscillator()
-        const oscillator2 = ctx.createOscillator()
-        const gainNode = ctx.createGain()
-
-        oscillator1.connect(gainNode)
-        oscillator2.connect(gainNode)
-        gainNode.connect(ctx.destination)
-
-        oscillator1.frequency.setValueAtTime(523, ctx.currentTime)
-        oscillator1.frequency.setValueAtTime(659, ctx.currentTime + 0.1)
-        oscillator1.frequency.setValueAtTime(784, ctx.currentTime + 0.2)
-        oscillator1.frequency.setValueAtTime(1047, ctx.currentTime + 0.3)
-
-        oscillator2.frequency.setValueAtTime(1047, ctx.currentTime + 0.3)
-        oscillator2.type = 'sine'
-
-        gainNode.gain.setValueAtTime(0.3, ctx.currentTime)
-        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6)
-
-        oscillator1.start(ctx.currentTime)
-        oscillator1.stop(ctx.currentTime + 0.6)
-        oscillator2.start(ctx.currentTime + 0.3)
-        oscillator2.stop(ctx.currentTime + 0.6)
-      } catch {
-        /* graph setup failed */
-      }
-    }
-
-    if (ctx.state === 'suspended') {
-      void ctx.resume().then(schedule)
-    } else {
-      schedule()
-    }
-  } catch {
-    /* audio unsupported or blocked */
-  }
-}
-
 export default function PublicPostPage() {
   const params = useParams()
   const slug = params?.slug
@@ -93,7 +54,7 @@ export default function PublicPostPage() {
   const payTxPollRef = useRef(null)
   const payBaselineTxidRef = useRef('')
   const payLastHandledTxidRef = useRef('')
-  /** Created on pay-button click (user gesture) so unlock sound works on mobile. */
+  /** Shared AudioContext, primed on Pay click (user gesture) for mobile unlock sound after async verify. */
   const unlockAudioContextRef = useRef(null)
   const unlockFlashTimeoutRef = useRef(null)
 
@@ -156,11 +117,9 @@ export default function PublicPostPage() {
 
   const triggerPaywallUnlockEffect = useCallback(() => {
     setShowUnlockFlash(true)
-    if (
-      typeof window !== 'undefined' &&
-      window.matchMedia('(pointer: fine)').matches
-    ) {
-      playUnlockSound(unlockAudioContextRef.current)
+    if (typeof window !== 'undefined') {
+      const ctx = unlockAudioContextRef.current ?? getSharedAudioContext()
+      playSuccessChime(ctx)
     }
     if (typeof window !== 'undefined') {
       if (unlockFlashTimeoutRef.current) {
@@ -356,19 +315,22 @@ export default function PublicPostPage() {
   }, [post?.id, unlocked, checkUnlock])
 
   useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      const ctx = unlockAudioContextRef.current
+      if (ctx) void ensureAudioContextRunning(ctx)
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [])
+
+  useEffect(() => {
     return () => {
       if (payTxPollRef.current) {
         clearInterval(payTxPollRef.current)
         payTxPollRef.current = null
-      }
-      const ac = unlockAudioContextRef.current
-      if (ac && ac.state !== 'closed') {
-        try {
-          ac.close()
-        } catch {
-          /* ignore */
-        }
-        unlockAudioContextRef.current = null
       }
       if (unlockFlashTimeoutRef.current) {
         clearTimeout(unlockFlashTimeoutRef.current)
@@ -425,20 +387,10 @@ export default function PublicPostPage() {
   function handlePayToUnlock() {
     if (!cashtabUrl) return
     if (typeof window !== 'undefined') {
-      let ctx = unlockAudioContextRef.current
-      if (!ctx || ctx.state === 'closed') {
-        const Ctx = window.AudioContext || window.webkitAudioContext
-        if (Ctx) {
-          try {
-            ctx = new Ctx()
-            unlockAudioContextRef.current = ctx
-          } catch {
-            ctx = null
-          }
-        }
-      }
-      if (ctx && ctx.state === 'suspended') {
-        void ctx.resume()
+      const ctx = getSharedAudioContext()
+      unlockAudioContextRef.current = ctx
+      if (ctx) {
+        void primeAudioContextOnUserGesture(ctx)
       }
     }
     setPaymentInitiated(true)
