@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom'
+// Loaded only via vitest.config.js `setupFiles` when running tests — not used by Next.js.
 
 process.env.COOKIE_SECRET = process.env.COOKIE_SECRET || 'test-secret-key'
 

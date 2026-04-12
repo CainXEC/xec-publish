@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import RichTextEditor from '@/components/RichTextEditor'
 import { supabase } from '@/lib/supabase-browser'
 import { generateSlug, isUrlSafeSlug } from '@/lib/generateSlug'
-import { postBodyHasMeaningfulText } from '@/lib/sanitizePostBodyHtml'
+import { postBodyHasMeaningfulText } from '@/lib/postBodyHasMeaningfulText'
 
 export default function EditPostForm({ postId, xecAddress: initialXecAddress, initialPost }) {
   const router = useRouter()
