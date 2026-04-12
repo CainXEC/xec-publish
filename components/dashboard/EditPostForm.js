@@ -5,7 +5,15 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import RichTextEditor from '@/components/RichTextEditor'
 import { supabase } from '@/lib/supabase-browser'
+import { charCounterClassName } from '@/lib/charCounterClassName'
 import { generateSlug, isUrlSafeSlug } from '@/lib/generateSlug'
+import { countPlainTextCharsFromHtml } from '@/lib/plainTextCharCount'
+import {
+  POST_BODY_PLAIN_MAX,
+  POST_SLUG_MAX,
+  POST_TEASER_MAX,
+  POST_TITLE_MAX,
+} from '@/lib/postFieldLimits'
 import { postBodyHasMeaningfulText } from '@/lib/postBodyHasMeaningfulText'
 
 export default function EditPostForm({ postId, xecAddress: initialXecAddress, initialPost }) {
@@ -13,12 +21,18 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
   const bodyLabelId = useId()
   const [xecAddress] = useState(initialXecAddress ?? '')
 
-  const [title, setTitle] = useState(initialPost.title ?? '')
-  const [slug, setSlug] = useState(initialPost.slug ?? '')
+  const [title, setTitle] = useState(() =>
+    String(initialPost.title ?? '').slice(0, POST_TITLE_MAX),
+  )
+  const [slug, setSlug] = useState(() =>
+    String(initialPost.slug ?? '').slice(0, POST_SLUG_MAX),
+  )
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(
     Boolean(String(initialPost.slug ?? '').trim()),
   )
-  const [teaser, setTeaser] = useState(initialPost.teaser ?? '')
+  const [teaser, setTeaser] = useState(() =>
+    String(initialPost.teaser ?? '').slice(0, POST_TEASER_MAX),
+  )
   const [body, setBody] = useState(initialPost.body ?? '')
   const [priceXec, setPriceXec] = useState(
     initialPost.price_xec != null && initialPost.price_xec !== ''
@@ -71,9 +85,17 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
         return
       }
 
-      let finalSlug = slug.trim()
+      const bodyPlainLen = countPlainTextCharsFromHtml(body)
+      if (bodyPlainLen > POST_BODY_PLAIN_MAX) {
+        setSubmitError(
+          `Body must be at most ${POST_BODY_PLAIN_MAX.toLocaleString('en-US')} characters (plain text).`,
+        )
+        return
+      }
+
+      let finalSlug = slug.trim().slice(0, POST_SLUG_MAX)
       if (!finalSlug || !isUrlSafeSlug(finalSlug)) {
-        finalSlug = generateSlug(title.trim() || 'post')
+        finalSlug = generateSlug(title.trim() || 'post').slice(0, POST_SLUG_MAX)
       }
       setSlug(finalSlug)
 
@@ -148,17 +170,23 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
                 name="title"
                 type="text"
                 required
+                maxLength={POST_TITLE_MAX}
                 value={title}
                 onChange={(e) => {
-                  const v = e.target.value
+                  const v = e.target.value.slice(0, POST_TITLE_MAX)
                   setTitle(v)
                   if (!slugManuallyEdited) {
                     const trimmed = v.trim()
-                    setSlug(trimmed ? generateSlug(trimmed) : '')
+                    setSlug(trimmed ? generateSlug(trimmed).slice(0, POST_SLUG_MAX) : '')
                   }
                 }}
                 className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-500"
               />
+              <p
+                className={`mt-1 text-right text-xs tabular-nums ${charCounterClassName(title.length, POST_TITLE_MAX, 20)}`}
+              >
+                {title.length}/{POST_TITLE_MAX}
+              </p>
             </div>
 
             <div>
@@ -170,10 +198,16 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
                 id="slug"
                 name="slug"
                 type="text"
+                maxLength={POST_SLUG_MAX}
                 value={slug}
                 onChange={(e) => {
                   setSlugManuallyEdited(true)
-                  setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))
+                  setSlug(
+                    e.target.value
+                      .toLowerCase()
+                      .replace(/\s+/g, '-')
+                      .slice(0, POST_SLUG_MAX),
+                  )
                 }}
                 aria-invalid={slugFieldError ? 'true' : 'false'}
                 aria-describedby={slugFieldError ? 'slug-field-error' : undefined}
@@ -199,11 +233,17 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
                 name="teaser"
                 required
                 rows={4}
+                maxLength={POST_TEASER_MAX}
                 value={teaser}
-                onChange={(e) => setTeaser(e.target.value)}
+                onChange={(e) => setTeaser(e.target.value.slice(0, POST_TEASER_MAX))}
                 className="mt-1 w-full resize-y rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-500"
                 placeholder="Free preview shown before payment"
               />
+              <p
+                className={`mt-1 text-right text-xs tabular-nums ${charCounterClassName(teaser.length, POST_TEASER_MAX, 20)}`}
+              >
+                {teaser.length}/{POST_TEASER_MAX}
+              </p>
             </div>
 
             <div>
