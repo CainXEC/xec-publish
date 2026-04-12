@@ -29,6 +29,53 @@ function formatCommentDate(iso) {
   })
 }
 
+function playUnlockSound() {
+  if (typeof window === 'undefined') return
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext
+    if (!Ctx) return
+    const ctx = new Ctx()
+
+    const schedule = () => {
+      try {
+        const oscillator1 = ctx.createOscillator()
+        const oscillator2 = ctx.createOscillator()
+        const gainNode = ctx.createGain()
+
+        oscillator1.connect(gainNode)
+        oscillator2.connect(gainNode)
+        gainNode.connect(ctx.destination)
+
+        oscillator1.frequency.setValueAtTime(523, ctx.currentTime)
+        oscillator1.frequency.setValueAtTime(659, ctx.currentTime + 0.1)
+        oscillator1.frequency.setValueAtTime(784, ctx.currentTime + 0.2)
+        oscillator1.frequency.setValueAtTime(1047, ctx.currentTime + 0.3)
+
+        oscillator2.frequency.setValueAtTime(1047, ctx.currentTime + 0.3)
+        oscillator2.type = 'sine'
+
+        gainNode.gain.setValueAtTime(0.3, ctx.currentTime)
+        gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6)
+
+        oscillator1.start(ctx.currentTime)
+        oscillator1.stop(ctx.currentTime + 0.6)
+        oscillator2.start(ctx.currentTime + 0.3)
+        oscillator2.stop(ctx.currentTime + 0.6)
+      } catch {
+        /* graph setup failed */
+      }
+    }
+
+    if (ctx.state === 'suspended') {
+      void ctx.resume().then(schedule)
+    } else {
+      schedule()
+    }
+  } catch {
+    /* audio unsupported or blocked */
+  }
+}
+
 export default function PublicPostPage() {
   const params = useParams()
   const slug = params?.slug
@@ -454,6 +501,7 @@ export default function PublicPostPage() {
         const verifyData = await verifyRes.json().catch(() => ({}))
 
         if (verifyRes.ok && verifyData.unlocked) {
+          playUnlockSound()
           setUnlocked(true)
           setPollingActive(false)
           if (payTxPollRef.current) {
@@ -475,6 +523,7 @@ export default function PublicPostPage() {
           )
           const unlockData = await unlockRes.json().catch(() => ({}))
           if (unlockData.unlocked) {
+            playUnlockSound()
             setUnlocked(true)
             setPollingActive(false)
             if (payTxPollRef.current) {
