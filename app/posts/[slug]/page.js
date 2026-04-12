@@ -29,13 +29,11 @@ function formatCommentDate(iso) {
   })
 }
 
-function playUnlockSound() {
-  if (typeof window === 'undefined') return
+/** Uses `audioContext` from the pay-button gesture (required on mobile). */
+function playUnlockSound(audioContext) {
+  if (typeof window === 'undefined' || !audioContext) return
+  const ctx = audioContext
   try {
-    const Ctx = window.AudioContext || window.webkitAudioContext
-    if (!Ctx) return
-    const ctx = new Ctx()
-
     const schedule = () => {
       try {
         const oscillator1 = ctx.createOscillator()
@@ -95,6 +93,8 @@ export default function PublicPostPage() {
   const payTxPollRef = useRef(null)
   const payBaselineTxidRef = useRef('')
   const payLastHandledTxidRef = useRef('')
+  /** Created on pay-button click (user gesture) so unlock sound works on mobile. */
+  const unlockAudioContextRef = useRef(null)
 
   const [commentCount, setCommentCount] = useState(0)
   const [unlockCount, setUnlockCount] = useState(0)
@@ -340,6 +340,15 @@ export default function PublicPostPage() {
         clearInterval(payTxPollRef.current)
         payTxPollRef.current = null
       }
+      const ac = unlockAudioContextRef.current
+      if (ac && ac.state !== 'closed') {
+        try {
+          ac.close()
+        } catch {
+          /* ignore */
+        }
+        unlockAudioContextRef.current = null
+      }
     }
   }, [])
 
@@ -390,6 +399,23 @@ export default function PublicPostPage() {
 
   function handlePayToUnlock() {
     if (!cashtabUrl) return
+    if (typeof window !== 'undefined') {
+      let ctx = unlockAudioContextRef.current
+      if (!ctx || ctx.state === 'closed') {
+        const Ctx = window.AudioContext || window.webkitAudioContext
+        if (Ctx) {
+          try {
+            ctx = new Ctx()
+            unlockAudioContextRef.current = ctx
+          } catch {
+            ctx = null
+          }
+        }
+      }
+      if (ctx && ctx.state === 'suspended') {
+        void ctx.resume()
+      }
+    }
     setPaymentInitiated(true)
     setPollingActive(true)
     setPayBusy(true)
@@ -501,7 +527,7 @@ export default function PublicPostPage() {
         const verifyData = await verifyRes.json().catch(() => ({}))
 
         if (verifyRes.ok && verifyData.unlocked) {
-          playUnlockSound()
+          playUnlockSound(unlockAudioContextRef.current)
           setUnlocked(true)
           setPollingActive(false)
           if (payTxPollRef.current) {
@@ -523,7 +549,7 @@ export default function PublicPostPage() {
           )
           const unlockData = await unlockRes.json().catch(() => ({}))
           if (unlockData.unlocked) {
-            playUnlockSound()
+            playUnlockSound(unlockAudioContextRef.current)
             setUnlocked(true)
             setPollingActive(false)
             if (payTxPollRef.current) {
