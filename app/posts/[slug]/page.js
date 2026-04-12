@@ -654,11 +654,8 @@ export default function PublicPostPage() {
 
           {unlocked ? (
             <section className="mt-10 border-t border-zinc-200 pt-8 dark:border-zinc-700">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                Full article
-              </h2>
               <div
-                className="article-body-html mt-4 text-base text-zinc-800 dark:text-zinc-200"
+                className="article-body-html text-base text-zinc-800 dark:text-zinc-200"
                 dangerouslySetInnerHTML={{
                   __html: sanitizePostBodyHtml(post.body ?? ''),
                 }}
