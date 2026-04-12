@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import Nav from '@/components/Nav'
-import { sanitizePostBodyHtmlServer } from '@/lib/sanitizePostBodyHtmlServer'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { publishDraftPost } from './actions'
 
@@ -44,7 +43,7 @@ export default async function DraftPreviewPage({ params }) {
 
   const author = authorFromPost(post)
   const username = author?.username?.trim()
-  const safeBody = sanitizePostBodyHtmlServer(post.body ?? '')
+  const bodyHtml = typeof post.body === 'string' ? post.body : ''
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
@@ -105,7 +104,7 @@ export default async function DraftPreviewPage({ params }) {
           <section className="mt-10 border-t border-zinc-200 pt-8 dark:border-zinc-700">
             <div
               className="prose prose-zinc dark:prose-invert max-w-none text-base"
-              dangerouslySetInnerHTML={{ __html: safeBody }}
+              dangerouslySetInnerHTML={{ __html: bodyHtml }}
             />
           </section>
         </article>
