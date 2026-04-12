@@ -95,6 +95,7 @@ export default function PublicPostPage() {
   const payLastHandledTxidRef = useRef('')
   /** Created on pay-button click (user gesture) so unlock sound works on mobile. */
   const unlockAudioContextRef = useRef(null)
+  const unlockFlashTimeoutRef = useRef(null)
 
   const [commentCount, setCommentCount] = useState(0)
   const [unlockCount, setUnlockCount] = useState(0)
@@ -107,6 +108,7 @@ export default function PublicPostPage() {
   const [deletingCommentId, setDeletingCommentId] = useState(null)
   const [isAuthorSession, setIsAuthorSession] = useState(false)
   const [authorAccessToken, setAuthorAccessToken] = useState('')
+  const [showUnlockFlash, setShowUnlockFlash] = useState(false)
 
   useEffect(() => {
     if (!slug) return
@@ -151,6 +153,25 @@ export default function PublicPostPage() {
       cancelled = true
     }
   }, [slug])
+
+  const triggerPaywallUnlockEffect = useCallback(() => {
+    setShowUnlockFlash(true)
+    if (
+      typeof window !== 'undefined' &&
+      window.matchMedia('(pointer: fine)').matches
+    ) {
+      playUnlockSound(unlockAudioContextRef.current)
+    }
+    if (typeof window !== 'undefined') {
+      if (unlockFlashTimeoutRef.current) {
+        clearTimeout(unlockFlashTimeoutRef.current)
+      }
+      unlockFlashTimeoutRef.current = window.setTimeout(() => {
+        unlockFlashTimeoutRef.current = null
+        setShowUnlockFlash(false)
+      }, 800)
+    }
+  }, [])
 
   const checkUnlock = useCallback(async (postId, walletAddress) => {
     const url = walletAddress
@@ -349,6 +370,10 @@ export default function PublicPostPage() {
         }
         unlockAudioContextRef.current = null
       }
+      if (unlockFlashTimeoutRef.current) {
+        clearTimeout(unlockFlashTimeoutRef.current)
+        unlockFlashTimeoutRef.current = null
+      }
     }
   }, [])
 
@@ -527,7 +552,7 @@ export default function PublicPostPage() {
         const verifyData = await verifyRes.json().catch(() => ({}))
 
         if (verifyRes.ok && verifyData.unlocked) {
-          playUnlockSound(unlockAudioContextRef.current)
+          triggerPaywallUnlockEffect()
           setUnlocked(true)
           setPollingActive(false)
           if (payTxPollRef.current) {
@@ -549,7 +574,7 @@ export default function PublicPostPage() {
           )
           const unlockData = await unlockRes.json().catch(() => ({}))
           if (unlockData.unlocked) {
-            playUnlockSound(unlockAudioContextRef.current)
+            triggerPaywallUnlockEffect()
             setUnlocked(true)
             setPollingActive(false)
             if (payTxPollRef.current) {
@@ -574,6 +599,7 @@ export default function PublicPostPage() {
     fetchUnlockCount,
     persistReaderAfterPaywallUnlock,
     post?.id,
+    triggerPaywallUnlockEffect,
   ])
 
   const handlePostComment = useCallback(async () => {
@@ -881,6 +907,9 @@ export default function PublicPostPage() {
           ) : null}
         </article>
       </main>
+      {showUnlockFlash ? (
+        <div className="post-unlock-flash-overlay" aria-hidden />
+      ) : null}
     </div>
   )
 }

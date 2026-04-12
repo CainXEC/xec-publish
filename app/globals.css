@@ -30,6 +30,24 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+@keyframes fadeOut {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.post-unlock-flash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background: #1d9e75;
+  animation: fadeOut 0.8s forwards;
+}
+
 /* Rich text editor (Tiptap) — article body uses Tailwind Typography `prose` on the post page */
 .rich-text-editor .tiptap {
   line-height: 1.75;
