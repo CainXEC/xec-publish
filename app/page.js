@@ -4,8 +4,6 @@ import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Nav from '@/components/Nav'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
-import { supabase } from '@/lib/supabase-browser'
-import { fetchAllUnlockCountRows } from '@/lib/supabaseUnlockCounts'
 
 const PAGE_SIZE = 10
 
@@ -34,55 +32,6 @@ function authorFromPost(post) {
   return Array.isArray(a) ? a[0] ?? null : a
 }
 
-function unlockCountFromPost(post) {
-  const u = post.unlocks
-  if (!u) return 0
-  const row = Array.isArray(u) ? u[0] : u
-  const c = row?.count
-  const n = typeof c === 'number' ? c : Number(c)
-  return Number.isFinite(n) ? n : 0
-}
-
-function commentCountFromPost(post) {
-  const c = post.comments
-  if (!c) return 0
-  const row = Array.isArray(c) ? c[0] : c
-  const count = row?.count
-  const n = typeof count === 'number' ? count : Number(count)
-  return Number.isFinite(n) ? n : 0
-}
-
-/** Maps RPC rows `{ post_id, count }` (from get_unlock_counts / get_comment_counts) by post id. */
-function countRowsByPostId(rows) {
-  const map = {}
-  if (!Array.isArray(rows)) return map
-  for (const r of rows) {
-    const id = r.post_id
-    if (id == null) continue
-    const n = typeof r.count === 'number' ? r.count : Number(r.count)
-    map[id] = Number.isFinite(n) ? n : 0
-  }
-  return map
-}
-
-function mergeUnlockAndCommentCounts(posts, unlockRows, commentRows) {
-  const unlockById = countRowsByPostId(unlockRows)
-  const commentById = countRowsByPostId(commentRows)
-  return posts.map((p) => ({
-    ...p,
-    unlocks: [{ count: unlockById[p.id] ?? 0 }],
-    comments: [{ count: commentById[p.id] ?? 0 }],
-  }))
-}
-
-function sortPostsByNewest(rows) {
-  return [...rows].sort((a, b) => {
-    const tb = new Date(b.created_at).getTime()
-    const ta = new Date(a.created_at).getTime()
-    return tb - ta
-  })
-}
-
 const sortBtnActive =
   'rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 md:px-4 md:py-2 md:text-sm dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400'
 const sortBtnInactive =
@@ -99,16 +48,6 @@ function truncateTeaserPreview(text, maxLen = TEASER_CARD_MAX) {
   return `${s.slice(0, maxLen)}...`
 }
 
-function getSinceTimestamp(timeFilter) {
-  if (timeFilter === 'all') return null
-  const now = new Date()
-  if (timeFilter === '24h') now.setHours(now.getHours() - 24)
-  if (timeFilter === '7d') now.setDate(now.getDate() - 7)
-  if (timeFilter === '30d') now.setDate(now.getDate() - 30)
-  if (timeFilter === '1y') now.setFullYear(now.getFullYear() - 1)
-  return now.toISOString()
-}
-
 const TIME_FILTER_OPTIONS = [
   { id: '24h', label: '24h' },
   { id: '7d', label: '7d' },
@@ -123,7 +62,7 @@ const timeFilterBtnInactive =
   'rounded-lg border border-zinc-300 bg-transparent px-2.5 py-1.5 text-xs font-medium text-zinc-800 transition hover:bg-zinc-50 md:px-3 md:py-2 md:text-sm dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-900'
 
 export default function HomePage() {
-  const [fetchedPosts, setFetchedPosts] = useState([])
+  const [posts, setPosts] = useState([])
   const [sortMode, setSortMode] = useState('unlocks')
   const [timeFilter, setTimeFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
@@ -134,18 +73,12 @@ export default function HomePage() {
   const [readerUnlockedPostIds, setReaderUnlockedPostIds] = useState([])
   const [readerFilterMode, setReaderFilterMode] = useState('all')
   const [postSearchQuery, setPostSearchQuery] = useState('')
-  const posts = useMemo(() => {
-    if (sortMode === 'newest') return sortPostsByNewest(fetchedPosts)
-    return fetchedPosts
-  }, [fetchedPosts, sortMode])
 
   const readerFilteredPosts = useMemo(() => {
     if (!readerWalletAddress || readerFilterMode === 'all') return posts
     const unlockedSet = new Set(readerUnlockedPostIds)
-    if (readerFilterMode === 'unlocked') {
-      return posts.filter((post) => unlockedSet.has(post.id))
-    }
-    return posts.filter((post) => !unlockedSet.has(post.id))
+    if (readerFilterMode === 'unlocked') return posts.filter((p) => unlockedSet.has(p.id))
+    return posts.filter((p) => !unlockedSet.has(p.id))
   }, [posts, readerFilterMode, readerUnlockedPostIds, readerWalletAddress])
 
   const trimmedPostSearch = postSearchQuery.trim()
@@ -168,9 +101,7 @@ export default function HomePage() {
       { cache: 'no-store' },
     )
     const data = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      throw new Error(data?.error || 'Could not fetch reader unlocks')
-    }
+    if (!res.ok) throw new Error(data?.error || 'Could not fetch reader unlocks')
     return Array.isArray(data?.unlockedPostIds) ? data.unlockedPostIds : []
   }, [])
 
@@ -194,184 +125,49 @@ export default function HomePage() {
     setReaderFilterMode('all')
   }, [])
 
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [sortMode, postSearchQuery, timeFilter])
+  // Reset to page 1 when filters change
+  useEffect(() => { setCurrentPage(1) }, [sortMode, postSearchQuery, timeFilter])
+  useEffect(() => { if (sortMode !== 'unlocks') setTimeFilter('all') }, [sortMode])
 
-  useEffect(() => {
-    if (sortMode !== 'unlocks') {
-      setTimeFilter('all')
-    }
-  }, [sortMode])
-
+  // Single fetch to /api/posts — all queries run server-side in parallel
   useEffect(() => {
     let cancelled = false
+    setLoading(true)
+    setLoadError(null)
 
-    async function load() {
-      setLoading(true)
-      setLoadError(null)
-      const start = (currentPage - 1) * PAGE_SIZE
-      const end = start + PAGE_SIZE - 1
+    const params = new URLSearchParams({
+      sort: sortMode,
+      timeFilter,
+      page: String(currentPage),
+    })
 
-      // Suggested indexes to run in Supabase SQL editor:
-      // CREATE INDEX IF NOT EXISTS idx_posts_published_created ON posts (published, created_at DESC);
-      // CREATE INDEX IF NOT EXISTS idx_posts_published_author ON posts (published, author_id);
-      // CREATE INDEX IF NOT EXISTS idx_unlocks_post_id ON unlocks (post_id);
-      // Requires RPCs: get_unlock_counts(post_ids, since), get_comment_counts(post_ids) returning { post_id, count }.
-
-      if (sortMode === 'newest') {
-        const { data, error } = await supabase
-          .from('posts')
-          .select(
-            'id, title, slug, teaser, reading_time_minutes, price_xec, created_at, author_id, authors(username)',
-          )
-          .eq('published', true)
-          .order('created_at', { ascending: false })
-          .range(start, end)
-
+    fetch(`/api/posts?${params}`)
+      .then((res) => res.json())
+      .then((data) => {
         if (cancelled) return
-
-        if (error) {
-          setLoadError(error.message)
-          setFetchedPosts([])
+        if (data.error) {
+          setLoadError(data.error)
+          setPosts([])
           setHasNextPage(false)
         } else {
-          const rows = data ?? []
-          let merged = rows
-          const postIds = rows.map((p) => p.id).filter(Boolean)
-          if (postIds.length > 0) {
-            const [{ data: unlockCounts }, { data: commentCounts }] = await Promise.all([
-              supabase.rpc('get_unlock_counts', {
-                post_ids: postIds,
-                since: null,
-              }),
-              supabase.rpc('get_comment_counts', { post_ids: postIds }),
-            ])
-            if (cancelled) return
-            merged = mergeUnlockAndCommentCounts(rows, unlockCounts, commentCounts)
-          }
-          setFetchedPosts(merged)
-          setHasNextPage(rows.length === PAGE_SIZE)
+          setPosts(data.posts ?? [])
+          setHasNextPage(data.hasNextPage ?? false)
         }
         setLoading(false)
-        return
-      }
-
-      const since = getSinceTimestamp(timeFilter)
-      const { data: idRows, error: idError } = await supabase
-        .from('posts')
-        .select('id, created_at')
-        .eq('published', true)
-
-      if (cancelled) return
-
-      if (idError) {
-        setLoadError(idError.message)
-        setFetchedPosts([])
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setLoadError(err.message)
+        setPosts([])
         setHasNextPage(false)
         setLoading(false)
-        return
-      }
-
-      const allMeta = idRows ?? []
-      if (allMeta.length === 0) {
-        setFetchedPosts([])
-        setHasNextPage(false)
-        setLoading(false)
-        return
-      }
-
-      const createdAtById = {}
-      const allIds = []
-      for (const row of allMeta) {
-        if (row?.id == null) continue
-        allIds.push(row.id)
-        createdAtById[row.id] = row.created_at
-      }
-
-      const { error: unlockRpcError, rows: unlockRowsAll } = await fetchAllUnlockCountRows(
-        supabase,
-        allIds,
-        since,
-      )
-
-      if (cancelled) return
-
-      if (unlockRpcError) {
-        setLoadError(unlockRpcError.message)
-        setFetchedPosts([])
-        setHasNextPage(false)
-        setLoading(false)
-        return
-      }
-
-      const countById = countRowsByPostId(unlockRowsAll)
-      const sortedIds = [...allIds].sort((a, b) => {
-        const cb = countById[b] ?? 0
-        const ca = countById[a] ?? 0
-        if (cb !== ca) return cb - ca
-        const tb = new Date(createdAtById[b]).getTime()
-        const ta = new Date(createdAtById[a]).getTime()
-        return tb - ta
       })
 
-      const pageIds = sortedIds.slice(start, start + PAGE_SIZE)
-      const hasNext = start + PAGE_SIZE < sortedIds.length
-
-      if (pageIds.length === 0) {
-        setFetchedPosts([])
-        setHasNextPage(false)
-        setLoading(false)
-        return
-      }
-
-      const { data: pageRows, error: pageError } = await supabase
-        .from('posts')
-        .select(
-          'id, title, slug, teaser, body, price_xec, created_at, author_id, authors(username)',
-        )
-        .in('id', pageIds)
-
-      if (cancelled) return
-
-      if (pageError) {
-        setLoadError(pageError.message)
-        setFetchedPosts([])
-        setHasNextPage(false)
-        setLoading(false)
-        return
-      }
-
-      const orderIndex = new Map(pageIds.map((id, idx) => [id, idx]))
-      const ordered = (pageRows ?? [])
-        .filter((p) => p?.id != null)
-        .sort((a, b) => orderIndex.get(a.id) - orderIndex.get(b.id))
-
-      const { data: commentCounts } = await supabase.rpc('get_comment_counts', {
-        post_ids: pageIds,
-      })
-      if (cancelled) return
-
-      const merged = mergeUnlockAndCommentCounts(
-        ordered,
-        unlockRowsAll,
-        commentCounts,
-      )
-      setFetchedPosts(merged)
-      setHasNextPage(hasNext)
-      setLoading(false)
-    }
-
-    load()
-
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [currentPage, timeFilter, sortMode])
 
   const showPostSearch = !loading && !loadError
-  const showPaginationRow =
-    displayPosts.length > 0 && (currentPage > 1 || hasNextPage)
+  const showPaginationRow = displayPosts.length > 0 && (currentPage > 1 || hasNextPage)
 
   return (
     <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
@@ -402,7 +198,7 @@ export default function HomePage() {
           <div className="rounded-xl border border-red-200 bg-red-50 p-6 dark:border-red-900/50 dark:bg-red-950/40">
             <p className="text-sm text-red-800 dark:text-red-200">{loadError}</p>
           </div>
-        ) : fetchedPosts.length === 0 ? (
+        ) : posts.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-8 py-16 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
             <p className="text-lg text-zinc-700 dark:text-zinc-300">
               {trimmedPostSearch
@@ -442,9 +238,7 @@ export default function HomePage() {
                     type="button"
                     aria-pressed={timeFilter === opt.id}
                     onClick={() => setTimeFilter(opt.id)}
-                    className={
-                      timeFilter === opt.id ? timeFilterBtnActive : timeFilterBtnInactive
-                    }
+                    className={timeFilter === opt.id ? timeFilterBtnActive : timeFilterBtnInactive}
                   >
                     {opt.label}
                   </button>
@@ -453,154 +247,85 @@ export default function HomePage() {
             ) : null}
             {readerWalletAddress ? (
               <div className="mb-2 flex flex-wrap gap-1.5 md:gap-2" role="group" aria-label="Filter posts">
-                <button
-                  type="button"
-                  aria-pressed={readerFilterMode === 'all'}
-                  onClick={() => setReaderFilterMode('all')}
-                  className={readerFilterMode === 'all' ? filterBtnActive : filterBtnInactive}
-                >
-                  All Posts
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={readerFilterMode === 'unlocked'}
-                  onClick={() => setReaderFilterMode('unlocked')}
-                  className={readerFilterMode === 'unlocked' ? filterBtnActive : filterBtnInactive}
-                >
-                  Unlocked
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={readerFilterMode === 'locked'}
-                  onClick={() => setReaderFilterMode('locked')}
-                  className={readerFilterMode === 'locked' ? filterBtnActive : filterBtnInactive}
-                >
-                  Locked
-                </button>
+                <button type="button" aria-pressed={readerFilterMode === 'all'} onClick={() => setReaderFilterMode('all')} className={readerFilterMode === 'all' ? filterBtnActive : filterBtnInactive}>All Posts</button>
+                <button type="button" aria-pressed={readerFilterMode === 'unlocked'} onClick={() => setReaderFilterMode('unlocked')} className={readerFilterMode === 'unlocked' ? filterBtnActive : filterBtnInactive}>Unlocked</button>
+                <button type="button" aria-pressed={readerFilterMode === 'locked'} onClick={() => setReaderFilterMode('locked')} className={readerFilterMode === 'locked' ? filterBtnActive : filterBtnInactive}>Locked</button>
               </div>
             ) : null}
             {displayPosts.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-8 py-12 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
                 <p className="text-sm text-zinc-700 dark:text-zinc-300">
-                  {trimmedPostSearch
-                    ? `No posts found for '${trimmedPostSearch}'`
-                    : 'No posts match this filter.'}
+                  {trimmedPostSearch ? `No posts found for '${trimmedPostSearch}'` : 'No posts match this filter.'}
                 </p>
               </div>
             ) : null}
             {displayPosts.length > 0 ? (
-                <ul className="flex flex-col gap-1.5 md:gap-2">
-                  {displayPosts.map((post) => {
-                    const author = authorFromPost(post)
-                    const username = author?.username?.trim() || 'Unknown'
-                    const postHref = `/posts/${encodeURIComponent(post.slug)}`
-                    const priceLabel = formatXec(post.price_xec)
-                    const unlocksN = unlockCountFromPost(post)
-                    const commentsN = commentCountFromPost(post)
-                    const unlockStat =
-                      unlocksN === 1 ? '🔓 1 unlock' : `🔓 ${unlocksN} unlocks`
-                    const commentStat =
-                      commentsN === 1 ? '💬 1 comment' : `💬 ${commentsN} comments`
-                    const readTime = formatReadingTimeLabel(post.reading_time_minutes)
+              <ul className="flex flex-col gap-1.5 md:gap-2">
+                {displayPosts.map((post) => {
+                  const author = authorFromPost(post)
+                  const username = author?.username?.trim() || 'Unknown'
+                  const postHref = `/posts/${encodeURIComponent(post.slug)}`
+                  const priceLabel = formatXec(post.price_xec)
+                  const unlocksN = post.unlockCount ?? 0
+                  const commentsN = post.commentCount ?? 0
+                  const unlockStat = unlocksN === 1 ? '🔓 1 unlock' : `🔓 ${unlocksN} unlocks`
+                  const commentStat = commentsN === 1 ? '💬 1 comment' : `💬 ${commentsN} comments`
+                  const readTime = formatReadingTimeLabel(post.reading_time_minutes)
 
-                    return (
-                      <li key={post.id}>
-                        <Link
-                          href={postHref}
-                          className="block rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-[box-shadow,border-color] duration-200 hover:border-zinc-400 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-500 dark:hover:shadow-lg/20 dark:focus-visible:ring-offset-zinc-950"
-                        >
-                          <h2 className="text-xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
-                            {post.title}
-                          </h2>
-                          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
-                            <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                              {username}
-                            </span>
-                            <span aria-hidden className="text-zinc-300 dark:text-zinc-600">
-                              ·
-                            </span>
-                            <time dateTime={post.created_at ?? undefined}>
-                              {formatPublishedDate(post.created_at)}
-                            </time>
-                          </p>
-                          <p className="mt-4 whitespace-pre-wrap text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
-                            {truncateTeaserPreview(post.teaser)}
-                          </p>
-                          <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                            <span>{priceLabel} XEC</span>
-                            <span className="font-normal text-zinc-600 dark:text-zinc-400">
-                              {unlockStat}
-                            </span>
-                            <span className="font-normal text-zinc-600 dark:text-zinc-400">
-                              {commentStat}
-                            </span>
-                            {readTime ? (
-                              <span className="font-normal text-zinc-600 dark:text-zinc-400">
-                                {readTime}
-                              </span>
-                            ) : null}
-                          </p>
-                        </Link>
-                      </li>
-                    )
-                  })}
-                </ul>
+                  return (
+                    <li key={post.id}>
+                      <Link
+                        href={postHref}
+                        className="block rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-[box-shadow,border-color] duration-200 hover:border-zinc-400 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-500 dark:hover:shadow-lg/20 dark:focus-visible:ring-offset-zinc-950"
+                      >
+                        <h2 className="text-xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+                          {post.title}
+                        </h2>
+                        <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
+                          <span className="font-medium text-zinc-700 dark:text-zinc-300">{username}</span>
+                          <span aria-hidden className="text-zinc-300 dark:text-zinc-600">·</span>
+                          <time dateTime={post.created_at ?? undefined}>{formatPublishedDate(post.created_at)}</time>
+                        </p>
+                        <p className="mt-4 whitespace-pre-wrap text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
+                          {truncateTeaserPreview(post.teaser)}
+                        </p>
+                        <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                          <span>{priceLabel} XEC</span>
+                          <span className="font-normal text-zinc-600 dark:text-zinc-400">{unlockStat}</span>
+                          <span className="font-normal text-zinc-600 dark:text-zinc-400">{commentStat}</span>
+                          {readTime ? <span className="font-normal text-zinc-600 dark:text-zinc-400">{readTime}</span> : null}
+                        </p>
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
             ) : null}
           </>
         )}
         {showPaginationRow ? (
-          <nav
-            aria-label="Pagination"
-            className="mt-1.5 flex items-center justify-between gap-3 text-xs text-zinc-500 md:mt-2 dark:text-zinc-500"
-          >
+          <nav aria-label="Pagination" className="mt-1.5 flex items-center justify-between gap-3 text-xs text-zinc-500 md:mt-2 dark:text-zinc-500">
             <div className="min-w-0 flex-1">
               {currentPage > 1 ? (
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  className="cursor-pointer p-0 text-left font-normal text-inherit underline-offset-2 transition hover:text-zinc-700 hover:underline focus:outline-none focus-visible:underline dark:hover:text-zinc-300"
-                >
+                <button type="button" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} className="cursor-pointer p-0 text-left font-normal text-inherit underline-offset-2 transition hover:text-zinc-700 hover:underline focus:outline-none focus-visible:underline dark:hover:text-zinc-300">
                   ← Page {currentPage - 1}
                 </button>
               ) : null}
             </div>
             <div className="min-w-0 flex-1 text-right">
               {hasNextPage ? (
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage((p) => p + 1)}
-                  className="cursor-pointer p-0 text-right font-normal text-inherit underline-offset-2 transition hover:text-zinc-700 hover:underline focus:outline-none focus-visible:underline dark:hover:text-zinc-300"
-                >
+                <button type="button" onClick={() => setCurrentPage((p) => p + 1)} className="cursor-pointer p-0 text-right font-normal text-inherit underline-offset-2 transition hover:text-zinc-700 hover:underline focus:outline-none focus-visible:underline dark:hover:text-zinc-300">
                   Page {currentPage + 1} →
                 </button>
               ) : null}
             </div>
           </nav>
         ) : null}
-        <div
-          className={`flex justify-center border-t border-zinc-200 pt-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400 ${showPaginationRow ? 'mt-3' : 'mt-8'}`}
-        >
+        <div className={`flex justify-center border-t border-zinc-200 pt-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400 ${showPaginationRow ? 'mt-3' : 'mt-8'}`}>
           <div className="flex-shrink-0 whitespace-nowrap text-center">
-            <Link
-              href="/about"
-              className="transition hover:text-zinc-700 hover:underline dark:hover:text-zinc-200"
-            >
-              About
-            </Link>{' '}
-            |{' '}
-            <Link
-              href="/support"
-              className="transition hover:text-zinc-700 hover:underline dark:hover:text-zinc-200"
-            >
-              Support
-            </Link>{' '}
-            |{' '}
-            <Link
-              href="/leaderboard"
-              className="transition hover:text-zinc-700 hover:underline dark:hover:text-zinc-200"
-            >
-              Leaderboard
-            </Link>
+            <Link href="/about" className="transition hover:text-zinc-700 hover:underline dark:hover:text-zinc-200">About</Link>{' '}|{' '}
+            <Link href="/support" className="transition hover:text-zinc-700 hover:underline dark:hover:text-zinc-200">Support</Link>{' '}|{' '}
+            <Link href="/leaderboard" className="transition hover:text-zinc-700 hover:underline dark:hover:text-zinc-200">Leaderboard</Link>
           </div>
         </div>
       </main>
