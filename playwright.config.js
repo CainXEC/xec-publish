@@ -1,3 +1,14 @@
+/**
+ * CI (GitHub Actions): for Playwright e2e, define secrets under
+ * Settings → Secrets and variables → Actions (repository secrets).
+ *
+ * At minimum, add SUPABASE_SERVICE_ROLE_KEY so the Next.js server started by
+ * `webServer` can call Supabase from API routes and server loaders. Without it,
+ * requests fail with "Invalid API key" and tests break.
+ *
+ * Also set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in the same
+ * place (or via your workflow `env:`) if they are not already available to the job.
+ */
 import { existsSync } from 'fs'
 import { resolve } from 'path'
 import dotenv from 'dotenv'
@@ -10,24 +21,6 @@ const root = process.cwd()
 dotenv.config({ path: resolve(root, '.env.local') })
 if (existsSync(resolve(root, '.env.test.local'))) {
   dotenv.config({ path: resolve(root, '.env.test.local'), override: true })
-}
-
-const SUPABASE_ENV_KEYS = [
-  'NEXT_PUBLIC_SUPABASE_URL',
-  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-  'SUPABASE_SERVICE_ROLE_KEY',
-]
-
-/** Explicit pass-through so keys are always strings on the child (and visible in one place). */
-function supabaseEnvForWebServer() {
-  const out = {}
-  for (const key of SUPABASE_ENV_KEYS) {
-    const v = process.env[key]
-    if (typeof v === 'string' && v.length > 0) {
-      out[key] = v
-    }
-  }
-  return out
 }
 
 export default defineConfig({
@@ -49,6 +42,10 @@ export default defineConfig({
         cwd: root,
         reuseExistingServer: false,
         // Merged by Playwright as: defaults + process.env + this object (this wins on conflicts)
-        env: supabaseEnvForWebServer(),
+        env: {
+          NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+          SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+        },
       },
 })
