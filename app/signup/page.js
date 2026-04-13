@@ -191,20 +191,23 @@ export default function SignupPage() {
                       onMouseEnter={() => setXecAddressInfoOpen(true)}
                     >
                       <p>
-                        This is your <span className="font-medium text-zinc-900 dark:text-zinc-100">eCash (XEC) receive address</span>
-                        — the place readers send payment when they unlock your articles.
+                        This is your eCash (XEC) receive address— the place readers send payment
+                        when they unlock your articles.
                       </p>
                       <p className="mt-2">
-                        It should look like <span className="font-mono text-zinc-800 dark:text-zinc-200">ecash:q…</span>{' '}
-                        (starts with <span className="font-mono">ecash:q</span>).
+                        It should look like ecash:q… (starts with ecash:q).
                       </p>
                       <p className="mt-2">
-                        <Link
-                          href="/get-ecash"
+                        Don&apos;t have a wallet yet?{' '}
+                        <a
+                          href="https://cashtab.com"
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
                         >
-                          Don&apos;t have a wallet yet? Get one here
-                        </Link>
+                          Click here
+                        </a>
+                        . Don&apos;t forget to backup your wallet!
                       </p>
                     </div>
                   ) : null}
