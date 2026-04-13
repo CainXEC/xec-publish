@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Nav from '@/components/Nav'
 import { isValidCashAddress } from 'ecashaddrjs'
@@ -21,6 +21,37 @@ const XEC_WALLET_ADDRESS_HELPER = 'Your address should start with ecash:q'
 const SIGNUP_SUCCESS_MESSAGE =
   "Account created! Please check your email and click the confirmation link to activate your account. Don't forget to check your spam folder."
 
+const XEC_TOOLTIP_CLOSE_MS = 300
+
+const xecTooltipPanelClass =
+  'rounded-lg border border-zinc-200 bg-white p-3 text-left text-xs leading-relaxed text-zinc-700 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300'
+
+function XecAddressTooltipBody() {
+  return (
+    <>
+      <p>
+        This is your eCash (XEC) receive address— the place readers send payment when they unlock
+        your articles.
+      </p>
+      <p className="mt-2">
+        It should look like ecash:q… (starts with ecash:q).
+      </p>
+      <p className="mt-2">
+        Don&apos;t have a wallet yet?{' '}
+        <a
+          href="https://cashtab.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
+        >
+          Click here
+        </a>
+        . Don&apos;t forget to backup your wallet!
+      </p>
+    </>
+  )
+}
+
 export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -28,9 +59,32 @@ export default function SignupPage() {
   const [bio, setBio] = useState('')
   const [xecAddress, setXecAddress] = useState('')
   const [xecAddressInfoOpen, setXecAddressInfoOpen] = useState(false)
+  const xecTooltipCloseTimerRef = useRef(null)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  const clearXecTooltipCloseTimer = useCallback(() => {
+    if (xecTooltipCloseTimerRef.current != null) {
+      window.clearTimeout(xecTooltipCloseTimerRef.current)
+      xecTooltipCloseTimerRef.current = null
+    }
+  }, [])
+
+  const openXecAddressTooltip = useCallback(() => {
+    clearXecTooltipCloseTimer()
+    setXecAddressInfoOpen(true)
+  }, [clearXecTooltipCloseTimer])
+
+  const scheduleCloseXecAddressTooltip = useCallback(() => {
+    clearXecTooltipCloseTimer()
+    xecTooltipCloseTimerRef.current = window.setTimeout(() => {
+      xecTooltipCloseTimerRef.current = null
+      setXecAddressInfoOpen(false)
+    }, XEC_TOOLTIP_CLOSE_MS)
+  }, [clearXecTooltipCloseTimer])
+
+  useEffect(() => () => clearXecTooltipCloseTimer(), [clearXecTooltipCloseTimer])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -157,7 +211,10 @@ export default function SignupPage() {
                 placeholder="A short introduction for your public author page"
               />
             </div>
-            <div>
+            <div
+              onMouseEnter={clearXecTooltipCloseTimer}
+              onMouseLeave={scheduleCloseXecAddressTooltip}
+            >
               <div className="flex items-center gap-1.5">
                 <label
                   htmlFor="xec_address"
@@ -165,10 +222,7 @@ export default function SignupPage() {
                 >
                   XEC wallet address
                 </label>
-                <div
-                  className="relative inline-flex flex-col items-start"
-                  onMouseLeave={() => setXecAddressInfoOpen(false)}
-                >
+                <div className="relative inline-flex flex-col items-start">
                   <button
                     type="button"
                     id="xec-wallet-address-info"
@@ -176,8 +230,11 @@ export default function SignupPage() {
                     aria-label="What is an XEC wallet address?"
                     aria-expanded={xecAddressInfoOpen}
                     aria-controls="xec-wallet-address-tooltip"
-                    onMouseEnter={() => setXecAddressInfoOpen(true)}
-                    onClick={() => setXecAddressInfoOpen((o) => !o)}
+                    onMouseEnter={openXecAddressTooltip}
+                    onClick={() => {
+                      clearXecTooltipCloseTimer()
+                      setXecAddressInfoOpen((o) => !o)
+                    }}
                   >
                     <span aria-hidden className="select-none text-sm leading-none">
                       ⓘ
@@ -187,42 +244,33 @@ export default function SignupPage() {
                     <div
                       id="xec-wallet-address-tooltip"
                       role="tooltip"
-                      className="absolute top-full left-0 z-20 mt-1 w-[min(calc(100vw-4rem),20rem)] rounded-lg border border-zinc-200 bg-white p-3 text-left text-xs leading-relaxed text-zinc-700 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
-                      onMouseEnter={() => setXecAddressInfoOpen(true)}
+                      className={`absolute top-full left-0 z-20 mt-1 hidden w-[min(calc(100vw-2rem),20rem)] md:block ${xecTooltipPanelClass}`}
                     >
-                      <p>
-                        This is your eCash (XEC) receive address— the place readers send payment
-                        when they unlock your articles.
-                      </p>
-                      <p className="mt-2">
-                        It should look like ecash:q… (starts with ecash:q).
-                      </p>
-                      <p className="mt-2">
-                        Don&apos;t have a wallet yet?{' '}
-                        <a
-                          href="https://cashtab.com"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
-                        >
-                          Click here
-                        </a>
-                        . Don&apos;t forget to backup your wallet!
-                      </p>
+                      <XecAddressTooltipBody />
                     </div>
                   ) : null}
                 </div>
               </div>
-              <input
-                id="xec_address"
-                name="xec_address"
-                type="text"
-                autoComplete="off"
-                required
-                value={xecAddress}
-                onChange={(e) => setXecAddress(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 font-mono text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-500"
-              />
+              <div className="relative mt-1 w-full max-w-full">
+                {xecAddressInfoOpen ? (
+                  <div
+                    role="tooltip"
+                    className={`absolute bottom-full left-0 z-20 mb-2 max-h-[min(45vh,13rem)] w-full max-w-full overflow-y-auto md:hidden ${xecTooltipPanelClass}`}
+                  >
+                    <XecAddressTooltipBody />
+                  </div>
+                ) : null}
+                <input
+                  id="xec_address"
+                  name="xec_address"
+                  type="text"
+                  autoComplete="off"
+                  required
+                  value={xecAddress}
+                  onChange={(e) => setXecAddress(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 font-mono text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-500"
+                />
+              </div>
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
                 {XEC_WALLET_ADDRESS_HELPER}
               </p>
