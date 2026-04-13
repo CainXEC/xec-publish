@@ -27,6 +27,7 @@ export default function SignupPage() {
   const [username, setUsername] = useState('')
   const [bio, setBio] = useState('')
   const [xecAddress, setXecAddress] = useState('')
+  const [xecAddressInfoOpen, setXecAddressInfoOpen] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -157,12 +158,58 @@ export default function SignupPage() {
               />
             </div>
             <div>
-              <label
-                htmlFor="xec_address"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-              >
-                XEC wallet address
-              </label>
+              <div className="flex items-center gap-1.5">
+                <label
+                  htmlFor="xec_address"
+                  className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
+                >
+                  XEC wallet address
+                </label>
+                <div
+                  className="relative inline-flex flex-col items-start"
+                  onMouseLeave={() => setXecAddressInfoOpen(false)}
+                >
+                  <button
+                    type="button"
+                    id="xec-wallet-address-info"
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-emerald-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-emerald-400 dark:focus-visible:ring-offset-zinc-950"
+                    aria-label="What is an XEC wallet address?"
+                    aria-expanded={xecAddressInfoOpen}
+                    aria-controls="xec-wallet-address-tooltip"
+                    onMouseEnter={() => setXecAddressInfoOpen(true)}
+                    onClick={() => setXecAddressInfoOpen((o) => !o)}
+                  >
+                    <span aria-hidden className="select-none text-sm leading-none">
+                      ⓘ
+                    </span>
+                  </button>
+                  {xecAddressInfoOpen ? (
+                    <div
+                      id="xec-wallet-address-tooltip"
+                      role="tooltip"
+                      className="absolute top-full left-0 z-20 mt-1 w-[min(calc(100vw-4rem),20rem)] rounded-lg border border-zinc-200 bg-white p-3 text-left text-xs leading-relaxed text-zinc-700 shadow-lg dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+                      onMouseEnter={() => setXecAddressInfoOpen(true)}
+                    >
+                      <p>
+                        This is your <span className="font-medium text-zinc-900 dark:text-zinc-100">eCash (XEC) receive address</span>
+                        — the place readers send payment when they unlock your articles.
+                      </p>
+                      <p className="mt-2">
+                        It should look like <span className="font-mono text-zinc-800 dark:text-zinc-200">ecash:q…</span>{' '}
+                        (starts with <span className="font-mono">ecash:q</span>).
+                      </p>
+                      <p className="mt-2">
+                        <Link
+                          href="/get-ecash"
+                          className="font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
+                        >
+                          Don&apos;t have a wallet yet? Get one here
+                        </Link>
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
               <input
                 id="xec_address"
                 name="xec_address"
