@@ -44,7 +44,7 @@ function XecAddressTooltipBody() {
         >
           Click here
         </a>
-        . Don&apos;t forget to backup your wallet!
+        . Remember to backup your wallet!
       </p>
     </>
   )
