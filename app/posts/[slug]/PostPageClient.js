@@ -73,7 +73,6 @@ export default function PostPageClient({
   const [isAuthorSession, setIsAuthorSession] = useState(false)
   const [authorAccessToken, setAuthorAccessToken] = useState('')
   const [showUnlockFlash, setShowUnlockFlash] = useState(false)
-  const [newToEcashOpen, setNewToEcashOpen] = useState(false)
 
   const triggerPaywallUnlockEffect = useCallback(() => {
     setShowUnlockFlash(true)
@@ -783,6 +782,14 @@ export default function PostPageClient({
                   <p className="mt-1 text-center text-xs text-zinc-500 dark:text-zinc-500">
                     (6% of payment goes to support the platform)
                   </p>
+                  <p className="mt-2 text-center text-xs">
+                    <Link
+                      href="/get-ecash"
+                      className="text-zinc-500 transition hover:text-emerald-600 hover:underline dark:text-zinc-500 dark:hover:text-emerald-400"
+                    >
+                      New to eCash? Learn how to get started →
+                    </Link>
+                  </p>
                   {pollingActive && paymentInitiated ? (
                     <div className="mt-4 rounded-lg border border-zinc-200 bg-white/70 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900/60">
                       <div className="flex items-center gap-3">
@@ -805,77 +812,6 @@ export default function PostPageClient({
                   Payment details are not configured for this post yet.
                 </p>
               )}
-
-              <div className="mt-5 border-t border-zinc-200/70 pt-4 dark:border-zinc-700/70">
-                <button
-                  type="button"
-                  onClick={() => setNewToEcashOpen((o) => !o)}
-                  className="text-left text-xs font-normal text-zinc-500 transition hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300"
-                  aria-expanded={newToEcashOpen}
-                >
-                  {newToEcashOpen ? (
-                    <span className="text-zinc-600 dark:text-zinc-400">↑ Hide tips</span>
-                  ) : (
-                    <span>New to eCash? Learn how to get started →</span>
-                  )}
-                </button>
-                {newToEcashOpen ? (
-                  <ol className="mt-3 flex list-none flex-col gap-2.5 text-xs leading-snug text-zinc-600 sm:flex-row sm:flex-wrap sm:gap-x-4 sm:gap-y-2 dark:text-zinc-400">
-                    <li className="flex min-w-0 flex-1 flex-col gap-0.5 sm:min-w-[8.5rem] sm:flex-1 sm:border-r sm:border-zinc-200 sm:pr-4 dark:sm:border-zinc-700">
-                      <span className="font-medium text-zinc-700 dark:text-zinc-300">1.</span>
-                      <span>
-                        Get a{' '}
-                        <a
-                          href="https://cashtab.com"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
-                        >
-                          Cashtab
-                        </a>{' '}
-                        wallet or{' '}
-                        <a
-                          href="https://electroncash.de"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
-                        >
-                          Electron Cash
-                        </a>
-                        .
-                      </span>
-                    </li>
-                    <li className="flex min-w-0 flex-1 flex-col gap-0.5 sm:min-w-[8.5rem] sm:flex-1 sm:border-r sm:border-zinc-200 sm:pr-4 dark:sm:border-zinc-700">
-                      <span className="font-medium text-zinc-700 dark:text-zinc-300">2.</span>
-                      <span>
-                        Buy XEC on{' '}
-                        <a
-                          href="https://www.coinex.com"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
-                        >
-                          CoinEx
-                        </a>{' '}
-                        or{' '}
-                        <a
-                          href="https://uphold.com"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
-                        >
-                          Uphold
-                        </a>
-                        .
-                      </span>
-                    </li>
-                    <li className="flex min-w-0 flex-1 flex-col gap-0.5 sm:min-w-[10rem]">
-                      <span className="font-medium text-zinc-700 dark:text-zinc-300">3.</span>
-                      <span>Paste your wallet address above to unlock.</span>
-                    </li>
-                  </ol>
-                ) : null}
-              </div>
             </section>
           ) : null}
         </article>
