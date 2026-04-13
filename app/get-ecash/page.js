@@ -69,15 +69,16 @@ export default function GetEcashPage() {
                 — works in your browser. Great if you want the quickest start.
               </li>
               <li>
+                For a list of all available eCash wallets, visit{' '}
                 <a
-                  href="https://electroncash.de"
+                  href="https://e.cash/wallets"
                   target="_blank"
                   rel="noopener noreferrer"
                   className={linkClass}
                 >
-                  Electron Cash
-                </a>{' '}
-                — a desktop app if you prefer software on your computer.
+                  e.cash/wallets
+                </a>
+                .
               </li>
             </ul>
           </StepCard>
