@@ -38,11 +38,11 @@ export default function GetEcashPage() {
     <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
       <Nav />
       <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
-        <header className="mb-10 max-w-3xl">
+        <header className="mb-10">
           <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
             Get eCash (XEC)
           </h1>
-          <p className="mt-4 text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
+          <p className="mt-4 max-w-prose text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
             New to crypto? No problem. eCash (ticker{' '}
             <span className="font-medium text-zinc-800 dark:text-zinc-200">XEC</span>) is what you
             use to unlock stories here. Follow these three steps and you&apos;ll be reading in no
