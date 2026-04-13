@@ -384,6 +384,7 @@ export default function Nav({
           ) : (
             <button
               type="button"
+              id="post-search-desktop-toggle"
               onClick={() => setDesktopSearchOpen(true)}
               className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white text-base leading-none text-zinc-700 transition hover:bg-zinc-50 hover:text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
               aria-label="Open search"

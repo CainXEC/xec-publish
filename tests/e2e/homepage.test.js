@@ -12,10 +12,11 @@ test.describe('Homepage', () => {
 
   test('search filters posts', async ({ page }) => {
     await page.goto('/')
-    const searchButton = page
-      .locator('button[aria-label*="search" i], button[aria-label*="Search" i]')
-      .first()
-    await searchButton.click({ timeout: 10000 })
+    // Search is hidden until the homepage finishes loading (Nav `showPostSearch`).
+    await expect(page.locator('ul li').first()).toBeVisible({ timeout: 20000 })
+    const openSearch = page.locator('#post-search-desktop-toggle')
+    await expect(openSearch).toBeVisible({ timeout: 20_000 })
+    await openSearch.click()
     const search = page.locator('#post-search-desktop')
     await expect(search).toBeVisible({ timeout: 5000 })
     await search.fill('nonexistent post xyz')
