@@ -326,7 +326,8 @@ export default function HomePage() {
           <div className="flex-shrink-0 whitespace-nowrap text-center">
             <Link href="/about" className="transition hover:text-zinc-700 hover:underline dark:hover:text-zinc-200">About</Link>{' '}|{' '}
             <Link href="/support" className="transition hover:text-zinc-700 hover:underline dark:hover:text-zinc-200">Support</Link>{' '}|{' '}
-            <Link href="/leaderboard" className="transition hover:text-zinc-700 hover:underline dark:hover:text-zinc-200">Leaderboard</Link>
+            <Link href="/leaderboard" className="transition hover:text-zinc-700 hover:underline dark:hover:text-zinc-200">Leaderboard</Link>{' '}|{' '}
+            <Link href="/get-ecash" className="transition hover:text-zinc-700 hover:underline dark:hover:text-zinc-200">Get eCash</Link>
           </div>
         </div>
       </main>
