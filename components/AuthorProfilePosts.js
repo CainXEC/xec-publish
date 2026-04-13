@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { getReadingTime } from '@/lib/getReadingTime'
+import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { supabase } from '@/lib/supabase-browser'
 import { fetchAllUnlockCountRows } from '@/lib/supabaseUnlockCounts'
 
@@ -295,7 +295,7 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
               unlocksN === 1 ? '🔓 1 unlock' : `🔓 ${unlocksN} unlocks`
             const commentStat =
               commentsN === 1 ? '💬 1 comment' : `💬 ${commentsN} comments`
-            const readTime = getReadingTime(post.body)
+            const readTime = formatReadingTimeLabel(post.reading_time_minutes)
 
             return (
               <li key={post.id}>

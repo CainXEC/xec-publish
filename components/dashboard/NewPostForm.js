@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import RichTextEditor from '@/components/RichTextEditor'
 import { supabase } from '@/lib/supabase-browser'
+import { calculateReadingTimeMinutes } from '@/lib/calculateReadingTimeMinutes'
 import { charCounterClassName } from '@/lib/charCounterClassName'
 import { generateSlug, isUrlSafeSlug } from '@/lib/generateSlug'
 import { countPlainTextCharsFromHtml } from '@/lib/plainTextCharCount'
@@ -87,12 +88,14 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
       }
       setSlug(finalSlug)
 
+      const bodyTrimmed = body.trim()
       const { error: insertError } = await supabase.from('posts').insert({
         author_id: user.id,
         title: title.trim(),
         slug: finalSlug,
         teaser: teaser.trim(),
-        body: body.trim(),
+        body: bodyTrimmed,
+        reading_time_minutes: calculateReadingTimeMinutes(bodyTrimmed),
         price_xec: price,
         published,
       })

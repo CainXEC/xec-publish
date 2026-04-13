@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ThemeToggle from '@/components/ThemeToggle'
-import { getReadingTime } from '@/lib/getReadingTime'
+import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { supabase } from '@/lib/supabase-browser'
 import { fetchAllUnlockCountRows } from '@/lib/supabaseUnlockCounts'
 
@@ -356,7 +356,7 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
                   const n = unlockCountFromPost(post)
                   const unlockStat =
                     n === 1 ? '🔓 1 unlock' : `🔓 ${n} unlocks`
-                  const readTime = getReadingTime(post.body)
+                  const readTime = formatReadingTimeLabel(post.reading_time_minutes)
                   const priceLabel = formatXec(post.price_xec)
 
                   return (
