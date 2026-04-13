@@ -3,23 +3,12 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Nav from '@/components/Nav'
-import { supabase } from '@/lib/supabase-browser'
 
 /** `total_xec` from the leaderboard RPC is in satoshis (1 XEC = 100 satoshis). */
 function formatXec(satoshis) {
   const n = Number(satoshis)
   const xec = Number.isFinite(n) ? n / 100 : 0
   return xec.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' XEC'
-}
-
-function getSinceTimestamp(timeFilter) {
-  if (timeFilter === 'all') return null
-  const now = new Date()
-  if (timeFilter === '24h') now.setHours(now.getHours() - 24)
-  if (timeFilter === '7d') now.setDate(now.getDate() - 7)
-  if (timeFilter === '30d') now.setDate(now.getDate() - 30)
-  if (timeFilter === '1y') now.setFullYear(now.getFullYear() - 1)
-  return now.toISOString()
 }
 
 const TIME_FILTER_OPTIONS = [
@@ -51,20 +40,13 @@ export default function LeaderboardPage() {
     setLoading(true)
     setLoadError(null)
     try {
-      const since = getSinceTimestamp(timeFilter)
-      const { data, error } = await supabase.rpc('get_leaderboard', { since })
-
-      if (error) throw new Error(error.message)
-
-      const list = (data ?? []).map((r) => ({
-        author_id: r.author_id,
-        username: String(r.username ?? '').trim() || 'unknown',
-        post_count: Number(r.post_count) || 0,
-        total_unlocks: Number(r.total_unlocks) || 0,
-        total_xec: Number(r.total_xec) || 0,
-      }))
-
-      setRows(list)
+      const params = new URLSearchParams({ timeFilter })
+      const res = await fetch(`/api/leaderboard?${params}`)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to load leaderboard')
+      }
+      setRows(Array.isArray(data?.rows) ? data.rows : [])
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : 'Failed to load leaderboard')
       setRows([])

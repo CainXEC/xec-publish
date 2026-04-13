@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import Nav from '@/components/Nav'
 import AuthorProfilePosts from '@/components/AuthorProfilePosts'
-import { supabase } from '@/lib/supabase'
+import { loadAuthorProfileByUsername } from '@/lib/loadAuthorProfile'
 
 export default async function AuthorProfilePage({ params }) {
   const { username: raw } = await params
@@ -11,25 +11,14 @@ export default async function AuthorProfilePage({ params }) {
 
   const username = decodeURIComponent(raw.trim())
 
-  const { data: author, error: authorError } = await supabase
-    .from('authors')
-    .select('id, username, bio')
-    .eq('username', username)
-    .maybeSingle()
+  const { error, author, posts: postList } =
+    await loadAuthorProfileByUsername(username)
 
-  if (authorError || !author) {
+  if (!author) {
     notFound()
   }
 
-  const { data: posts, error: postsError } = await supabase
-    .from('posts')
-    .select('id, title, slug, teaser, reading_time_minutes, price_xec, created_at')
-    .eq('author_id', author.id)
-    .eq('published', true)
-    .order('created_at', { ascending: false })
-
-  const postList = postsError ? [] : (posts ?? [])
-  const postsErrorMessage = postsError ? postsError.message : null
+  const postsErrorMessage = error || null
   const bioText =
     author.bio != null && String(author.bio).trim() !== ''
       ? String(author.bio).trim()

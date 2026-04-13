@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { supabase } from "@/lib/supabase";
+import { getPublishedPostBySlug } from "@/lib/getPublishedPostBySlug";
 
 const siteUrl = "https://www.proofofwriting.com";
 
@@ -11,14 +11,10 @@ export async function generateMetadata({
   const { slug } = await params;
   if (!slug) return {};
 
-  const { data: post } = await supabase
-    .from("posts")
-    .select("title, teaser, slug")
-    .eq("slug", slug)
-    .eq("published", true)
-    .maybeSingle();
+  const data = await getPublishedPostBySlug(slug);
+  if (!data) return {};
 
-  if (!post) return {};
+  const { post } = data;
 
   const description = post.teaser?.slice(0, 160);
 

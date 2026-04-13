@@ -67,6 +67,21 @@ function mergeUnlockAndCommentCounts(posts, unlockRows, commentRows) {
   }))
 }
 
+function postsHaveAllTimeCounts(posts) {
+  if (!Array.isArray(posts) || posts.length === 0) return false
+  return posts.every((p) => {
+    const u = p?.unlocks
+    const c = p?.comments
+    const ur = Array.isArray(u) ? u[0] : u
+    const cr = Array.isArray(c) ? c[0] : c
+    const uc = ur?.count
+    const cc = cr?.count
+    const un = typeof uc === 'number' ? uc : Number(uc)
+    const cn = typeof cc === 'number' ? cc : Number(cc)
+    return Number.isFinite(un) && Number.isFinite(cn)
+  })
+}
+
 function sortPostsByUnlocksThenNewest(rows) {
   return [...rows].sort((a, b) => {
     const diff = unlockCountFromPost(b) - unlockCountFromPost(a)
@@ -130,26 +145,30 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
   const basePosts = useMemo(() => initialPosts ?? [], [initialPosts])
 
   useEffect(() => {
-    if (sortMode !== 'unlocks') {
-      setTimeFilter('all')
-    }
-  }, [sortMode])
-
-  useEffect(() => {
     let cancelled = false
 
     async function loadCounts() {
+      await Promise.resolve()
+      if (cancelled) return
+
       if (basePosts.length === 0) {
         setMergedPosts([])
         setCountsLoading(false)
         return
       }
 
-      setCountsLoading(true)
-      const postIds = basePosts.map((p) => p.id).filter(Boolean)
       const since = getSinceTimestamp(
         sortMode === 'unlocks' ? timeFilter : 'all',
       )
+
+      if (since === null && postsHaveAllTimeCounts(basePosts)) {
+        setMergedPosts(basePosts.map((p) => ({ ...p })))
+        setCountsLoading(false)
+        return
+      }
+
+      setCountsLoading(true)
+      const postIds = basePosts.map((p) => p.id).filter(Boolean)
 
       const { error: unlockErr, rows: unlockRows } = await fetchAllUnlockCountRows(
         supabase,
@@ -249,6 +268,7 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
           onClick={() => {
             setCurrentPage(1)
             setSortMode('newest')
+            setTimeFilter('all')
           }}
           className={sortMode === 'newest' ? sortBtnActive : sortBtnInactive}
         >
