@@ -30,12 +30,10 @@ function XecAddressTooltipBody() {
   return (
     <>
       <p>
-        This is your eCash (XEC) receive address— the place readers send payment when they unlock
-        your articles.
+        This is your eCash (XEC) receive address where readers send payment when they unlock your
+        articles.
       </p>
-      <p className="mt-2">
-        It should look like ecash:q… (starts with ecash:q).
-      </p>
+      <p className="mt-2">It should start with ecash:q…</p>
       <p className="mt-2">
         Don&apos;t have a wallet yet?{' '}
         <a
