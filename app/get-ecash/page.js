@@ -89,29 +89,18 @@ export default function GetEcashPage() {
               XEC from an exchange — create an account there, purchase XEC, then send it to the
               address your wallet shows you (copy and paste carefully).
             </p>
-            <p className="font-medium text-zinc-800 dark:text-zinc-200">Popular options:</p>
-            <ul className="list-inside list-disc space-y-2 pl-1">
-              <li>
-                <a
-                  href="https://www.coinex.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={linkClass}
-                >
-                  CoinEx
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://uphold.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={linkClass}
-                >
-                  Uphold
-                </a>
-              </li>
-            </ul>
+            <p>
+              Find a list of the best Exchanges and Instant Exchanges on{' '}
+              <a
+                href="https://scorecard.cash"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={linkClass}
+              >
+                scorecard.cash
+              </a>
+              .
+            </p>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
               Every exchange looks a bit different; if you get stuck, their help pages or support
               can walk you through buying and withdrawing XEC.
