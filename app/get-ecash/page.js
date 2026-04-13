@@ -51,36 +51,21 @@ export default function GetEcashPage() {
         </header>
 
         <div className="flex flex-col gap-6">
-          <StepCard number={1} title="Get a wallet">
+          <StepCard number={1} title="Get a Cashtab wallet">
             <p>
-              A wallet is a free app or website that holds your XEC. Pick whichever feels easier —
-              you can always try the other one later.
+              Cashtab wallet is a free web wallet that allows you to hold and transact with your XEC.
+              It works in any browser and is the fastest way to create an eCash wallet.
             </p>
-            <ul className="list-inside list-disc space-y-2 pl-1">
-              <li>
-                <a
-                  href="https://cashtab.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={linkClass}
-                >
-                  Cashtab
-                </a>{' '}
-                — works in your browser. Great if you want the quickest start.
-              </li>
-              <li>
-                For a list of all available eCash wallets, visit{' '}
-                <a
-                  href="https://e.cash/wallets"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={linkClass}
-                >
-                  e.cash/wallets
-                </a>
-                .
-              </li>
-            </ul>
+            <p className="mt-4">
+              <a
+                href="https://cashtab.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 sm:w-auto dark:bg-emerald-400 dark:text-emerald-950 dark:hover:bg-emerald-300"
+              >
+                Get Cashtab wallet →
+              </a>
+            </p>
           </StepCard>
 
           <StepCard number={2} title="Buy some XEC">
@@ -101,35 +86,22 @@ export default function GetEcashPage() {
               </a>
               .
             </p>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Every exchange looks a bit different; if you get stuck, their help pages or support
-              can walk you through buying and withdrawing XEC.
-            </p>
           </StepCard>
 
           <StepCard number={3} title="Come back and unlock">
             <p>
-              When your wallet has XEC, you&apos;re ready. Open any article on Proof Of Writing, use
-              the pay button to send a tiny payment from your wallet, and the full story unlocks
-              automatically after a few seconds.
+              When your Cashtab wallet has XEC, you&apos;re ready. Open any article on Proof Of
+              Writing, use the pay button to send the payment from your wallet, and the full story
+              unlocks automatically after a few seconds. You can also click on the reader login
+              button to send a dust transaction from your wallet, and the site will remember which
+              articles you&apos;ve already unlocked.
             </p>
             <p>
-              If we ask for your wallet address on an article page, paste the receive address from
-              your wallet — that helps us know you&apos;ve paid so we can show you the unlocked
-              content.
-            </p>
-            <p>
-              <Link
-                href="/"
-                className={linkClass}
-              >
-                Back to the homepage
-              </Link>{' '}
-              to browse stories, or visit{' '}
-              <Link
-                href="/support"
-                className={linkClass}
-              >
+              <Link href="/" className={linkClass}>
+                Back to the homepage to browse stories
+              </Link>
+              , or visit{' '}
+              <Link href="/support" className={linkClass}>
                 Support
               </Link>{' '}
               if something doesn&apos;t work the way you expect.
