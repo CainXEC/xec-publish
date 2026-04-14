@@ -633,11 +633,11 @@ export default function PostPageClient({
             </span>
           </p>
 
-          <section className="mt-8">
+          <section className="mt-8 overflow-hidden">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Preview
             </h2>
-            <p className="mt-2 whitespace-pre-wrap text-base leading-7 text-zinc-800 dark:text-zinc-200">
+            <p className="mt-2 break-words whitespace-pre-wrap text-base leading-7 text-zinc-800 dark:text-zinc-200">
               {post.teaser}
             </p>
           </section>

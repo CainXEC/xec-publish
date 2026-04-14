@@ -319,7 +319,7 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
 
             return (
               <li key={post.id}>
-                <article className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700">
+                <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700">
                   <h3 className="text-xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
                     <Link
                       href={postHref}
@@ -361,7 +361,7 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
                       </>
                     ) : null}
                   </p>
-                  <p className="mt-4 whitespace-pre-wrap text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
+                  <p className="mt-4 break-words whitespace-pre-wrap text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
                     {truncateTeaserPreview(post.teaser)}
                   </p>
                 </article>

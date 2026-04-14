@@ -74,7 +74,7 @@ export default async function DraftPreviewPage({ params }) {
       </div>
 
       <main className="mx-auto w-full max-w-3xl px-4 py-10">
-        <article className="rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <article className="overflow-hidden rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h1 className="text-3xl font-semibold leading-tight text-zinc-900 dark:text-zinc-50">
             {post.title}
           </h1>
@@ -96,7 +96,7 @@ export default async function DraftPreviewPage({ params }) {
             <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Preview
             </h2>
-            <p className="mt-2 whitespace-pre-wrap text-base leading-7 text-zinc-800 dark:text-zinc-200">
+            <p className="mt-2 break-words whitespace-pre-wrap text-base leading-7 text-zinc-800 dark:text-zinc-200">
               {post.teaser}
             </p>
           </section>
