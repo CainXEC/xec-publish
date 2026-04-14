@@ -17,14 +17,6 @@ import { supabase } from '@/lib/supabase-browser'
 const COMMENT_MAX_LEN = 500
 const COMMENT_WARN_WITHIN = 50
 
-function truncateWallet(address) {
-  if (!address || typeof address !== 'string') return 'Anonymous'
-  const trimmed = address.trim()
-  if (!trimmed) return 'Anonymous'
-  if (trimmed.length <= 16) return trimmed
-  return `${trimmed.slice(0, 10)}...${trimmed.slice(-4)}`
-}
-
 function formatCommentDate(iso) {
   if (!iso) return ''
   const d = new Date(iso)
@@ -70,9 +62,36 @@ export default function PostPageClient({
   const [commentSubmitting, setCommentSubmitting] = useState(false)
   const [commentActionError, setCommentActionError] = useState(null)
   const [deletingCommentId, setDeletingCommentId] = useState(null)
+  const [copiedCommentIds, setCopiedCommentIds] = useState({})
   const [isAuthorSession, setIsAuthorSession] = useState(false)
   const [authorAccessToken, setAuthorAccessToken] = useState('')
   const [showUnlockFlash, setShowUnlockFlash] = useState(false)
+  const commentCopyTimeoutsRef = useRef({})
+
+  useEffect(() => {
+    return () => {
+      Object.values(commentCopyTimeoutsRef.current).forEach((timeoutId) => {
+        clearTimeout(timeoutId)
+      })
+    }
+  }, [])
+
+  const handleCopyCommentWallet = useCallback(async (commentId, walletAddress) => {
+    if (!commentId || !walletAddress) return
+    try {
+      await navigator.clipboard.writeText(walletAddress)
+      setCopiedCommentIds((prev) => ({ ...prev, [commentId]: true }))
+      if (commentCopyTimeoutsRef.current[commentId]) {
+        clearTimeout(commentCopyTimeoutsRef.current[commentId])
+      }
+      commentCopyTimeoutsRef.current[commentId] = window.setTimeout(() => {
+        setCopiedCommentIds((prev) => ({ ...prev, [commentId]: false }))
+        delete commentCopyTimeoutsRef.current[commentId]
+      }, 2000)
+    } catch {
+      setCopiedCommentIds((prev) => ({ ...prev, [commentId]: false }))
+    }
+  }, [])
 
   const triggerPaywallUnlockEffect = useCallback(() => {
     setShowUnlockFlash(true)
@@ -740,15 +759,20 @@ export default function PostPageClient({
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <p
-                                className="cursor-pointer text-sm font-medium text-zinc-800 dark:text-zinc-200"
-                                title={fullWalletAddress ? 'Click to copy full address' : undefined}
+                                className="cursor-pointer break-all text-sm font-medium text-zinc-800 dark:text-zinc-200"
+                                title={fullWalletAddress ? 'Click to copy' : undefined}
                                 onClick={() => {
                                   if (!fullWalletAddress) return
-                                  void navigator.clipboard.writeText(fullWalletAddress)
+                                  void handleCopyCommentWallet(comment.id, fullWalletAddress)
                                 }}
                               >
-                                {truncateWallet(fullWalletAddress)}
+                                {fullWalletAddress || 'Anonymous'}
                               </p>
+                              {copiedCommentIds[comment.id] ? (
+                                <p className="mt-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                                  Copied!
+                                </p>
+                              ) : null}
                               <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                                 {formatCommentDate(comment.created_at)}
                               </p>
