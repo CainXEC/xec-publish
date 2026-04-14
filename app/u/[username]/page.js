@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import Nav from '@/components/Nav'
 import AuthorProfilePosts from '@/components/AuthorProfilePosts'
+import CopyableAddress from '@/components/CopyableAddress'
 import { loadAuthorProfileByUsername } from '@/lib/loadAuthorProfile'
 
 export default async function AuthorProfilePage({ params }) {
@@ -35,6 +36,7 @@ export default async function AuthorProfilePage({ params }) {
           <h1 className="mt-2 text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-5xl">
             @{author.username}
           </h1>
+          {author.xec_address ? <CopyableAddress address={author.xec_address} /> : null}
           {bioText ? (
             <p className="mt-6 max-w-2xl whitespace-pre-wrap text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
               {bioText}
