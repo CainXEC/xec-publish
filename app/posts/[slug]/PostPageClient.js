@@ -719,6 +719,10 @@ export default function PostPageClient({
                 ) : (
                   <ul className="mt-6 space-y-3">
                     {comments.map((comment) => {
+                      const fullWalletAddress =
+                        typeof comment.payer_address === 'string'
+                          ? comment.payer_address.trim()
+                          : ''
                       const localWallet =
                         typeof window !== 'undefined'
                           ? (localStorage.getItem('readerWalletAddress') || '').trim()
@@ -726,8 +730,8 @@ export default function PostPageClient({
                       const canDelete =
                         isAuthorSession ||
                         (localWallet &&
-                          comment.payer_address &&
-                          localWallet === comment.payer_address)
+                          fullWalletAddress &&
+                          localWallet === fullWalletAddress)
                       return (
                         <li
                           key={comment.id}
@@ -735,8 +739,15 @@ export default function PostPageClient({
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                                {truncateWallet(comment.payer_address)}
+                              <p
+                                className="cursor-pointer text-sm font-medium text-zinc-800 dark:text-zinc-200"
+                                title={fullWalletAddress ? 'Click to copy full address' : undefined}
+                                onClick={() => {
+                                  if (!fullWalletAddress) return
+                                  void navigator.clipboard.writeText(fullWalletAddress)
+                                }}
+                              >
+                                {truncateWallet(fullWalletAddress)}
                               </p>
                               <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                                 {formatCommentDate(comment.created_at)}
