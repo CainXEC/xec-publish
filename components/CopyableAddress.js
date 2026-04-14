@@ -33,11 +33,8 @@ export default function CopyableAddress({ address }) {
 
   return (
     <div className="mt-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-        eCash address
-      </p>
       <p
-        className="mt-1 cursor-pointer break-all text-sm text-zinc-700 transition hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
+        className="cursor-pointer break-all text-sm text-zinc-700 transition hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
         onClick={handleCopy}
         role="button"
         tabIndex={0}
