@@ -23,6 +23,13 @@ export default function Footer() {
           className="transition hover:text-zinc-700 hover:underline dark:hover:text-zinc-200"
         >
           Leaderboard
+        </Link>{' '}
+        |{' '}
+        <Link
+          href="/get-ecash"
+          className="transition hover:text-zinc-700 hover:underline dark:hover:text-zinc-200"
+        >
+          Get eCash
         </Link>
       </div>
     </footer>
