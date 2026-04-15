@@ -1,6 +1,6 @@
 'use client'
 
-import { useId, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import RichTextEditor from '@/components/RichTextEditor'
@@ -21,6 +21,9 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
   const router = useRouter()
   const bodyLabelId = useId()
   const [xecAddress] = useState(initialXecAddress ?? '')
+  const autosaveTimerRef = useRef(null)
+  const autosaveIdRef = useRef(null)
+  const userIdRef = useRef(null)
 
   const [title, setTitle] = useState('')
   const [slug, setSlug] = useState('')
@@ -32,6 +35,7 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
+  const [autosaveStatus, setAutosaveStatus] = useState('')
 
   const slugFieldError = useMemo(() => {
     const t = slug.trim()
@@ -42,19 +46,127 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
     return null
   }, [slug])
 
+  const getCurrentUserId = useCallback(async () => {
+    if (userIdRef.current) return userIdRef.current
+    const { data: userData, error: userError } = await supabase.auth.getUser()
+    if (userError) {
+      throw new Error(userError.message)
+    }
+    const userId = userData?.user?.id
+    if (!userId) {
+      throw new Error('No authenticated user')
+    }
+    userIdRef.current = userId
+    return userId
+  }, [])
+
+  const persistDraft = useCallback(async ({
+    forceId = null,
+    nextPublished = false,
+  } = {}) => {
+    const userId = await getCurrentUserId()
+    let finalSlug = slug.trim().slice(0, POST_SLUG_MAX)
+    if (!finalSlug || !isUrlSafeSlug(finalSlug)) {
+      finalSlug = generateSlug(title.trim() || 'post').slice(0, POST_SLUG_MAX)
+    }
+
+    const price = Number(priceXec)
+    const safePrice = Number.isFinite(price) ? price : 100
+    const bodyTrimmed = body.trim()
+    const targetId = forceId ?? autosaveIdRef.current
+    const payload = {
+      author_id: userId,
+      title: title.trim(),
+      slug: finalSlug,
+      teaser: teaser.trim(),
+      body: bodyTrimmed,
+      reading_time_minutes: calculateReadingTimeMinutes(bodyTrimmed),
+      price_xec: safePrice,
+      published: nextPublished,
+    }
+
+    if (targetId) {
+      const { data: updatedRow, error: upsertError } = await supabase
+        .from('posts')
+        .upsert({ ...payload, id: targetId })
+        .select('id')
+        .single()
+      if (upsertError) throw upsertError
+      if (updatedRow?.id) autosaveIdRef.current = updatedRow.id
+      return { id: updatedRow?.id ?? targetId, finalSlug }
+    }
+
+    const { data: insertedRow, error: insertError } = await supabase
+      .from('posts')
+      .insert(payload)
+      .select('id')
+      .single()
+    if (insertError) throw insertError
+    if (insertedRow?.id) autosaveIdRef.current = insertedRow.id
+    return { id: insertedRow?.id ?? null, finalSlug }
+  }, [body, getCurrentUserId, priceXec, slug, teaser, title])
+
+  useEffect(() => {
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (submitting) return
+    const hasMeaningfulTitle = title.trim().length > 0
+    const hasMeaningfulBody = postBodyHasMeaningfulText(body)
+    if (!hasMeaningfulTitle && !hasMeaningfulBody) return
+
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current)
+    }
+
+    autosaveTimerRef.current = setTimeout(async () => {
+      setAutosaveStatus('Saving...')
+      try {
+        await persistDraft({ nextPublished: false })
+        const ts = new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+        setAutosaveStatus(`Draft saved ${ts}`)
+      } catch {
+        setAutosaveStatus('Save failed')
+      }
+    }, 3000)
+
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current)
+      }
+    }
+  }, [title, slug, teaser, body, priceXec, persistDraft, submitting])
+
   async function handleSubmit(e) {
     e.preventDefault()
     setSubmitError(null)
     setSubmitting(true)
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current)
+      autosaveTimerRef.current = null
+    }
 
     try {
-      const { data: userData, error: userError } = await supabase.auth.getUser()
-      if (userError) {
-        setSubmitError(userError.message)
+      try {
+        await getCurrentUserId()
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'No authenticated user'
+        setSubmitError(msg)
+        if (msg === 'No authenticated user') {
+          router.replace('/login')
+        }
         return
       }
-      const user = userData.user
-      if (!user) {
+
+      if (!userIdRef.current) {
         router.replace('/login')
         return
       }
@@ -88,20 +200,14 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
       }
       setSlug(finalSlug)
 
-      const bodyTrimmed = body.trim()
-      const { error: insertError } = await supabase.from('posts').insert({
-        author_id: user.id,
-        title: title.trim(),
-        slug: finalSlug,
-        teaser: teaser.trim(),
-        body: bodyTrimmed,
-        reading_time_minutes: calculateReadingTimeMinutes(bodyTrimmed),
-        price_xec: price,
-        published,
-      })
-
-      if (insertError) {
-        setSubmitError(insertError.message)
+      try {
+        await persistDraft({
+          forceId: autosaveIdRef.current,
+          nextPublished: published,
+        })
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Could not save post.'
+        setSubmitError(msg)
         return
       }
 
@@ -116,7 +222,20 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
     <div className="flex min-h-full flex-1 flex-col bg-zinc-50 px-4 py-10 dark:bg-zinc-950">
       <main className="mx-auto w-full max-w-2xl">
         <div className="mb-6 flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">New post</h1>
+          <div>
+            <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">New post</h1>
+            {autosaveStatus ? (
+              <p
+                className={`mt-1 text-xs ${
+                  autosaveStatus === 'Save failed'
+                    ? 'text-red-600 dark:text-red-400'
+                    : 'text-zinc-500 dark:text-zinc-400'
+                }`}
+              >
+                {autosaveStatus}
+              </p>
+            ) : null}
+          </div>
           <Link
             href="/dashboard"
             className="text-sm font-medium text-zinc-700 underline dark:text-zinc-300"
