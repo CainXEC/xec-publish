@@ -361,7 +361,7 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
                       </>
                     ) : null}
                   </p>
-                  <p className="mt-4 break-words whitespace-pre-wrap text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
+                  <p className="mt-4 break-words line-clamp-4 overflow-hidden text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
                     {truncateTeaserPreview(post.teaser)}
                   </p>
                 </article>

@@ -287,7 +287,7 @@ export default function HomePage() {
                           <span aria-hidden className="text-zinc-300 dark:text-zinc-600">·</span>
                           <time dateTime={post.created_at ?? undefined}>{formatPublishedDate(post.created_at)}</time>
                         </p>
-                        <p className="mt-4 break-words whitespace-pre-wrap text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
+                        <p className="mt-4 break-words line-clamp-4 overflow-hidden text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
                           {truncateTeaserPreview(post.teaser)}
                         </p>
                         <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
