@@ -38,7 +38,7 @@ export async function GET(request) {
   if (sortMode === 'newest') {
     const { data: rows, error } = await supabase
       .from('posts')
-      .select('id, title, slug, teaser, reading_time_minutes, price_xec, created_at, author_id, authors(username)')
+      .select('id, title, slug, teaser, reading_time_minutes, price_xec, created_at, published_at, author_id, authors(username)')
       .eq('published', true)
       .order('created_at', { ascending: false })
       .range(start, end)
@@ -85,7 +85,7 @@ export async function GET(request) {
   // Step 1: all published post IDs + created_at for tiebreaking
   const { data: idRows, error: idError } = await supabase
     .from('posts')
-    .select('id, created_at')
+    .select('id, created_at, published_at')
     .eq('published', true)
 
   if (idError) {
@@ -98,7 +98,12 @@ export async function GET(request) {
   }
 
   const allIds = allMeta.map((r) => r.id).filter(Boolean)
-  const createdAtById = Object.fromEntries(allMeta.map((r) => [r.id, r.created_at]))
+  const sortTimeById = Object.fromEntries(
+    allMeta.map((r) => [
+      r.id,
+      new Date(r.published_at ?? r.created_at).getTime(),
+    ]),
+  )
 
   // Step 2: unlock counts for all posts (parallel with comment counts for page later)
   const { data: unlockRowsAll, error: unlockError } = await supabase.rpc(
@@ -115,7 +120,7 @@ export async function GET(request) {
   const sortedIds = [...allIds].sort((a, b) => {
     const diff = (countById[b] ?? 0) - (countById[a] ?? 0)
     if (diff !== 0) return diff
-    return new Date(createdAtById[b]).getTime() - new Date(createdAtById[a]).getTime()
+    return (sortTimeById[b] ?? 0) - (sortTimeById[a] ?? 0)
   })
 
   const pageIds = sortedIds.slice(start, start + PAGE_SIZE)
@@ -129,7 +134,7 @@ export async function GET(request) {
   const [pageRes, commentRes] = await Promise.all([
     supabase
       .from('posts')
-      .select('id, title, slug, teaser, reading_time_minutes, price_xec, created_at, author_id, authors(username)')
+      .select('id, title, slug, teaser, reading_time_minutes, price_xec, created_at, published_at, author_id, authors(username)')
       .in('id', pageIds),
     supabase.rpc('get_comment_counts', { post_ids: pageIds }),
   ])

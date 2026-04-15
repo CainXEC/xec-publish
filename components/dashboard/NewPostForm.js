@@ -85,6 +85,21 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
       published: nextPublished,
     }
 
+    if (nextPublished) {
+      if (targetId) {
+        const { data: existing } = await supabase
+          .from('posts')
+          .select('published_at')
+          .eq('id', targetId)
+          .maybeSingle()
+        if (!existing?.published_at) {
+          payload.published_at = new Date().toISOString()
+        }
+      } else {
+        payload.published_at = new Date().toISOString()
+      }
+    }
+
     if (targetId) {
       const { data: updatedRow, error: upsertError } = await supabase
         .from('posts')

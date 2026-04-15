@@ -30,6 +30,19 @@ function formatCommentDate(iso) {
   })
 }
 
+function formatArticlePublishedDate(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 export default function PostPageClient({
   initialPost,
   initialAuthor,
@@ -617,6 +630,7 @@ export default function PostPageClient({
     return null
   }
 
+  const articleDateIso = post.published_at ?? post.created_at
   const showPaywall = !unlocked && !unlockCheckPending
 
   return (
@@ -640,6 +654,11 @@ export default function PostPageClient({
               'Unknown author'
             )}
           </p>
+          {articleDateIso ? (
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              <time dateTime={articleDateIso}>{formatArticlePublishedDate(articleDateIso)}</time>
+            </p>
+          ) : null}
           <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium text-zinc-600 dark:text-zinc-400">
             <span>
               🔓 {unlockCount} {unlockCount === 1 ? 'unlock' : 'unlocks'}

@@ -101,17 +101,29 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
       setSlug(finalSlug)
 
       const bodyTrimmed = body.trim()
+
+      const { data: existingRow } = await supabase
+        .from('posts')
+        .select('published_at')
+        .eq('id', postId)
+        .maybeSingle()
+
+      const updatePayload = {
+        title: title.trim(),
+        slug: finalSlug,
+        teaser: teaser.trim(),
+        body: bodyTrimmed,
+        reading_time_minutes: calculateReadingTimeMinutes(bodyTrimmed),
+        price_xec: price,
+        published,
+      }
+      if (published && !existingRow?.published_at) {
+        updatePayload.published_at = new Date().toISOString()
+      }
+
       const { data: updated, error: updateError } = await supabase
         .from('posts')
-        .update({
-          title: title.trim(),
-          slug: finalSlug,
-          teaser: teaser.trim(),
-          body: bodyTrimmed,
-          reading_time_minutes: calculateReadingTimeMinutes(bodyTrimmed),
-          price_xec: price,
-          published,
-        })
+        .update(updatePayload)
         .eq('id', postId)
         .eq('author_id', user.id)
         .select('id')

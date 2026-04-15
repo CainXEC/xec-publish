@@ -82,20 +82,24 @@ function postsHaveAllTimeCounts(posts) {
   })
 }
 
+function postDisplayTime(post) {
+  return post.published_at ?? post.created_at
+}
+
 function sortPostsByUnlocksThenNewest(rows) {
   return [...rows].sort((a, b) => {
     const diff = unlockCountFromPost(b) - unlockCountFromPost(a)
     if (diff !== 0) return diff
-    const ta = new Date(a.created_at).getTime()
-    const tb = new Date(b.created_at).getTime()
+    const ta = new Date(postDisplayTime(a)).getTime()
+    const tb = new Date(postDisplayTime(b)).getTime()
     return tb - ta
   })
 }
 
 function sortPostsByNewest(rows) {
   return [...rows].sort((a, b) => {
-    const tb = new Date(b.created_at).getTime()
-    const ta = new Date(a.created_at).getTime()
+    const tb = new Date(postDisplayTime(b)).getTime()
+    const ta = new Date(postDisplayTime(a)).getTime()
     return tb - ta
   })
 }
@@ -329,8 +333,8 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
                     </Link>
                   </h3>
                   <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                    <time dateTime={post.created_at ?? undefined}>
-                      {formatPublishedDate(post.created_at)}
+                    <time dateTime={postDisplayTime(post) ?? undefined}>
+                      {formatPublishedDate(postDisplayTime(post))}
                     </time>
                     <span aria-hidden className="mx-2 text-zinc-300 dark:text-zinc-600">
                       ·
