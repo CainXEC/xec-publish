@@ -18,9 +18,18 @@ export default async function DashboardPage() {
     .eq('author_id', user.id)
     .order('created_at', { ascending: false })
 
+  const { data: author } = await supabase
+    .from('authors')
+    .select('username, bio, xec_address')
+    .eq('id', user.id)
+    .maybeSingle()
+
   return (
     <DashboardClient
       email={user.email ?? ''}
+      username={author?.username ?? ''}
+      bio={author?.bio ?? ''}
+      xecAddress={author?.xec_address ?? ''}
       initialPosts={posts ?? []}
       loadError={postsError?.message ?? null}
     />

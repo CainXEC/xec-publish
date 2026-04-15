@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ThemeToggle from '@/components/ThemeToggle'
@@ -86,7 +86,14 @@ function sortPostsByNewest(rows) {
   })
 }
 
-export default function DashboardClient({ email, initialPosts, loadError }) {
+export default function DashboardClient({
+  email,
+  username,
+  bio,
+  xecAddress,
+  initialPosts,
+  loadError,
+}) {
   const router = useRouter()
   const [posts, setPosts] = useState(initialPosts)
   const [sortMode, setSortMode] = useState('newest')
@@ -95,6 +102,8 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
   const [deleteError, setDeleteError] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
+  const [copiedAddress, setCopiedAddress] = useState(false)
+  const copyTimeoutRef = useRef(null)
 
   useEffect(() => {
     setPosts(initialPosts)
@@ -210,6 +219,31 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
     router.push('/')
   }, [router])
 
+  const handleCopyXecAddress = useCallback(async () => {
+    const trimmed = typeof xecAddress === 'string' ? xecAddress.trim() : ''
+    if (!trimmed) return
+    try {
+      await navigator.clipboard.writeText(trimmed)
+      setCopiedAddress(true)
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current)
+      }
+      copyTimeoutRef.current = setTimeout(() => {
+        setCopiedAddress(false)
+      }, 2000)
+    } catch {
+      setCopiedAddress(false)
+    }
+  }, [xecAddress])
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current)
+      }
+    }
+  }, [])
+
   if (loadError) {
     return (
       <div className="flex min-h-full flex-1 items-center justify-center bg-zinc-50 px-4 py-16 dark:bg-zinc-950">
@@ -252,6 +286,25 @@ export default function DashboardClient({ email, initialPosts, loadError }) {
             Author Dashboard
           </h1>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Welcome, {email}</p>
+          {bio ? (
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{bio}</p>
+          ) : null}
+          {xecAddress ? (
+            <div className="mt-1">
+              <p
+                className="cursor-pointer break-all font-mono text-xs text-zinc-500 dark:text-zinc-400"
+                onClick={() => void handleCopyXecAddress()}
+                title="Click to copy"
+              >
+                {xecAddress}
+              </p>
+              {copiedAddress ? (
+                <p className="mt-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  Copied!
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="mt-5 flex flex-wrap gap-3">
             <Link
