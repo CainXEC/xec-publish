@@ -139,7 +139,7 @@ export default function RichTextEditor({
         className={`rich-text-editor overflow-hidden rounded-lg border border-zinc-300 bg-white dark:border-zinc-600 dark:bg-zinc-950`}
       >
         <div
-          className="flex flex-wrap items-center gap-1 border-b border-zinc-200 bg-zinc-50 px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-900/80"
+          className="sticky top-14 z-20 flex flex-wrap items-center gap-1 border-b border-zinc-200 bg-white px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-900"
           role="toolbar"
           aria-label="Formatting"
         >
