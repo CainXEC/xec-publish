@@ -433,15 +433,11 @@ export default function DashboardClient({
                                 {post.title ?? 'Untitled post'}
                               </p>
                             )}
-                            {post.published ? (
-                              <span className="inline-flex shrink-0 items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200">
-                                Published
-                              </span>
-                            ) : (
+                            {!post.published ? (
                               <span className="inline-flex shrink-0 items-center rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
                                 Draft
                               </span>
-                            )}
+                            ) : null}
                           </div>
                           <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
                             <span>{priceLabel} XEC</span>
