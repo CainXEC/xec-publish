@@ -76,18 +76,59 @@ export default function PostPageClient({
   const [commentActionError, setCommentActionError] = useState(null)
   const [deletingCommentId, setDeletingCommentId] = useState(null)
   const [copiedCommentIds, setCopiedCommentIds] = useState({})
+  const [copiedShareLink, setCopiedShareLink] = useState(false)
   const [isAuthorSession, setIsAuthorSession] = useState(false)
   const [authorAccessToken, setAuthorAccessToken] = useState('')
   const [showUnlockFlash, setShowUnlockFlash] = useState(false)
   const commentCopyTimeoutsRef = useRef({})
+  const shareCopyTimeoutRef = useRef(null)
 
   useEffect(() => {
     return () => {
       Object.values(commentCopyTimeoutsRef.current).forEach((timeoutId) => {
         clearTimeout(timeoutId)
       })
+      if (shareCopyTimeoutRef.current) {
+        clearTimeout(shareCopyTimeoutRef.current)
+      }
     }
   }, [])
+
+  const getCurrentPageUrl = useCallback(() => {
+    if (typeof window === 'undefined') return ''
+    return window.location.href
+  }, [])
+
+  const handleShareX = useCallback(() => {
+    const pageUrl = getCurrentPageUrl()
+    if (!pageUrl) return
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(post?.title ?? '')}&url=${encodeURIComponent(pageUrl)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }, [getCurrentPageUrl, post?.title])
+
+  const handleShareFacebook = useCallback(() => {
+    const pageUrl = getCurrentPageUrl()
+    if (!pageUrl) return
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }, [getCurrentPageUrl])
+
+  const handleCopyArticleLink = useCallback(async () => {
+    const pageUrl = getCurrentPageUrl()
+    if (!pageUrl) return
+    try {
+      await navigator.clipboard.writeText(pageUrl)
+      setCopiedShareLink(true)
+      if (shareCopyTimeoutRef.current) {
+        clearTimeout(shareCopyTimeoutRef.current)
+      }
+      shareCopyTimeoutRef.current = window.setTimeout(() => {
+        setCopiedShareLink(false)
+      }, 2000)
+    } catch {
+      setCopiedShareLink(false)
+    }
+  }, [getCurrentPageUrl])
 
   const handleCopyCommentWallet = useCallback(async (commentId, walletAddress) => {
     if (!commentId || !walletAddress) return
@@ -659,6 +700,34 @@ export default function PostPageClient({
               <time dateTime={articleDateIso}>{formatArticlePublishedDate(articleDateIso)}</time>
             </p>
           ) : null}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleShareX}
+              className="rounded-full border border-zinc-300 bg-white px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            >
+              𝕏
+            </button>
+            <button
+              type="button"
+              onClick={handleShareFacebook}
+              className="rounded-full border border-zinc-300 bg-white px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            >
+              Facebook
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleCopyArticleLink()}
+              className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/50"
+            >
+              Copy Link
+            </button>
+            {copiedShareLink ? (
+              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                Copied!
+              </span>
+            ) : null}
+          </div>
           <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium text-zinc-600 dark:text-zinc-400">
             <span>
               🔓 {unlockCount} {unlockCount === 1 ? 'unlock' : 'unlocks'}
