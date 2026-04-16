@@ -239,15 +239,6 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">New post</h1>
-            <p
-              className={`mt-1 min-h-4 text-xs ${
-                autosaveStatus === 'Save failed'
-                  ? 'text-red-600 dark:text-red-400'
-                  : 'text-zinc-500 dark:text-zinc-400'
-              }`}
-            >
-              {autosaveStatus}
-            </p>
           </div>
           <Link
             href="/dashboard"
@@ -363,6 +354,15 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
                 className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
               >
                 Body
+                <span
+                  className={`ml-1 font-normal ${
+                    autosaveStatus === 'Save failed'
+                      ? 'text-red-500'
+                      : 'text-zinc-500 dark:text-zinc-400'
+                  }`}
+                >
+                  ({autosaveStatus})
+                </span>
               </span>
               <RichTextEditor
                 className="mt-1"
