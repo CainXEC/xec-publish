@@ -35,7 +35,7 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
-  const [autosaveStatus, setAutosaveStatus] = useState('')
+  const [autosaveStatus, setAutosaveStatus] = useState('Draft not yet saved')
 
   const slugFieldError = useMemo(() => {
     const t = slug.trim()
@@ -239,17 +239,15 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">New post</h1>
-            {autosaveStatus ? (
-              <p
-                className={`mt-1 text-xs ${
-                  autosaveStatus === 'Save failed'
-                    ? 'text-red-600 dark:text-red-400'
-                    : 'text-zinc-500 dark:text-zinc-400'
-                }`}
-              >
-                {autosaveStatus}
-              </p>
-            ) : null}
+            <p
+              className={`mt-1 min-h-4 text-xs ${
+                autosaveStatus === 'Save failed'
+                  ? 'text-red-600 dark:text-red-400'
+                  : 'text-zinc-500 dark:text-zinc-400'
+              }`}
+            >
+              {autosaveStatus}
+            </p>
           </div>
           <Link
             href="/dashboard"
