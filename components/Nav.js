@@ -511,6 +511,33 @@ export default function Nav({
           className="mx-auto flex max-w-5xl flex-col gap-2 px-4 pt-2 pb-3"
           aria-label="Mobile navigation"
         >
+          {showPostSearch && typeof onPostSearchChange === 'function' ? (
+            <div className="relative">
+              <label htmlFor="post-search-mobile" className="sr-only">
+                Search posts
+              </label>
+              <input
+                id="post-search-mobile"
+                type="search"
+                value={postSearchQuery}
+                onChange={(e) => onPostSearchChange(e.target.value)}
+                placeholder="Search posts..."
+                autoComplete="off"
+                className={`h-10 w-full ${searchInputClassName}`}
+              />
+              {postSearchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => onPostSearchChange('')}
+                  className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-base leading-none text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                  aria-label="Clear search"
+                >
+                  ×
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+
           {readerLoginError ? (
             <p className="text-sm text-red-600 dark:text-red-400">
               {readerLoginError}
