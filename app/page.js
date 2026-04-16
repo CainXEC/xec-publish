@@ -63,7 +63,7 @@ const timeFilterBtnInactive =
 
 export default function HomePage() {
   const [posts, setPosts] = useState([])
-  const [sortMode, setSortMode] = useState('unlocks')
+  const [sortMode, setSortMode] = useState('newest')
   const [timeFilter, setTimeFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [hasNextPage, setHasNextPage] = useState(false)
