@@ -351,7 +351,7 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
             <div>
               <span
                 id={bodyLabelId}
-                className="flex flex-col text-sm font-medium text-zinc-700 sm:flex-row sm:items-center sm:gap-1 dark:text-zinc-300"
+                className="flex flex-row items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-300"
               >
                 <span>Body</span>
                 <span
