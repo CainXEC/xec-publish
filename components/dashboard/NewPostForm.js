@@ -351,11 +351,11 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
             <div>
               <span
                 id={bodyLabelId}
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+                className="flex flex-col text-sm font-medium text-zinc-700 sm:flex-row sm:items-center sm:gap-1 dark:text-zinc-300"
               >
-                Body
+                <span>Body</span>
                 <span
-                  className={`ml-1 font-normal ${
+                  className={`font-normal ${
                     autosaveStatus === 'Save failed'
                       ? 'text-red-500'
                       : 'text-zinc-500 dark:text-zinc-400'
