@@ -136,10 +136,10 @@ export default function RichTextEditor({
   return (
     <div className={className}>
       <div
-        className={`rich-text-editor flex min-h-[320px] flex-col overflow-hidden rounded-lg border border-zinc-300 bg-white dark:border-zinc-600 dark:bg-zinc-950`}
+        className={`rich-text-editor flex h-[480px] flex-col overflow-hidden rounded-lg border border-zinc-300 bg-white dark:border-zinc-600 dark:bg-zinc-950`}
       >
         <div
-          className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b border-zinc-200 bg-white px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-900"
+          className="z-10 flex flex-wrap items-center gap-1 border-b border-zinc-200 bg-white px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-900"
           role="toolbar"
           aria-label="Formatting"
         >
@@ -231,7 +231,7 @@ export default function RichTextEditor({
             R
           </ToolbarButton>
         </div>
-        <div className="min-h-[240px] flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto">
           <EditorContent editor={editor} />
         </div>
       </div>
