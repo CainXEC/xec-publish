@@ -40,7 +40,7 @@ export async function GET(request) {
       .from('posts')
       .select('id, title, slug, teaser, reading_time_minutes, price_xec, created_at, published_at, author_id, authors(username)')
       .eq('published', true)
-      .order('created_at', { ascending: false })
+      .order('published_at', { ascending: false, nullsFirst: false })
       .range(start, end)
 
     if (error) {
