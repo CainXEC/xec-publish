@@ -306,6 +306,15 @@ export default function PostPageClient({
   }, [post?.author_id])
 
   useEffect(() => {
+    if (!isAuthorSession || !post?.id) return
+    void fetch('/api/notifications/mark-read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ post_id: post.id }),
+    })
+  }, [isAuthorSession, post?.id])
+
+  useEffect(() => {
     if (!post?.id || !unlocked) return
     void fetchComments(post.id)
   }, [post?.id, unlocked, fetchComments])
