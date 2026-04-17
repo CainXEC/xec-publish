@@ -24,12 +24,21 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .maybeSingle()
 
+  const { data: notifications } = await supabase
+    .from('notifications')
+    .select('id, message, post_id, comment_id, read, created_at, posts(slug, title)')
+    .eq('author_id', user.id)
+    .eq('read', false)
+    .order('created_at', { ascending: false })
+    .limit(20)
+
   return (
     <DashboardClient
       email={user.email ?? ''}
       username={author?.username ?? ''}
       bio={author?.bio ?? ''}
       xecAddress={author?.xec_address ?? ''}
+      notifications={notifications ?? []}
       initialPosts={posts ?? []}
       loadError={postsError?.message ?? null}
     />

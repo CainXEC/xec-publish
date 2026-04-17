@@ -86,11 +86,27 @@ function sortPostsByNewest(rows) {
   })
 }
 
+function formatRelativeTime(iso) {
+  if (!iso) return ''
+  const t = new Date(iso).getTime()
+  if (Number.isNaN(t)) return ''
+  const diffMs = Date.now() - t
+  const diffSec = Math.max(1, Math.floor(diffMs / 1000))
+  if (diffSec < 60) return 'just now'
+  const diffMin = Math.floor(diffSec / 60)
+  if (diffMin < 60) return diffMin === 1 ? '1 minute ago' : `${diffMin} minutes ago`
+  const diffHour = Math.floor(diffMin / 60)
+  if (diffHour < 24) return diffHour === 1 ? '1 hour ago' : `${diffHour} hours ago`
+  const diffDay = Math.floor(diffHour / 24)
+  return diffDay === 1 ? '1 day ago' : `${diffDay} days ago`
+}
+
 export default function DashboardClient({
   email,
   username,
   bio,
   xecAddress,
+  notifications,
   initialPosts,
   loadError,
 }) {
@@ -103,11 +119,18 @@ export default function DashboardClient({
   const [deletingId, setDeletingId] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [copiedAddress, setCopiedAddress] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [markingRead, setMarkingRead] = useState(false)
+  const [unreadNotifications, setUnreadNotifications] = useState(notifications ?? [])
   const copyTimeoutRef = useRef(null)
 
   useEffect(() => {
     setPosts(initialPosts)
   }, [initialPosts])
+
+  useEffect(() => {
+    setUnreadNotifications(notifications ?? [])
+  }, [notifications])
 
   useEffect(() => {
     if (sortMode !== 'unlocks') {
@@ -236,6 +259,19 @@ export default function DashboardClient({
     }
   }, [xecAddress])
 
+  const handleMarkAllNotificationsRead = useCallback(async () => {
+    setMarkingRead(true)
+    try {
+      const res = await fetch('/api/notifications/mark-read', {
+        method: 'POST',
+      })
+      if (!res.ok) return
+      setUnreadNotifications([])
+    } finally {
+      setMarkingRead(false)
+    }
+  }, [])
+
   useEffect(() => {
     return () => {
       if (copyTimeoutRef.current) {
@@ -282,9 +318,25 @@ export default function DashboardClient({
           </div>
         </div>
         <div className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Welcome {username}!
-          </h1>
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+              Welcome {username}!
+            </h1>
+            <button
+              type="button"
+              onClick={() => setNotificationsOpen((open) => !open)}
+              className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 bg-white text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              aria-label="Toggle notifications"
+              aria-expanded={notificationsOpen}
+            >
+              <span aria-hidden>🔔</span>
+              {unreadNotifications.length > 0 ? (
+                <span className="absolute -right-1 -top-1 inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
+                  {unreadNotifications.length}
+                </span>
+              ) : null}
+            </button>
+          </div>
           {bio ? (
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{bio}</p>
           ) : null}
@@ -302,6 +354,48 @@ export default function DashboardClient({
                   Copied!
                 </p>
               ) : null}
+            </div>
+          ) : null}
+          {notificationsOpen ? (
+            <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-950">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                  Notifications
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void handleMarkAllNotificationsRead()}
+                  disabled={markingRead || unreadNotifications.length === 0}
+                  className="rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                >
+                  {markingRead ? 'Marking…' : 'Mark all as read'}
+                </button>
+              </div>
+              {unreadNotifications.length === 0 ? (
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">No new notifications</p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {unreadNotifications.map((n) => {
+                    const postRel = Array.isArray(n.posts) ? n.posts[0] : n.posts
+                    const slug = postRel?.slug ?? ''
+                    const title = postRel?.title ?? 'Post'
+                    const message = n.message || `New comment on '${title}'`
+                    return (
+                      <li key={n.id}>
+                        <Link
+                          href={slug ? `/posts/${encodeURIComponent(slug)}` : '#'}
+                          className="block rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+                        >
+                          <p className="text-zinc-800 dark:text-zinc-200">{message}</p>
+                          <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                            {formatRelativeTime(n.created_at)}
+                          </p>
+                        </Link>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
             </div>
           ) : null}
 
