@@ -123,14 +123,58 @@ export default function DashboardClient({
   const [markingRead, setMarkingRead] = useState(false)
   const [unreadNotifications, setUnreadNotifications] = useState(notifications ?? [])
   const copyTimeoutRef = useRef(null)
+  const markReadOnViewTimeoutRef = useRef(null)
 
   useEffect(() => {
     setPosts(initialPosts)
   }, [initialPosts])
 
   useEffect(() => {
-    setUnreadNotifications(notifications ?? [])
+    setUnreadNotifications(
+      (notifications ?? []).map((n) => ({ ...n, read: Boolean(n.read) })),
+    )
   }, [notifications])
+
+  const unreadNotificationCount = useMemo(
+    () => unreadNotifications.filter((n) => !n.read).length,
+    [unreadNotifications],
+  )
+
+  useEffect(() => {
+    if (!notificationsOpen) {
+      if (markReadOnViewTimeoutRef.current) {
+        clearTimeout(markReadOnViewTimeoutRef.current)
+        markReadOnViewTimeoutRef.current = null
+      }
+      return
+    }
+
+    if (unreadNotificationCount === 0) return
+
+    markReadOnViewTimeoutRef.current = window.setTimeout(async () => {
+      markReadOnViewTimeoutRef.current = null
+      try {
+        const res = await fetch('/api/notifications/mark-read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        })
+        if (!res.ok) return
+        setUnreadNotifications((prev) =>
+          prev.map((n) => ({ ...n, read: true })),
+        )
+      } catch {
+        /* ignore */
+      }
+    }, 2000)
+
+    return () => {
+      if (markReadOnViewTimeoutRef.current) {
+        clearTimeout(markReadOnViewTimeoutRef.current)
+        markReadOnViewTimeoutRef.current = null
+      }
+    }
+  }, [notificationsOpen, unreadNotificationCount])
 
   useEffect(() => {
     if (sortMode !== 'unlocks') {
@@ -264,9 +308,11 @@ export default function DashboardClient({
     try {
       const res = await fetch('/api/notifications/mark-read', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
       })
       if (!res.ok) return
-      setUnreadNotifications([])
+      setUnreadNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
     } finally {
       setMarkingRead(false)
     }
@@ -276,6 +322,9 @@ export default function DashboardClient({
     return () => {
       if (copyTimeoutRef.current) {
         clearTimeout(copyTimeoutRef.current)
+      }
+      if (markReadOnViewTimeoutRef.current) {
+        clearTimeout(markReadOnViewTimeoutRef.current)
       }
     }
   }, [])
@@ -330,9 +379,9 @@ export default function DashboardClient({
               aria-expanded={notificationsOpen}
             >
               <span aria-hidden>🔔</span>
-              {unreadNotifications.length > 0 ? (
+              {unreadNotificationCount > 0 ? (
                 <span className="absolute -right-1 -top-1 inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
-                  {unreadNotifications.length}
+                  {unreadNotificationCount}
                 </span>
               ) : null}
             </button>
@@ -365,7 +414,7 @@ export default function DashboardClient({
                 <button
                   type="button"
                   onClick={() => void handleMarkAllNotificationsRead()}
-                  disabled={markingRead || unreadNotifications.length === 0}
+                  disabled={markingRead || unreadNotificationCount === 0}
                   className="rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
                 >
                   {markingRead ? 'Marking…' : 'Mark all as read'}
@@ -384,7 +433,9 @@ export default function DashboardClient({
                       <li key={n.id}>
                         <Link
                           href={slug ? `/posts/${encodeURIComponent(slug)}` : '#'}
-                          className="block rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+                          className={`block rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800 ${
+                            n.read ? 'opacity-60' : ''
+                          }`}
                         >
                           <p className="text-zinc-800 dark:text-zinc-200">{message}</p>
                           <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">

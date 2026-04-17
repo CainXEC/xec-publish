@@ -21,6 +21,10 @@ export async function POST(request) {
     typeof body?.post_id === 'string' && body.post_id.trim()
       ? body.post_id.trim()
       : null
+  const commentId =
+    typeof body?.comment_id === 'string' && body.comment_id.trim()
+      ? body.comment_id.trim()
+      : null
 
   let query = supabase
     .from('notifications')
@@ -28,7 +32,9 @@ export async function POST(request) {
     .eq('author_id', user.id)
     .eq('read', false)
 
-  if (postId) {
+  if (commentId) {
+    query = query.eq('comment_id', commentId)
+  } else if (postId) {
     query = query.eq('post_id', postId)
   }
 
