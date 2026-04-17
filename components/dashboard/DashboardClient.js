@@ -120,7 +120,6 @@ export default function DashboardClient({
   const [currentPage, setCurrentPage] = useState(1)
   const [copiedAddress, setCopiedAddress] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [markingRead, setMarkingRead] = useState(false)
   const [unreadNotifications, setUnreadNotifications] = useState(notifications ?? [])
   const copyTimeoutRef = useRef(null)
   const markReadOnViewTimeoutRef = useRef(null)
@@ -303,21 +302,6 @@ export default function DashboardClient({
     }
   }, [xecAddress])
 
-  const handleMarkAllNotificationsRead = useCallback(async () => {
-    setMarkingRead(true)
-    try {
-      const res = await fetch('/api/notifications/mark-read', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      })
-      if (!res.ok) return
-      setUnreadNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
-    } finally {
-      setMarkingRead(false)
-    }
-  }, [])
-
   useEffect(() => {
     return () => {
       if (copyTimeoutRef.current) {
@@ -407,19 +391,9 @@ export default function DashboardClient({
           ) : null}
           {notificationsOpen ? (
             <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-950">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                  Notifications
-                </p>
-                <button
-                  type="button"
-                  onClick={() => void handleMarkAllNotificationsRead()}
-                  disabled={markingRead || unreadNotificationCount === 0}
-                  className="rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                >
-                  {markingRead ? 'Marking…' : 'Mark all as read'}
-                </button>
-              </div>
+              <p className="mb-2 text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                Notifications
+              </p>
               {unreadNotifications.length === 0 ? (
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">No new notifications</p>
               ) : (
