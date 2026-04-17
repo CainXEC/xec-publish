@@ -630,6 +630,7 @@ export default function PostPageClient({
 
   const handleDeleteComment = useCallback(async (commentId) => {
     if (!post?.id || !commentId) return
+    if (!window.confirm('Are you sure you want to delete this comment?')) return
     setDeletingCommentId(commentId)
     setCommentActionError(null)
     try {
