@@ -83,7 +83,7 @@ export default async function DraftPreviewPage({ params }) {
             {username ? (
               <Link
                 href={`/u/${encodeURIComponent(username)}`}
-                className="font-medium text-zinc-800 underline-offset-2 hover:text-zinc-950 hover:underline dark:text-zinc-200 dark:hover:text-zinc-50"
+                className="font-medium text-emerald-700 hover:text-emerald-800 underline-offset-2 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
               >
                 @{username}
               </Link>
