@@ -274,16 +274,18 @@ export default function HomePage() {
 
                   return (
                     <li key={post.id}>
-                      <Link
-                        prefetch={false}
-                        href={postHref}
-                        className="block overflow-hidden rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-[box-shadow,border-color] duration-200 hover:border-zinc-400 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-500 dark:hover:shadow-lg/20 dark:focus-visible:ring-offset-zinc-950"
-                      >
+                      <div className="block cursor-pointer overflow-hidden rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-[box-shadow,border-color] duration-200 hover:border-zinc-400 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-500 dark:hover:shadow-lg/20">
                         <h2 className="text-xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
-                          {post.title}
+                          <Link
+                            prefetch={false}
+                            href={postHref}
+                            className="rounded-sm text-inherit focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
+                          >
+                            {post.title}
+                          </Link>
                         </h2>
                         <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
-                          <span className="font-medium text-zinc-700 dark:text-zinc-300">{username}</span>
+                          <Link href={`/u/${encodeURIComponent(username)}`} className="font-medium text-zinc-700 hover:text-zinc-950 underline-offset-2 hover:underline dark:text-zinc-300 dark:hover:text-zinc-50">@{username}</Link>
                           <span aria-hidden className="text-zinc-300 dark:text-zinc-600">·</span>
                           <time dateTime={(post.published_at ?? post.created_at) ?? undefined}>
                             {formatPublishedDate(post.published_at ?? post.created_at)}
@@ -298,7 +300,7 @@ export default function HomePage() {
                           <span className="font-normal text-zinc-600 dark:text-zinc-400">{commentStat}</span>
                           {readTime ? <span className="font-normal text-zinc-600 dark:text-zinc-400">{readTime}</span> : null}
                         </p>
-                      </Link>
+                      </div>
                     </li>
                   )
                 })}

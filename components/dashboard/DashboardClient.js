@@ -353,7 +353,14 @@ export default function DashboardClient({
         <div className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex items-center justify-between gap-3">
             <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-              Welcome {username}!
+              Welcome{' '}
+              <Link
+                href={`/u/${encodeURIComponent(username)}`}
+                className="font-medium hover:underline underline-offset-2"
+              >
+                @{username}
+              </Link>
+              !
             </h1>
             <button
               type="button"

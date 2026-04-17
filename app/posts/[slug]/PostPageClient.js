@@ -701,7 +701,7 @@ export default function PostPageClient({
                 href={`/u/${encodeURIComponent(author.username.trim())}`}
                 className="font-medium text-zinc-800 underline-offset-2 hover:text-zinc-950 hover:underline dark:text-zinc-200 dark:hover:text-zinc-50"
               >
-                {author.username.trim()}
+                @{author.username.trim()}
               </Link>
             ) : (
               'Unknown author'
