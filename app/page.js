@@ -285,7 +285,7 @@ export default function HomePage() {
                           </Link>
                         </h2>
                         <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
-                          <Link href={`/u/${encodeURIComponent(username)}`} className="font-medium text-zinc-700 hover:text-zinc-950 underline-offset-2 hover:underline dark:text-zinc-300 dark:hover:text-zinc-50">@{username}</Link>
+                          <Link href={`/u/${encodeURIComponent(username)}`} className="relative z-10 font-medium text-zinc-700 hover:text-zinc-950 underline-offset-2 hover:underline dark:text-zinc-300 dark:hover:text-zinc-50">@{username}</Link>
                           <span aria-hidden className="text-zinc-300 dark:text-zinc-600">·</span>
                           <time dateTime={(post.published_at ?? post.created_at) ?? undefined}>
                             {formatPublishedDate(post.published_at ?? post.created_at)}
