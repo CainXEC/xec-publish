@@ -12,6 +12,7 @@ import {
   primeAudioContextOnUserGesture,
 } from '@/lib/webAudioUnlock'
 import { sanitizePostBodyHtml } from '@/lib/sanitizePostBodyHtml'
+import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { supabase } from '@/lib/supabase-browser'
 
 const COMMENT_MAX_LEN = 500
@@ -672,6 +673,7 @@ export default function PostPageClient({
   }
 
   const articleDateIso = post.published_at ?? post.created_at
+  const previewReadTimeLabel = formatReadingTimeLabel(post.reading_time_minutes)
   const showPaywall = !unlocked && !unlockCheckPending
 
   return (
@@ -743,6 +745,12 @@ export default function PostPageClient({
           <section className="mt-8 overflow-hidden">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Preview
+              {previewReadTimeLabel ? (
+                <span className="font-normal normal-case text-zinc-500 dark:text-zinc-400">
+                  {' '}
+                  ({previewReadTimeLabel})
+                </span>
+              ) : null}
             </h2>
             <p className="mt-2 break-words whitespace-pre-wrap text-base leading-7 text-zinc-800 dark:text-zinc-200">
               {post.teaser}
