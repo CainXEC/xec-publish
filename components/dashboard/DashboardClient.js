@@ -101,6 +101,80 @@ function formatRelativeTime(iso) {
   return diffDay === 1 ? '1 day ago' : `${diffDay} days ago`
 }
 
+function DashboardPostCard({ post, deletingId, onDelete }) {
+  const n = unlockCountFromPost(post)
+  const unlockStat = n === 1 ? '🔓 1 unlock' : `🔓 ${n} unlocks`
+  const readTime = formatReadingTimeLabel(post.reading_time_minutes)
+  const priceLabel = formatXec(post.price_xec)
+  const publicHref =
+    post.slug && post.legacy
+      ? `/${encodeURIComponent(post.slug)}`
+      : post.slug
+        ? `/posts/${encodeURIComponent(post.slug)}`
+        : null
+
+  return (
+    <li className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-950">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            {publicHref ? (
+              <Link
+                href={publicHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="min-w-0 text-base font-medium text-emerald-700 underline-offset-2 hover:text-emerald-600 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
+              >
+                {post.title ?? 'Untitled post'}
+              </Link>
+            ) : (
+              <p className="min-w-0 text-base font-medium text-zinc-900 dark:text-zinc-50">
+                {post.title ?? 'Untitled post'}
+              </p>
+            )}
+            {!post.published ? (
+              <span className="inline-flex shrink-0 items-center rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
+                Draft
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
+            <span>{priceLabel} XEC</span>
+            <span className="font-normal text-zinc-600 dark:text-zinc-400">{unlockStat}</span>
+            {readTime ? (
+              <span className="font-normal text-zinc-600 dark:text-zinc-400">{readTime}</span>
+            ) : null}
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {!post.published ? (
+            <Link
+              href={`/dashboard/preview/${encodeURIComponent(post.id)}`}
+              className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-900 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200 dark:hover:bg-amber-900/50"
+            >
+              Preview
+            </Link>
+          ) : null}
+          <Link
+            href={`/dashboard/edit/${encodeURIComponent(post.id)}`}
+            className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          >
+            Edit
+          </Link>
+          <button
+            type="button"
+            onClick={() => void onDelete()}
+            disabled={deletingId !== null}
+            className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:opacity-50 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300 dark:hover:bg-red-950"
+          >
+            {deletingId === post.id ? 'Deleting…' : 'Delete'}
+          </button>
+        </div>
+      </div>
+    </li>
+  )
+}
+
 export default function DashboardClient({
   email,
   username,
@@ -125,6 +199,7 @@ export default function DashboardClient({
   const [authorUnlockStatsError, setAuthorUnlockStatsError] = useState(false)
   const [totalUnlocks, setTotalUnlocks] = useState(0)
   const [totalXecEarned, setTotalXecEarned] = useState(0)
+  const [legacySectionOpen, setLegacySectionOpen] = useState(false)
   const copyTimeoutRef = useRef(null)
   const markReadOnViewTimeoutRef = useRef(null)
 
@@ -255,6 +330,45 @@ export default function DashboardClient({
     () => posts.filter((p) => p.legacy !== true),
     [posts],
   )
+
+  const legacyPosts = useMemo(
+    () => posts.filter((p) => p.legacy === true),
+    [posts],
+  )
+
+  const legacyPostsSorted = useMemo(() => {
+    return [...legacyPosts].sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )
+  }, [legacyPosts])
+
+  useEffect(() => {
+    if (!legacySectionOpen || legacyPosts.length === 0) return
+
+    let cancelled = false
+
+    async function loadLegacyUnlockCounts() {
+      const postIds = legacyPosts.map((p) => p.id).filter(Boolean)
+      const since = getSinceTimestamp(
+        sortMode === 'unlocks' ? timeFilter : 'all',
+      )
+      const { error, rows } = await fetchAllUnlockCountRows(
+        supabase,
+        postIds,
+        since,
+      )
+      if (cancelled) return
+      if (error) return
+      const patch = countRowsByPostId(rows ?? [])
+      setUnlockCountMap((prev) => ({ ...prev, ...patch }))
+    }
+
+    void loadLegacyUnlockCounts()
+    return () => {
+      cancelled = true
+    }
+  }, [legacySectionOpen, legacyPosts, sortMode, timeFilter])
 
   useEffect(() => {
     let cancelled = false
@@ -651,81 +765,14 @@ export default function DashboardClient({
               ) : null}
 
               <ul className="flex flex-col gap-1.5 md:gap-2">
-                {pagedSortedPosts.map((post) => {
-                  const n = unlockCountFromPost(post)
-                  const unlockStat =
-                    n === 1 ? '🔓 1 unlock' : `🔓 ${n} unlocks`
-                  const readTime = formatReadingTimeLabel(post.reading_time_minutes)
-                  const priceLabel = formatXec(post.price_xec)
-
-                  return (
-                    <li
-                      key={post.id}
-                      className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-950"
-                    >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            {post.slug ? (
-                              <Link
-                                href={`/posts/${encodeURIComponent(post.slug)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="min-w-0 text-base font-medium text-emerald-700 underline-offset-2 hover:text-emerald-600 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
-                              >
-                                {post.title ?? 'Untitled post'}
-                              </Link>
-                            ) : (
-                              <p className="min-w-0 text-base font-medium text-zinc-900 dark:text-zinc-50">
-                                {post.title ?? 'Untitled post'}
-                              </p>
-                            )}
-                            {!post.published ? (
-                              <span className="inline-flex shrink-0 items-center rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
-                                Draft
-                              </span>
-                            ) : null}
-                          </div>
-                          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                            <span>{priceLabel} XEC</span>
-                            <span className="font-normal text-zinc-600 dark:text-zinc-400">
-                              {unlockStat}
-                            </span>
-                            {readTime ? (
-                              <span className="font-normal text-zinc-600 dark:text-zinc-400">
-                                {readTime}
-                              </span>
-                            ) : null}
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 flex-wrap items-center gap-2">
-                          {!post.published ? (
-                            <Link
-                              href={`/dashboard/preview/${encodeURIComponent(post.id)}`}
-                              className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-900 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200 dark:hover:bg-amber-900/50"
-                            >
-                              Preview
-                            </Link>
-                          ) : null}
-                          <Link
-                            href={`/dashboard/edit/${encodeURIComponent(post.id)}`}
-                            className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                          >
-                            Edit
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => void handleDeletePost(post.id)}
-                            disabled={deletingId !== null}
-                            className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:opacity-50 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300 dark:hover:bg-red-950"
-                          >
-                            {deletingId === post.id ? 'Deleting…' : 'Delete'}
-                          </button>
-                        </div>
-                      </div>
-                    </li>
-                  )
-                })}
+                {pagedSortedPosts.map((post) => (
+                  <DashboardPostCard
+                    key={post.id}
+                    post={post}
+                    deletingId={deletingId}
+                    onDelete={() => void handleDeletePost(post.id)}
+                  />
+                ))}
               </ul>
               {sortedPosts.length > PAGE_SIZE ? (
                 <div className="mt-6 flex items-center justify-between gap-2 border-t border-zinc-200 pt-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
@@ -759,6 +806,39 @@ export default function DashboardClient({
             </>
           )}
         </section>
+
+        {legacyPosts.length > 0 ? (
+          <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <button
+              type="button"
+              onClick={() => setLegacySectionOpen((open) => !open)}
+              aria-expanded={legacySectionOpen}
+              className="flex w-full items-center justify-between gap-3 text-left"
+            >
+              <h2 className="text-base font-semibold text-zinc-600 dark:text-zinc-400">
+                Legacy Posts ({legacyPosts.length})
+              </h2>
+              <span className="shrink-0 text-zinc-500 tabular-nums dark:text-zinc-500" aria-hidden>
+                {legacySectionOpen ? '▾' : '▸'}
+              </span>
+            </button>
+            {legacySectionOpen ? (
+              <ul className="mt-4 flex flex-col gap-1.5 md:gap-2">
+                {legacyPostsSorted.map((post) => (
+                  <DashboardPostCard
+                    key={post.id}
+                    post={{
+                      ...post,
+                      unlocks: [{ count: unlockCountMap[post.id] ?? 0 }],
+                    }}
+                    deletingId={deletingId}
+                    onDelete={() => void handleDeletePost(post.id)}
+                  />
+                ))}
+              </ul>
+            ) : null}
+          </section>
+        ) : null}
       </main>
     </div>
   )
