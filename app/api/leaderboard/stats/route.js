@@ -12,7 +12,10 @@ export async function GET() {
     )
   }
 
-  const { data, error } = await admin.from('unlocks').select('id, amount_xec')
+  const { data, error } = await admin
+    .from('unlocks')
+    .select('id, amount_xec, posts!inner(legacy)')
+    .eq('posts.legacy', false)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
