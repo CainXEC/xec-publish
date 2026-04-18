@@ -40,6 +40,7 @@ export async function GET(request) {
       .from('posts')
       .select('id, title, slug, teaser, reading_time_minutes, price_xec, created_at, published_at, author_id, authors(username)')
       .eq('published', true)
+      .eq('legacy', false)
       .order('published_at', { ascending: false, nullsFirst: false })
       .range(start, end)
 
@@ -87,6 +88,7 @@ export async function GET(request) {
     .from('posts')
     .select('id, created_at, published_at')
     .eq('published', true)
+    .eq('legacy', false)
 
   if (idError) {
     return NextResponse.json({ error: idError.message }, { status: 500 })
@@ -135,6 +137,7 @@ export async function GET(request) {
     supabase
       .from('posts')
       .select('id, title, slug, teaser, reading_time_minutes, price_xec, created_at, published_at, author_id, authors(username)')
+      .eq('legacy', false)
       .in('id', pageIds),
     supabase.rpc('get_comment_counts', { post_ids: pageIds }),
   ])

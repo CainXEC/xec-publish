@@ -204,6 +204,7 @@ export default function DashboardClient({
           .from('unlocks')
           .select('amount_xec, post_id, posts!inner(author_id)')
           .eq('posts.author_id', userId)
+          .eq('posts.legacy', false)
 
         if (error || cancelled) {
           if (!cancelled) {
@@ -250,11 +251,16 @@ export default function DashboardClient({
     }
   }, [sortMode])
 
+  const nonLegacyPosts = useMemo(
+    () => posts.filter((p) => p.legacy !== true),
+    [posts],
+  )
+
   useEffect(() => {
     let cancelled = false
 
     async function loadUnlockCounts() {
-      const postIds = posts.map((p) => p.id).filter(Boolean)
+      const postIds = nonLegacyPosts.map((p) => p.id).filter(Boolean)
       if (postIds.length === 0) {
         setUnlockCountMap({})
         return
@@ -285,16 +291,16 @@ export default function DashboardClient({
     return () => {
       cancelled = true
     }
-  }, [posts, sortMode, timeFilter])
+  }, [nonLegacyPosts, sortMode, timeFilter])
 
   const sortedPosts = useMemo(() => {
-    const withCounts = posts.map((p) => ({
+    const withCounts = nonLegacyPosts.map((p) => ({
       ...p,
       unlocks: [{ count: unlockCountMap[p.id] ?? 0 }],
     }))
     if (sortMode === 'newest') return sortPostsByNewest(withCounts)
     return sortPostsByUnlocksThenNewest(withCounts)
-  }, [posts, unlockCountMap, sortMode])
+  }, [nonLegacyPosts, unlockCountMap, sortMode])
 
   const totalPages = Math.max(1, Math.ceil(sortedPosts.length / PAGE_SIZE))
   const effectivePage = Math.max(1, Math.min(currentPage, totalPages))
@@ -574,7 +580,7 @@ export default function DashboardClient({
             </p>
           ) : null}
 
-          {posts.length === 0 ? (
+          {nonLegacyPosts.length === 0 ? (
             <div className="mt-4">
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
                 Welcome to Proof Of Writing! Create your first post to get started.
