@@ -121,6 +121,10 @@ export default function DashboardClient({
   const [copiedAddress, setCopiedAddress] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [unreadNotifications, setUnreadNotifications] = useState(notifications ?? [])
+  const [authorUnlockStatsLoading, setAuthorUnlockStatsLoading] = useState(true)
+  const [authorUnlockStatsError, setAuthorUnlockStatsError] = useState(false)
+  const [totalUnlocks, setTotalUnlocks] = useState(0)
+  const [totalXecEarned, setTotalXecEarned] = useState(0)
   const copyTimeoutRef = useRef(null)
   const markReadOnViewTimeoutRef = useRef(null)
 
@@ -174,6 +178,71 @@ export default function DashboardClient({
       }
     }
   }, [notificationsOpen, unreadNotificationCount])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadAuthorUnlockStats() {
+      setAuthorUnlockStatsLoading(true)
+      setAuthorUnlockStatsError(false)
+      try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser()
+        const userId = user?.id
+        if (userError || !userId) {
+          if (!cancelled) {
+            setAuthorUnlockStatsError(true)
+            setTotalUnlocks(0)
+            setTotalXecEarned(0)
+          }
+          return
+        }
+
+        const { data, error } = await supabase
+          .from('unlocks')
+          .select('amount_xec, post_id, posts!inner(author_id)')
+          .eq('posts.author_id', userId)
+
+        if (error || cancelled) {
+          if (!cancelled) {
+            setAuthorUnlockStatsError(Boolean(error))
+            setTotalUnlocks(0)
+            setTotalXecEarned(0)
+          }
+          return
+        }
+
+        const rows = data ?? []
+        let xecSum = 0
+        for (const r of rows) {
+          const sats = Number(r.amount_xec)
+          if (Number.isFinite(sats)) xecSum += sats / 100
+        }
+        if (!cancelled) {
+          setTotalUnlocks(rows.length)
+          setTotalXecEarned(xecSum)
+          setAuthorUnlockStatsError(false)
+        }
+      } catch {
+        if (!cancelled) {
+          setAuthorUnlockStatsError(true)
+          setTotalUnlocks(0)
+          setTotalXecEarned(0)
+        }
+      } finally {
+        if (!cancelled) {
+          setAuthorUnlockStatsLoading(false)
+        }
+      }
+    }
+
+    void loadAuthorUnlockStats()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (sortMode !== 'unlocks') {
@@ -376,6 +445,52 @@ export default function DashboardClient({
                 </span>
               ) : null}
             </button>
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/80">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Total Unlocks
+              </p>
+              {authorUnlockStatsLoading ? (
+                <div
+                  className="mt-2 h-9 w-24 animate-pulse rounded-md bg-zinc-200 dark:bg-zinc-700"
+                  aria-hidden
+                />
+              ) : authorUnlockStatsError ? (
+                <p className="mt-2 text-2xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
+                  —
+                </p>
+              ) : (
+                <p className="mt-2 text-2xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
+                  <span aria-hidden className="mr-1.5">
+                    🔓
+                  </span>
+                  {totalUnlocks}
+                </p>
+              )}
+            </div>
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/80">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Total Earned
+              </p>
+              {authorUnlockStatsLoading ? (
+                <div
+                  className="mt-2 h-9 w-36 animate-pulse rounded-md bg-zinc-200 dark:bg-zinc-700"
+                  aria-hidden
+                />
+              ) : authorUnlockStatsError ? (
+                <p className="mt-2 text-2xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
+                  —
+                </p>
+              ) : (
+                <p className="mt-2 text-2xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
+                  <span aria-hidden className="mr-1.5">
+                    💰
+                  </span>
+                  {totalXecEarned.toFixed(2)} XEC
+                </p>
+              )}
+            </div>
           </div>
           {bio ? (
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{bio}</p>

@@ -35,6 +35,8 @@ export default function LeaderboardPage() {
   const [loadError, setLoadError] = useState(null)
   const [sortMode, setSortMode] = useState('unlocks')
   const [timeFilter, setTimeFilter] = useState('all')
+  /** `null` = loading or failed to load (show —). */
+  const [platformStats, setPlatformStats] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -58,6 +60,35 @@ export default function LeaderboardPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadPlatformStats() {
+      try {
+        const res = await fetch('/api/leaderboard/stats')
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || cancelled) {
+          return
+        }
+        const totalUnlocks = Number(data?.total_unlocks)
+        const totalXec = Number(data?.total_xec)
+        if (!Number.isFinite(totalUnlocks) || !Number.isFinite(totalXec)) {
+          return
+        }
+        if (!cancelled) {
+          setPlatformStats({ total_unlocks: totalUnlocks, total_xec: totalXec })
+        }
+      } catch {
+        /* leave platformStats null → show — */
+      }
+    }
+
+    void loadPlatformStats()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const sortedRows = useMemo(() => {
     const copy = [...rows]
@@ -132,6 +163,25 @@ export default function LeaderboardPage() {
               {opt.label}
             </button>
           ))}
+        </div>
+
+        <div className="mb-3 rounded-lg border border-zinc-200/70 bg-zinc-100/40 px-4 py-2.5 dark:border-zinc-800/70 dark:bg-zinc-900/30">
+          <p className="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-xs text-zinc-500 dark:text-zinc-500">
+            <span>
+              <span className="text-zinc-600 dark:text-zinc-400">Total Unlocks</span>
+              <span className="mx-1.5 text-zinc-400 dark:text-zinc-600">·</span>
+              <span className="font-medium tabular-nums text-zinc-700 dark:text-zinc-300">
+                {platformStats ? platformStats.total_unlocks : '—'}
+              </span>
+            </span>
+            <span>
+              <span className="text-zinc-600 dark:text-zinc-400">Total Earned by Authors</span>
+              <span className="mx-1.5 text-zinc-400 dark:text-zinc-600">·</span>
+              <span className="font-medium tabular-nums text-zinc-700 dark:text-zinc-300">
+                {platformStats ? formatXec(platformStats.total_xec) : '—'}
+              </span>
+            </span>
+          </p>
         </div>
 
         {loading ? (
