@@ -107,7 +107,6 @@ export async function DELETE(request, { params }) {
 
   const body = await request.json().catch(() => ({}))
   const commentId = body?.commentId
-  const payerAddress = truncateWallet(body?.payer_address)
 
   if (!commentId) {
     return NextResponse.json({ error: 'Missing commentId' }, { status: 400 })
@@ -130,29 +129,58 @@ export async function DELETE(request, { params }) {
   }
 
   let canDelete = false
-  if (payerAddress && comment.payer_address && payerAddress === comment.payer_address) {
-    canDelete = true
+
+  const authHeader = request.headers.get('authorization') || ''
+  const match = authHeader.match(/^Bearer\s+(.+)$/i)
+  const accessToken = match?.[1]
+  if (accessToken) {
+    const { data: userData, error: userError } = await supabase.auth.getUser(accessToken)
+    if (!userError && userData?.user?.id) {
+      const { data: ownedPost, error: postError } = await supabaseService
+        .from('posts')
+        .select('id')
+        .eq('id', postId)
+        .eq('author_id', userData.user.id)
+        .limit(1)
+        .maybeSingle()
+      if (!postError && ownedPost) {
+        canDelete = true
+      }
+    }
   }
 
   if (!canDelete) {
-    const authHeader = request.headers.get('authorization') || ''
-    const match = authHeader.match(/^Bearer\s+(.+)$/i)
-    const accessToken = match?.[1]
-    if (accessToken) {
-      const { data: userData, error: userError } = await supabase.auth.getUser(accessToken)
-      if (!userError && userData?.user?.id) {
-        const { data: ownedPost, error: postError } = await supabaseService
-          .from('posts')
-          .select('id')
-          .eq('id', postId)
-          .eq('author_id', userData.user.id)
-          .limit(1)
-          .maybeSingle()
-        if (!postError && ownedPost) {
-          canDelete = true
-        }
-      }
+    const rawCookie = request.cookies.get(`unlock_${postId}`)?.value
+    const { valid, txid } = verifyCookieValue(postId, rawCookie)
+    if (!valid || !String(txid).trim()) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const txidTrim = String(txid).trim()
+    const { data: unlockRow, error: unlockError } = await supabaseService
+      .from('unlocks')
+      .select('payer_address')
+      .eq('post_id', postId)
+      .eq('txid', txidTrim)
+      .maybeSingle()
+
+    if (unlockError) {
+      return NextResponse.json({ error: unlockError.message }, { status: 500 })
+    }
+    if (!unlockRow) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const verifiedPayer =
+      typeof unlockRow.payer_address === 'string' ? unlockRow.payer_address.trim() : ''
+    const commentPayer =
+      typeof comment.payer_address === 'string' ? comment.payer_address.trim() : ''
+
+    if (commentPayer !== verifiedPayer) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    canDelete = true
   }
 
   if (!canDelete) {
