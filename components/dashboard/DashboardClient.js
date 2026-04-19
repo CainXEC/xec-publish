@@ -607,7 +607,7 @@ export default function DashboardClient({
                   <span aria-hidden className="mr-1.5">
                     💰
                   </span>
-                  {totalXecEarned.toFixed(2)} XEC
+                  {Math.round(totalXecEarned).toLocaleString('en-US')} XEC
                 </p>
               )}
             </div>
