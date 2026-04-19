@@ -261,46 +261,37 @@ export default function DashboardClient({
       setAuthorUnlockStatsLoading(true)
       setAuthorUnlockStatsError(false)
       try {
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser()
-        const userId = user?.id
-        if (userError || !userId) {
-          if (!cancelled) {
-            setAuthorUnlockStatsError(true)
-            setTotalUnlocks(0)
-            setTotalXecEarned(0)
-          }
+        const res = await fetch('/api/dashboard/stats', { credentials: 'include' })
+        const data = await res.json().catch(() => ({}))
+
+        if (cancelled) return
+
+        if (res.status === 401) {
+          setAuthorUnlockStatsError(true)
+          setTotalUnlocks(0)
+          setTotalXecEarned(0)
           return
         }
 
-        const { data, error } = await supabase
-          .from('unlocks')
-          .select('amount_xec, post_id, posts!inner(author_id)')
-          .eq('posts.author_id', userId)
-          .eq('posts.legacy', false)
-
-        if (error || cancelled) {
-          if (!cancelled) {
-            setAuthorUnlockStatsError(Boolean(error))
-            setTotalUnlocks(0)
-            setTotalXecEarned(0)
-          }
+        if (!res.ok) {
+          setAuthorUnlockStatsError(true)
+          setTotalUnlocks(0)
+          setTotalXecEarned(0)
           return
         }
 
-        const rows = data ?? []
-        let xecSum = 0
-        for (const r of rows) {
-          const sats = Number(r.amount_xec)
-          if (Number.isFinite(sats)) xecSum += sats / 100
+        const totalUnlocks = Number(data?.total_unlocks)
+        const totalXecRaw = Number(data?.total_xec)
+        if (!Number.isFinite(totalUnlocks) || !Number.isFinite(totalXecRaw)) {
+          setAuthorUnlockStatsError(true)
+          setTotalUnlocks(0)
+          setTotalXecEarned(0)
+          return
         }
-        if (!cancelled) {
-          setTotalUnlocks(rows.length)
-          setTotalXecEarned(xecSum)
-          setAuthorUnlockStatsError(false)
-        }
+
+        setTotalUnlocks(totalUnlocks)
+        setTotalXecEarned(totalXecRaw / 100)
+        setAuthorUnlockStatsError(false)
       } catch {
         if (!cancelled) {
           setAuthorUnlockStatsError(true)
