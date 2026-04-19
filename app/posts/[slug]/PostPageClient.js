@@ -747,9 +747,15 @@ export default function PostPageClient({
             <span aria-hidden className="text-zinc-300 dark:text-zinc-600">
               ·
             </span>
-            <span>
+            <button
+              type="button"
+              className="inline cursor-pointer border-0 bg-transparent p-0 font-inherit text-inherit underline-offset-2 hover:underline"
+              onClick={() =>
+                document.getElementById('comments')?.scrollIntoView({ behavior: 'smooth' })
+              }
+            >
               💬 {commentCount} {commentCount === 1 ? 'comment' : 'comments'}
-            </span>
+            </button>
           </p>
 
           <section className="mt-8 overflow-hidden">
@@ -780,7 +786,10 @@ export default function PostPageClient({
                 }}
               />
 
-              <section className="mt-10 border-t border-zinc-200 pt-8 dark:border-zinc-700">
+              <section
+                id="comments"
+                className="mt-10 border-t border-zinc-200 pt-8 dark:border-zinc-700"
+              >
                 <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
                   Comments
                 </h3>
