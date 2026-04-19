@@ -28,6 +28,9 @@ jobs:
           COOKIE_SECRET: test-secret-key-for-ci-only
           NEXT_PUBLIC_PLATFORM_XEC_ADDRESS: ${{ secrets.NEXT_PUBLIC_PLATFORM_XEC_ADDRESS }}
           PLATFORM_XEC_ADDRESS: ${{ secrets.NEXT_PUBLIC_PLATFORM_XEC_ADDRESS }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
       - name: Upload coverage
         uses: actions/upload-artifact@v4
