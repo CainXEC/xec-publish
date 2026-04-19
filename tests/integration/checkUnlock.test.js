@@ -1,16 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const maybeSingle = vi.fn()
-const limit = vi.fn(() => ({ maybeSingle }))
-const eq2 = vi.fn(() => ({ limit }))
-const eq1 = vi.fn(() => ({ eq: eq2 }))
-const select = vi.fn(() => ({ eq: eq1 }))
-const from = vi.fn(() => ({ select }))
+const db = vi.hoisted(() => {
+  const maybeSingle = vi.fn()
+  const limit = vi.fn(() => ({ maybeSingle }))
+  const eq2 = vi.fn(() => ({ limit }))
+  const eq1 = vi.fn(() => ({ eq: eq2 }))
+  const select = vi.fn(() => ({ eq: eq1 }))
+  const from = vi.fn(() => ({ select }))
+  const createServerSupabase = vi.fn(() => ({ from }))
+  return { maybeSingle, limit, eq2, eq1, select, from, createServerSupabase }
+})
 
-vi.mock('@/lib/supabase', () => ({
-  supabase: {
-    from,
-  },
+vi.mock('@/lib/supabase-server', () => ({
+  createServerSupabase: db.createServerSupabase,
 }))
 
 const verifyCookieValue = vi.fn(() => ({ valid: false, txid: '' }))
@@ -55,7 +57,7 @@ describe('/api/check-unlock/[postId]', () => {
   })
 
   it('returns unlocked true when unlock exists for wallet', async () => {
-    maybeSingle.mockResolvedValueOnce({
+    db.maybeSingle.mockResolvedValueOnce({
       data: { id: 'u1', txid: 'tx1' },
       error: null,
     })
