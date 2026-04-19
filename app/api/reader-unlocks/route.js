@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createServerSupabase } from '@/lib/supabase-server'
 
 export async function GET(request) {
   const walletAddress = request.nextUrl.searchParams.get('walletAddress')?.trim()
   if (!walletAddress) {
     return NextResponse.json({ error: 'Missing walletAddress' }, { status: 400 })
   }
+
+  const supabase = createServerSupabase()
 
   const { data, error } = await supabase
     .from('unlocks')

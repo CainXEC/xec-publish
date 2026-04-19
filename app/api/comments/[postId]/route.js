@@ -2,6 +2,7 @@ export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
 import { verifyCookieValue } from '@/lib/cookieSigner'
+import { createServerSupabase } from '@/lib/supabase-server'
 import { supabase } from '@/lib/supabase'
 
 function truncateWallet(address) {
@@ -112,7 +113,9 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ error: 'Missing commentId' }, { status: 400 })
   }
 
-  const { data: comment, error: commentError } = await supabase
+  const supabaseService = createServerSupabase()
+
+  const { data: comment, error: commentError } = await supabaseService
     .from('comments')
     .select('id, post_id, payer_address')
     .eq('id', commentId)
@@ -138,7 +141,7 @@ export async function DELETE(request, { params }) {
     if (accessToken) {
       const { data: userData, error: userError } = await supabase.auth.getUser(accessToken)
       if (!userError && userData?.user?.id) {
-        const { data: ownedPost, error: postError } = await supabase
+        const { data: ownedPost, error: postError } = await supabaseService
           .from('posts')
           .select('id')
           .eq('id', postId)
@@ -156,7 +159,7 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { error: deleteError } = await supabase
+  const { error: deleteError } = await supabaseService
     .from('comments')
     .delete()
     .eq('id', commentId)
