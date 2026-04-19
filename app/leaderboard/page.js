@@ -168,15 +168,13 @@ export default function LeaderboardPage() {
         <div className="mb-3 rounded-lg border border-zinc-200/70 bg-zinc-100/40 px-2 py-2.5 sm:px-4 dark:border-zinc-800/70 dark:bg-zinc-900/30">
           <p className="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-xs text-zinc-500 dark:text-zinc-500">
             <span>
-              <span className="text-zinc-600 dark:text-zinc-400">Total Unlocks</span>
-              <span className="mx-1.5 text-zinc-400 dark:text-zinc-600">·</span>
+              <span className="text-zinc-600 dark:text-zinc-400">Total Unlocks: </span>
               <span className="font-medium tabular-nums text-zinc-700 dark:text-zinc-300">
                 {platformStats ? platformStats.total_unlocks : '—'}
               </span>
             </span>
             <span>
-              <span className="text-zinc-600 dark:text-zinc-400">Total Earned by Authors</span>
-              <span className="mx-1.5 text-zinc-400 dark:text-zinc-600">·</span>
+              <span className="text-zinc-600 dark:text-zinc-400">Total Earned by Authors: </span>
               <span className="font-medium tabular-nums text-zinc-700 dark:text-zinc-300">
                 {platformStats ? formatXec(platformStats.total_xec) : '—'}
               </span>
