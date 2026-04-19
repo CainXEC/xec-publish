@@ -311,7 +311,9 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
         <>
         <ul className="flex flex-col gap-1.5 md:gap-2">
           {pagedPosts.map((post) => {
-            const postHref = `/posts/${encodeURIComponent(post.slug)}`
+            const postHref = post.legacy
+              ? `/${encodeURIComponent(post.slug)}`
+              : `/posts/${encodeURIComponent(post.slug)}`
             const priceLabel = formatXec(post.price_xec)
             const unlocksN = unlockCountFromPost(post)
             const commentsN = commentCountFromPost(post)
