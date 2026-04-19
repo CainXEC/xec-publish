@@ -3,9 +3,10 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { signCookieValue, verifyCookieValue } from '@/lib/cookieSigner'
 import { rateLimit } from '@/lib/rateLimit'
-import { supabase } from '@/lib/supabase'
+import { createServerSupabase } from '@/lib/supabase-server'
 
 export async function GET(request, { params }) {
+  const supabase = createServerSupabase()
   const ip = request.headers.get('x-forwarded-for') || 'unknown'
   if (!(await rateLimit(ip, 60, 60, 'check-unlock'))) {
     return NextResponse.json(
