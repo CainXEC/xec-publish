@@ -127,7 +127,9 @@ export default function HomePage() {
 
   // Reset to page 1 when filters change
   useEffect(() => { setCurrentPage(1) }, [sortMode, postSearchQuery, timeFilter])
-  useEffect(() => { if (sortMode !== 'unlocks') setTimeFilter('all') }, [sortMode])
+  useEffect(() => {
+    if (sortMode !== 'unlocks' && sortMode !== 'earned') setTimeFilter('all')
+  }, [sortMode])
 
   // Single fetch to /api/posts — all queries run server-side in parallel
   useEffect(() => {
@@ -211,22 +213,30 @@ export default function HomePage() {
             <div className="mb-2 flex flex-wrap gap-1.5 md:gap-2" role="group" aria-label="Sort posts">
               <button
                 type="button"
-                aria-pressed={sortMode === 'unlocks'}
-                onClick={() => setSortMode('unlocks')}
-                className={sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}
-              >
-                🔓 Most Unlocked
-              </button>
-              <button
-                type="button"
                 aria-pressed={sortMode === 'newest'}
                 onClick={() => setSortMode('newest')}
                 className={sortMode === 'newest' ? sortBtnActive : sortBtnInactive}
               >
                 🕐 Newest First
               </button>
+              <button
+                type="button"
+                aria-pressed={sortMode === 'earned'}
+                onClick={() => setSortMode('earned')}
+                className={sortMode === 'earned' ? sortBtnActive : sortBtnInactive}
+              >
+                💰 Most Earned
+              </button>
+              <button
+                type="button"
+                aria-pressed={sortMode === 'unlocks'}
+                onClick={() => setSortMode('unlocks')}
+                className={sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}
+              >
+                🔓 Most Unlocked
+              </button>
             </div>
-            {sortMode === 'unlocks' ? (
+            {sortMode === 'unlocks' || sortMode === 'earned' ? (
               <div
                 className="mb-2 flex flex-wrap items-center gap-1.5 md:gap-2"
                 role="group"
@@ -271,6 +281,11 @@ export default function HomePage() {
                   const unlockStat = unlocksN === 1 ? '🔓 1 unlock' : `🔓 ${unlocksN} unlocks`
                   const commentStat = commentsN === 1 ? '💬 1 comment' : `💬 ${commentsN} comments`
                   const readTime = formatReadingTimeLabel(post.reading_time_minutes)
+                  const earningsSats = Number(post.earnings)
+                  const earningsStat =
+                    sortMode === 'earned' && Number.isFinite(earningsSats)
+                      ? `💰 ${Math.round(earningsSats / 100).toLocaleString('en-US')} XEC earned`
+                      : null
 
                   return (
                     <li key={post.id}>
@@ -297,6 +312,11 @@ export default function HomePage() {
                         <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
                           <span>{priceLabel} XEC</span>
                           <span className="font-normal text-zinc-600 dark:text-zinc-400">{unlockStat}</span>
+                          {earningsStat ? (
+                            <span className="font-normal text-zinc-600 dark:text-zinc-400">
+                              {earningsStat}
+                            </span>
+                          ) : null}
                           <span className="font-normal text-zinc-600 dark:text-zinc-400">{commentStat}</span>
                           {readTime ? <span className="font-normal text-zinc-600 dark:text-zinc-400">{readTime}</span> : null}
                         </p>

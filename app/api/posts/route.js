@@ -14,6 +14,19 @@ function countRowsByPostId(rows) {
   return map
 }
 
+/** Map RPC `get_unlock_earnings` rows to post_id → sum(amount_xec). */
+function sumAmountRowsByPostId(rows) {
+  const map = {}
+  if (!Array.isArray(rows)) return map
+  for (const r of rows) {
+    if (r?.post_id == null) continue
+    const n =
+      typeof r.total_amount === 'number' ? r.total_amount : Number(r.total_amount)
+    map[r.post_id] = Number.isFinite(n) ? n : 0
+  }
+  return map
+}
+
 function getSinceTimestamp(timeFilter) {
   if (!timeFilter || timeFilter === 'all') return null
   const now = new Date()
@@ -80,7 +93,8 @@ export async function GET(request) {
     )
   }
 
-  // ── UNLOCKS sort: fetch all IDs + unlock counts, sort, then fetch page ──
+  // ── UNLOCKS or EARNED sort: fetch all IDs + aggregates, sort, then fetch page ──
+  const earnedSort = sortMode === 'earned'
   const since = getSinceTimestamp(timeFilter)
 
   // Step 1: all published post IDs + created_at for tiebreaking
@@ -107,20 +121,38 @@ export async function GET(request) {
     ]),
   )
 
-  // Step 2: unlock counts for all posts (parallel with comment counts for page later)
-  const { data: unlockRowsAll, error: unlockError } = await supabase.rpc(
-    'get_unlock_counts',
-    { post_ids: allIds, since },
-  )
+  // Step 2: aggregates for all posts (earned = SUM amount_xec; unlocks = COUNT)
+  let sortKeyById = {}
+  let unlockCountById = {}
 
-  if (unlockError) {
-    return NextResponse.json({ error: unlockError.message }, { status: 500 })
+  if (earnedSort) {
+    const [earnedRes, countRes] = await Promise.all([
+      supabase.rpc('get_unlock_earnings', { post_ids: allIds, since }),
+      supabase.rpc('get_unlock_counts', { post_ids: allIds, since }),
+    ])
+    if (earnedRes.error) {
+      return NextResponse.json({ error: earnedRes.error.message }, { status: 500 })
+    }
+    if (countRes.error) {
+      return NextResponse.json({ error: countRes.error.message }, { status: 500 })
+    }
+    sortKeyById = sumAmountRowsByPostId(earnedRes.data ?? [])
+    unlockCountById = countRowsByPostId(countRes.data ?? [])
+  } else {
+    const { data: unlockRowsAll, error: unlockError } = await supabase.rpc(
+      'get_unlock_counts',
+      { post_ids: allIds, since },
+    )
+    if (unlockError) {
+      return NextResponse.json({ error: unlockError.message }, { status: 500 })
+    }
+    unlockCountById = countRowsByPostId(unlockRowsAll ?? [])
+    sortKeyById = unlockCountById
   }
 
-  // Step 3: sort all IDs by unlock count desc, then newest first
-  const countById = countRowsByPostId(unlockRowsAll ?? [])
+  // Step 3: sort all IDs by aggregate desc, then newest first
   const sortedIds = [...allIds].sort((a, b) => {
-    const diff = (countById[b] ?? 0) - (countById[a] ?? 0)
+    const diff = (sortKeyById[b] ?? 0) - (sortKeyById[a] ?? 0)
     if (diff !== 0) return diff
     return (sortTimeById[b] ?? 0) - (sortTimeById[a] ?? 0)
   })
@@ -151,11 +183,21 @@ export async function GET(request) {
   const posts = (pageRes.data ?? [])
     .filter((p) => p?.id != null)
     .sort((a, b) => orderIndex.get(a.id) - orderIndex.get(b.id))
-    .map((p) => ({
-      ...p,
-      unlockCount: countById[p.id] ?? 0,
-      commentCount: commentById[p.id] ?? 0,
-    }))
+    .map((p) => {
+      const row = {
+        ...p,
+        unlockCount: unlockCountById[p.id] ?? 0,
+        commentCount: commentById[p.id] ?? 0,
+      }
+      if (earnedSort) {
+        return {
+          ...row,
+          /** Sum of `unlocks.amount_xec` (satoshis) for the active time filter; used when sort=earned. */
+          earnings: sortKeyById[p.id] ?? 0,
+        }
+      }
+      return row
+    })
 
   return NextResponse.json(
     { posts, hasNextPage },
