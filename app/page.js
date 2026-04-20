@@ -311,12 +311,12 @@ export default function HomePage() {
                         </p>
                         <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
                           <span>{priceLabel} XEC</span>
-                          <span className="font-normal text-zinc-600 dark:text-zinc-400">{unlockStat}</span>
                           {earningsStat ? (
                             <span className="font-normal text-zinc-600 dark:text-zinc-400">
                               {earningsStat}
                             </span>
                           ) : null}
+                          <span className="font-normal text-zinc-600 dark:text-zinc-400">{unlockStat}</span>
                           <span className="font-normal text-zinc-600 dark:text-zinc-400">{commentStat}</span>
                           {readTime ? <span className="font-normal text-zinc-600 dark:text-zinc-400">{readTime}</span> : null}
                         </p>
