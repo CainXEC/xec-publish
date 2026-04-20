@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Nav from '@/components/Nav'
 import { charCounterClassName } from '@/lib/charCounterClassName'
+import { encodePostIdOpReturnRaw } from '@/lib/opReturnEncode'
 import { buildPaywallBip21, computePaymentSplit } from '@/lib/paymentSplit'
 import {
   ensureAudioContextRunning,
@@ -414,6 +415,7 @@ export default function PostPageClient({
           platformXecAddress,
           paymentSplit.authorAmount,
           paymentSplit.platformAmount,
+          encodePostIdOpReturnRaw(post.id),
         )
       : ''
   const cashtabUrl = bip21Url
