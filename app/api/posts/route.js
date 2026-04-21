@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase-server'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 25
 
 function countRowsByPostId(rows) {
   const map = {}

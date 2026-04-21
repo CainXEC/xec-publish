@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Nav from '@/components/Nav'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 25
 
 function formatXec(amount) {
   const n = Number(amount)
