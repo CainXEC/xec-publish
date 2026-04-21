@@ -553,12 +553,18 @@ export default function DashboardClient({
                   {unreadNotifications.map((n) => {
                     const postRel = Array.isArray(n.posts) ? n.posts[0] : n.posts
                     const slug = postRel?.slug ?? ''
+                    const isLegacy = postRel?.legacy === true
+                    const href = slug
+                      ? isLegacy
+                        ? `/${encodeURIComponent(slug)}`
+                        : `/posts/${encodeURIComponent(slug)}`
+                      : '#'
                     const title = postRel?.title ?? 'Post'
                     const message = n.message || `New comment on '${title}'`
                     return (
                       <li key={n.id}>
                         <Link
-                          href={slug ? `/posts/${encodeURIComponent(slug)}` : '#'}
+                          href={href}
                           className={`block rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800 ${
                             n.read ? 'opacity-60' : ''
                           }`}

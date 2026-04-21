@@ -33,7 +33,7 @@ export default async function DashboardPage() {
       .maybeSingle(),
     supabase
       .from('notifications')
-      .select('id, message, post_id, comment_id, read, created_at, posts(slug, title)')
+      .select('id, message, post_id, comment_id, read, created_at, posts(slug, title, legacy)')
       .eq('author_id', user.id)
       .eq('read', false)
       .order('created_at', { ascending: false })
