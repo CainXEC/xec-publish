@@ -6,7 +6,7 @@ import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { supabase } from '@/lib/supabase-browser'
 import { fetchAllUnlockCountRows } from '@/lib/supabaseUnlockCounts'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 25
 
 function formatXec(amount) {
   const n = Number(amount)
