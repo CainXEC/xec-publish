@@ -514,6 +514,31 @@ export default function AuthorProfilePosts({
               </button>
             </div>
 
+            {sortMode === 'unlocks' || sortMode === 'earned' ? (
+              <div
+                className="mb-2 flex flex-wrap items-center gap-1.5 md:gap-2"
+                role="group"
+                aria-label="Unlock time range"
+              >
+                {TIME_FILTER_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    aria-pressed={timeFilter === opt.id}
+                    onClick={() => {
+                      setCurrentPage(1)
+                      setTimeFilter(opt.id)
+                    }}
+                    className={
+                      timeFilter === opt.id ? timeFilterBtnActive : timeFilterBtnInactive
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
             {readerWalletAddress ? (
               <div
                 className="mb-2 flex flex-wrap gap-1.5 md:gap-2"
@@ -555,31 +580,6 @@ export default function AuthorProfilePosts({
                 >
                   Locked
                 </button>
-              </div>
-            ) : null}
-
-            {sortMode === 'unlocks' || sortMode === 'earned' ? (
-              <div
-                className="mb-2 flex flex-wrap items-center gap-1.5 md:gap-2"
-                role="group"
-                aria-label="Unlock time range"
-              >
-                {TIME_FILTER_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    aria-pressed={timeFilter === opt.id}
-                    onClick={() => {
-                      setCurrentPage(1)
-                      setTimeFilter(opt.id)
-                    }}
-                    className={
-                      timeFilter === opt.id ? timeFilterBtnActive : timeFilterBtnInactive
-                    }
-                  >
-                    {opt.label}
-                  </button>
-                ))}
               </div>
             ) : null}
 
