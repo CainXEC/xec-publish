@@ -220,6 +220,22 @@ export default function DashboardClient({
     [unreadNotifications],
   )
 
+  const handleMarkAllRead = useCallback(async () => {
+    try {
+      const res = await fetch('/api/notifications/mark-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      if (!res.ok) return
+      setUnreadNotifications((prev) =>
+        prev.map((n) => ({ ...n, read: true })),
+      )
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
   useEffect(() => {
     if (!notificationsOpen) {
       if (markReadOnViewTimeoutRef.current) {
@@ -233,19 +249,7 @@ export default function DashboardClient({
 
     markReadOnViewTimeoutRef.current = window.setTimeout(async () => {
       markReadOnViewTimeoutRef.current = null
-      try {
-        const res = await fetch('/api/notifications/mark-read', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
-        })
-        if (!res.ok) return
-        setUnreadNotifications((prev) =>
-          prev.map((n) => ({ ...n, read: true })),
-        )
-      } catch {
-        /* ignore */
-      }
+      await handleMarkAllRead()
     }, 2000)
 
     return () => {
@@ -254,7 +258,7 @@ export default function DashboardClient({
         markReadOnViewTimeoutRef.current = null
       }
     }
-  }, [notificationsOpen, unreadNotificationCount])
+  }, [handleMarkAllRead, notificationsOpen, unreadNotificationCount])
 
   useEffect(() => {
     if (sortMode !== 'unlocks') {
@@ -543,9 +547,20 @@ export default function DashboardClient({
           ) : null}
           {notificationsOpen ? (
             <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-950">
-              <p className="mb-2 text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                Notifications
-              </p>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                  Notifications
+                </p>
+                {unreadNotificationCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleMarkAllRead()}
+                    className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                  >
+                    Mark all read
+                  </button>
+                ) : null}
+              </div>
               {unreadNotifications.length === 0 ? (
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">No new notifications</p>
               ) : (
@@ -565,6 +580,8 @@ export default function DashboardClient({
                       <li key={n.id}>
                         <Link
                           href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className={`block rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800 ${
                             n.read ? 'opacity-60' : ''
                           }`}
