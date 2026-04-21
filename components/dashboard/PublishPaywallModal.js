@@ -50,7 +50,7 @@ export default function PublishPaywallModal({
   const publishFeeCashtabUrl = useMemo(
     () =>
       publishFeeBip21Url
-        ? `https://cashtab.com/#/send?bip21=${encodeURIComponent(publishFeeBip21Url)}`
+        ? `https://cashtab.com/#/send?bip21=${publishFeeBip21Url}`
         : '',
     [publishFeeBip21Url],
   )
