@@ -12,25 +12,29 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  const { data: posts, error: postsError } = await supabase
-    .from('posts')
-    .select('*')
-    .eq('author_id', user.id)
-    .order('created_at', { ascending: false })
-
-  const { data: author } = await supabase
-    .from('authors')
-    .select('username, bio, xec_address')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  const { data: notifications } = await supabase
-    .from('notifications')
-    .select('id, message, post_id, comment_id, read, created_at, posts(slug, title)')
-    .eq('author_id', user.id)
-    .eq('read', false)
-    .order('created_at', { ascending: false })
-    .limit(20)
+  const [
+    { data: posts, error: postsError },
+    { data: author },
+    { data: notifications },
+  ] = await Promise.all([
+    supabase
+      .from('posts')
+      .select('*')
+      .eq('author_id', user.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('authors')
+      .select('username, bio, xec_address')
+      .eq('id', user.id)
+      .maybeSingle(),
+    supabase
+      .from('notifications')
+      .select('id, message, post_id, comment_id, read, created_at, posts(slug, title)')
+      .eq('author_id', user.id)
+      .eq('read', false)
+      .order('created_at', { ascending: false })
+      .limit(20),
+  ])
 
   return (
     <DashboardClient
