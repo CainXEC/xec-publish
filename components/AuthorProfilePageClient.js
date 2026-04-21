@@ -1,0 +1,96 @@
+'use client'
+
+import { useCallback, useRef, useState } from 'react'
+import Nav from '@/components/Nav'
+import AuthorProfilePosts from '@/components/AuthorProfilePosts'
+import CopyableAddress from '@/components/CopyableAddress'
+
+/**
+ * @param {{
+ *   author: { username: string, xec_address?: string | null, bio?: string | null }
+ *   initialPosts: unknown[]
+ *   postsErrorMessage: string | null
+ * }} props
+ */
+export default function AuthorProfilePageClient({
+  author,
+  initialPosts,
+  postsErrorMessage,
+}) {
+  const [readerWalletAddress, setReaderWalletAddress] = useState('')
+  const [readerUnlockedPostIds, setReaderUnlockedPostIds] = useState([])
+  const resetReaderPostFilterRef = useRef(() => {})
+
+  const registerReaderPostFilterReset = useCallback((fn) => {
+    resetReaderPostFilterRef.current = typeof fn === 'function' ? fn : () => {}
+  }, [])
+
+  const fetchReaderUnlocks = useCallback(async (walletAddress) => {
+    if (!walletAddress) return []
+    const res = await fetch(
+      `/api/reader-unlocks?walletAddress=${encodeURIComponent(walletAddress)}`,
+      { cache: 'no-store' },
+    )
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data?.error || 'Could not fetch reader unlocks')
+    return Array.isArray(data?.unlockedPostIds) ? data.unlockedPostIds : []
+  }, [])
+
+  const applyReaderWallet = useCallback(
+    async (walletAddress, unlockedPostIdsFromVerify) => {
+      setReaderWalletAddress(walletAddress)
+      localStorage.setItem('readerWalletAddress', walletAddress)
+      if (Array.isArray(unlockedPostIdsFromVerify)) {
+        setReaderUnlockedPostIds(unlockedPostIdsFromVerify)
+      } else {
+        const ids = await fetchReaderUnlocks(walletAddress)
+        setReaderUnlockedPostIds(ids)
+      }
+    },
+    [fetchReaderUnlocks],
+  )
+
+  const handleReaderLogoutExtra = useCallback(() => {
+    setReaderWalletAddress('')
+    setReaderUnlockedPostIds([])
+    resetReaderPostFilterRef.current()
+  }, [])
+
+  const bioText =
+    author.bio != null && String(author.bio).trim() !== ''
+      ? String(author.bio).trim()
+      : ''
+
+  return (
+    <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
+      <Nav
+        onReaderWalletSynced={applyReaderWallet}
+        onReaderLogoutExtra={handleReaderLogoutExtra}
+      />
+      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+        <header className="border-b border-zinc-200 pb-10 dark:border-zinc-800">
+          <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Author
+          </p>
+          <h1 className="mt-2 text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-5xl">
+            @{author.username}
+          </h1>
+          {author.xec_address ? <CopyableAddress address={author.xec_address} /> : null}
+          {bioText ? (
+            <p className="mt-6 max-w-2xl whitespace-pre-wrap text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
+              {bioText}
+            </p>
+          ) : null}
+        </header>
+
+        <AuthorProfilePosts
+          initialPosts={initialPosts}
+          postsErrorMessage={postsErrorMessage}
+          readerWalletAddress={readerWalletAddress}
+          readerUnlockedPostIds={readerUnlockedPostIds}
+          registerReaderPostFilterReset={registerReaderPostFilterReset}
+        />
+      </main>
+    </div>
+  )
+}
