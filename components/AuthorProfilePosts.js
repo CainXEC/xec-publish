@@ -139,15 +139,78 @@ function truncateTeaserPreview(text, maxLen = TEASER_CARD_MAX) {
   return `${s.slice(0, maxLen)}...`
 }
 
+function PostCard({ post }) {
+  const postHref = post.legacy
+    ? `/${encodeURIComponent(post.slug)}`
+    : `/posts/${encodeURIComponent(post.slug)}`
+  const priceLabel = formatXec(post.price_xec)
+  const unlocksN = unlockCountFromPost(post)
+  const commentsN = commentCountFromPost(post)
+  const unlockStat = unlocksN === 1 ? '🔓 1 unlock' : `🔓 ${unlocksN} unlocks`
+  const commentStat = commentsN === 1 ? '💬 1 comment' : `💬 ${commentsN} comments`
+  const readTime = formatReadingTimeLabel(post.reading_time_minutes)
+
+  return (
+    <li>
+      <article className="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700">
+        <h3 className="text-xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+          <Link
+            href={postHref}
+            className="transition after:absolute after:inset-0 after:content-[''] hover:text-emerald-700 dark:hover:text-emerald-400"
+          >
+            {post.title}
+          </Link>
+        </h3>
+        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+          <time dateTime={postDisplayTime(post) ?? undefined}>
+            {formatPublishedDate(postDisplayTime(post))}
+          </time>
+          <span aria-hidden className="mx-2 text-zinc-300 dark:text-zinc-600">·</span>
+          <span className="font-medium text-zinc-700 dark:text-zinc-300">{priceLabel} XEC</span>
+          <span aria-hidden className="mx-2 text-zinc-300 dark:text-zinc-600">·</span>
+          <span className="font-medium text-zinc-700 dark:text-zinc-300">{unlockStat}</span>
+          <span aria-hidden className="mx-2 text-zinc-300 dark:text-zinc-600">·</span>
+          <span className="font-medium text-zinc-700 dark:text-zinc-300">{commentStat}</span>
+          {readTime ? (
+            <>
+              <span aria-hidden className="mx-2 text-zinc-300 dark:text-zinc-600">·</span>
+              <span className="font-medium text-zinc-700 dark:text-zinc-300">{readTime}</span>
+            </>
+          ) : null}
+        </p>
+        <p className="mt-4 break-words line-clamp-4 overflow-hidden text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
+          {truncateTeaserPreview(post.teaser)}
+        </p>
+      </article>
+    </li>
+  )
+}
+
 export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) {
   const [sortMode, setSortMode] = useState('newest')
   const [timeFilter, setTimeFilter] = useState('all')
   const [mergedPosts, setMergedPosts] = useState([])
   const [countsLoading, setCountsLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
+  const [legacySectionOpen, setLegacySectionOpen] = useState(false)
+  const [mergedLegacyPosts, setMergedLegacyPosts] = useState([])
+  const [legacyCountsLoading, setLegacyCountsLoading] = useState(false)
 
   const basePosts = useMemo(() => initialPosts ?? [], [initialPosts])
 
+  const nonLegacyBase = useMemo(() => basePosts.filter((p) => p.legacy !== true), [basePosts])
+  const legacyBase = useMemo(() => basePosts.filter((p) => p.legacy === true), [basePosts])
+
+  const legacyPostsSorted = useMemo(
+    () =>
+      [...legacyBase].sort(
+        (a, b) =>
+          new Date(postDisplayTime(b)).getTime() - new Date(postDisplayTime(a)).getTime(),
+      ),
+    [legacyBase],
+  )
+
+  // Load counts for non-legacy posts only (mirrors dashboard: main list excludes legacy)
   useEffect(() => {
     let cancelled = false
 
@@ -155,24 +218,22 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
       await Promise.resolve()
       if (cancelled) return
 
-      if (basePosts.length === 0) {
+      if (nonLegacyBase.length === 0) {
         setMergedPosts([])
         setCountsLoading(false)
         return
       }
 
-      const since = getSinceTimestamp(
-        sortMode === 'unlocks' ? timeFilter : 'all',
-      )
+      const since = getSinceTimestamp(sortMode === 'unlocks' ? timeFilter : 'all')
 
-      if (since === null && postsHaveAllTimeCounts(basePosts)) {
-        setMergedPosts(basePosts.map((p) => ({ ...p })))
+      if (since === null && postsHaveAllTimeCounts(nonLegacyBase)) {
+        setMergedPosts(nonLegacyBase.map((p) => ({ ...p })))
         setCountsLoading(false)
         return
       }
 
       setCountsLoading(true)
-      const postIds = basePosts.map((p) => p.id).filter(Boolean)
+      const postIds = nonLegacyBase.map((p) => p.id).filter(Boolean)
 
       const { error: unlockErr, rows: unlockRows } = await fetchAllUnlockCountRows(
         supabase,
@@ -189,18 +250,74 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
       const unlockRowsSafe = unlockErr ? [] : (unlockRows ?? [])
       const commentRowsSafe = commentErr ? [] : (commentCounts ?? [])
 
-      setMergedPosts(
-        mergeUnlockAndCommentCounts(basePosts, unlockRowsSafe, commentRowsSafe),
-      )
+      setMergedPosts(mergeUnlockAndCommentCounts(nonLegacyBase, unlockRowsSafe, commentRowsSafe))
       setCountsLoading(false)
     }
 
     void loadCounts()
-
     return () => {
       cancelled = true
     }
-  }, [basePosts, sortMode, timeFilter])
+  }, [nonLegacyBase, sortMode, timeFilter])
+
+  // Legacy: same unlock `since` rule as dashboard; comments always all-time RPC.
+  // Fetches only when the collapsible is open.
+  useEffect(() => {
+    if (!legacySectionOpen || legacyBase.length === 0) return
+
+    let cancelled = false
+
+    async function loadLegacyCounts() {
+      const since = getSinceTimestamp(sortMode === 'unlocks' ? timeFilter : 'all')
+
+      if (since === null && postsHaveAllTimeCounts(legacyBase)) {
+        setMergedLegacyPosts(legacyBase.map((p) => ({ ...p })))
+        setLegacyCountsLoading(false)
+        return
+      }
+
+      setLegacyCountsLoading(true)
+      const postIds = legacyBase.map((p) => p.id).filter(Boolean)
+
+      const { error: unlockErr, rows: unlockRows } = await fetchAllUnlockCountRows(
+        supabase,
+        postIds,
+        since,
+      )
+      const { data: commentCounts, error: commentErr } = await supabase.rpc(
+        'get_comment_counts',
+        { post_ids: postIds },
+      )
+
+      if (cancelled) return
+
+      const unlockRowsSafe = unlockErr ? [] : (unlockRows ?? [])
+      const commentRowsSafe = commentErr ? [] : (commentCounts ?? [])
+
+      setMergedLegacyPosts(
+        mergeUnlockAndCommentCounts(legacyBase, unlockRowsSafe, commentRowsSafe),
+      )
+      setLegacyCountsLoading(false)
+    }
+
+    void loadLegacyCounts()
+    return () => {
+      cancelled = true
+    }
+  }, [legacySectionOpen, legacyBase, sortMode, timeFilter])
+
+  const legacyById = useMemo(() => {
+    const map = {}
+    for (const p of mergedLegacyPosts) {
+      if (p?.id) map[p.id] = p
+    }
+    return map
+  }, [mergedLegacyPosts])
+
+  const legacyDisplayRows = useMemo(
+    () => legacyPostsSorted.map((p) => legacyById[p.id] ?? p),
+    [legacyPostsSorted, legacyById],
+  )
 
   const displayPosts = useMemo(() => {
     if (sortMode === 'newest') return sortPostsByNewest(mergedPosts)
@@ -221,9 +338,7 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
   if (postsErrorMessage) {
     return (
       <section className="mt-10">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          Published posts
-        </h2>
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Published posts</h2>
         <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-6 dark:border-red-900/50 dark:bg-red-950/40">
           <p className="text-sm text-red-800 dark:text-red-200">{postsErrorMessage}</p>
         </div>
@@ -234,9 +349,7 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
   if (basePosts.length === 0) {
     return (
       <section className="mt-10">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          Published posts
-        </h2>
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Published posts</h2>
         <div className="mt-6 rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-8 py-14 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
           <p className="text-base text-zinc-700 dark:text-zinc-300">No posts yet</p>
         </div>
@@ -245,167 +358,143 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
   }
 
   return (
-    <section className="mt-10">
-      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-        Published posts
-      </h2>
+    <>
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Published posts</h2>
 
-      <div
-        className="mt-6 mb-2 flex flex-wrap gap-1.5 md:gap-2"
-        role="group"
-        aria-label="Sort posts"
-      >
-        <button
-          type="button"
-          aria-pressed={sortMode === 'unlocks'}
-          onClick={() => {
-            setCurrentPage(1)
-            setSortMode('unlocks')
-          }}
-          className={sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}
-        >
-          🔓 Most Unlocked
-        </button>
-        <button
-          type="button"
-          aria-pressed={sortMode === 'newest'}
-          onClick={() => {
-            setCurrentPage(1)
-            setSortMode('newest')
-            setTimeFilter('all')
-          }}
-          className={sortMode === 'newest' ? sortBtnActive : sortBtnInactive}
-        >
-          🕐 Newest First
-        </button>
-      </div>
-
-      {sortMode === 'unlocks' ? (
-        <div
-          className="mb-2 flex flex-wrap items-center gap-1.5 md:gap-2"
-          role="group"
-          aria-label="Unlock time range"
-        >
-          {TIME_FILTER_OPTIONS.map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              aria-pressed={timeFilter === opt.id}
-              onClick={() => {
-                setCurrentPage(1)
-                setTimeFilter(opt.id)
-              }}
-              className={
-                timeFilter === opt.id ? timeFilterBtnActive : timeFilterBtnInactive
-              }
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      {countsLoading && mergedPosts.length === 0 ? (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading posts…</p>
-      ) : (
-        <>
-        <ul className="flex flex-col gap-1.5 md:gap-2">
-          {pagedPosts.map((post) => {
-            const postHref = post.legacy
-              ? `/${encodeURIComponent(post.slug)}`
-              : `/posts/${encodeURIComponent(post.slug)}`
-            const priceLabel = formatXec(post.price_xec)
-            const unlocksN = unlockCountFromPost(post)
-            const commentsN = commentCountFromPost(post)
-            const unlockStat =
-              unlocksN === 1 ? '🔓 1 unlock' : `🔓 ${unlocksN} unlocks`
-            const commentStat =
-              commentsN === 1 ? '💬 1 comment' : `💬 ${commentsN} comments`
-            const readTime = formatReadingTimeLabel(post.reading_time_minutes)
-
-            return (
-              <li key={post.id}>
-                <article className="relative overflow-hidden rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700">
-                  <h3 className="text-xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
-                    <Link
-                      href={postHref}
-                      className="transition after:absolute after:inset-0 after:content-[''] hover:text-emerald-700 dark:hover:text-emerald-400"
-                    >
-                      {post.title}
-                    </Link>
-                  </h3>
-                  <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                    <time dateTime={postDisplayTime(post) ?? undefined}>
-                      {formatPublishedDate(postDisplayTime(post))}
-                    </time>
-                    <span aria-hidden className="mx-2 text-zinc-300 dark:text-zinc-600">
-                      ·
-                    </span>
-                    <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                      {priceLabel} XEC
-                    </span>
-                    <span aria-hidden className="mx-2 text-zinc-300 dark:text-zinc-600">
-                      ·
-                    </span>
-                    <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                      {unlockStat}
-                    </span>
-                    <span aria-hidden className="mx-2 text-zinc-300 dark:text-zinc-600">
-                      ·
-                    </span>
-                    <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                      {commentStat}
-                    </span>
-                    {readTime ? (
-                      <>
-                        <span aria-hidden className="mx-2 text-zinc-300 dark:text-zinc-600">
-                          ·
-                        </span>
-                        <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                          {readTime}
-                        </span>
-                      </>
-                    ) : null}
-                  </p>
-                  <p className="mt-4 break-words line-clamp-4 overflow-hidden text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
-                    {truncateTeaserPreview(post.teaser)}
-                  </p>
-                </article>
-              </li>
-            )
-          })}
-        </ul>
-        {displayPosts.length > PAGE_SIZE ? (
-          <div className="mt-6 flex items-center justify-between gap-2 border-t border-zinc-200 pt-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-            <div className="min-w-0 flex-1">
-              {hasPrevPage ? (
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage(effectivePage - 1)}
-                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                >
-                  ← Page {effectivePage - 1}
-                </button>
-              ) : null}
-            </div>
-            <span className="flex-shrink-0 tabular-nums">
-              Page {effectivePage} of {totalPages}
-            </span>
-            <div className="min-w-0 flex-1 text-right">
-              {hasNextPage ? (
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage(effectivePage + 1)}
-                  className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                >
-                  Page {effectivePage + 1} →
-                </button>
-              ) : null}
-            </div>
+        {nonLegacyBase.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-8 py-14 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
+            <p className="text-base text-zinc-700 dark:text-zinc-300">No posts yet</p>
           </div>
-        ) : null}
-        </>
-      )}
-    </section>
+        ) : (
+          <>
+            <div
+              className="mt-6 mb-2 flex flex-wrap gap-1.5 md:gap-2"
+              role="group"
+              aria-label="Sort posts"
+            >
+              <button
+                type="button"
+                aria-pressed={sortMode === 'unlocks'}
+                onClick={() => {
+                  setCurrentPage(1)
+                  setSortMode('unlocks')
+                }}
+                className={sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}
+              >
+                🔓 Most Unlocked
+              </button>
+              <button
+                type="button"
+                aria-pressed={sortMode === 'newest'}
+                onClick={() => {
+                  setCurrentPage(1)
+                  setSortMode('newest')
+                  setTimeFilter('all')
+                }}
+                className={sortMode === 'newest' ? sortBtnActive : sortBtnInactive}
+              >
+                🕐 Newest First
+              </button>
+            </div>
+
+            {sortMode === 'unlocks' ? (
+              <div
+                className="mb-2 flex flex-wrap items-center gap-1.5 md:gap-2"
+                role="group"
+                aria-label="Unlock time range"
+              >
+                {TIME_FILTER_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    aria-pressed={timeFilter === opt.id}
+                    onClick={() => {
+                      setCurrentPage(1)
+                      setTimeFilter(opt.id)
+                    }}
+                    className={
+                      timeFilter === opt.id ? timeFilterBtnActive : timeFilterBtnInactive
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {countsLoading && mergedPosts.length === 0 ? (
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading posts…</p>
+            ) : (
+              <>
+                <ul className="flex flex-col gap-1.5 md:gap-2">
+                  {pagedPosts.map((post) => (
+                    <PostCard key={post.id} post={post} />
+                  ))}
+                </ul>
+                {displayPosts.length > PAGE_SIZE ? (
+                  <div className="mt-6 flex items-center justify-between gap-2 border-t border-zinc-200 pt-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                    <div className="min-w-0 flex-1">
+                      {hasPrevPage ? (
+                        <button
+                          type="button"
+                          onClick={() => setCurrentPage(effectivePage - 1)}
+                          className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                        >
+                          ← Page {effectivePage - 1}
+                        </button>
+                      ) : null}
+                    </div>
+                    <span className="flex-shrink-0 tabular-nums">
+                      Page {effectivePage} of {totalPages}
+                    </span>
+                    <div className="min-w-0 flex-1 text-right">
+                      {hasNextPage ? (
+                        <button
+                          type="button"
+                          onClick={() => setCurrentPage(effectivePage + 1)}
+                          className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                        >
+                          Page {effectivePage + 1} →
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </>
+        )}
+      </section>
+
+      {legacyBase.length > 0 ? (
+        <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <button
+            type="button"
+            onClick={() => setLegacySectionOpen((open) => !open)}
+            aria-expanded={legacySectionOpen}
+            className="flex w-full items-center justify-between gap-3 text-left"
+          >
+            <h2 className="text-base font-semibold text-zinc-600 dark:text-zinc-400">
+              Legacy Posts ({legacyBase.length})
+            </h2>
+            <span className="shrink-0 text-zinc-500 tabular-nums dark:text-zinc-500" aria-hidden>
+              {legacySectionOpen ? '▾' : '▸'}
+            </span>
+          </button>
+          {legacySectionOpen ? (
+            legacyCountsLoading ? (
+              <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">Loading posts…</p>
+            ) : (
+              <ul className="mt-4 flex flex-col gap-1.5 md:gap-2">
+                {legacyDisplayRows.map((post) => (
+                  <PostCard key={post.id} post={post} />
+                ))}
+              </ul>
+            )
+          ) : null}
+        </section>
+      ) : null}
+    </>
   )
 }
