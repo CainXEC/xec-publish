@@ -5,6 +5,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { supabase } from '@/lib/supabase-browser'
 import { fetchAllUnlockCountRows } from '@/lib/supabaseUnlockCounts'
+import {
+  fetchAllUnlockEarningsRows,
+  sumAmountRowsByPostId,
+} from '@/lib/supabaseUnlockEarnings'
 
 const PAGE_SIZE = 25
 
@@ -89,6 +93,23 @@ function postDisplayTime(post) {
 function sortPostsByUnlocksThenNewest(rows) {
   return [...rows].sort((a, b) => {
     const diff = unlockCountFromPost(b) - unlockCountFromPost(a)
+    if (diff !== 0) return diff
+    const ta = new Date(postDisplayTime(a)).getTime()
+    const tb = new Date(postDisplayTime(b)).getTime()
+    return tb - ta
+  })
+}
+
+/** Primary sort key for earned: `post.earnings` when finite; else unlock count (home /api/posts gap on author SSR). */
+function earnedPrimaryValue(post) {
+  const e = Number(post.earnings)
+  if (Number.isFinite(e)) return e
+  return unlockCountFromPost(post)
+}
+
+function sortPostsByEarned(rows) {
+  return [...rows].sort((a, b) => {
+    const diff = earnedPrimaryValue(b) - earnedPrimaryValue(a)
     if (diff !== 0) return diff
     const ta = new Date(postDisplayTime(a)).getTime()
     const tb = new Date(postDisplayTime(b)).getTime()
@@ -231,15 +252,6 @@ export default function AuthorProfilePosts({
     [readerFilteredPosts],
   )
 
-  const legacyPostsSorted = useMemo(
-    () =>
-      [...legacyBase].sort(
-        (a, b) =>
-          new Date(postDisplayTime(b)).getTime() - new Date(postDisplayTime(a)).getTime(),
-      ),
-    [legacyBase],
-  )
-
   useEffect(() => {
     if (!registerReaderPostFilterReset) return
     registerReaderPostFilterReset(() => {
@@ -249,6 +261,12 @@ export default function AuthorProfilePosts({
       registerReaderPostFilterReset(() => {})
     }
   }, [registerReaderPostFilterReset])
+
+  // Same as app/page.js: clear time window when leaving unlocks/earned sorts.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mirrors HomePage timeFilter reset
+    if (sortMode !== 'unlocks' && sortMode !== 'earned') setTimeFilter('all')
+  }, [sortMode])
 
   // Load counts for non-legacy posts only (mirrors dashboard: main list excludes legacy)
   useEffect(() => {
@@ -264,9 +282,14 @@ export default function AuthorProfilePosts({
         return
       }
 
-      const since = getSinceTimestamp(sortMode === 'unlocks' ? timeFilter : 'all')
+      const since = getSinceTimestamp(
+        sortMode === 'unlocks' || sortMode === 'earned' ? timeFilter : 'all',
+      )
 
-      if (since === null && postsHaveAllTimeCounts(nonLegacyBase)) {
+      const canSkipCountsFetch =
+        since === null && sortMode !== 'earned' && postsHaveAllTimeCounts(nonLegacyBase)
+
+      if (canSkipCountsFetch) {
         setMergedPosts(nonLegacyBase.map((p) => ({ ...p })))
         setCountsLoading(false)
         return
@@ -275,22 +298,37 @@ export default function AuthorProfilePosts({
       setCountsLoading(true)
       const postIds = nonLegacyBase.map((p) => p.id).filter(Boolean)
 
-      const { error: unlockErr, rows: unlockRows } = await fetchAllUnlockCountRows(
-        supabase,
-        postIds,
-        since,
-      )
-      const { data: commentCounts, error: commentErr } = await supabase.rpc(
-        'get_comment_counts',
-        { post_ids: postIds },
-      )
+      const unlockPromise = fetchAllUnlockCountRows(supabase, postIds, since)
+      const commentPromise = supabase.rpc('get_comment_counts', { post_ids: postIds })
+      const earningsPromise =
+        sortMode === 'earned'
+          ? fetchAllUnlockEarningsRows(supabase, postIds, since)
+          : Promise.resolve({ error: null, rows: [] })
+
+      const [{ error: unlockErr, rows: unlockRows }, commentRes, earningsRes] =
+        await Promise.all([unlockPromise, commentPromise, earningsPromise])
 
       if (cancelled) return
 
       const unlockRowsSafe = unlockErr ? [] : (unlockRows ?? [])
-      const commentRowsSafe = commentErr ? [] : (commentCounts ?? [])
+      const commentRowsSafe = commentRes.error ? [] : (commentRes.data ?? [])
+      const earningsRowsSafe =
+        sortMode === 'earned' && !earningsRes.error ? (earningsRes.rows ?? []) : []
 
-      setMergedPosts(mergeUnlockAndCommentCounts(nonLegacyBase, unlockRowsSafe, commentRowsSafe))
+      let merged = mergeUnlockAndCommentCounts(
+        nonLegacyBase,
+        unlockRowsSafe,
+        commentRowsSafe,
+      )
+      if (sortMode === 'earned' && !earningsRes.error) {
+        const earningsById = sumAmountRowsByPostId(earningsRowsSafe)
+        merged = merged.map((p) => ({
+          ...p,
+          earnings: earningsById[p.id] ?? 0,
+        }))
+      }
+
+      setMergedPosts(merged)
       setCountsLoading(false)
     }
 
@@ -308,9 +346,14 @@ export default function AuthorProfilePosts({
     let cancelled = false
 
     async function loadLegacyCounts() {
-      const since = getSinceTimestamp(sortMode === 'unlocks' ? timeFilter : 'all')
+      const since = getSinceTimestamp(
+        sortMode === 'unlocks' || sortMode === 'earned' ? timeFilter : 'all',
+      )
 
-      if (since === null && postsHaveAllTimeCounts(legacyBase)) {
+      const canSkipLegacy =
+        since === null && sortMode !== 'earned' && postsHaveAllTimeCounts(legacyBase)
+
+      if (canSkipLegacy) {
         setMergedLegacyPosts(legacyBase.map((p) => ({ ...p })))
         setLegacyCountsLoading(false)
         return
@@ -319,24 +362,37 @@ export default function AuthorProfilePosts({
       setLegacyCountsLoading(true)
       const postIds = legacyBase.map((p) => p.id).filter(Boolean)
 
-      const { error: unlockErr, rows: unlockRows } = await fetchAllUnlockCountRows(
-        supabase,
-        postIds,
-        since,
-      )
-      const { data: commentCounts, error: commentErr } = await supabase.rpc(
-        'get_comment_counts',
-        { post_ids: postIds },
-      )
+      const unlockPromise = fetchAllUnlockCountRows(supabase, postIds, since)
+      const commentPromise = supabase.rpc('get_comment_counts', { post_ids: postIds })
+      const earningsPromise =
+        sortMode === 'earned'
+          ? fetchAllUnlockEarningsRows(supabase, postIds, since)
+          : Promise.resolve({ error: null, rows: [] })
+
+      const [{ error: unlockErr, rows: unlockRows }, commentRes, earningsRes] =
+        await Promise.all([unlockPromise, commentPromise, earningsPromise])
 
       if (cancelled) return
 
       const unlockRowsSafe = unlockErr ? [] : (unlockRows ?? [])
-      const commentRowsSafe = commentErr ? [] : (commentCounts ?? [])
+      const commentRowsSafe = commentRes.error ? [] : (commentRes.data ?? [])
+      const earningsRowsSafe =
+        sortMode === 'earned' && !earningsRes.error ? (earningsRes.rows ?? []) : []
 
-      setMergedLegacyPosts(
-        mergeUnlockAndCommentCounts(legacyBase, unlockRowsSafe, commentRowsSafe),
+      let mergedLegacy = mergeUnlockAndCommentCounts(
+        legacyBase,
+        unlockRowsSafe,
+        commentRowsSafe,
       )
+      if (sortMode === 'earned' && !earningsRes.error) {
+        const earningsById = sumAmountRowsByPostId(earningsRowsSafe)
+        mergedLegacy = mergedLegacy.map((p) => ({
+          ...p,
+          earnings: earningsById[p.id] ?? 0,
+        }))
+      }
+
+      setMergedLegacyPosts(mergedLegacy)
       setLegacyCountsLoading(false)
     }
 
@@ -354,13 +410,16 @@ export default function AuthorProfilePosts({
     return map
   }, [mergedLegacyPosts])
 
-  const legacyDisplayRows = useMemo(
-    () => legacyPostsSorted.map((p) => legacyById[p.id] ?? p),
-    [legacyPostsSorted, legacyById],
-  )
+  const legacyDisplayRows = useMemo(() => {
+    const mergedRows = legacyBase.map((p) => legacyById[p.id] ?? p)
+    if (sortMode === 'newest') return sortPostsByNewest(mergedRows)
+    if (sortMode === 'earned') return sortPostsByEarned(mergedRows)
+    return sortPostsByUnlocksThenNewest(mergedRows)
+  }, [legacyBase, legacyById, sortMode])
 
   const displayPosts = useMemo(() => {
     if (sortMode === 'newest') return sortPostsByNewest(mergedPosts)
+    if (sortMode === 'earned') return sortPostsByEarned(mergedPosts)
     return sortPostsByUnlocksThenNewest(mergedPosts)
   }, [mergedPosts, sortMode])
 
@@ -421,17 +480,6 @@ export default function AuthorProfilePosts({
             >
               <button
                 type="button"
-                aria-pressed={sortMode === 'unlocks'}
-                onClick={() => {
-                  setCurrentPage(1)
-                  setSortMode('unlocks')
-                }}
-                className={sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}
-              >
-                🔓 Most Unlocked
-              </button>
-              <button
-                type="button"
                 aria-pressed={sortMode === 'newest'}
                 onClick={() => {
                   setCurrentPage(1)
@@ -441,6 +489,28 @@ export default function AuthorProfilePosts({
                 className={sortMode === 'newest' ? sortBtnActive : sortBtnInactive}
               >
                 🕐 Newest First
+              </button>
+              <button
+                type="button"
+                aria-pressed={sortMode === 'earned'}
+                onClick={() => {
+                  setCurrentPage(1)
+                  setSortMode('earned')
+                }}
+                className={sortMode === 'earned' ? sortBtnActive : sortBtnInactive}
+              >
+                💰 Most Earned
+              </button>
+              <button
+                type="button"
+                aria-pressed={sortMode === 'unlocks'}
+                onClick={() => {
+                  setCurrentPage(1)
+                  setSortMode('unlocks')
+                }}
+                className={sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}
+              >
+                🔓 Most Unlocked
               </button>
             </div>
 
@@ -488,7 +558,7 @@ export default function AuthorProfilePosts({
               </div>
             ) : null}
 
-            {sortMode === 'unlocks' ? (
+            {sortMode === 'unlocks' || sortMode === 'earned' ? (
               <div
                 className="mb-2 flex flex-wrap items-center gap-1.5 md:gap-2"
                 role="group"
