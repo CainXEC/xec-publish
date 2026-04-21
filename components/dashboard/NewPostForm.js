@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import RichTextEditor from '@/components/RichTextEditor'
+import PublishPaywallModal from '@/components/dashboard/PublishPaywallModal'
 import { supabase } from '@/lib/supabase-browser'
 import { calculateReadingTimeMinutes } from '@/lib/calculateReadingTimeMinutes'
 import { charCounterClassName } from '@/lib/charCounterClassName'
@@ -32,6 +33,9 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
   const [body, setBody] = useState('')
   const [priceXec, setPriceXec] = useState('100')
   const [published, setPublished] = useState(false)
+  const [publishPaid, setPublishPaid] = useState(false)
+  const [showPublishPaywall, setShowPublishPaywall] = useState(false)
+  const [publishPaywallPostId, setPublishPaywallPostId] = useState(null)
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
@@ -120,6 +124,25 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
     if (insertedRow?.id) autosaveIdRef.current = insertedRow.id
     return { id: insertedRow?.id ?? null, finalSlug }
   }, [body, getCurrentUserId, priceXec, slug, teaser, title])
+
+  const handlePublishPaymentConfirmed = useCallback(async () => {
+    setPublishPaid(true)
+    setShowPublishPaywall(false)
+    setSubmitting(true)
+    try {
+      await persistDraft({
+        forceId: autosaveIdRef.current,
+        nextPublished: true,
+      })
+      router.push('/dashboard')
+      router.refresh()
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Could not save post.'
+      setSubmitError(msg)
+    } finally {
+      setSubmitting(false)
+    }
+  }, [persistDraft, router])
 
   useEffect(() => {
     return () => {
@@ -215,10 +238,62 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
       }
       setSlug(finalSlug)
 
+      if (!published) {
+        try {
+          await persistDraft({
+            forceId: autosaveIdRef.current,
+            nextPublished: false,
+          })
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : 'Could not save post.'
+          setSubmitError(msg)
+          return
+        }
+
+        router.push('/dashboard')
+        router.refresh()
+        return
+      }
+
+      if (!autosaveIdRef.current) {
+        try {
+          await persistDraft({ nextPublished: false })
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : 'Could not save post.'
+          setSubmitError(msg)
+          return
+        }
+      }
+
+      const draftId = autosaveIdRef.current
+      if (!draftId) {
+        setSubmitError('Could not create draft. Please try again.')
+        return
+      }
+
+      const { data: paidRow, error: paidError } = await supabase
+        .from('posts')
+        .select('publish_paid')
+        .eq('id', draftId)
+        .maybeSingle()
+
+      if (paidError) {
+        setSubmitError(paidError.message)
+        return
+      }
+
+      const okToPublish = paidRow?.publish_paid === true || publishPaid
+
+      if (!okToPublish) {
+        setPublishPaywallPostId(draftId)
+        setShowPublishPaywall(true)
+        return
+      }
+
       try {
         await persistDraft({
           forceId: autosaveIdRef.current,
-          nextPublished: published,
+          nextPublished: true,
         })
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Could not save post.'
@@ -425,6 +500,13 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
           </div>
         </form>
       </main>
+
+      <PublishPaywallModal
+        isOpen={showPublishPaywall}
+        onClose={() => setShowPublishPaywall(false)}
+        postId={publishPaywallPostId ?? ''}
+        onPaymentConfirmed={handlePublishPaymentConfirmed}
+      />
     </div>
   )
 }

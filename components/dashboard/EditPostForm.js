@@ -1,9 +1,10 @@
 'use client'
 
-import { useId, useMemo, useState } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import RichTextEditor from '@/components/RichTextEditor'
+import PublishPaywallModal from '@/components/dashboard/PublishPaywallModal'
 import { supabase } from '@/lib/supabase-browser'
 import { calculateReadingTimeMinutes } from '@/lib/calculateReadingTimeMinutes'
 import { charCounterClassName } from '@/lib/charCounterClassName'
@@ -41,9 +42,117 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
       : '100',
   )
   const [published, setPublished] = useState(Boolean(initialPost.published))
+  const [publishPaid, setPublishPaid] = useState(Boolean(initialPost.publish_paid))
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
+
+  const [showPublishPaywall, setShowPublishPaywall] = useState(false)
+
+  const persistPostUpdate = useCallback(async () => {
+    const { data: userData, error: userError } = await supabase.auth.getUser()
+    if (userError) {
+      setSubmitError(userError.message)
+      return false
+    }
+    const user = userData.user
+    if (!user) {
+      router.replace('/login')
+      return false
+    }
+
+    const price = Number(priceXec)
+    if (Number.isNaN(price) || price < 100) {
+      setSubmitError('Minimum price is 100 XEC')
+      return false
+    }
+    if (price > 1_000_000) {
+      setSubmitError('Maximum price is 1,000,000 XEC')
+      return false
+    }
+
+    if (!postBodyHasMeaningfulText(body)) {
+      setSubmitError('Body is required')
+      return false
+    }
+
+    const bodyPlainLen = countPlainTextCharsFromHtml(body)
+    if (bodyPlainLen > POST_BODY_PLAIN_MAX) {
+      setSubmitError(
+        `Body must be at most ${POST_BODY_PLAIN_MAX.toLocaleString('en-US')} characters (plain text).`,
+      )
+      return false
+    }
+
+    let finalSlug = slug.trim().slice(0, POST_SLUG_MAX)
+    if (!finalSlug || !isUrlSafeSlug(finalSlug)) {
+      finalSlug = generateSlug(title.trim() || 'post').slice(0, POST_SLUG_MAX)
+    }
+    setSlug(finalSlug)
+
+    const bodyTrimmed = body.trim()
+
+    const { data: existingRow } = await supabase
+      .from('posts')
+      .select('published_at')
+      .eq('id', postId)
+      .maybeSingle()
+
+    const updatePayload = {
+      title: title.trim(),
+      slug: finalSlug,
+      teaser: teaser.trim(),
+      body: bodyTrimmed,
+      reading_time_minutes: calculateReadingTimeMinutes(bodyTrimmed),
+      price_xec: price,
+      published,
+    }
+    if (published && !existingRow?.published_at) {
+      updatePayload.published_at = new Date().toISOString()
+    }
+
+    const { data: updated, error: updateError } = await supabase
+      .from('posts')
+      .update(updatePayload)
+      .eq('id', postId)
+      .eq('author_id', user.id)
+      .select('id')
+      .maybeSingle()
+
+    if (updateError) {
+      setSubmitError(updateError.message)
+      return false
+    }
+
+    if (!updated) {
+      setSubmitError('Could not update this post. It may have been deleted.')
+      return false
+    }
+
+    router.push('/dashboard')
+    router.refresh()
+    return true
+  }, [
+    body,
+    postId,
+    priceXec,
+    published,
+    router,
+    slug,
+    teaser,
+    title,
+  ])
+
+  const handlePublishPaymentConfirmed = useCallback(async () => {
+    setPublishPaid(true)
+    setShowPublishPaywall(false)
+    setSubmitting(true)
+    try {
+      await persistPostUpdate()
+    } finally {
+      setSubmitting(false)
+    }
+  }, [persistPostUpdate])
 
   const slugFieldError = useMemo(() => {
     const t = slug.trim()
@@ -94,53 +203,12 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
         return
       }
 
-      let finalSlug = slug.trim().slice(0, POST_SLUG_MAX)
-      if (!finalSlug || !isUrlSafeSlug(finalSlug)) {
-        finalSlug = generateSlug(title.trim() || 'post').slice(0, POST_SLUG_MAX)
-      }
-      setSlug(finalSlug)
-
-      const bodyTrimmed = body.trim()
-
-      const { data: existingRow } = await supabase
-        .from('posts')
-        .select('published_at')
-        .eq('id', postId)
-        .maybeSingle()
-
-      const updatePayload = {
-        title: title.trim(),
-        slug: finalSlug,
-        teaser: teaser.trim(),
-        body: bodyTrimmed,
-        reading_time_minutes: calculateReadingTimeMinutes(bodyTrimmed),
-        price_xec: price,
-        published,
-      }
-      if (published && !existingRow?.published_at) {
-        updatePayload.published_at = new Date().toISOString()
-      }
-
-      const { data: updated, error: updateError } = await supabase
-        .from('posts')
-        .update(updatePayload)
-        .eq('id', postId)
-        .eq('author_id', user.id)
-        .select('id')
-        .maybeSingle()
-
-      if (updateError) {
-        setSubmitError(updateError.message)
+      if (published && !publishPaid) {
+        setShowPublishPaywall(true)
         return
       }
 
-      if (!updated) {
-        setSubmitError('Could not update this post. It may have been deleted.')
-        return
-      }
-
-      router.push('/dashboard')
-      router.refresh()
+      await persistPostUpdate()
     } finally {
       setSubmitting(false)
     }
@@ -330,6 +398,13 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
           </div>
         </form>
       </main>
+
+      <PublishPaywallModal
+        isOpen={showPublishPaywall}
+        onClose={() => setShowPublishPaywall(false)}
+        postId={postId}
+        onPaymentConfirmed={handlePublishPaymentConfirmed}
+      />
     </div>
   )
 }

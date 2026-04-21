@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { computePaymentSplit, buildPaywallBip21 } from '@/lib/paymentSplit'
+import {
+  buildPaywallBip21,
+  buildPublishFeeBip21,
+  computePaymentSplit,
+} from '@/lib/paymentSplit'
 
 describe('computePaymentSplit', () => {
   it('splits 100 XEC correctly (94/6)', () => {
@@ -51,5 +55,24 @@ describe('buildPaywallBip21', () => {
   it('returns empty string for missing addresses', () => {
     expect(buildPaywallBip21('', 'ecash:qplatform456', 94, 6)).toBe('')
     expect(buildPaywallBip21('ecash:qauthor123', '', 94, 6)).toBe('')
+  })
+})
+
+describe('buildPublishFeeBip21', () => {
+  it('builds single-output BIP21 with optional op_return_raw', () => {
+    const url = buildPublishFeeBip21('ecash:qplatform456', 100, '2437')
+    expect(url).toBe(
+      'ecash:qplatform456?amount=100&op_return_raw=2437',
+    )
+  })
+
+  it('omits op_return_raw when not provided', () => {
+    expect(buildPublishFeeBip21('ecash:qplatform456', 100)).toBe(
+      'ecash:qplatform456?amount=100',
+    )
+  })
+
+  it('returns empty for missing platform', () => {
+    expect(buildPublishFeeBip21('', 100)).toBe('')
   })
 })
