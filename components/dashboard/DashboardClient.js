@@ -7,6 +7,10 @@ import ThemeToggle from '@/components/ThemeToggle'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { supabase } from '@/lib/supabase-browser'
 import { fetchAllUnlockCountRows } from '@/lib/supabaseUnlockCounts'
+import {
+  fetchAllUnlockEarningsRows,
+  sumAmountRowsByPostId,
+} from '@/lib/supabaseUnlockEarnings'
 
 const PAGE_SIZE = 25
 
@@ -82,6 +86,22 @@ function sortPostsByNewest(rows) {
   return [...rows].sort((a, b) => {
     const tb = new Date(b.created_at).getTime()
     const ta = new Date(a.created_at).getTime()
+    return tb - ta
+  })
+}
+
+function earnedPrimaryValue(post) {
+  const e = Number(post.earnings)
+  if (Number.isFinite(e)) return e
+  return unlockCountFromPost(post)
+}
+
+function sortPostsByEarned(rows) {
+  return [...rows].sort((a, b) => {
+    const diff = earnedPrimaryValue(b) - earnedPrimaryValue(a)
+    if (diff !== 0) return diff
+    const ta = new Date(a.created_at).getTime()
+    const tb = new Date(b.created_at).getTime()
     return tb - ta
   })
 }
@@ -191,6 +211,7 @@ export default function DashboardClient({
   const [sortMode, setSortMode] = useState('newest')
   const [timeFilter, setTimeFilter] = useState('all')
   const [unlockCountMap, setUnlockCountMap] = useState({})
+  const [earningsMap, setEarningsMap] = useState({})
   const [deleteError, setDeleteError] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
@@ -232,7 +253,7 @@ export default function DashboardClient({
   }, [])
 
   useEffect(() => {
-    if (sortMode !== 'unlocks') {
+    if (sortMode !== 'unlocks' && sortMode !== 'earned') {
       setTimeFilter('all')
     }
   }, [sortMode])
@@ -262,17 +283,25 @@ export default function DashboardClient({
     async function loadLegacyUnlockCounts() {
       const postIds = legacyPosts.map((p) => p.id).filter(Boolean)
       const since = getSinceTimestamp(
-        sortMode === 'unlocks' ? timeFilter : 'all',
+        sortMode === 'unlocks' || sortMode === 'earned' ? timeFilter : 'all',
       )
-      const { error, rows } = await fetchAllUnlockCountRows(
-        supabase,
-        postIds,
-        since,
-      )
+      const unlockPromise = fetchAllUnlockCountRows(supabase, postIds, since)
+      const earningsPromise =
+        sortMode === 'earned'
+          ? fetchAllUnlockEarningsRows(supabase, postIds, since)
+          : Promise.resolve({ error: null, rows: [] })
+      const [{ error, rows }, earningsRes] = await Promise.all([
+        unlockPromise,
+        earningsPromise,
+      ])
       if (cancelled) return
       if (error) return
       const patch = countRowsByPostId(rows ?? [])
       setUnlockCountMap((prev) => ({ ...prev, ...patch }))
+      if (sortMode === 'earned' && !earningsRes.error) {
+        const earningsPatch = sumAmountRowsByPostId(earningsRes.rows ?? [])
+        setEarningsMap((prev) => ({ ...prev, ...earningsPatch }))
+      }
     }
 
     void loadLegacyUnlockCounts()
@@ -288,27 +317,39 @@ export default function DashboardClient({
       const postIds = nonLegacyPosts.map((p) => p.id).filter(Boolean)
       if (postIds.length === 0) {
         setUnlockCountMap({})
+        setEarningsMap({})
         return
       }
 
       const since = getSinceTimestamp(
-        sortMode === 'unlocks' ? timeFilter : 'all',
+        sortMode === 'unlocks' || sortMode === 'earned' ? timeFilter : 'all',
       )
 
-      const { error, rows } = await fetchAllUnlockCountRows(
-        supabase,
-        postIds,
-        since,
-      )
+      const unlockPromise = fetchAllUnlockCountRows(supabase, postIds, since)
+      const earningsPromise =
+        sortMode === 'earned'
+          ? fetchAllUnlockEarningsRows(supabase, postIds, since)
+          : Promise.resolve({ error: null, rows: [] })
+
+      const [{ error, rows }, earningsRes] = await Promise.all([
+        unlockPromise,
+        earningsPromise,
+      ])
 
       if (cancelled) return
 
       if (error) {
         setUnlockCountMap({})
+        setEarningsMap({})
         return
       }
 
       setUnlockCountMap(countRowsByPostId(rows ?? []))
+      if (sortMode === 'earned' && !earningsRes.error) {
+        setEarningsMap(sumAmountRowsByPostId(earningsRes.rows ?? []))
+      } else if (sortMode !== 'earned') {
+        setEarningsMap({})
+      }
     }
 
     void loadUnlockCounts()
@@ -322,10 +363,12 @@ export default function DashboardClient({
     const withCounts = nonLegacyPosts.map((p) => ({
       ...p,
       unlocks: [{ count: unlockCountMap[p.id] ?? 0 }],
+      earnings: earningsMap[p.id],
     }))
     if (sortMode === 'newest') return sortPostsByNewest(withCounts)
+    if (sortMode === 'earned') return sortPostsByEarned(withCounts)
     return sortPostsByUnlocksThenNewest(withCounts)
-  }, [nonLegacyPosts, unlockCountMap, sortMode])
+  }, [earningsMap, nonLegacyPosts, sortMode, unlockCountMap])
 
   const totalPages = Math.max(1, Math.ceil(sortedPosts.length / PAGE_SIZE))
   const effectivePage = Math.max(1, Math.min(currentPage, totalPages))
@@ -616,17 +659,6 @@ export default function DashboardClient({
               >
                 <button
                   type="button"
-                  aria-pressed={sortMode === 'unlocks'}
-                  onClick={() => {
-                    setCurrentPage(1)
-                    setSortMode('unlocks')
-                  }}
-                  className={sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}
-                >
-                  🔓 Most Unlocked
-                </button>
-                <button
-                  type="button"
                   aria-pressed={sortMode === 'newest'}
                   onClick={() => {
                     setCurrentPage(1)
@@ -636,9 +668,31 @@ export default function DashboardClient({
                 >
                   🕐 Newest First
                 </button>
+                <button
+                  type="button"
+                  aria-pressed={sortMode === 'earned'}
+                  onClick={() => {
+                    setCurrentPage(1)
+                    setSortMode('earned')
+                  }}
+                  className={sortMode === 'earned' ? sortBtnActive : sortBtnInactive}
+                >
+                  💰 Most Earned
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={sortMode === 'unlocks'}
+                  onClick={() => {
+                    setCurrentPage(1)
+                    setSortMode('unlocks')
+                  }}
+                  className={sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}
+                >
+                  🔓 Most Unlocked
+                </button>
               </div>
 
-              {sortMode === 'unlocks' ? (
+              {sortMode === 'unlocks' || sortMode === 'earned' ? (
                 <div
                   className="mb-2 flex flex-wrap items-center gap-1.5 md:gap-2"
                   role="group"
