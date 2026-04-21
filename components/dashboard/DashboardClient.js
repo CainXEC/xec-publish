@@ -196,7 +196,9 @@ export default function DashboardClient({
   const [currentPage, setCurrentPage] = useState(1)
   const [copiedAddress, setCopiedAddress] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [unreadNotifications, setUnreadNotifications] = useState(notifications ?? [])
+  const [unreadNotifications, setUnreadNotifications] = useState(
+    () => (notifications ?? []).map((n) => ({ ...n, read: Boolean(n.read) })),
+  )
   const [legacySectionOpen, setLegacySectionOpen] = useState(false)
   const copyTimeoutRef = useRef(null)
 
@@ -207,12 +209,6 @@ export default function DashboardClient({
   useEffect(() => {
     setPosts(initialPosts)
   }, [initialPosts])
-
-  useEffect(() => {
-    setUnreadNotifications(
-      (notifications ?? []).map((n) => ({ ...n, read: Boolean(n.read) })),
-    )
-  }, [notifications])
 
   const unreadNotificationCount = useMemo(
     () => unreadNotifications.filter((n) => !n.read).length,
