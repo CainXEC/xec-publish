@@ -199,7 +199,6 @@ export default function DashboardClient({
   const [unreadNotifications, setUnreadNotifications] = useState(notifications ?? [])
   const [legacySectionOpen, setLegacySectionOpen] = useState(false)
   const copyTimeoutRef = useRef(null)
-  const markReadOnViewTimeoutRef = useRef(null)
 
   // Stats come from the server — no loading state needed
   const totalUnlocks = typeof initialTotalUnlocks === 'number' ? initialTotalUnlocks : 0
@@ -235,30 +234,6 @@ export default function DashboardClient({
       /* ignore */
     }
   }, [])
-
-  useEffect(() => {
-    if (!notificationsOpen) {
-      if (markReadOnViewTimeoutRef.current) {
-        clearTimeout(markReadOnViewTimeoutRef.current)
-        markReadOnViewTimeoutRef.current = null
-      }
-      return
-    }
-
-    if (unreadNotificationCount === 0) return
-
-    markReadOnViewTimeoutRef.current = window.setTimeout(async () => {
-      markReadOnViewTimeoutRef.current = null
-      await handleMarkAllRead()
-    }, 2000)
-
-    return () => {
-      if (markReadOnViewTimeoutRef.current) {
-        clearTimeout(markReadOnViewTimeoutRef.current)
-        markReadOnViewTimeoutRef.current = null
-      }
-    }
-  }, [handleMarkAllRead, notificationsOpen, unreadNotificationCount])
 
   useEffect(() => {
     if (sortMode !== 'unlocks') {
@@ -435,9 +410,6 @@ export default function DashboardClient({
     return () => {
       if (copyTimeoutRef.current) {
         clearTimeout(copyTimeoutRef.current)
-      }
-      if (markReadOnViewTimeoutRef.current) {
-        clearTimeout(markReadOnViewTimeoutRef.current)
       }
     }
   }, [])
