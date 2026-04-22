@@ -73,6 +73,7 @@ export default function HomePage() {
   const [readerUnlockedPostIds, setReaderUnlockedPostIds] = useState([])
   const [readerFilterMode, setReaderFilterMode] = useState('all')
   const [postSearchQuery, setPostSearchQuery] = useState('')
+  const [followingOnly, setFollowingOnly] = useState(false)
 
   const readerFilteredPosts = useMemo(() => {
     if (!readerWalletAddress || readerFilterMode === 'all') return posts
@@ -123,7 +124,16 @@ export default function HomePage() {
     setReaderWalletAddress('')
     setReaderUnlockedPostIds([])
     setReaderFilterMode('all')
+    setFollowingOnly(false)
   }, [])
+
+  useEffect(() => {
+    if (!readerWalletAddress) setFollowingOnly(false)
+  }, [readerWalletAddress])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [followingOnly])
 
   // Reset to page 1 when filters change
   useEffect(() => { setCurrentPage(1) }, [sortMode, postSearchQuery, timeFilter])
@@ -142,6 +152,11 @@ export default function HomePage() {
       timeFilter,
       page: String(currentPage),
     })
+
+    if (followingOnly && readerWalletAddress) {
+      params.set('followingOnly', 'true')
+      params.set('walletAddress', readerWalletAddress)
+    }
 
     fetch(`/api/posts?${params}`)
       .then((res) => res.json())
@@ -166,7 +181,7 @@ export default function HomePage() {
       })
 
     return () => { cancelled = true }
-  }, [currentPage, timeFilter, sortMode])
+  }, [currentPage, timeFilter, sortMode, followingOnly, readerWalletAddress])
 
   const showPostSearch = !loading && !loadError
   const showPaginationRow = displayPosts.length > 0 && (currentPage > 1 || hasNextPage)
@@ -270,7 +285,23 @@ export default function HomePage() {
               </div>
             ) : null}
             {displayPosts.length > 0 ? (
-              <ul className="flex flex-col gap-1.5 md:gap-2">
+              <>
+                {readerWalletAddress ? (
+                  <div className="mb-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setFollowingOnly((f) => !f)}
+                      className={
+                        followingOnly
+                          ? 'inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 dark:bg-emerald-500 dark:text-emerald-950'
+                          : 'inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800'
+                      }
+                    >
+                      👥 {followingOnly ? 'Following ✓' : 'Following'}
+                    </button>
+                  </div>
+                ) : null}
+                <ul className="flex flex-col gap-1.5 md:gap-2">
                 {displayPosts.map((post) => {
                   const author = authorFromPost(post)
                   const username = author?.username?.trim() || 'Unknown'
@@ -324,7 +355,8 @@ export default function HomePage() {
                     </li>
                   )
                 })}
-              </ul>
+                </ul>
+              </>
             ) : null}
           </>
         )}

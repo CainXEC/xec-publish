@@ -1,4 +1,7 @@
+export const runtime = 'nodejs'
+
 import { NextResponse } from 'next/server'
+import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { createServerSupabase } from '@/lib/supabase-server'
 
 const PAGE_SIZE = 25
@@ -45,15 +48,51 @@ export async function GET(request) {
   const start = (page - 1) * PAGE_SIZE
   const end = start + PAGE_SIZE - 1
 
+  const followingOnly = searchParams.get('followingOnly') === 'true'
+  const walletAddress = (searchParams.get('walletAddress') ?? '').trim()
+
+  let followedAuthorIds = null
+  if (followingOnly && walletAddress) {
+    const admin = createSupabaseAdminClient()
+    if (!admin) {
+      return NextResponse.json(
+        { error: 'Server configuration error: missing Supabase admin credentials' },
+        { status: 500 },
+      )
+    }
+    const { data: followRows, error: followError } = await admin
+      .from('follows')
+      .select('author_id')
+      .eq('wallet_address', walletAddress)
+
+    if (followError) {
+      return NextResponse.json({ error: followError.message }, { status: 500 })
+    }
+
+    const uniqueIds = [
+      ...new Set((followRows ?? []).map((r) => r.author_id).filter(Boolean)),
+    ]
+    if (uniqueIds.length === 0) {
+      return NextResponse.json({ posts: [], hasNextPage: false })
+    }
+    followedAuthorIds = uniqueIds
+  }
+
   const supabase = createServerSupabase()
 
   // ── NEWEST sort: simple paginated query + parallel count RPCs ──
   if (sortMode === 'newest') {
-    const { data: rows, error } = await supabase
+    let newestQuery = supabase
       .from('posts')
       .select('id, title, slug, teaser, reading_time_minutes, price_xec, created_at, published_at, author_id, authors(username)')
       .eq('published', true)
       .eq('legacy', false)
+
+    if (followedAuthorIds) {
+      newestQuery = newestQuery.in('author_id', followedAuthorIds)
+    }
+
+    const { data: rows, error } = await newestQuery
       .order('published_at', { ascending: false, nullsFirst: false })
       .range(start, end)
 
@@ -98,11 +137,17 @@ export async function GET(request) {
   const since = getSinceTimestamp(timeFilter)
 
   // Step 1: all published post IDs + created_at for tiebreaking
-  const { data: idRows, error: idError } = await supabase
+  let idQuery = supabase
     .from('posts')
     .select('id, created_at, published_at')
     .eq('published', true)
     .eq('legacy', false)
+
+  if (followedAuthorIds) {
+    idQuery = idQuery.in('author_id', followedAuthorIds)
+  }
+
+  const { data: idRows, error: idError } = await idQuery
 
   if (idError) {
     return NextResponse.json({ error: idError.message }, { status: 500 })
