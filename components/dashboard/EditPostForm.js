@@ -392,7 +392,14 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
                 id={bodyLabelId}
                 className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
               >
-                Body
+                Body{' '}
+                {autoSaveStatus === 'saving' ? (
+                  <span className="font-normal text-zinc-400 dark:text-zinc-500">(Autosaving…)</span>
+                ) : autoSaveStatus === 'saved' ? (
+                  <span className="font-normal text-emerald-600 dark:text-emerald-400">(Draft saved ✓)</span>
+                ) : autoSaveStatus === 'error' ? (
+                  <span className="font-normal text-red-500 dark:text-red-400">(Autosave failed)</span>
+                ) : null}
               </span>
               <RichTextEditor
                 key={postId}
@@ -453,15 +460,6 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
             >
               {submitting ? 'Saving…' : 'Save changes'}
             </button>
-            {autoSaveStatus === 'saving' ? (
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">Autosaving…</p>
-            ) : null}
-            {autoSaveStatus === 'saved' ? (
-              <p className="text-xs text-emerald-600 dark:text-emerald-400">Draft saved ✓</p>
-            ) : null}
-            {autoSaveStatus === 'error' ? (
-              <p className="text-xs text-red-600 dark:text-red-400">Autosave failed</p>
-            ) : null}
           </div>
         </form>
       </main>
