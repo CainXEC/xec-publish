@@ -124,6 +124,16 @@ export async function POST(request) {
     return NextResponse.json({ error: insertError.message }, { status: 500 })
   }
 
+  try {
+    await admin.from('notifications').insert({
+      author_id: authorId,
+      message: 'Someone followed you',
+      read: false,
+    })
+  } catch {
+    /* ignore notification insertion errors */
+  }
+
   const { followerCount, error: countError } = await fetchFollowerCount(admin, authorId)
   if (countError) {
     return NextResponse.json({ error: countError.message }, { status: 500 })
