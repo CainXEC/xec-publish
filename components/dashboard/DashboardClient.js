@@ -587,17 +587,24 @@ export default function DashboardClient({
                       : '#'
                     const title = postRel?.title ?? 'Post'
                     const message = n.message || `New comment on '${title}'`
+                    const isCommentNotification = message.toLowerCase().includes('comment')
+                    const notificationItemClass = isCommentNotification
+                      ? 'block rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm transition hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60'
+                      : 'block rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800'
+                    const notificationTextClass = isCommentNotification
+                      ? 'text-emerald-900 dark:text-emerald-100'
+                      : 'text-zinc-800 dark:text-zinc-200'
                     return (
                       <li key={n.id}>
                         <Link
                           href={href}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={`block rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800 ${
+                          className={`${notificationItemClass} ${
                             n.read ? 'opacity-60' : ''
                           }`}
                         >
-                          <p className="text-zinc-800 dark:text-zinc-200">{message}</p>
+                          <p className={notificationTextClass}>{message}</p>
                           <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                             {formatRelativeTime(n.created_at)}
                           </p>
