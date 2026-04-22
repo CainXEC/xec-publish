@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useId, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import RichTextEditor from '@/components/RichTextEditor'
@@ -46,6 +46,8 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
+  const [autoSaveStatus, setAutoSaveStatus] = useState('idle') // 'idle' | 'saving' | 'saved' | 'error'
+  const autoSaveTimerRef = useRef(null)
 
   const [showPublishPaywall, setShowPublishPaywall] = useState(false)
 
@@ -154,6 +156,52 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
     }
   }, [persistPostUpdate])
 
+  const autoSave = useCallback(async () => {
+    if (!title.trim() || !postBodyHasMeaningfulText(body)) return
+
+    const price = Number(priceXec)
+    if (Number.isNaN(price) || price < 100 || price > 1_000_000) return
+
+    let finalSlug = slug.trim().slice(0, POST_SLUG_MAX)
+    if (!finalSlug || !isUrlSafeSlug(finalSlug)) {
+      finalSlug = generateSlug(title.trim() || 'post').slice(0, POST_SLUG_MAX)
+    }
+
+    setAutoSaveStatus('saving')
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser()
+      if (userError || !userData?.user) {
+        setAutoSaveStatus('error')
+        return
+      }
+
+      const bodyTrimmed = body.trim()
+      const updatePayload = {
+        title: title.trim(),
+        slug: finalSlug,
+        teaser: teaser.trim(),
+        body: bodyTrimmed,
+        reading_time_minutes: calculateReadingTimeMinutes(bodyTrimmed),
+        price_xec: price,
+      }
+
+      const { error: updateError } = await supabase
+        .from('posts')
+        .update(updatePayload)
+        .eq('id', postId)
+        .eq('author_id', userData.user.id)
+
+      if (updateError) {
+        setAutoSaveStatus('error')
+        return
+      }
+
+      setAutoSaveStatus('saved')
+    } catch {
+      setAutoSaveStatus('error')
+    }
+  }, [body, postId, priceXec, slug, teaser, title])
+
   const slugFieldError = useMemo(() => {
     const t = slug.trim()
     if (!t) return null
@@ -162,6 +210,16 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
     }
     return null
   }, [slug])
+
+  useEffect(() => {
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
+    autoSaveTimerRef.current = setTimeout(() => {
+      void autoSave()
+    }, 3000)
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
+    }
+  }, [title, teaser, body, priceXec, slug, autoSave])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -395,6 +453,15 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
             >
               {submitting ? 'Saving…' : 'Save changes'}
             </button>
+            {autoSaveStatus === 'saving' ? (
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Autosaving…</p>
+            ) : null}
+            {autoSaveStatus === 'saved' ? (
+              <p className="text-xs text-emerald-600 dark:text-emerald-400">Draft saved ✓</p>
+            ) : null}
+            {autoSaveStatus === 'error' ? (
+              <p className="text-xs text-red-600 dark:text-red-400">Autosave failed</p>
+            ) : null}
           </div>
         </form>
       </main>
