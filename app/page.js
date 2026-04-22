@@ -74,6 +74,7 @@ export default function HomePage() {
   const [readerFilterMode, setReaderFilterMode] = useState('all')
   const [postSearchQuery, setPostSearchQuery] = useState('')
   const [followingOnly, setFollowingOnly] = useState(false)
+  const [refetchTrigger, setRefetchTrigger] = useState(0)
 
   const readerFilteredPosts = useMemo(() => {
     if (!readerWalletAddress || readerFilterMode === 'all') return posts
@@ -141,6 +142,18 @@ export default function HomePage() {
     if (sortMode !== 'unlocks' && sortMode !== 'earned') setTimeFilter('all')
   }, [sortMode])
 
+  useEffect(() => {
+    if (!followingOnly) return
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        setCurrentPage(1)
+        setRefetchTrigger((n) => n + 1)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [followingOnly])
+
   // Single fetch to /api/posts — all queries run server-side in parallel
   useEffect(() => {
     let cancelled = false
@@ -181,7 +194,7 @@ export default function HomePage() {
       })
 
     return () => { cancelled = true }
-  }, [currentPage, timeFilter, sortMode, followingOnly, readerWalletAddress])
+  }, [currentPage, timeFilter, sortMode, followingOnly, readerWalletAddress, refetchTrigger])
 
   const showPostSearch = !loading && !loadError
   const showPaginationRow = displayPosts.length > 0 && (currentPage > 1 || hasNextPage)
