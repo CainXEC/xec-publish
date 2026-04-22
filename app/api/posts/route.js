@@ -63,7 +63,7 @@ export async function GET(request) {
     const { data: followRows, error: followError } = await admin
       .from('follows')
       .select('author_id')
-      .eq('wallet_address', walletAddress)
+      .eq('reader_wallet_address', walletAddress)
 
     if (followError) {
       return NextResponse.json({ error: followError.message }, { status: 500 })

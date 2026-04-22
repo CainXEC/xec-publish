@@ -186,6 +186,21 @@ export default function HomePage() {
   const showPostSearch = !loading && !loadError
   const showPaginationRow = displayPosts.length > 0 && (currentPage > 1 || hasNextPage)
 
+  const followingToggleButton = (
+    <button
+      type="button"
+      disabled={!readerWalletAddress}
+      onClick={() => setFollowingOnly((f) => !f)}
+      className={`shrink-0 ${
+        followingOnly
+          ? 'inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 dark:bg-emerald-500 dark:text-emerald-950'
+          : 'inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800'
+      } ${!readerWalletAddress ? 'cursor-not-allowed opacity-50' : ''}`}
+    >
+      👥 {followingOnly ? 'Following ✓' : 'Following'}
+    </button>
+  )
+
   return (
     <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
       <Nav
@@ -225,56 +240,65 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            <div className="mb-2 flex flex-wrap gap-1.5 md:gap-2" role="group" aria-label="Sort posts">
-              <button
-                type="button"
-                aria-pressed={sortMode === 'newest'}
-                onClick={() => setSortMode('newest')}
-                className={sortMode === 'newest' ? sortBtnActive : sortBtnInactive}
-              >
-                🕐 Newest First
-              </button>
-              <button
-                type="button"
-                aria-pressed={sortMode === 'earned'}
-                onClick={() => setSortMode('earned')}
-                className={sortMode === 'earned' ? sortBtnActive : sortBtnInactive}
-              >
-                💰 Most Earned
-              </button>
-              <button
-                type="button"
-                aria-pressed={sortMode === 'unlocks'}
-                onClick={() => setSortMode('unlocks')}
-                className={sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}
-              >
-                🔓 Most Unlocked
-              </button>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-1.5 md:gap-2" role="group" aria-label="Sort posts">
+                <button
+                  type="button"
+                  aria-pressed={sortMode === 'newest'}
+                  onClick={() => setSortMode('newest')}
+                  className={sortMode === 'newest' ? sortBtnActive : sortBtnInactive}
+                >
+                  🕐 Newest First
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={sortMode === 'earned'}
+                  onClick={() => setSortMode('earned')}
+                  className={sortMode === 'earned' ? sortBtnActive : sortBtnInactive}
+                >
+                  💰 Most Earned
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={sortMode === 'unlocks'}
+                  onClick={() => setSortMode('unlocks')}
+                  className={sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}
+                >
+                  🔓 Most Unlocked
+                </button>
+              </div>
+              {sortMode === 'newest' && !readerWalletAddress ? followingToggleButton : null}
             </div>
             {sortMode === 'unlocks' || sortMode === 'earned' ? (
-              <div
-                className="mb-2 flex flex-wrap items-center gap-1.5 md:gap-2"
-                role="group"
-                aria-label="Unlock time range"
-              >
-                {TIME_FILTER_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    aria-pressed={timeFilter === opt.id}
-                    onClick={() => setTimeFilter(opt.id)}
-                    className={timeFilter === opt.id ? timeFilterBtnActive : timeFilterBtnInactive}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div
+                  className="flex flex-wrap items-center gap-1.5 md:gap-2"
+                  role="group"
+                  aria-label="Unlock time range"
+                >
+                  {TIME_FILTER_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      aria-pressed={timeFilter === opt.id}
+                      onClick={() => setTimeFilter(opt.id)}
+                      className={timeFilter === opt.id ? timeFilterBtnActive : timeFilterBtnInactive}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {!readerWalletAddress ? followingToggleButton : null}
               </div>
             ) : null}
             {readerWalletAddress ? (
-              <div className="mb-2 flex flex-wrap gap-1.5 md:gap-2" role="group" aria-label="Filter posts">
-                <button type="button" aria-pressed={readerFilterMode === 'all'} onClick={() => setReaderFilterMode('all')} className={readerFilterMode === 'all' ? filterBtnActive : filterBtnInactive}>All Posts</button>
-                <button type="button" aria-pressed={readerFilterMode === 'unlocked'} onClick={() => setReaderFilterMode('unlocked')} className={readerFilterMode === 'unlocked' ? filterBtnActive : filterBtnInactive}>Unlocked</button>
-                <button type="button" aria-pressed={readerFilterMode === 'locked'} onClick={() => setReaderFilterMode('locked')} className={readerFilterMode === 'locked' ? filterBtnActive : filterBtnInactive}>Locked</button>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-1.5 md:gap-2" role="group" aria-label="Filter posts">
+                  <button type="button" aria-pressed={readerFilterMode === 'all'} onClick={() => setReaderFilterMode('all')} className={readerFilterMode === 'all' ? filterBtnActive : filterBtnInactive}>All Posts</button>
+                  <button type="button" aria-pressed={readerFilterMode === 'unlocked'} onClick={() => setReaderFilterMode('unlocked')} className={readerFilterMode === 'unlocked' ? filterBtnActive : filterBtnInactive}>Unlocked</button>
+                  <button type="button" aria-pressed={readerFilterMode === 'locked'} onClick={() => setReaderFilterMode('locked')} className={readerFilterMode === 'locked' ? filterBtnActive : filterBtnInactive}>Locked</button>
+                </div>
+                {followingToggleButton}
               </div>
             ) : null}
             {displayPosts.length === 0 ? (
@@ -285,23 +309,7 @@ export default function HomePage() {
               </div>
             ) : null}
             {displayPosts.length > 0 ? (
-              <>
-                {readerWalletAddress ? (
-                  <div className="mb-2 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setFollowingOnly((f) => !f)}
-                      className={
-                        followingOnly
-                          ? 'inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 dark:bg-emerald-500 dark:text-emerald-950'
-                          : 'inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800'
-                      }
-                    >
-                      👥 {followingOnly ? 'Following ✓' : 'Following'}
-                    </button>
-                  </div>
-                ) : null}
-                <ul className="flex flex-col gap-1.5 md:gap-2">
+              <ul className="flex flex-col gap-1.5 md:gap-2">
                 {displayPosts.map((post) => {
                   const author = authorFromPost(post)
                   const username = author?.username?.trim() || 'Unknown'
@@ -355,8 +363,7 @@ export default function HomePage() {
                     </li>
                   )
                 })}
-                </ul>
-              </>
+              </ul>
             ) : null}
           </>
         )}
