@@ -230,7 +230,7 @@ export default function HomePage() {
           <div className="rounded-xl border border-red-200 bg-red-50 p-6 dark:border-red-900/50 dark:bg-red-950/40">
             <p className="text-sm text-red-800 dark:text-red-200">{loadError}</p>
           </div>
-        ) : posts.length === 0 ? (
+        ) : posts.length === 0 && !readerWalletAddress ? (
           <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-8 py-16 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
             <p className="text-lg text-zinc-700 dark:text-zinc-300">
               {trimmedPostSearch

@@ -82,8 +82,89 @@ export default function PostPageClient({
   const [isAuthorSession, setIsAuthorSession] = useState(false)
   const [authorAccessToken, setAuthorAccessToken] = useState('')
   const [showUnlockFlash, setShowUnlockFlash] = useState(false)
+  const [readerWalletAddress, setReaderWalletAddress] = useState('')
+  const [isFollowingAuthor, setIsFollowingAuthor] = useState(false)
+  const [followAuthorBusy, setFollowAuthorBusy] = useState(false)
   const commentCopyTimeoutsRef = useRef({})
   const shareCopyTimeoutRef = useRef(null)
+
+  const syncReaderWalletFromStorage = useCallback(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const w = (localStorage.getItem('readerWalletAddress') || '').trim()
+      setReaderWalletAddress(w)
+    } catch {
+      setReaderWalletAddress('')
+    }
+  }, [])
+
+  useEffect(() => {
+    syncReaderWalletFromStorage()
+    if (typeof window === 'undefined') return undefined
+    function onStorage(e) {
+      if (e.key === 'readerWalletAddress' || e.key === null) {
+        syncReaderWalletFromStorage()
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+    }
+  }, [syncReaderWalletFromStorage])
+
+  const handleReaderWalletSynced = useCallback((walletAddress) => {
+    const trimmed = typeof walletAddress === 'string' ? walletAddress.trim() : ''
+    setReaderWalletAddress(trimmed)
+  }, [])
+
+  const handleReaderLogoutExtra = useCallback(() => {
+    setReaderWalletAddress('')
+    setIsFollowingAuthor(false)
+  }, [])
+
+  useEffect(() => {
+    const wallet = readerWalletAddress.trim()
+    const authorId = post?.author_id
+    if (!wallet || !authorId) {
+      setIsFollowingAuthor(false)
+      return
+    }
+    let cancelled = false
+    fetch(
+      `/api/follows?walletAddress=${encodeURIComponent(wallet)}&authorId=${encodeURIComponent(authorId)}`,
+      { cache: 'no-store' },
+    )
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled) setIsFollowingAuthor(data.following ?? false)
+      })
+      .catch(() => {
+        if (!cancelled) setIsFollowingAuthor(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [readerWalletAddress, post?.author_id])
+
+  const handleFollowAuthor = useCallback(async () => {
+    const wallet = readerWalletAddress.trim()
+    const authorId = post?.author_id
+    if (!wallet || !authorId || followAuthorBusy) return
+    setFollowAuthorBusy(true)
+    try {
+      const res = await fetch('/api/follows', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: wallet, authorId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      setIsFollowingAuthor(data.following ?? false)
+    } catch {
+      /* ignore */
+    } finally {
+      setFollowAuthorBusy(false)
+    }
+  }, [followAuthorBusy, post?.author_id, readerWalletAddress])
 
   useEffect(() => {
     return () => {
@@ -690,23 +771,54 @@ export default function PostPageClient({
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
-      <Nav />
+      <Nav
+        onReaderWalletSynced={handleReaderWalletSynced}
+        onReaderLogoutExtra={handleReaderLogoutExtra}
+      />
       <main className="mx-auto w-full max-w-3xl px-4 py-10">
         <article className="rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h1 className="text-3xl font-semibold leading-tight text-zinc-900 dark:text-zinc-50">
             {post.title}
           </h1>
-          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-            By{' '}
+          <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+            <span>By</span>
             {author?.username?.trim() ? (
-              <Link
-                href={`/u/${encodeURIComponent(author.username.trim())}`}
-                className="font-medium text-emerald-700 hover:text-emerald-800 underline-offset-2 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
-              >
-                @{author.username.trim()}
-              </Link>
+              <>
+                <Link
+                  href={`/u/${encodeURIComponent(author.username.trim())}`}
+                  className="font-medium text-emerald-700 hover:text-emerald-800 underline-offset-2 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
+                >
+                  @{author.username.trim()}
+                </Link>
+                {readerWalletAddress.trim() && post.author_id && !isAuthorSession ? (
+                  <button
+                    type="button"
+                    title={isFollowingAuthor ? undefined : 'Follow'}
+                    aria-label={isFollowingAuthor ? 'Following author' : 'Follow author'}
+                    onClick={() => void handleFollowAuthor()}
+                    disabled={followAuthorBusy}
+                    className={
+                      followAuthorBusy
+                        ? 'cursor-not-allowed rounded-full border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-500'
+                        : isFollowingAuthor
+                          ? 'inline-flex shrink-0 items-center gap-0.5 rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400'
+                          : 'shrink-0 rounded-full border border-zinc-300 bg-white px-2 py-0.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800'
+                    }
+                  >
+                    {followAuthorBusy ? (
+                      '…'
+                    ) : isFollowingAuthor ? (
+                      <>
+                        <span aria-hidden>✓</span> Following
+                      </>
+                    ) : (
+                      <span aria-hidden>+</span>
+                    )}
+                  </button>
+                ) : null}
+              </>
             ) : (
-              'Unknown author'
+              <span>Unknown author</span>
             )}
           </p>
           {articleDateIso ? (
