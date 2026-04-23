@@ -122,29 +122,31 @@ export default function LeaderboardPage() {
           </p>
         </div>
 
-        <div className="mb-3 flex flex-col gap-3 sm:mb-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <h2 className="min-w-0 text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
+        <div className="mb-3 flex min-w-0 items-center gap-2 sm:gap-4">
+          <h2 className="min-w-0 truncate text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
             Leaderboard
           </h2>
-          <div className="-mx-1 flex min-w-0 shrink-0 gap-1.5 overflow-x-auto px-1 pb-0.5 sm:mx-0 sm:justify-end sm:overflow-visible sm:px-0 sm:pb-0">
-            <FilterDropdown
-              menuId={MENU_SORT}
-              openMenu={openMenu}
-              setOpenMenu={setOpenMenu}
-              value={sortMode}
-              options={LEADERBOARD_SORT_OPTIONS}
-              ariaLabel="Sort leaderboard"
-              onChange={(v) => setSortMode(v)}
-            />
-            <FilterDropdown
-              menuId={MENU_TIME}
-              openMenu={openMenu}
-              setOpenMenu={setOpenMenu}
-              value={timeFilter}
-              options={LEADERBOARD_TIME_OPTIONS}
-              ariaLabel="Leaderboard time range"
-              onChange={(v) => setTimeFilter(v)}
-            />
+          <div className="flex flex-1 min-w-0 justify-end">
+            <div className="-mx-1 flex min-w-0 flex-nowrap gap-1.5 overflow-x-auto px-1 pb-0.5 sm:mx-0 sm:px-0 sm:pb-0">
+              <FilterDropdown
+                menuId={MENU_SORT}
+                openMenu={openMenu}
+                setOpenMenu={setOpenMenu}
+                value={sortMode}
+                options={LEADERBOARD_SORT_OPTIONS}
+                ariaLabel="Sort leaderboard"
+                onChange={(v) => setSortMode(v)}
+              />
+              <FilterDropdown
+                menuId={MENU_TIME}
+                openMenu={openMenu}
+                setOpenMenu={setOpenMenu}
+                value={timeFilter}
+                options={LEADERBOARD_TIME_OPTIONS}
+                ariaLabel="Leaderboard time range"
+                onChange={(v) => setTimeFilter(v)}
+              />
+            </div>
           </div>
         </div>
 
