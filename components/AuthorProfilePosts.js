@@ -432,9 +432,9 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
           </div>
         ) : (
           <>
-            <div className="mt-6 mb-3 flex items-center justify-end gap-2 sm:gap-4">
-              <h2 className="hidden min-[380px]:block text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
-                Sort
+            <div className="mt-6 mb-3 flex items-center justify-end gap-2 sm:justify-between sm:gap-4">
+              <h2 className="hidden text-lg font-semibold tracking-tight text-zinc-900 sm:block sm:text-3xl dark:text-zinc-50">
+                Published articles
               </h2>
               <div className="flex shrink-0 items-center gap-1.5">
                 <FilterDropdown

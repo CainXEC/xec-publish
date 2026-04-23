@@ -260,9 +260,9 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            <div className="mb-3 flex items-center justify-end gap-2 sm:gap-4">
-              <h2 className="hidden min-[380px]:block text-lg font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
-                Sort
+            <div className="mb-3 flex items-center justify-end gap-2 sm:justify-between sm:gap-4">
+              <h2 className="hidden text-lg font-semibold tracking-tight text-zinc-900 sm:block sm:text-3xl dark:text-zinc-50">
+                Published articles
               </h2>
               <div className="flex shrink-0 items-center gap-1.5">
                 <FilterDropdown

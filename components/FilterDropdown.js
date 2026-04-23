@@ -162,10 +162,10 @@ export default function FilterDropdown({
   const triggerClass = [
     'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full border-[0.5px] px-3 py-1.5 text-left text-sm font-normal leading-[1.2] transition-colors duration-150',
     disabled
-      ? 'cursor-not-allowed border-zinc-200 bg-transparent text-zinc-500 opacity-40 dark:border-zinc-800 dark:text-zinc-500'
+      ? 'cursor-not-allowed border-zinc-200 bg-zinc-100 text-zinc-500 opacity-40 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-500'
       : isOpen
-        ? 'cursor-pointer border-zinc-300 bg-zinc-50 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100'
-        : 'cursor-pointer border-zinc-200 bg-transparent text-zinc-900 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-900',
+        ? 'cursor-pointer border-zinc-300 bg-zinc-200 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100'
+        : 'cursor-pointer border-zinc-200 bg-zinc-100 text-zinc-900 hover:bg-zinc-200 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-100 dark:hover:bg-zinc-800',
   ].join(' ')
 
   return (
@@ -206,7 +206,7 @@ export default function FilterDropdown({
           aria-labelledby={triggerId}
           tabIndex={-1}
           onKeyDownCapture={onMenuKeyDownCapture}
-          className="absolute left-0 right-0 top-full z-50 mt-1 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+          className="absolute left-0 right-0 top-full z-50 mt-1 rounded-xl border border-zinc-200 bg-zinc-100 py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900/80"
         >
           {options.map((opt) => {
             const selectedHere = opt.value === value
