@@ -261,7 +261,7 @@ export default function HomePage() {
         ) : (
           <>
             <div className="mb-3">
-              <div className="mb-1.5 text-xs font-normal text-zinc-500 dark:text-zinc-400 sm:hidden">
+              <div className="sm:hidden text-sm font-medium text-zinc-900 dark:text-zinc-100 text-center mb-1.5">
                 Customize your feed
               </div>
               <div className="grid grid-cols-3 gap-1.5 sm:hidden">

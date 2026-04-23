@@ -70,8 +70,8 @@ export default function FilterDropdown({
       if (menuRef.current?.contains(t) || triggerRef.current?.contains(t)) return
       setOpenMenu(null)
     }
-    document.addEventListener('mousedown', onDocMouseDown)
-    return () => document.removeEventListener('mousedown', onDocMouseDown)
+    document.addEventListener('pointerdown', onDocMouseDown)
+    return () => document.removeEventListener('pointerdown', onDocMouseDown)
   }, [isOpen, setOpenMenu])
 
   useEffect(() => {
@@ -242,7 +242,8 @@ export default function FilterDropdown({
                     ? 'bg-emerald-50 font-medium text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-100'
                     : 'text-zinc-800 hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800'
                 }`}
-                onClick={() => {
+                onPointerDown={(e) => {
+                  e.preventDefault()
                   onChange(opt.value)
                   close()
                   triggerRef.current?.focus()
