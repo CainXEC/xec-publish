@@ -228,7 +228,7 @@ export default function LeaderboardPage() {
                         {sortMode === 'unlocks' ? (
                           row.total_unlocks
                         ) : (
-                          <span className="block truncate text-xs font-semibold leading-tight">
+                          <span className="block truncate text-xs leading-tight">
                             {formatXec(row.total_xec)}
                           </span>
                         )}
