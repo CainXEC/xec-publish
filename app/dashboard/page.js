@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import Nav from '@/components/Nav'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 
 export default async function DashboardPage() {
@@ -55,16 +56,19 @@ export default async function DashboardPage() {
   }
 
   return (
-    <DashboardClient
-      email={user.email ?? ''}
-      username={author?.username ?? ''}
-      bio={author?.bio ?? ''}
-      xecAddress={author?.xec_address ?? ''}
-      notifications={notifications ?? []}
-      initialPosts={posts ?? []}
-      loadError={postsError?.message ?? null}
-      initialTotalUnlocks={rows.length}
-      initialTotalXecRaw={totalXec}
-    />
+    <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
+      <Nav authorCtaOverride="logout" />
+      <DashboardClient
+        email={user.email ?? ''}
+        username={author?.username ?? ''}
+        bio={author?.bio ?? ''}
+        xecAddress={author?.xec_address ?? ''}
+        notifications={notifications ?? []}
+        initialPosts={posts ?? []}
+        loadError={postsError?.message ?? null}
+        initialTotalUnlocks={rows.length}
+        initialTotalXecRaw={totalXec}
+      />
+    </div>
   )
 }

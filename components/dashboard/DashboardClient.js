@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import ThemeToggle from '@/components/ThemeToggle'
+import FilterDropdown from '@/components/FilterDropdown'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { supabase } from '@/lib/supabase-browser'
 import { fetchAllUnlockCountRows } from '@/lib/supabaseUnlockCounts'
@@ -33,23 +32,23 @@ function getSinceTimestamp(timeFilter) {
   return now.toISOString()
 }
 
-const TIME_FILTER_OPTIONS = [
-  { id: '24h', label: '24h' },
-  { id: '7d', label: '7d' },
-  { id: '30d', label: '30d' },
-  { id: '1y', label: '1y' },
-  { id: 'all', label: 'All time' },
+const DASHBOARD_SORT_OPTIONS = [
+  { value: 'earned', label: 'Earned' },
+  { value: 'unlocks', label: 'Unlocked' },
+  { value: 'newest', label: 'Newest' },
+  { value: 'drafts', label: 'Drafts' },
 ]
 
-const sortBtnActive =
-  'rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 md:px-4 md:py-2 md:text-sm dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400'
-const sortBtnInactive =
-  'rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-800 transition hover:bg-zinc-50 md:px-4 md:py-2 md:text-sm dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900'
+const DASHBOARD_TIME_OPTIONS = [
+  { value: '24h', label: '24h' },
+  { value: '7d', label: '7d' },
+  { value: '30d', label: '30d' },
+  { value: '1y', label: '1y' },
+  { value: 'all', label: 'All time' },
+]
 
-const timeFilterBtnActive =
-  'rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 md:px-3 md:py-2 md:text-sm dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400'
-const timeFilterBtnInactive =
-  'rounded-lg border border-zinc-300 bg-transparent px-2.5 py-1.5 text-xs font-medium text-zinc-800 transition hover:bg-zinc-50 md:px-3 md:py-2 md:text-sm dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-900'
+const MENU_SORT = 'dashboard-posts-sort'
+const MENU_TIME = 'dashboard-posts-time'
 
 function unlockCountFromPost(post) {
   const u = post.unlocks
@@ -206,7 +205,6 @@ export default function DashboardClient({
   initialTotalUnlocks,
   initialTotalXecRaw,
 }) {
-  const router = useRouter()
   const [posts, setPosts] = useState(initialPosts)
   const [sortMode, setSortMode] = useState('earned')
   const [timeFilter, setTimeFilter] = useState('24h')
@@ -215,6 +213,7 @@ export default function DashboardClient({
   const [deleteError, setDeleteError] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
+  const [openMenu, setOpenMenu] = useState(/** @type {string | null} */ (null))
   const [copiedAddress, setCopiedAddress] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [unreadNotifications, setUnreadNotifications] = useState(
@@ -253,14 +252,16 @@ export default function DashboardClient({
   }, [])
 
   useEffect(() => {
-    if (sortMode !== 'unlocks' && sortMode !== 'earned') {
-      setTimeFilter('all')
-    }
-  }, [sortMode])
+    setCurrentPage(1)
+  }, [sortMode, timeFilter])
 
   const nonLegacyPosts = useMemo(
     () => posts.filter((p) => p.legacy !== true),
     [posts],
+  )
+  const draftPosts = useMemo(
+    () => nonLegacyPosts.filter((p) => !p.published),
+    [nonLegacyPosts],
   )
 
   const legacyPosts = useMemo(
@@ -314,6 +315,11 @@ export default function DashboardClient({
     let cancelled = false
 
     async function loadUnlockCounts() {
+      if (sortMode === 'drafts') {
+        setUnlockCountMap({})
+        setEarningsMap({})
+        return
+      }
       const postIds = nonLegacyPosts.map((p) => p.id).filter(Boolean)
       if (postIds.length === 0) {
         setUnlockCountMap({})
@@ -360,6 +366,7 @@ export default function DashboardClient({
   }, [nonLegacyPosts, sortMode, timeFilter])
 
   const sortedPosts = useMemo(() => {
+    if (sortMode === 'drafts') return sortPostsByNewest(draftPosts)
     const withCounts = nonLegacyPosts.map((p) => ({
       ...p,
       unlocks: [{ count: unlockCountMap[p.id] ?? 0 }],
@@ -368,7 +375,7 @@ export default function DashboardClient({
     if (sortMode === 'newest') return sortPostsByNewest(withCounts)
     if (sortMode === 'earned') return sortPostsByEarned(withCounts)
     return sortPostsByUnlocksThenNewest(withCounts)
-  }, [earningsMap, nonLegacyPosts, sortMode, unlockCountMap])
+  }, [draftPosts, earningsMap, nonLegacyPosts, sortMode, unlockCountMap])
 
   const totalPages = Math.max(1, Math.ceil(sortedPosts.length / PAGE_SIZE))
   const effectivePage = Math.max(1, Math.min(currentPage, totalPages))
@@ -422,12 +429,6 @@ export default function DashboardClient({
     }
   }, [])
 
-  const handleLogout = useCallback(async () => {
-    await supabase.auth.signOut()
-    router.refresh()
-    router.push('/')
-  }, [router])
-
   const handleCopyXecAddress = useCallback(async () => {
     const trimmed = typeof xecAddress === 'string' ? xecAddress.trim() : ''
     if (!trimmed) return
@@ -472,25 +473,7 @@ export default function DashboardClient({
   return (
     <div className="flex min-h-full flex-1 flex-col bg-zinc-50 px-4 py-10 dark:bg-zinc-950">
       <main className="mx-auto w-full max-w-4xl">
-        <div className="flex items-center justify-between gap-3">
-          <Link
-            href="/"
-            className="text-sm font-medium text-emerald-700 underline-offset-4 hover:underline dark:text-emerald-400"
-          >
-            ← Home
-          </Link>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <button
-              type="button"
-              onClick={() => void handleLogout()}
-              className="rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-        <div className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex items-center justify-between gap-3">
             <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
               Welcome{' '}
@@ -661,83 +644,52 @@ export default function DashboardClient({
             </div>
           ) : (
             <>
-              <div
-                className="mt-4 mb-2 flex flex-wrap gap-1.5 md:gap-2"
-                role="group"
-                aria-label="Sort posts"
-              >
-                <button
-                  type="button"
-                  aria-pressed={sortMode === 'earned'}
-                  onClick={() => {
-                    setCurrentPage(1)
-                    setSortMode('earned')
-                  }}
-                  className={sortMode === 'earned' ? sortBtnActive : sortBtnInactive}
-                >
-                  💰 Most Earned
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={sortMode === 'unlocks'}
-                  onClick={() => {
-                    setCurrentPage(1)
-                    setSortMode('unlocks')
-                  }}
-                  className={sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}
-                >
-                  🔓 Most Unlocked
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={sortMode === 'newest'}
-                  onClick={() => {
-                    setCurrentPage(1)
-                    setSortMode('newest')
-                  }}
-                  className={sortMode === 'newest' ? sortBtnActive : sortBtnInactive}
-                >
-                  🕐 Newest First
-                </button>
+              <div className="mt-4 mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <h2 className="min-w-0 text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
+                  Your posts
+                </h2>
+                <div className="-mx-1 flex min-w-0 shrink-0 gap-1.5 overflow-x-auto px-1 pb-0.5 sm:mx-0 sm:justify-end sm:overflow-visible sm:px-0 sm:pb-0">
+                  <FilterDropdown
+                    menuId={MENU_SORT}
+                    openMenu={openMenu}
+                    setOpenMenu={setOpenMenu}
+                    value={sortMode}
+                    options={DASHBOARD_SORT_OPTIONS}
+                    ariaLabel="Sort posts"
+                    onChange={(v) => setSortMode(v)}
+                  />
+                  <FilterDropdown
+                    menuId={MENU_TIME}
+                    openMenu={openMenu}
+                    setOpenMenu={setOpenMenu}
+                    value={timeFilter}
+                    options={DASHBOARD_TIME_OPTIONS}
+                    ariaLabel="Time range for unlocks and earnings"
+                    disabled={sortMode === 'newest' || sortMode === 'drafts'}
+                    disabledHint="Time range does not apply when sorting by Newest or Drafts."
+                    onChange={(v) => setTimeFilter(v)}
+                  />
+                </div>
               </div>
 
-              {sortMode === 'unlocks' || sortMode === 'earned' ? (
-                <div
-                  className="mb-2 flex flex-wrap items-center gap-1.5 md:gap-2"
-                  role="group"
-                  aria-label="Unlock time range"
-                >
-                  {TIME_FILTER_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      aria-pressed={timeFilter === opt.id}
-                      onClick={() => {
-                        setCurrentPage(1)
-                        setTimeFilter(opt.id)
-                      }}
-                      className={
-                        timeFilter === opt.id
-                          ? timeFilterBtnActive
-                          : timeFilterBtnInactive
-                      }
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+              {sortedPosts.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-8 py-12 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
+                  <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                    {sortMode === 'drafts' ? 'No drafts yet.' : 'No posts found.'}
+                  </p>
                 </div>
-              ) : null}
-
-              <ul className="flex flex-col gap-1.5 md:gap-2">
-                {pagedSortedPosts.map((post) => (
-                  <DashboardPostCard
-                    key={post.id}
-                    post={post}
-                    deletingId={deletingId}
-                    onDelete={() => void handleDeletePost(post.id)}
-                  />
-                ))}
-              </ul>
+              ) : (
+                <ul className="flex flex-col gap-1.5 md:gap-2">
+                  {pagedSortedPosts.map((post) => (
+                    <DashboardPostCard
+                      key={post.id}
+                      post={post}
+                      deletingId={deletingId}
+                      onDelete={() => void handleDeletePost(post.id)}
+                    />
+                  ))}
+                </ul>
+              )}
               {sortedPosts.length > PAGE_SIZE ? (
                 <div className="mt-6 flex items-center justify-between gap-2 border-t border-zinc-200 pt-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
                   <div className="min-w-0 flex-1">

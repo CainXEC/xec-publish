@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import FilterDropdown from '@/components/FilterDropdown'
 import Nav from '@/components/Nav'
 
 /** `total_xec` from the leaderboard RPC is in satoshis (1 XEC = 100 satoshis). */
@@ -11,30 +12,29 @@ function formatXec(satoshis) {
   return xec.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' XEC'
 }
 
-const TIME_FILTER_OPTIONS = [
-  { id: '24h', label: '24h' },
-  { id: '7d', label: '7d' },
-  { id: '30d', label: '30d' },
-  { id: '1y', label: '1y' },
-  { id: 'all', label: 'All time' },
+const LEADERBOARD_SORT_OPTIONS = [
+  { value: 'earned', label: 'Earned' },
+  { value: 'unlocks', label: 'Unlocked' },
 ]
 
-const sortBtnActive =
-  'rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400'
-const sortBtnInactive =
-  'rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900'
+const LEADERBOARD_TIME_OPTIONS = [
+  { value: '24h', label: '24h' },
+  { value: '7d', label: '7d' },
+  { value: '30d', label: '30d' },
+  { value: '1y', label: '1y' },
+  { value: 'all', label: 'All time' },
+]
 
-const timeFilterBtnActive =
-  'rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 md:px-3 md:py-2 md:text-sm dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400'
-const timeFilterBtnInactive =
-  'rounded-lg border border-zinc-300 bg-transparent px-2.5 py-1.5 text-xs font-medium text-zinc-800 transition hover:bg-zinc-50 md:px-3 md:py-2 md:text-sm dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-900'
+const MENU_SORT = 'leaderboard-sort'
+const MENU_TIME = 'leaderboard-time'
 
 export default function LeaderboardPage() {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
-  const [sortMode, setSortMode] = useState('unlocks')
-  const [timeFilter, setTimeFilter] = useState('all')
+  const [sortMode, setSortMode] = useState('earned')
+  const [timeFilter, setTimeFilter] = useState('24h')
+  const [openMenu, setOpenMenu] = useState(/** @type {string | null} */ (null))
   /** `null` = loading or failed to load (show —). */
   const [platformStats, setPlatformStats] = useState(null)
 
@@ -122,47 +122,30 @@ export default function LeaderboardPage() {
           </p>
         </div>
 
-        <div
-          className="mb-2 flex w-full gap-2"
-          role="group"
-          aria-label="Sort leaderboard"
-        >
-          <button
-            type="button"
-            aria-pressed={sortMode === 'unlocks'}
-            onClick={() => setSortMode('unlocks')}
-            className={`min-w-0 flex-1 text-center ${sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}`}
-          >
-            🔓 Most Unlocked
-          </button>
-          <button
-            type="button"
-            aria-pressed={sortMode === 'earned'}
-            onClick={() => setSortMode('earned')}
-            className={`min-w-0 flex-1 text-center ${sortMode === 'earned' ? sortBtnActive : sortBtnInactive}`}
-          >
-            💰 Most Earned
-          </button>
-        </div>
-
-        <div
-          className="mb-2 flex flex-wrap items-center gap-1.5 md:gap-2"
-          role="group"
-          aria-label="Leaderboard time range"
-        >
-          {TIME_FILTER_OPTIONS.map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              aria-pressed={timeFilter === opt.id}
-              onClick={() => setTimeFilter(opt.id)}
-              className={
-                timeFilter === opt.id ? timeFilterBtnActive : timeFilterBtnInactive
-              }
-            >
-              {opt.label}
-            </button>
-          ))}
+        <div className="mb-3 flex flex-col gap-3 sm:mb-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <h2 className="min-w-0 text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
+            Leaderboard
+          </h2>
+          <div className="-mx-1 flex min-w-0 shrink-0 gap-1.5 overflow-x-auto px-1 pb-0.5 sm:mx-0 sm:justify-end sm:overflow-visible sm:px-0 sm:pb-0">
+            <FilterDropdown
+              menuId={MENU_SORT}
+              openMenu={openMenu}
+              setOpenMenu={setOpenMenu}
+              value={sortMode}
+              options={LEADERBOARD_SORT_OPTIONS}
+              ariaLabel="Sort leaderboard"
+              onChange={(v) => setSortMode(v)}
+            />
+            <FilterDropdown
+              menuId={MENU_TIME}
+              openMenu={openMenu}
+              setOpenMenu={setOpenMenu}
+              value={timeFilter}
+              options={LEADERBOARD_TIME_OPTIONS}
+              ariaLabel="Leaderboard time range"
+              onChange={(v) => setTimeFilter(v)}
+            />
+          </div>
         </div>
 
         <div className="mb-3 rounded-lg border border-zinc-200/70 bg-zinc-100/40 px-2 py-2.5 sm:px-4 dark:border-zinc-800/70 dark:bg-zinc-900/30">

@@ -496,18 +496,6 @@ export default function Nav({
     >
         <div className="relative mx-auto flex min-h-14 max-w-5xl items-center gap-3 px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-2 sm:shrink-0">
-            <button
-              type="button"
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white text-lg leading-none text-zinc-800 transition hover:bg-zinc-50 sm:hidden dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-              aria-expanded={mobileNavOpen}
-              aria-controls="mobile-nav-menu"
-              onClick={() => setMobileNavOpen((o) => !o)}
-            >
-              <span aria-hidden>☰</span>
-              <span className="sr-only">
-                {mobileNavOpen ? 'Close menu' : 'Open menu'}
-              </span>
-            </button>
             <div className="min-w-0">{navLogo}</div>
           </div>
 
@@ -533,7 +521,18 @@ export default function Nav({
             </div>
           </div>
 
-          <div className="ml-auto shrink-0 sm:hidden">{authorCtaMarketingSolid}</div>
+          <button
+            type="button"
+            className="ml-auto inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white text-lg leading-none text-zinc-800 transition hover:bg-zinc-50 sm:hidden dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            aria-expanded={mobileNavOpen}
+            aria-controls="mobile-nav-menu"
+            onClick={() => setMobileNavOpen((o) => !o)}
+          >
+            <span aria-hidden>☰</span>
+            <span className="sr-only">
+              {mobileNavOpen ? 'Close menu' : 'Open menu'}
+            </span>
+          </button>
         </div>
 
         {readerLoginError ? (
