@@ -69,24 +69,6 @@ const heroHeadlineWordmarkStyle = {
   fontWeight: 500,
 }
 
-const howItWorksSteps = [
-  {
-    num: '01',
-    title: 'Write',
-    body: 'Publish your post and set an unlock price.',
-  },
-  {
-    num: '02',
-    title: 'Readers pay',
-    body: 'They send eCash to read. No signup, no fees.',
-  },
-  {
-    num: '03',
-    title: 'You earn',
-    body: 'Funds land in your wallet in seconds.',
-  },
-]
-
 export default function HomePage() {
   const [posts, setPosts] = useState([])
   const [sortMode, setSortMode] = useState('earned')
@@ -239,10 +221,10 @@ export default function HomePage() {
       />
 
       <main className="mx-auto max-w-5xl px-4 pt-10 pb-10 sm:px-6 sm:pb-14">
-        <section className="mb-6 mx-auto w-full text-center" aria-labelledby="home-hero-heading">
+        <section className="mb-10 mx-auto w-full text-center sm:mb-12" aria-labelledby="home-hero-heading">
           <h1
             id="home-hero-heading"
-            className="mx-auto max-w-none text-[clamp(1.35rem,4.8vw,2rem)] text-zinc-900 sm:text-[clamp(2rem,5vw,3.25rem)] dark:text-zinc-50"
+            className="mx-auto max-w-none text-[clamp(1.625rem,8vw,2.25rem)] text-zinc-900 sm:text-[clamp(2rem,5vw,3.25rem)] dark:text-zinc-50"
             style={heroHeadlineWordmarkStyle}
           >
             <span className="whitespace-nowrap">Write to earn. Use eCash</span>
@@ -260,38 +242,12 @@ export default function HomePage() {
             >
               {authorLoggedIn ? 'Dashboard' : 'Start writing'}
             </Link>
-            <a
-              href="#how-it-works"
+            <Link
+              href="/how-it-works"
               className="inline-flex items-center justify-center rounded-md border border-zinc-300 bg-transparent px-[18px] py-2.5 text-sm font-medium text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:border-zinc-500 dark:hover:bg-zinc-900"
             >
               How it works
-            </a>
-          </div>
-        </section>
-
-        <section
-          id="how-it-works"
-          className="mb-6 hidden scroll-mt-24 sm:block"
-          aria-labelledby="how-it-works-heading"
-        >
-          <h2 id="how-it-works-heading" className="sr-only">
-            How it works
-          </h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {howItWorksSteps.map((step) => (
-              <div
-                key={step.num}
-                className="rounded-md bg-zinc-100 px-5 py-4 dark:bg-zinc-900/80"
-              >
-                <p className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500">{step.num}</p>
-                <p className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                  {step.title}
-                </p>
-                <p className="mt-1.5 text-[13px] leading-[1.5] text-zinc-600 dark:text-zinc-400">
-                  {step.body}
-                </p>
-              </div>
-            ))}
+            </Link>
           </div>
         </section>
 
@@ -301,12 +257,11 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            <div className="mb-3 flex min-w-0 items-center gap-2 sm:gap-4">
-              <h2 className="min-w-0 truncate text-lg font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
-                Published posts
+            <div className="mb-3 flex items-center gap-2 sm:gap-4">
+              <h2 className="hidden min-[360px]:block text-lg font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
+                Sort posts
               </h2>
-              <div className="flex flex-1 min-w-0 justify-end">
-                <div className="-mx-1 flex min-w-0 flex-nowrap gap-1.5 overflow-x-auto px-1 pb-0.5 sm:mx-0 sm:px-0 sm:pb-0">
+              <div className="ml-auto flex shrink-0 items-center gap-1.5">
                 <FilterDropdown
                   menuId={MENU_SORT}
                   openMenu={openMenu}
@@ -336,7 +291,6 @@ export default function HomePage() {
                   ariaLabel="Audience"
                   onChange={(v) => setFollowingOnly(v === 'following')}
                 />
-                </div>
               </div>
             </div>
 
