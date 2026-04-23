@@ -230,10 +230,10 @@ export default function HomePage() {
           style={{ marginBottom: 'calc(0.375rem * 1.25)' }}
         >
           <p
-            className="text-base leading-relaxed text-zinc-600 dark:text-zinc-400 md:whitespace-nowrap"
+            className="text-base leading-relaxed text-zinc-600 dark:text-zinc-400"
             style={{ fontFamily: 'Georgia, serif' }}
           >
-            Written by independent writers for independent thinkers. Pay with eCash to unlock the full story.
+            Write to earn. Use eCash to unlock the story.
           </p>
         </div>
 
