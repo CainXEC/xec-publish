@@ -63,8 +63,8 @@ const timeFilterBtnInactive =
 
 export default function HomePage() {
   const [posts, setPosts] = useState([])
-  const [sortMode, setSortMode] = useState('newest')
-  const [timeFilter, setTimeFilter] = useState('all')
+  const [sortMode, setSortMode] = useState('earned')
+  const [timeFilter, setTimeFilter] = useState('24h')
   const [currentPage, setCurrentPage] = useState(1)
   const [hasNextPage, setHasNextPage] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -257,14 +257,6 @@ export default function HomePage() {
               <div className="flex flex-wrap items-center gap-1.5 md:gap-2" role="group" aria-label="Sort posts">
                 <button
                   type="button"
-                  aria-pressed={sortMode === 'newest'}
-                  onClick={() => setSortMode('newest')}
-                  className={sortMode === 'newest' ? sortBtnActive : sortBtnInactive}
-                >
-                  🕐 Newest First
-                </button>
-                <button
-                  type="button"
                   aria-pressed={sortMode === 'earned'}
                   onClick={() => setSortMode('earned')}
                   className={sortMode === 'earned' ? sortBtnActive : sortBtnInactive}
@@ -278,6 +270,14 @@ export default function HomePage() {
                   className={sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}
                 >
                   🔓 Most Unlocked
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={sortMode === 'newest'}
+                  onClick={() => setSortMode('newest')}
+                  className={sortMode === 'newest' ? sortBtnActive : sortBtnInactive}
+                >
+                  🕐 Newest First
                 </button>
               </div>
               {sortMode === 'newest' && !readerWalletAddress ? followingToggleButton : null}

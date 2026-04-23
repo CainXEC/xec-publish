@@ -208,8 +208,8 @@ export default function DashboardClient({
 }) {
   const router = useRouter()
   const [posts, setPosts] = useState(initialPosts)
-  const [sortMode, setSortMode] = useState('newest')
-  const [timeFilter, setTimeFilter] = useState('all')
+  const [sortMode, setSortMode] = useState('earned')
+  const [timeFilter, setTimeFilter] = useState('24h')
   const [unlockCountMap, setUnlockCountMap] = useState({})
   const [earningsMap, setEarningsMap] = useState({})
   const [deleteError, setDeleteError] = useState(null)
@@ -668,17 +668,6 @@ export default function DashboardClient({
               >
                 <button
                   type="button"
-                  aria-pressed={sortMode === 'newest'}
-                  onClick={() => {
-                    setCurrentPage(1)
-                    setSortMode('newest')
-                  }}
-                  className={sortMode === 'newest' ? sortBtnActive : sortBtnInactive}
-                >
-                  🕐 Newest First
-                </button>
-                <button
-                  type="button"
                   aria-pressed={sortMode === 'earned'}
                   onClick={() => {
                     setCurrentPage(1)
@@ -698,6 +687,17 @@ export default function DashboardClient({
                   className={sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}
                 >
                   🔓 Most Unlocked
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={sortMode === 'newest'}
+                  onClick={() => {
+                    setCurrentPage(1)
+                    setSortMode('newest')
+                  }}
+                  className={sortMode === 'newest' ? sortBtnActive : sortBtnInactive}
+                >
+                  🕐 Newest First
                 </button>
               </div>
 

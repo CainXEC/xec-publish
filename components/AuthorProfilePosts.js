@@ -219,8 +219,8 @@ export default function AuthorProfilePosts({
   readerUnlockedPostIds = [],
   registerReaderPostFilterReset,
 }) {
-  const [sortMode, setSortMode] = useState('newest')
-  const [timeFilter, setTimeFilter] = useState('all')
+  const [sortMode, setSortMode] = useState('earned')
+  const [timeFilter, setTimeFilter] = useState('24h')
   const [readerFilterMode, setReaderFilterMode] = useState('all')
   const [mergedPosts, setMergedPosts] = useState([])
   const [countsLoading, setCountsLoading] = useState(true)
@@ -480,18 +480,6 @@ export default function AuthorProfilePosts({
             >
               <button
                 type="button"
-                aria-pressed={sortMode === 'newest'}
-                onClick={() => {
-                  setCurrentPage(1)
-                  setSortMode('newest')
-                  setTimeFilter('all')
-                }}
-                className={sortMode === 'newest' ? sortBtnActive : sortBtnInactive}
-              >
-                🕐 Newest First
-              </button>
-              <button
-                type="button"
                 aria-pressed={sortMode === 'earned'}
                 onClick={() => {
                   setCurrentPage(1)
@@ -511,6 +499,18 @@ export default function AuthorProfilePosts({
                 className={sortMode === 'unlocks' ? sortBtnActive : sortBtnInactive}
               >
                 🔓 Most Unlocked
+              </button>
+              <button
+                type="button"
+                aria-pressed={sortMode === 'newest'}
+                onClick={() => {
+                  setCurrentPage(1)
+                  setSortMode('newest')
+                  setTimeFilter('all')
+                }}
+                className={sortMode === 'newest' ? sortBtnActive : sortBtnInactive}
+              >
+                🕐 Newest First
               </button>
             </div>
 
