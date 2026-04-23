@@ -27,6 +27,8 @@ const LEADERBOARD_TIME_OPTIONS = [
 
 const MENU_SORT = 'leaderboard-sort'
 const MENU_TIME = 'leaderboard-time'
+const SORT_PILL_MIN_WIDTH = '15ch'
+const TIME_PILL_MIN_WIDTH = '10ch'
 
 export default function LeaderboardPage() {
   const [rows, setRows] = useState([])
@@ -135,6 +137,7 @@ export default function LeaderboardPage() {
               options={LEADERBOARD_SORT_OPTIONS}
               ariaLabel="Sort leaderboard"
               onChange={(v) => setSortMode(v)}
+              minWidth={SORT_PILL_MIN_WIDTH}
             />
             <FilterDropdown
               menuId={MENU_TIME}
@@ -144,6 +147,7 @@ export default function LeaderboardPage() {
               options={LEADERBOARD_TIME_OPTIONS}
               ariaLabel="Leaderboard time range"
               onChange={(v) => setTimeFilter(v)}
+              minWidth={TIME_PILL_MIN_WIDTH}
             />
           </div>
         </div>

@@ -38,6 +38,7 @@ function ChevronDownIcon({ className }) {
  *   disabled?: boolean
  *   disabledHint?: string
  *   ariaLabel: string
+ *   minWidth?: string
  * }} props
  */
 export default function FilterDropdown({
@@ -50,6 +51,7 @@ export default function FilterDropdown({
   disabled = false,
   disabledHint = '',
   ariaLabel,
+  minWidth,
 }) {
   const triggerRef = useRef(null)
   const menuRef = useRef(null)
@@ -186,6 +188,7 @@ export default function FilterDropdown({
         }}
         onKeyDown={onTriggerKeyDown}
         tabIndex={disabled ? -1 : 0}
+        style={minWidth ? { minWidth } : undefined}
       >
         <span className="truncate">{triggerText}</span>
         <ChevronDownIcon

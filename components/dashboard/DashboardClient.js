@@ -49,6 +49,8 @@ const DASHBOARD_TIME_OPTIONS = [
 
 const MENU_SORT = 'dashboard-posts-sort'
 const MENU_TIME = 'dashboard-posts-time'
+const SORT_PILL_MIN_WIDTH = '15ch'
+const TIME_PILL_MIN_WIDTH = '10ch'
 
 function unlockCountFromPost(post) {
   const u = post.unlocks
@@ -644,11 +646,11 @@ export default function DashboardClient({
             </div>
           ) : (
             <>
-              <div className="mt-4 mb-3 flex items-center gap-2 sm:gap-4">
-                <h2 className="hidden min-[360px]:block text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
-                  Your posts
+              <div className="mt-4 mb-3 flex items-center justify-end gap-2 sm:gap-4">
+                <h2 className="hidden min-[380px]:block text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
+                  Sort
                 </h2>
-                <div className="ml-auto flex shrink-0 items-center gap-1.5">
+                <div className="flex shrink-0 items-center gap-1.5">
                   <FilterDropdown
                     menuId={MENU_SORT}
                     openMenu={openMenu}
@@ -657,6 +659,7 @@ export default function DashboardClient({
                     options={DASHBOARD_SORT_OPTIONS}
                     ariaLabel="Sort posts"
                     onChange={(v) => setSortMode(v)}
+                    minWidth={SORT_PILL_MIN_WIDTH}
                   />
                   <FilterDropdown
                     menuId={MENU_TIME}
@@ -668,6 +671,7 @@ export default function DashboardClient({
                     disabled={sortMode === 'newest' || sortMode === 'drafts'}
                     disabledHint="Time range does not apply when sorting by Newest or Drafts."
                     onChange={(v) => setTimeFilter(v)}
+                    minWidth={TIME_PILL_MIN_WIDTH}
                   />
                 </div>
               </div>

@@ -58,6 +58,9 @@ const HOME_TIME_OPTIONS = [
 const MENU_SORT = 'home-sort'
 const MENU_TIME = 'home-time'
 const MENU_AUDIENCE = 'home-audience'
+const SORT_PILL_MIN_WIDTH = '15ch'
+const TIME_PILL_MIN_WIDTH = '10ch'
+const AUDIENCE_PILL_MIN_WIDTH = '11ch'
 
 /** Same font family as the PROOF of WRITING wordmark in `components/Nav.js` */
 const WORDMARK_FONT_FAMILY = "'American Typewriter', serif"
@@ -257,11 +260,11 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            <div className="mb-3 flex items-center gap-2 sm:gap-4">
-              <h2 className="hidden min-[360px]:block text-lg font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
-                Sort posts
+            <div className="mb-3 flex items-center justify-end gap-2 sm:gap-4">
+              <h2 className="hidden min-[380px]:block text-lg font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
+                Sort
               </h2>
-              <div className="ml-auto flex shrink-0 items-center gap-1.5">
+              <div className="flex shrink-0 items-center gap-1.5">
                 <FilterDropdown
                   menuId={MENU_SORT}
                   openMenu={openMenu}
@@ -270,6 +273,7 @@ export default function HomePage() {
                   options={HOME_SORT_OPTIONS}
                   ariaLabel="Sort posts"
                   onChange={(v) => setSortMode(v)}
+                  minWidth={SORT_PILL_MIN_WIDTH}
                 />
                 <FilterDropdown
                   menuId={MENU_TIME}
@@ -281,6 +285,7 @@ export default function HomePage() {
                   disabled={sortMode === 'newest'}
                   disabledHint="Time range does not apply when sorting by Newest."
                   onChange={(v) => setTimeFilter(v)}
+                  minWidth={TIME_PILL_MIN_WIDTH}
                 />
                 <FilterDropdown
                   menuId={MENU_AUDIENCE}
@@ -290,6 +295,7 @@ export default function HomePage() {
                   options={audienceOptions}
                   ariaLabel="Audience"
                   onChange={(v) => setFollowingOnly(v === 'following')}
+                  minWidth={AUDIENCE_PILL_MIN_WIDTH}
                 />
               </div>
             </div>

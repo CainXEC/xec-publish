@@ -152,6 +152,8 @@ const AUTHOR_TIME_OPTIONS = [
 
 const MENU_SORT = 'author-posts-sort'
 const MENU_TIME = 'author-posts-time'
+const SORT_PILL_MIN_WIDTH = '15ch'
+const TIME_PILL_MIN_WIDTH = '10ch'
 
 const TEASER_CARD_MAX = 500
 function truncateTeaserPreview(text, maxLen = TEASER_CARD_MAX) {
@@ -430,11 +432,11 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
           </div>
         ) : (
           <>
-            <div className="mt-6 mb-3 flex items-center gap-2 sm:gap-4">
-              <h2 className="hidden min-[360px]:block text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
-                Posts
+            <div className="mt-6 mb-3 flex items-center justify-end gap-2 sm:gap-4">
+              <h2 className="hidden min-[380px]:block text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
+                Sort
               </h2>
-              <div className="ml-auto flex shrink-0 items-center gap-1.5">
+              <div className="flex shrink-0 items-center gap-1.5">
                 <FilterDropdown
                   menuId={MENU_SORT}
                   openMenu={openMenu}
@@ -443,6 +445,7 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
                   options={AUTHOR_SORT_OPTIONS}
                   ariaLabel="Sort posts"
                   onChange={(v) => setSortMode(v)}
+                  minWidth={SORT_PILL_MIN_WIDTH}
                 />
                 <FilterDropdown
                   menuId={MENU_TIME}
@@ -454,6 +457,7 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
                   disabled={sortMode === 'newest'}
                   disabledHint="Time range does not apply when sorting by Newest."
                   onChange={(v) => setTimeFilter(v)}
+                  minWidth={TIME_PILL_MIN_WIDTH}
                 />
               </div>
             </div>
