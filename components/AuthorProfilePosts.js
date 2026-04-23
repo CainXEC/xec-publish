@@ -136,6 +136,17 @@ function getSinceTimestamp(timeFilter) {
   return now.toISOString()
 }
 
+function filterPublishedPostsByCutoff(posts, cutoffIso) {
+  if (!cutoffIso) return posts
+  const cutoff = new Date(cutoffIso).getTime()
+  if (!Number.isFinite(cutoff)) return posts
+  return posts.filter((p) => {
+    if (!p?.published_at) return false
+    const publishedAt = new Date(p.published_at).getTime()
+    return Number.isFinite(publishedAt) && publishedAt >= cutoff
+  })
+}
+
 const AUTHOR_SORT_OPTIONS = [
   { value: 'earned', label: 'Most earned' },
   { value: 'unlocks', label: 'Most unlocked' },
@@ -243,33 +254,39 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
       await Promise.resolve()
       if (cancelled) return
 
-      if (nonLegacyBase.length === 0) {
+      const publishCutoff =
+        sortMode === 'unlocks' || sortMode === 'earned'
+          ? getSinceTimestamp(timeFilter)
+          : null
+      const sourcePosts = publishCutoff
+        ? filterPublishedPostsByCutoff(nonLegacyBase, publishCutoff)
+        : nonLegacyBase
+
+      if (sourcePosts.length === 0) {
         setMergedPosts([])
         setCountsLoading(false)
         return
       }
 
-      const since = getSinceTimestamp(
-        sortMode === 'unlocks' || sortMode === 'earned' ? timeFilter : 'all',
-      )
+      const metricSince = null
 
       const canSkipCountsFetch =
-        since === null && sortMode !== 'earned' && postsHaveAllTimeCounts(nonLegacyBase)
+        metricSince === null && sortMode !== 'earned' && postsHaveAllTimeCounts(sourcePosts)
 
       if (canSkipCountsFetch) {
-        setMergedPosts(nonLegacyBase.map((p) => ({ ...p })))
+        setMergedPosts(sourcePosts.map((p) => ({ ...p })))
         setCountsLoading(false)
         return
       }
 
       setCountsLoading(true)
-      const postIds = nonLegacyBase.map((p) => p.id).filter(Boolean)
+      const postIds = sourcePosts.map((p) => p.id).filter(Boolean)
 
-      const unlockPromise = fetchAllUnlockCountRows(supabase, postIds, since)
+      const unlockPromise = fetchAllUnlockCountRows(supabase, postIds, metricSince)
       const commentPromise = supabase.rpc('get_comment_counts', { post_ids: postIds })
       const earningsPromise =
         sortMode === 'earned'
-          ? fetchAllUnlockEarningsRows(supabase, postIds, since)
+          ? fetchAllUnlockEarningsRows(supabase, postIds, metricSince)
           : Promise.resolve({ error: null, rows: [] })
 
       const [{ error: unlockErr, rows: unlockRows }, commentRes, earningsRes] =
@@ -283,7 +300,7 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
         sortMode === 'earned' && !earningsRes.error ? (earningsRes.rows ?? []) : []
 
       let merged = mergeUnlockAndCommentCounts(
-        nonLegacyBase,
+        sourcePosts,
         unlockRowsSafe,
         commentRowsSafe,
       )
@@ -305,7 +322,7 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
     }
   }, [nonLegacyBase, sortMode, timeFilter])
 
-  // Legacy: same unlock `since` rule as dashboard; comments always all-time RPC.
+  // Legacy: uses the same publish-date cutoff behavior as main list.
   // Fetches only when the collapsible is open.
   useEffect(() => {
     if (!legacySectionOpen || legacyBase.length === 0) return
@@ -313,27 +330,38 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
     let cancelled = false
 
     async function loadLegacyCounts() {
-      const since = getSinceTimestamp(
-        sortMode === 'unlocks' || sortMode === 'earned' ? timeFilter : 'all',
-      )
+      const publishCutoff =
+        sortMode === 'unlocks' || sortMode === 'earned'
+          ? getSinceTimestamp(timeFilter)
+          : null
+      const sourceLegacy = publishCutoff
+        ? filterPublishedPostsByCutoff(legacyBase, publishCutoff)
+        : legacyBase
+      const metricSince = null
+
+      if (sourceLegacy.length === 0) {
+        setMergedLegacyPosts([])
+        setLegacyCountsLoading(false)
+        return
+      }
 
       const canSkipLegacy =
-        since === null && sortMode !== 'earned' && postsHaveAllTimeCounts(legacyBase)
+        metricSince === null && sortMode !== 'earned' && postsHaveAllTimeCounts(sourceLegacy)
 
       if (canSkipLegacy) {
-        setMergedLegacyPosts(legacyBase.map((p) => ({ ...p })))
+        setMergedLegacyPosts(sourceLegacy.map((p) => ({ ...p })))
         setLegacyCountsLoading(false)
         return
       }
 
       setLegacyCountsLoading(true)
-      const postIds = legacyBase.map((p) => p.id).filter(Boolean)
+      const postIds = sourceLegacy.map((p) => p.id).filter(Boolean)
 
-      const unlockPromise = fetchAllUnlockCountRows(supabase, postIds, since)
+      const unlockPromise = fetchAllUnlockCountRows(supabase, postIds, metricSince)
       const commentPromise = supabase.rpc('get_comment_counts', { post_ids: postIds })
       const earningsPromise =
         sortMode === 'earned'
-          ? fetchAllUnlockEarningsRows(supabase, postIds, since)
+          ? fetchAllUnlockEarningsRows(supabase, postIds, metricSince)
           : Promise.resolve({ error: null, rows: [] })
 
       const [{ error: unlockErr, rows: unlockRows }, commentRes, earningsRes] =
@@ -347,7 +375,7 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
         sortMode === 'earned' && !earningsRes.error ? (earningsRes.rows ?? []) : []
 
       let mergedLegacy = mergeUnlockAndCommentCounts(
-        legacyBase,
+        sourceLegacy,
         unlockRowsSafe,
         commentRowsSafe,
       )
