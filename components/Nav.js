@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ThemeToggle from '@/components/ThemeToggle'
 import {
@@ -21,8 +22,12 @@ function truncateAddress(address) {
 const searchInputClassName =
   'w-full rounded-md border border-zinc-300 bg-white py-1.5 pl-2 pr-7 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:ring-zinc-500'
 
+const navSecondaryLinkClass =
+  'text-sm text-zinc-500 transition hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+
 /**
  * @param {{
+ *   authorCtaOverride?: 'logout'
  *   showPostSearch?: boolean
  *   postSearchQuery?: string
  *   onPostSearchChange?: (value: string) => void
@@ -34,12 +39,14 @@ const searchInputClassName =
  * }} props
  */
 export default function Nav({
+  authorCtaOverride,
   showPostSearch = false,
   postSearchQuery = '',
   onPostSearchChange,
   onReaderWalletSynced,
   onReaderLogoutExtra,
 }) {
+  const router = useRouter()
   const [authorLoggedIn, setAuthorLoggedIn] = useState(false)
   const [readerWalletAddress, setReaderWalletAddress] = useState('')
   const [readerLoginBusy, setReaderLoginBusy] = useState(false)
@@ -201,6 +208,12 @@ export default function Nav({
     onReaderLogoutExtraRef.current?.()
   }, [stopReaderTxPolling])
 
+  const handleAuthorLogout = useCallback(async () => {
+    await supabase.auth.signOut()
+    router.refresh()
+    router.push('/')
+  }, [router])
+
   useEffect(() => {
     let cancelled = false
 
@@ -280,7 +293,7 @@ export default function Nav({
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return
-    const mq = window.matchMedia('(min-width: 768px)')
+    const mq = window.matchMedia('(min-width: 640px)')
     function onChange() {
       if (mq.matches) setMobileNavOpen(false)
     }
@@ -315,6 +328,31 @@ export default function Nav({
     }
   }, [desktopSearchOpen])
 
+  const wordmarkInner = (
+    <span
+      style={{
+        fontFamily: "'American Typewriter', serif",
+        color: 'var(--color-text-primary)',
+        letterSpacing: '0.04em',
+        lineHeight: '1',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <span
+        className="hidden md:inline"
+        style={{ fontSize: '38px', textTransform: 'uppercase' }}
+      >
+        PROOF <span style={{ textTransform: 'none' }}>of</span> WRITING
+      </span>
+      <span
+        className="inline md:hidden"
+        style={{ fontSize: '26px', textTransform: 'uppercase' }}
+      >
+        PROOF <span style={{ textTransform: 'none' }}>of</span> WRITING
+      </span>
+    </span>
+  )
+
   const navLogo = (
     <Link
       href="/"
@@ -322,28 +360,7 @@ export default function Nav({
       aria-label="Proof Of Writing home"
       style={{ flexShrink: 0, minWidth: 0 }}
     >
-      <span
-        style={{
-          fontFamily: "'American Typewriter', serif",
-          color: 'var(--color-text-primary)',
-          letterSpacing: '0.04em',
-          lineHeight: '1',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        <span
-          className="hidden md:inline"
-          style={{ fontSize: '38px', textTransform: 'uppercase' }}
-        >
-          PROOF <span style={{ textTransform: 'none' }}>of</span> WRITING
-        </span>
-        <span
-          className="inline md:hidden"
-          style={{ fontSize: '26px', textTransform: 'uppercase' }}
-        >
-          PROOF <span style={{ textTransform: 'none' }}>of</span> WRITING
-        </span>
-      </span>
+      {wordmarkInner}
     </Link>
   )
 
@@ -411,7 +428,7 @@ export default function Nav({
       </div>
     ) : null
 
-  const readerBlockDesktop = readerWalletAddress ? (
+  const readerWalletConnectedBar = readerWalletAddress ? (
     <div className="flex flex-nowrap items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
       <span
         className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
@@ -431,173 +448,224 @@ export default function Nav({
         Logout
       </button>
     </div>
+  ) : null
+
+  /** Cashtab reader control for marketing desktop — same logic as default nav; outlined when disconnected. */
+  const readerBlockMarketingDesktop = readerWalletAddress ? (
+    readerWalletConnectedBar
   ) : (
     <button
       type="button"
       onClick={handleReaderLogin}
       disabled={readerLoginBusy}
-      className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950"
+      className="inline-flex min-h-[2.5rem] shrink-0 items-center justify-center rounded-md border border-zinc-300 bg-transparent px-[18px] py-2.5 text-sm font-semibold text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-600 dark:text-zinc-200 dark:hover:border-zinc-500 dark:hover:bg-zinc-900"
     >
       {readerLoginBusy ? 'Waiting for payment...' : 'Reader Login'}
     </button>
   )
 
-  const authorCtaDesktop = authorLoggedIn ? (
-    <Link
-      href="/dashboard"
-      className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-    >
-      Dashboard
-    </Link>
-  ) : (
-    <Link
-      href="/login"
-      className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
-    >
-      Start Writing
-    </Link>
-  )
+  const authorCtaMarketingSolid =
+    authorCtaOverride === 'logout' ? (
+      <button
+        type="button"
+        onClick={() => void handleAuthorLogout()}
+        className="inline-flex items-center justify-center rounded-md bg-black px-[18px] py-2.5 text-sm font-medium whitespace-nowrap text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+      >
+        Logout
+      </button>
+    ) : authorLoggedIn ? (
+      <Link
+        href="/dashboard"
+        className="inline-flex items-center justify-center rounded-md bg-black px-[18px] py-2.5 text-sm font-medium whitespace-nowrap text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+      >
+        Dashboard
+      </Link>
+    ) : (
+      <Link
+        href="/login"
+        className="inline-flex items-center justify-center rounded-md bg-black px-[18px] py-2.5 text-sm font-medium whitespace-nowrap text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+      >
+        Start writing
+      </Link>
+    )
 
   return (
     <header
       ref={mobileNavRef}
-      className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/90 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90"
+      className="sticky top-0 z-30 border-b-[0.5px] border-zinc-200 bg-white/90 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90"
     >
-      <div className="relative mx-auto flex h-14 max-w-5xl items-center px-4 md:px-6">
-        <div className="flex min-w-0 flex-1 items-center justify-start gap-2">
-          <button
-            type="button"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white text-lg leading-none text-zinc-800 transition hover:bg-zinc-50 md:hidden dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-            aria-expanded={mobileNavOpen}
-            aria-controls="mobile-nav-menu"
-            onClick={() => setMobileNavOpen((o) => !o)}
-          >
-            <span aria-hidden>☰</span>
-            <span className="sr-only">
-              {mobileNavOpen ? 'Close menu' : 'Open menu'}
-            </span>
-          </button>
-          <div className="hidden items-center gap-2 md:flex">
-            {authorCtaDesktop}
-            {readerBlockDesktop}
+        <div className="relative mx-auto flex min-h-14 max-w-5xl items-center gap-3 px-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2 sm:shrink-0">
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white text-lg leading-none text-zinc-800 transition hover:bg-zinc-50 sm:hidden dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              aria-expanded={mobileNavOpen}
+              aria-controls="mobile-nav-menu"
+              onClick={() => setMobileNavOpen((o) => !o)}
+            >
+              <span aria-hidden>☰</span>
+              <span className="sr-only">
+                {mobileNavOpen ? 'Close menu' : 'Open menu'}
+              </span>
+            </button>
+            <div className="min-w-0">{navLogo}</div>
           </div>
-        </div>
 
-        <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
-          {navLogo}
-        </div>
-
-        <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-          <div className="hidden items-center gap-2 md:flex">
-            {desktopSearch}
-          </div>
-          <ThemeToggle />
-        </div>
-      </div>
-
-      {readerLoginError ? (
-        <div className="mx-auto hidden max-w-5xl px-4 pb-2 text-end md:block md:px-6">
-          <p className="text-xs text-red-600 dark:text-red-400">{readerLoginError}</p>
-        </div>
-      ) : null}
-
-      <div
-        id="mobile-nav-menu"
-        className={`border-t border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-950 md:hidden ${
-          mobileNavOpen ? 'block' : 'hidden'
-        }`}
-      >
-        <nav
-          className="mx-auto flex max-w-5xl flex-col gap-2 px-4 pt-2 pb-3"
-          aria-label="Mobile navigation"
-        >
-          {showPostSearch && typeof onPostSearchChange === 'function' ? (
-            <div className="relative">
-              <label htmlFor="post-search-mobile" className="sr-only">
-                Search posts
-              </label>
-              <input
-                id="post-search-mobile"
-                type="search"
-                value={postSearchQuery}
-                onChange={(e) => onPostSearchChange(e.target.value)}
-                placeholder="Search posts..."
-                autoComplete="off"
-                className={`h-10 w-full ${searchInputClassName}`}
-              />
-              {postSearchQuery ? (
-                <button
-                  type="button"
-                  onClick={() => onPostSearchChange('')}
-                  className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-base leading-none text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
-                  aria-label="Clear search"
-                >
-                  ×
-                </button>
-              ) : null}
+          <div className="hidden min-w-0 flex-1 items-center justify-end overflow-x-auto sm:flex">
+            <div className="flex shrink-0 flex-nowrap items-center justify-end">
+              <div className="flex shrink-0 flex-nowrap items-center gap-3.5">
+              <Link href="/leaderboard" className={navSecondaryLinkClass}>
+                Leaderboard
+              </Link>
+              <Link href="/about" className={navSecondaryLinkClass}>
+                About
+              </Link>
+              <Link href="/how-it-works" className={navSecondaryLinkClass}>
+                How it works
+              </Link>
+              </div>
+              <div className="ml-3 flex shrink-0 items-center gap-1.5">
+                {desktopSearch}
+                <ThemeToggle />
+              </div>
+              <div className="ml-2.5 shrink-0">{readerBlockMarketingDesktop}</div>
+              <div className="ml-2 shrink-0">{authorCtaMarketingSolid}</div>
             </div>
-          ) : null}
+          </div>
 
-          {readerLoginError ? (
-            <p className="text-sm text-red-600 dark:text-red-400">
-              {readerLoginError}
-            </p>
-          ) : null}
+          <div className="ml-auto shrink-0 sm:hidden">{authorCtaMarketingSolid}</div>
+        </div>
 
-          {readerWalletAddress ? (
-            <button
-              type="button"
-              onClick={() => {
-                void handleReaderLogout()
-                closeMobileNav()
-              }}
-              title={readerWalletAddress}
-              className="flex w-full flex-nowrap items-center justify-between gap-2 whitespace-nowrap rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-left text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/50"
+        {readerLoginError ? (
+          <div className="mx-auto max-w-5xl px-4 pb-2 sm:px-6">
+            <p className="text-xs text-red-600 dark:text-red-400">{readerLoginError}</p>
+          </div>
+        ) : null}
+
+        <div
+          id="mobile-nav-menu"
+          className={`border-t border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-950 sm:hidden ${
+            mobileNavOpen ? 'block' : 'hidden'
+          }`}
+        >
+          <nav
+            className="mx-auto flex max-w-5xl flex-col gap-2 px-4 pt-2 pb-3 sm:px-6"
+            aria-label="Mobile navigation"
+          >
+            <Link
+              href="/leaderboard"
+              onClick={closeMobileNav}
+              className={`${navSecondaryLinkClass} py-1`}
             >
-              <span
-                className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
-                aria-hidden
-              />
-              <span className="min-w-0 flex-1 truncate text-center font-mono">
-                {truncateAddress(readerWalletAddress)}
-              </span>
-              <span className="shrink-0 text-zinc-700 dark:text-emerald-100">
+              Leaderboard
+            </Link>
+            <Link href="/about" onClick={closeMobileNav} className={`${navSecondaryLinkClass} py-1`}>
+              About
+            </Link>
+            <Link
+              href="/how-it-works"
+              onClick={closeMobileNav}
+              className={`${navSecondaryLinkClass} py-1`}
+            >
+              How it works
+            </Link>
+            {authorCtaOverride === 'logout' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  void handleAuthorLogout()
+                  closeMobileNav()
+                }}
+                className="block w-full rounded-md bg-black py-2.5 text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
+              >
                 Logout
-              </span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                handleReaderLogin()
-                closeMobileNav()
-              }}
-              disabled={readerLoginBusy}
-              className="w-full rounded-lg border border-emerald-300 bg-emerald-50 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950"
-            >
-              {readerLoginBusy ? 'Waiting for payment...' : 'Reader Login'}
-            </button>
-          )}
+              </button>
+            ) : authorLoggedIn ? (
+              <Link
+                href="/dashboard"
+                onClick={closeMobileNav}
+                className="block rounded-md bg-black py-2.5 text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                onClick={closeMobileNav}
+                className="block rounded-md bg-black py-2.5 text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
+              >
+                Start writing
+              </Link>
+            )}
 
-          {authorLoggedIn ? (
-            <Link
-              href="/dashboard"
-              onClick={closeMobileNav}
-              className="block rounded-lg bg-zinc-900 py-2 text-center text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-            >
-              Dashboard
-            </Link>
-          ) : (
-            <Link
-              href="/login"
-              onClick={closeMobileNav}
-              className="block rounded-lg bg-emerald-600 py-2 text-center text-sm font-semibold text-white transition hover:bg-emerald-500 dark:bg-emerald-500 dark:hover:bg-emerald-400"
-            >
-              Start Writing
-            </Link>
-          )}
-        </nav>
-      </div>
-    </header>
+            {showPostSearch && typeof onPostSearchChange === 'function' ? (
+              <div className="relative pt-1">
+                <label htmlFor="post-search-mobile-marketing" className="sr-only">
+                  Search posts
+                </label>
+                <input
+                  id="post-search-mobile-marketing"
+                  type="search"
+                  value={postSearchQuery}
+                  onChange={(e) => onPostSearchChange(e.target.value)}
+                  placeholder="Search posts..."
+                  autoComplete="off"
+                  className={`h-10 w-full ${searchInputClassName}`}
+                />
+                {postSearchQuery ? (
+                  <button
+                    type="button"
+                    onClick={() => onPostSearchChange('')}
+                    className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-base leading-none text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                    aria-label="Clear search"
+                  >
+                    ×
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+
+            {readerLoginError ? (
+              <p className="text-sm text-red-600 dark:text-red-400">{readerLoginError}</p>
+            ) : null}
+
+            {readerWalletAddress ? (
+              <button
+                type="button"
+                onClick={() => {
+                  void handleReaderLogout()
+                  closeMobileNav()
+                }}
+                title={readerWalletAddress}
+                className="flex w-full flex-nowrap items-center justify-between gap-2 whitespace-nowrap rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-left text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/50"
+              >
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
+                  aria-hidden
+                />
+                <span className="min-w-0 flex-1 truncate text-center font-mono">
+                  {truncateAddress(readerWalletAddress)}
+                </span>
+                <span className="shrink-0 text-zinc-700 dark:text-emerald-100">Logout</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  handleReaderLogin()
+                }}
+                disabled={readerLoginBusy}
+                className="w-full rounded-lg border border-emerald-300 bg-emerald-50 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950"
+              >
+                {readerLoginBusy ? 'Waiting for payment...' : 'Connect reader wallet'}
+              </button>
+            )}
+
+            <div className="flex justify-end border-t border-zinc-100 pt-2 dark:border-zinc-800">
+              <ThemeToggle />
+            </div>
+          </nav>
+        </div>
+      </header>
   )
 }

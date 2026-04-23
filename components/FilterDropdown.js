@@ -1,0 +1,279 @@
+'use client'
+
+import { useEffect, useId, useRef } from 'react'
+
+function ChevronDownIcon({ className }) {
+  return (
+    <svg
+      className={className}
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <path
+        d="M3 4.5L6 7.5L9 4.5"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function CheckIcon({ className }) {
+  return (
+    <svg
+      className={className}
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <path
+        d="M2.5 7L5.5 10L11.5 3.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+/**
+ * Single-select dropdown (listbox pattern). Only one menu in a group should be open — parent
+ * controls that via `openMenu` / `setOpenMenu`.
+ *
+ * @param {{
+ *   menuId: string
+ *   openMenu: string | null
+ *   setOpenMenu: (id: string | null) => void
+ *   value: string
+ *   options: { value: string, label: string, disabled?: boolean, disabledHint?: string }[]
+ *   onChange: (value: string) => void
+ *   disabled?: boolean
+ *   disabledHint?: string
+ *   ariaLabel: string
+ * }} props
+ */
+export default function FilterDropdown({
+  menuId,
+  openMenu,
+  setOpenMenu,
+  value,
+  options,
+  onChange,
+  disabled = false,
+  disabledHint = '',
+  ariaLabel,
+}) {
+  const triggerRef = useRef(null)
+  const menuRef = useRef(null)
+  const listboxId = useId()
+  const isOpen = openMenu === menuId
+
+  const selected = options.find((o) => o.value === value)
+  const triggerText = selected?.label ?? String(value)
+
+  useEffect(() => {
+    if (!isOpen) return
+    const onDocMouseDown = (e) => {
+      const t = /** @type {Node} */ (e.target)
+      if (menuRef.current?.contains(t) || triggerRef.current?.contains(t)) return
+      setOpenMenu(null)
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    return () => document.removeEventListener('mousedown', onDocMouseDown)
+  }, [isOpen, setOpenMenu])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const id = requestAnimationFrame(() => {
+      const menu = menuRef.current
+      if (!menu) return
+      const buttons = [...menu.querySelectorAll('button:not([disabled])')]
+      buttons[0]?.focus()
+    })
+    return () => cancelAnimationFrame(id)
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen || disabled) return
+    const onEscape = (e) => {
+      if (e.key !== 'Escape') return
+      if (!menuRef.current?.contains(document.activeElement)) return
+      e.preventDefault()
+      setOpenMenu(null)
+      triggerRef.current?.focus()
+    }
+    document.addEventListener('keydown', onEscape, true)
+    return () => document.removeEventListener('keydown', onEscape, true)
+  }, [isOpen, disabled, setOpenMenu])
+
+  const close = () => setOpenMenu(null)
+
+  const focusablesInMenu = () => {
+    const menu = menuRef.current
+    if (!menu) return /** @type {HTMLButtonElement[]} */ ([])
+    return [...menu.querySelectorAll('button:not([disabled])')]
+  }
+
+  const onTriggerKeyDown = (e) => {
+    if (disabled) return
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      setOpenMenu(isOpen ? null : menuId)
+    }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (!isOpen) {
+        e.preventDefault()
+        setOpenMenu(menuId)
+      }
+    }
+  }
+
+  const onMenuKeyDownCapture = (e) => {
+    if (!menuRef.current?.contains(/** @type {Node} */ (e.target))) return
+
+    const buttons = focusablesInMenu()
+    const cur = buttons.indexOf(/** @type {HTMLButtonElement} */ (document.activeElement))
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      if (buttons.length === 0) return
+      const next = cur < 0 ? 0 : (cur + 1) % buttons.length
+      buttons[next]?.focus()
+      return
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (buttons.length === 0) return
+      const next = cur <= 0 ? buttons.length - 1 : cur - 1
+      buttons[next]?.focus()
+      return
+    }
+
+    if (e.key === 'Tab' && buttons.length > 0) {
+      if (e.shiftKey) {
+        if (cur <= 0) {
+          e.preventDefault()
+          buttons[buttons.length - 1]?.focus()
+        }
+      } else if (cur === buttons.length - 1 || cur < 0) {
+        e.preventDefault()
+        buttons[0]?.focus()
+      }
+    }
+  }
+
+  const toggleOpen = () => {
+    if (disabled) return
+    setOpenMenu(isOpen ? null : menuId)
+  }
+
+  const triggerId = `${menuId}-trigger`
+
+  const triggerClass = [
+    'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full border-[0.5px] px-2.5 py-1 text-left text-[13px] font-normal leading-[1.2] transition-colors duration-150 sm:text-sm',
+    disabled
+      ? 'cursor-not-allowed border-zinc-200 bg-transparent text-zinc-500 opacity-40 dark:border-zinc-800 dark:text-zinc-500'
+      : isOpen
+        ? 'cursor-pointer border-zinc-300 bg-zinc-50 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100'
+        : 'cursor-pointer border-zinc-200 bg-transparent text-zinc-900 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-900',
+  ].join(' ')
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        ref={triggerRef}
+        type="button"
+        id={triggerId}
+        className={triggerClass}
+        aria-haspopup="listbox"
+        aria-expanded={disabled ? false : isOpen}
+        aria-controls={isOpen && !disabled ? listboxId : undefined}
+        aria-disabled={disabled}
+        aria-label={`${ariaLabel}: ${triggerText}`}
+        title={disabled && disabledHint ? disabledHint : undefined}
+        onClick={(e) => {
+          e.preventDefault()
+          if (disabled) return
+          toggleOpen()
+        }}
+        onKeyDown={onTriggerKeyDown}
+        tabIndex={disabled ? -1 : 0}
+      >
+        <span className="truncate">{triggerText}</span>
+        <ChevronDownIcon
+          className={`h-3 w-3 shrink-0 text-zinc-500 transition-transform duration-150 dark:text-zinc-400 ${
+            isOpen ? 'rotate-180' : 'rotate-0'
+          }`}
+        />
+      </button>
+
+      {isOpen && !disabled ? (
+        <div
+          ref={menuRef}
+          id={listboxId}
+          role="listbox"
+          aria-labelledby={triggerId}
+          tabIndex={-1}
+          onKeyDownCapture={onMenuKeyDownCapture}
+          className="absolute left-0 top-full z-50 mt-1 min-w-[11rem] max-w-[min(100vw-2rem,16rem)] rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+        >
+          {options.map((opt) => {
+            const selectedHere = opt.value === value
+            const optDisabled = Boolean(opt.disabled)
+            const rowId = `${listboxId}-opt-${opt.value}`
+            return optDisabled ? (
+              <div
+                key={opt.value}
+                id={rowId}
+                role="option"
+                aria-selected={selectedHere}
+                aria-disabled="true"
+                title={opt.disabledHint ?? ''}
+                className="flex cursor-not-allowed items-center gap-2 px-3 py-2 text-left text-xs text-zinc-400 opacity-50 sm:text-sm dark:text-zinc-500"
+              >
+                <span className="w-4 shrink-0" aria-hidden />
+                <span className="min-w-0 flex-1">{opt.label}</span>
+                {opt.disabledHint ? (
+                  <span className="sr-only">{opt.disabledHint}</span>
+                ) : null}
+              </div>
+            ) : (
+              <button
+                key={opt.value}
+                id={rowId}
+                type="button"
+                role="option"
+                aria-selected={selectedHere}
+                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs sm:text-sm ${
+                  selectedHere
+                    ? 'bg-emerald-50 font-medium text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-100'
+                    : 'text-zinc-800 hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800'
+                }`}
+                onClick={() => {
+                  onChange(opt.value)
+                  close()
+                  triggerRef.current?.focus()
+                }}
+              >
+                <span className="flex w-4 shrink-0 justify-center text-emerald-600 dark:text-emerald-400">
+                  {selectedHere ? <CheckIcon className="block" /> : null}
+                </span>
+                <span className="min-w-0 flex-1">{opt.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
+    </div>
+  )
+}

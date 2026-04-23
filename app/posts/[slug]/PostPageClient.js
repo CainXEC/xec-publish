@@ -1048,7 +1048,7 @@ export default function PostPageClient({
                   </p>
                   <p className="mt-2 text-center text-xs">
                     <Link
-                      href="/get-ecash"
+                      href="/how-it-works"
                       className="text-zinc-500 transition hover:text-emerald-600 hover:underline dark:text-zinc-500 dark:hover:text-emerald-400"
                     >
                       New to eCash? Learn how to get started →

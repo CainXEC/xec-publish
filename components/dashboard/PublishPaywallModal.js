@@ -262,7 +262,7 @@ export default function PublishPaywallModal({
         <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-500">
           Don&apos;t have 100 XEC?{' '}
           <Link
-            href="/get-ecash"
+            href="/how-it-works"
             className="font-medium text-emerald-700 underline hover:text-emerald-800 dark:text-emerald-400"
           >
             Get eCash
