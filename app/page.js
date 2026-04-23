@@ -220,7 +220,7 @@ export default function HomePage() {
         onReaderLogoutExtra={handleReaderLogoutExtra}
       />
 
-      <main className="mx-auto max-w-5xl px-4 pt-10 pb-10 sm:px-6 sm:pb-14">
+      <main className="mx-auto max-w-5xl px-4 pt-10 pb-6 sm:px-6 sm:pb-6">
         <section className="mb-10 mx-auto w-full text-center sm:mb-12" aria-labelledby="home-hero-heading">
           <h1
             id="home-hero-heading"

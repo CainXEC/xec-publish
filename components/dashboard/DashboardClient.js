@@ -471,7 +471,7 @@ export default function DashboardClient({
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-zinc-50 px-4 py-10 dark:bg-zinc-950">
+    <div className="flex min-h-full flex-1 flex-col bg-zinc-50 px-4 pt-10 pb-6 dark:bg-zinc-950">
       <main className="mx-auto w-full max-w-4xl">
         <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex items-center justify-between gap-3">

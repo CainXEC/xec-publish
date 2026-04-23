@@ -6,7 +6,7 @@ export default function AboutPage() {
   return (
     <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
       <Nav />
-      <main className="mx-auto max-w-2xl px-4 py-12 sm:px-6 sm:py-16">
+      <main className="mx-auto max-w-2xl px-4 pt-12 pb-6 sm:px-6 sm:pt-16 sm:pb-6">
         <section className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-10">
           <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
             About

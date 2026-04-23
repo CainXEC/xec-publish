@@ -180,7 +180,7 @@ export default function HowItWorksPage() {
   return (
     <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
       <Nav />
-      <main className="mx-auto max-w-[720px] px-4 pt-8 pb-12 sm:px-6">
+      <main className="mx-auto max-w-[720px] px-4 pt-8 pb-6 sm:px-6">
         <header className="text-center">
           <h1
             className="text-[clamp(2rem,5vw,3.25rem)] tracking-tight text-zinc-900 dark:text-zinc-50"
