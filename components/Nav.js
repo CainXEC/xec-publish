@@ -22,9 +22,6 @@ function truncateAddress(address) {
 const searchInputClassName =
   'w-full rounded-md border border-zinc-300 bg-white py-1.5 pl-2 pr-7 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:ring-zinc-500'
 
-const navSecondaryLinkClass =
-  'text-sm text-zinc-500 transition hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
-
 /**
  * @param {{
  *   authorCtaOverride?: 'logout'
@@ -494,36 +491,10 @@ export default function Nav({
       ref={mobileNavRef}
       className="sticky top-0 z-30 border-b-[0.5px] border-zinc-200 bg-white/90 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90"
     >
-        <div className="relative mx-auto flex min-h-14 max-w-5xl items-center gap-3 px-4 sm:px-6">
-          <div className="flex min-w-0 items-center gap-2 sm:shrink-0">
-            <div className="min-w-0">{navLogo}</div>
-          </div>
-
-          <div className="hidden min-w-0 flex-1 items-center justify-end overflow-x-auto sm:flex">
-            <div className="flex shrink-0 flex-nowrap items-center justify-end">
-              <div className="flex shrink-0 flex-nowrap items-center gap-3.5">
-              <Link href="/leaderboard" className={navSecondaryLinkClass}>
-                Leaderboard
-              </Link>
-              <Link href="/about" className={navSecondaryLinkClass}>
-                About
-              </Link>
-              <Link href="/how-it-works" className={navSecondaryLinkClass}>
-                How it works
-              </Link>
-              </div>
-              <div className="ml-3 flex shrink-0 items-center gap-1.5">
-                {desktopSearch}
-                <ThemeToggle />
-              </div>
-              <div className="ml-2.5 shrink-0">{readerBlockMarketingDesktop}</div>
-              <div className="ml-2 shrink-0">{authorCtaMarketingSolid}</div>
-            </div>
-          </div>
-
+        <div className="relative mx-auto grid min-h-14 max-w-5xl grid-cols-[auto_1fr_auto] items-center px-4 sm:flex sm:items-center sm:gap-3 sm:px-6">
           <button
             type="button"
-            className="ml-auto inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white text-lg leading-none text-zinc-800 transition hover:bg-zinc-50 sm:hidden dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white text-lg leading-none text-zinc-800 transition hover:bg-zinc-50 sm:hidden dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
             aria-expanded={mobileNavOpen}
             aria-controls="mobile-nav-menu"
             onClick={() => setMobileNavOpen((o) => !o)}
@@ -533,6 +504,23 @@ export default function Nav({
               {mobileNavOpen ? 'Close menu' : 'Open menu'}
             </span>
           </button>
+
+          <div className="min-w-0 justify-self-center sm:justify-self-auto">{navLogo}</div>
+
+          <div className="justify-self-end sm:hidden">
+            <ThemeToggle />
+          </div>
+
+          <div className="hidden min-w-0 flex-1 items-center justify-end overflow-x-auto sm:flex">
+            <div className="flex shrink-0 flex-nowrap items-center justify-end">
+              <div className="ml-3 flex shrink-0 items-center gap-1.5">
+                {desktopSearch}
+                <ThemeToggle />
+              </div>
+              <div className="ml-2.5 shrink-0">{readerBlockMarketingDesktop}</div>
+              <div className="ml-2 shrink-0">{authorCtaMarketingSolid}</div>
+            </div>
+          </div>
         </div>
 
         {readerLoginError ? (
@@ -551,54 +539,8 @@ export default function Nav({
             className="mx-auto flex max-w-5xl flex-col gap-2 px-4 pt-2 pb-3 sm:px-6"
             aria-label="Mobile navigation"
           >
-            <Link
-              href="/leaderboard"
-              onClick={closeMobileNav}
-              className={`${navSecondaryLinkClass} py-1`}
-            >
-              Leaderboard
-            </Link>
-            <Link href="/about" onClick={closeMobileNav} className={`${navSecondaryLinkClass} py-1`}>
-              About
-            </Link>
-            <Link
-              href="/how-it-works"
-              onClick={closeMobileNav}
-              className={`${navSecondaryLinkClass} py-1`}
-            >
-              How it works
-            </Link>
-            {authorCtaOverride === 'logout' ? (
-              <button
-                type="button"
-                onClick={() => {
-                  void handleAuthorLogout()
-                  closeMobileNav()
-                }}
-                className="block w-full rounded-md bg-black py-2.5 text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
-              >
-                Logout
-              </button>
-            ) : authorLoggedIn ? (
-              <Link
-                href="/dashboard"
-                onClick={closeMobileNav}
-                className="block rounded-md bg-black py-2.5 text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
-              >
-                Dashboard
-              </Link>
-            ) : (
-              <Link
-                href="/login"
-                onClick={closeMobileNav}
-                className="block rounded-md bg-black py-2.5 text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
-              >
-                Start writing
-              </Link>
-            )}
-
             {showPostSearch && typeof onPostSearchChange === 'function' ? (
-              <div className="relative pt-1">
+              <div className="relative">
                 <label htmlFor="post-search-mobile-marketing" className="sr-only">
                   Search posts
                 </label>
@@ -660,9 +602,34 @@ export default function Nav({
               </button>
             )}
 
-            <div className="flex justify-end border-t border-zinc-100 pt-2 dark:border-zinc-800">
-              <ThemeToggle />
-            </div>
+            {authorCtaOverride === 'logout' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  void handleAuthorLogout()
+                  closeMobileNav()
+                }}
+                className="block w-full rounded-md bg-black py-2.5 text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
+              >
+                Logout
+              </button>
+            ) : authorLoggedIn ? (
+              <Link
+                href="/dashboard"
+                onClick={closeMobileNav}
+                className="block rounded-md bg-black py-2.5 text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                onClick={closeMobileNav}
+                className="block rounded-md bg-black py-2.5 text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
+              >
+                Start writing
+              </Link>
+            )}
           </nav>
         </div>
       </header>
