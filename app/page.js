@@ -260,11 +260,11 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            <div className="mb-3 flex items-center justify-end gap-2 sm:justify-between sm:gap-4">
-              <h2 className="hidden text-lg font-semibold tracking-tight text-zinc-900 sm:block sm:text-3xl dark:text-zinc-50">
-                Published articles
-              </h2>
-              <div className="flex shrink-0 items-center gap-1.5">
+            <div className="mb-3">
+              <div className="mb-1.5 text-xs font-normal text-zinc-500 dark:text-zinc-400 sm:hidden">
+                Customize your feed
+              </div>
+              <div className="grid grid-cols-3 gap-1.5 sm:hidden">
                 <FilterDropdown
                   menuId={MENU_SORT}
                   openMenu={openMenu}
@@ -274,6 +274,7 @@ export default function HomePage() {
                   ariaLabel="Sort posts"
                   onChange={(v) => setSortMode(v)}
                   minWidth={SORT_PILL_MIN_WIDTH}
+                  fullWidth
                 />
                 <FilterDropdown
                   menuId={MENU_TIME}
@@ -286,6 +287,7 @@ export default function HomePage() {
                   disabledHint="Time range does not apply when sorting by Newest."
                   onChange={(v) => setTimeFilter(v)}
                   minWidth={TIME_PILL_MIN_WIDTH}
+                  fullWidth
                 />
                 <FilterDropdown
                   menuId={MENU_AUDIENCE}
@@ -296,7 +298,47 @@ export default function HomePage() {
                   ariaLabel="Audience"
                   onChange={(v) => setFollowingOnly(v === 'following')}
                   minWidth={AUDIENCE_PILL_MIN_WIDTH}
+                  fullWidth
                 />
+              </div>
+              <div className="hidden items-center justify-between gap-4 sm:flex">
+                <h2 className="text-lg font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
+                  Published articles
+                </h2>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <FilterDropdown
+                    menuId={MENU_SORT}
+                    openMenu={openMenu}
+                    setOpenMenu={setOpenMenu}
+                    value={sortMode}
+                    options={HOME_SORT_OPTIONS}
+                    ariaLabel="Sort posts"
+                    onChange={(v) => setSortMode(v)}
+                    minWidth={SORT_PILL_MIN_WIDTH}
+                  />
+                  <FilterDropdown
+                    menuId={MENU_TIME}
+                    openMenu={openMenu}
+                    setOpenMenu={setOpenMenu}
+                    value={timeFilter}
+                    options={HOME_TIME_OPTIONS}
+                    ariaLabel="Time range for unlocks and earnings"
+                    disabled={sortMode === 'newest'}
+                    disabledHint="Time range does not apply when sorting by Newest."
+                    onChange={(v) => setTimeFilter(v)}
+                    minWidth={TIME_PILL_MIN_WIDTH}
+                  />
+                  <FilterDropdown
+                    menuId={MENU_AUDIENCE}
+                    openMenu={openMenu}
+                    setOpenMenu={setOpenMenu}
+                    value={followingOnly ? 'following' : 'all'}
+                    options={audienceOptions}
+                    ariaLabel="Audience"
+                    onChange={(v) => setFollowingOnly(v === 'following')}
+                    minWidth={AUDIENCE_PILL_MIN_WIDTH}
+                  />
+                </div>
               </div>
             </div>
 

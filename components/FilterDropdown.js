@@ -39,6 +39,7 @@ function ChevronDownIcon({ className }) {
  *   disabledHint?: string
  *   ariaLabel: string
  *   minWidth?: string
+ *   fullWidth?: boolean
  * }} props
  */
 export default function FilterDropdown({
@@ -52,6 +53,7 @@ export default function FilterDropdown({
   disabledHint = '',
   ariaLabel,
   minWidth,
+  fullWidth = false,
 }) {
   const triggerRef = useRef(null)
   const menuRef = useRef(null)
@@ -160,7 +162,8 @@ export default function FilterDropdown({
   const triggerId = `${menuId}-trigger`
 
   const triggerClass = [
-    'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full border-[0.5px] px-3 py-1.5 text-left text-sm font-normal leading-[1.2] transition-colors duration-150',
+    'inline-flex items-center justify-center gap-1.5 rounded-full border-[0.5px] px-3 py-1.5 text-left text-sm font-normal leading-[1.2] transition-colors duration-150',
+    fullWidth ? 'w-full min-w-0' : 'shrink-0',
     disabled
       ? 'cursor-not-allowed border-zinc-200 bg-zinc-100 text-zinc-500 opacity-40 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-500'
       : isOpen
@@ -169,7 +172,7 @@ export default function FilterDropdown({
   ].join(' ')
 
   return (
-    <div className="relative shrink-0">
+    <div className={`relative ${fullWidth ? 'w-full min-w-0' : 'shrink-0'}`}>
       <button
         ref={triggerRef}
         type="button"
