@@ -13,8 +13,8 @@ function formatXec(satoshis) {
 }
 
 const LEADERBOARD_SORT_OPTIONS = [
-  { value: 'earned', label: 'Earned' },
-  { value: 'unlocks', label: 'Unlocked' },
+  { value: 'earned', label: 'Most earned' },
+  { value: 'unlocks', label: 'Most unlocked' },
 ]
 
 const LEADERBOARD_TIME_OPTIONS = [

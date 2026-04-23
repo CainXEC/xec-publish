@@ -42,8 +42,8 @@ function truncateTeaserPreview(text, maxLen = TEASER_CARD_MAX) {
 }
 
 const HOME_SORT_OPTIONS = [
-  { value: 'earned', label: 'Earned' },
-  { value: 'unlocks', label: 'Unlocked' },
+  { value: 'earned', label: 'Most earned' },
+  { value: 'unlocks', label: 'Most unlocked' },
   { value: 'newest', label: 'Newest' },
 ]
 
@@ -220,8 +220,8 @@ export default function HomePage() {
         onReaderLogoutExtra={handleReaderLogoutExtra}
       />
 
-      <main className="mx-auto max-w-5xl px-4 pt-10 pb-6 sm:px-6 sm:pb-6">
-        <section className="mb-10 mx-auto w-full text-center sm:mb-12" aria-labelledby="home-hero-heading">
+      <main className="mx-auto max-w-5xl px-4 pt-6 pb-6 sm:px-6 sm:pb-6">
+        <section className="mb-6 mx-auto w-full text-center" aria-labelledby="home-hero-heading">
           <h1
             id="home-hero-heading"
             className="mx-auto max-w-none text-[clamp(1.625rem,8vw,2.25rem)] text-zinc-900 sm:text-[clamp(2rem,5vw,3.25rem)] dark:text-zinc-50"
@@ -235,7 +235,7 @@ export default function HomePage() {
             Publish a story. Set your price. Readers unlock with eCash. No names or credit cards
             required. Writers keep 94% of earnings.
           </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-2.5">
+          <div className="mt-3 flex flex-wrap justify-center gap-2.5">
             <Link
               href={authorLoggedIn ? '/dashboard' : '/login'}
               className="inline-flex items-center justify-center rounded-md bg-black px-[18px] py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"

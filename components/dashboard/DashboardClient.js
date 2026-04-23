@@ -33,8 +33,8 @@ function getSinceTimestamp(timeFilter) {
 }
 
 const DASHBOARD_SORT_OPTIONS = [
-  { value: 'earned', label: 'Earned' },
-  { value: 'unlocks', label: 'Unlocked' },
+  { value: 'earned', label: 'Most earned' },
+  { value: 'unlocks', label: 'Most unlocked' },
   { value: 'newest', label: 'Newest' },
   { value: 'drafts', label: 'Drafts' },
 ]

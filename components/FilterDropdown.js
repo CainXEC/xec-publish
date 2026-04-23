@@ -24,28 +24,6 @@ function ChevronDownIcon({ className }) {
   )
 }
 
-function CheckIcon({ className }) {
-  return (
-    <svg
-      className={className}
-      width="14"
-      height="14"
-      viewBox="0 0 14 14"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden
-    >
-      <path
-        d="M2.5 7L5.5 10L11.5 3.5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
 /**
  * Single-select dropdown (listbox pattern). Only one menu in a group should be open — parent
  * controls that via `openMenu` / `setOpenMenu`.
@@ -180,7 +158,7 @@ export default function FilterDropdown({
   const triggerId = `${menuId}-trigger`
 
   const triggerClass = [
-    'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full border-[0.5px] px-2.5 py-1 text-left text-[13px] font-normal leading-[1.2] transition-colors duration-150 sm:text-sm',
+    'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full border-[0.5px] px-3 py-1.5 text-left text-sm font-normal leading-[1.2] transition-colors duration-150',
     disabled
       ? 'cursor-not-allowed border-zinc-200 bg-transparent text-zinc-500 opacity-40 dark:border-zinc-800 dark:text-zinc-500'
       : isOpen
@@ -225,7 +203,7 @@ export default function FilterDropdown({
           aria-labelledby={triggerId}
           tabIndex={-1}
           onKeyDownCapture={onMenuKeyDownCapture}
-          className="absolute left-0 top-full z-50 mt-1 min-w-[11rem] max-w-[min(100vw-2rem,16rem)] rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+          className="absolute left-0 right-0 top-full z-50 mt-1 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
         >
           {options.map((opt) => {
             const selectedHere = opt.value === value
@@ -239,9 +217,8 @@ export default function FilterDropdown({
                 aria-selected={selectedHere}
                 aria-disabled="true"
                 title={opt.disabledHint ?? ''}
-                className="flex cursor-not-allowed items-center gap-2 px-3 py-2 text-left text-xs text-zinc-400 opacity-50 sm:text-sm dark:text-zinc-500"
+                className="flex cursor-not-allowed items-center px-3 py-2 text-left text-xs text-zinc-400 opacity-50 sm:text-sm dark:text-zinc-500"
               >
-                <span className="w-4 shrink-0" aria-hidden />
                 <span className="min-w-0 flex-1">{opt.label}</span>
                 {opt.disabledHint ? (
                   <span className="sr-only">{opt.disabledHint}</span>
@@ -254,7 +231,7 @@ export default function FilterDropdown({
                 type="button"
                 role="option"
                 aria-selected={selectedHere}
-                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs sm:text-sm ${
+                className={`flex w-full items-center px-3 py-2 text-left text-xs sm:text-sm ${
                   selectedHere
                     ? 'bg-emerald-50 font-medium text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-100'
                     : 'text-zinc-800 hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800'
@@ -265,9 +242,6 @@ export default function FilterDropdown({
                   triggerRef.current?.focus()
                 }}
               >
-                <span className="flex w-4 shrink-0 justify-center text-emerald-600 dark:text-emerald-400">
-                  {selectedHere ? <CheckIcon className="block" /> : null}
-                </span>
                 <span className="min-w-0 flex-1">{opt.label}</span>
               </button>
             )
