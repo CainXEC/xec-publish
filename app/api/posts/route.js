@@ -125,8 +125,7 @@ export async function GET(request) {
       { posts, hasNextPage: (rows ?? []).length === PAGE_SIZE },
       {
         headers: {
-          // Cache at the CDN edge for 30s, serve stale for up to 5min while revalidating
-          'Cache-Control': 's-maxage=30, stale-while-revalidate=300',
+          'Cache-Control': 'no-store',
         },
       },
     )
@@ -248,7 +247,7 @@ export async function GET(request) {
     { posts, hasNextPage },
     {
       headers: {
-        'Cache-Control': 's-maxage=30, stale-while-revalidate=300',
+        'Cache-Control': 'no-store',
       },
     },
   )

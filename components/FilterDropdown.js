@@ -159,6 +159,12 @@ export default function FilterDropdown({
     setOpenMenu(isOpen ? null : menuId)
   }
 
+  const selectOption = (nextValue) => {
+    onChange(nextValue)
+    close()
+    triggerRef.current?.focus()
+  }
+
   const triggerId = `${menuId}-trigger`
 
   const triggerClass = [
@@ -184,7 +190,7 @@ export default function FilterDropdown({
         aria-disabled={disabled}
         aria-label={`${ariaLabel}: ${triggerText}`}
         title={disabled && disabledHint ? disabledHint : undefined}
-        onClick={(e) => {
+        onPointerDown={(e) => {
           e.preventDefault()
           if (disabled) return
           toggleOpen()
@@ -244,9 +250,12 @@ export default function FilterDropdown({
                 }`}
                 onPointerDown={(e) => {
                   e.preventDefault()
-                  onChange(opt.value)
-                  close()
-                  triggerRef.current?.focus()
+                  selectOption(opt.value)
+                }}
+                onClick={(e) => {
+                  // Keyboard activation dispatches click without pointerdown.
+                  if (e.detail !== 0) return
+                  selectOption(opt.value)
                 }}
               >
                 <span className="min-w-0 flex-1">{opt.label}</span>
