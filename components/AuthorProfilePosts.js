@@ -91,14 +91,29 @@ function postDisplayTime(post) {
   return post.published_at ?? post.created_at
 }
 
-function sortPostsByUnlocksThenNewest(rows) {
-  return [...rows].sort((a, b) => {
-    const diff = unlockCountFromPost(b) - unlockCountFromPost(a)
+function sortRowsWithZeroTail(rows, getMetric) {
+  const withMetric = rows.filter((row) => getMetric(row) > 0)
+  const withoutMetric = rows.filter((row) => getMetric(row) <= 0)
+
+  withMetric.sort((a, b) => {
+    const diff = getMetric(b) - getMetric(a)
     if (diff !== 0) return diff
     const ta = new Date(postDisplayTime(a)).getTime()
     const tb = new Date(postDisplayTime(b)).getTime()
     return tb - ta
   })
+
+  withoutMetric.sort((a, b) => {
+    const ta = new Date(postDisplayTime(a)).getTime()
+    const tb = new Date(postDisplayTime(b)).getTime()
+    return tb - ta
+  })
+
+  return [...withMetric, ...withoutMetric]
+}
+
+function sortPostsByUnlocksThenNewest(rows) {
+  return sortRowsWithZeroTail(rows, unlockCountFromPost)
 }
 
 /** Primary sort key for earned: `post.earnings` when finite; else unlock count (home /api/posts gap on author SSR). */
@@ -109,13 +124,7 @@ function earnedPrimaryValue(post) {
 }
 
 function sortPostsByEarned(rows) {
-  return [...rows].sort((a, b) => {
-    const diff = earnedPrimaryValue(b) - earnedPrimaryValue(a)
-    if (diff !== 0) return diff
-    const ta = new Date(postDisplayTime(a)).getTime()
-    const tb = new Date(postDisplayTime(b)).getTime()
-    return tb - ta
-  })
+  return sortRowsWithZeroTail(rows, earnedPrimaryValue)
 }
 
 function sortPostsByNewest(rows) {

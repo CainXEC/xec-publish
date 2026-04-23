@@ -40,6 +40,21 @@ function getSinceTimestamp(timeFilter) {
   return now.toISOString()
 }
 
+function sortIdsWithZeroTail(ids, metricById, sortTimeById) {
+  const withMetric = ids.filter((id) => (metricById[id] ?? 0) > 0)
+  const withoutMetric = ids.filter((id) => (metricById[id] ?? 0) <= 0)
+
+  withMetric.sort((a, b) => {
+    const diff = (metricById[b] ?? 0) - (metricById[a] ?? 0)
+    if (diff !== 0) return diff
+    return (sortTimeById[b] ?? 0) - (sortTimeById[a] ?? 0)
+  })
+
+  withoutMetric.sort((a, b) => (sortTimeById[b] ?? 0) - (sortTimeById[a] ?? 0))
+
+  return [...withMetric, ...withoutMetric]
+}
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
   const sortMode = searchParams.get('sort') ?? 'unlocks'
@@ -197,12 +212,8 @@ export async function GET(request) {
     sortKeyById = unlockCountById
   }
 
-  // Step 3: sort all IDs by aggregate desc, then newest first
-  const sortedIds = [...allIds].sort((a, b) => {
-    const diff = (sortKeyById[b] ?? 0) - (sortKeyById[a] ?? 0)
-    if (diff !== 0) return diff
-    return (sortTimeById[b] ?? 0) - (sortTimeById[a] ?? 0)
-  })
+  // Step 3: sort IDs with non-zero metric first, then zero-metric newest-first.
+  const sortedIds = sortIdsWithZeroTail(allIds, sortKeyById, sortTimeById)
 
   const pageIds = sortedIds.slice(start, start + PAGE_SIZE)
   const hasNextPage = start + PAGE_SIZE < sortedIds.length

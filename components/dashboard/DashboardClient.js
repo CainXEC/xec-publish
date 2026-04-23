@@ -84,14 +84,29 @@ function countRowsByPostId(rows) {
   return map
 }
 
-function sortPostsByUnlocksThenNewest(rows) {
-  return [...rows].sort((a, b) => {
-    const diff = unlockCountFromPost(b) - unlockCountFromPost(a)
+function sortRowsWithZeroTail(rows, getMetric) {
+  const withMetric = rows.filter((row) => getMetric(row) > 0)
+  const withoutMetric = rows.filter((row) => getMetric(row) <= 0)
+
+  withMetric.sort((a, b) => {
+    const diff = getMetric(b) - getMetric(a)
     if (diff !== 0) return diff
     const ta = new Date(a.created_at).getTime()
     const tb = new Date(b.created_at).getTime()
     return tb - ta
   })
+
+  withoutMetric.sort((a, b) => {
+    const ta = new Date(a.created_at).getTime()
+    const tb = new Date(b.created_at).getTime()
+    return tb - ta
+  })
+
+  return [...withMetric, ...withoutMetric]
+}
+
+function sortPostsByUnlocksThenNewest(rows) {
+  return sortRowsWithZeroTail(rows, unlockCountFromPost)
 }
 
 function sortPostsByNewest(rows) {
@@ -109,13 +124,7 @@ function earnedPrimaryValue(post) {
 }
 
 function sortPostsByEarned(rows) {
-  return [...rows].sort((a, b) => {
-    const diff = earnedPrimaryValue(b) - earnedPrimaryValue(a)
-    if (diff !== 0) return diff
-    const ta = new Date(a.created_at).getTime()
-    const tb = new Date(b.created_at).getTime()
-    return tb - ta
-  })
+  return sortRowsWithZeroTail(rows, earnedPrimaryValue)
 }
 
 function formatRelativeTime(iso) {
