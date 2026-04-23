@@ -7,7 +7,7 @@ test.describe('Homepage', () => {
 
   test('loads and shows latest articles', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('Written by independent writers')).toBeVisible()
+    await expect(page.getByText('Write to earn')).toBeVisible()
   })
 
   test('search filters posts', async ({ page }) => {
@@ -25,7 +25,7 @@ test.describe('Homepage', () => {
 
   test('sort buttons work', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('Written by independent writers')).toBeVisible()
+    await expect(page.getByText('Write to earn')).toBeVisible()
   })
 
   test('dark mode toggle works', async ({ page }) => {
