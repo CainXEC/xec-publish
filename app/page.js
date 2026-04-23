@@ -36,11 +36,6 @@ const sortBtnActive =
   'rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 md:px-4 md:py-2 md:text-sm dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400'
 const sortBtnInactive =
   'rounded-lg border border-zinc-300 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-800 transition hover:bg-zinc-50 md:px-4 md:py-2 md:text-sm dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900'
-const filterBtnActive =
-  'rounded-lg bg-emerald-100 px-2 py-1 text-[11px] font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-200 md:px-3 md:py-1.5 md:text-xs dark:bg-emerald-900/50 dark:text-emerald-200 dark:hover:bg-emerald-900'
-const filterBtnInactive =
-  'rounded-lg border border-zinc-300 bg-white px-2 py-1 text-[11px] font-medium text-zinc-700 transition hover:bg-zinc-50 md:px-3 md:py-1.5 md:text-xs dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800'
-
 const TEASER_CARD_MAX = 500
 function truncateTeaserPreview(text, maxLen = TEASER_CARD_MAX) {
   const s = text != null ? String(text) : ''
@@ -70,61 +65,30 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [readerWalletAddress, setReaderWalletAddress] = useState('')
-  const [readerUnlockedPostIds, setReaderUnlockedPostIds] = useState([])
-  const [readerFilterMode, setReaderFilterMode] = useState('all')
   const [postSearchQuery, setPostSearchQuery] = useState('')
   const [followingOnly, setFollowingOnly] = useState(false)
   const [refetchTrigger, setRefetchTrigger] = useState(0)
 
-  const readerFilteredPosts = useMemo(() => {
-    if (!readerWalletAddress || readerFilterMode === 'all') return posts
-    const unlockedSet = new Set(readerUnlockedPostIds)
-    if (readerFilterMode === 'unlocked') return posts.filter((p) => unlockedSet.has(p.id))
-    return posts.filter((p) => !unlockedSet.has(p.id))
-  }, [posts, readerFilterMode, readerUnlockedPostIds, readerWalletAddress])
-
   const trimmedPostSearch = postSearchQuery.trim()
   const displayPosts = useMemo(() => {
-    if (!trimmedPostSearch) return readerFilteredPosts
+    if (!trimmedPostSearch) return posts
     const q = trimmedPostSearch.toLowerCase()
-    return readerFilteredPosts.filter((post) => {
+    return posts.filter((post) => {
       const title = String(post.title ?? '').toLowerCase()
       const teaser = String(post.teaser ?? '').toLowerCase()
       const author = authorFromPost(post)
       const username = String(author?.username ?? '').toLowerCase()
       return title.includes(q) || teaser.includes(q) || username.includes(q)
     })
-  }, [readerFilteredPosts, trimmedPostSearch])
+  }, [posts, trimmedPostSearch])
 
-  const fetchReaderUnlocks = useCallback(async (walletAddress) => {
-    if (!walletAddress) return []
-    const res = await fetch(
-      `/api/reader-unlocks?walletAddress=${encodeURIComponent(walletAddress)}`,
-      { cache: 'no-store' },
-    )
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data?.error || 'Could not fetch reader unlocks')
-    return Array.isArray(data?.unlockedPostIds) ? data.unlockedPostIds : []
+  const applyReaderWallet = useCallback(async (walletAddress) => {
+    setReaderWalletAddress(walletAddress)
+    localStorage.setItem('readerWalletAddress', walletAddress)
   }, [])
-
-  const applyReaderWallet = useCallback(
-    async (walletAddress, unlockedPostIdsFromVerify) => {
-      setReaderWalletAddress(walletAddress)
-      localStorage.setItem('readerWalletAddress', walletAddress)
-      if (Array.isArray(unlockedPostIdsFromVerify)) {
-        setReaderUnlockedPostIds(unlockedPostIdsFromVerify)
-      } else {
-        const ids = await fetchReaderUnlocks(walletAddress)
-        setReaderUnlockedPostIds(ids)
-      }
-    },
-    [fetchReaderUnlocks],
-  )
 
   const handleReaderLogoutExtra = useCallback(() => {
     setReaderWalletAddress('')
-    setReaderUnlockedPostIds([])
-    setReaderFilterMode('all')
     setFollowingOnly(false)
   }, [])
 
@@ -280,7 +244,7 @@ export default function HomePage() {
                   🕐 Newest First
                 </button>
               </div>
-              {sortMode === 'newest' && !readerWalletAddress ? followingToggleButton : null}
+              {sortMode === 'newest' ? followingToggleButton : null}
             </div>
             {sortMode === 'unlocks' || sortMode === 'earned' ? (
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -301,23 +265,15 @@ export default function HomePage() {
                     </button>
                   ))}
                 </div>
-                {!readerWalletAddress ? followingToggleButton : null}
-              </div>
-            ) : null}
-            {readerWalletAddress ? (
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-1.5 md:gap-2" role="group" aria-label="Filter posts">
-                  <button type="button" aria-pressed={readerFilterMode === 'all'} onClick={() => setReaderFilterMode('all')} className={readerFilterMode === 'all' ? filterBtnActive : filterBtnInactive}>All Posts</button>
-                  <button type="button" aria-pressed={readerFilterMode === 'unlocked'} onClick={() => setReaderFilterMode('unlocked')} className={readerFilterMode === 'unlocked' ? filterBtnActive : filterBtnInactive}>Unlocked</button>
-                  <button type="button" aria-pressed={readerFilterMode === 'locked'} onClick={() => setReaderFilterMode('locked')} className={readerFilterMode === 'locked' ? filterBtnActive : filterBtnInactive}>Locked</button>
-                </div>
                 {followingToggleButton}
               </div>
             ) : null}
             {displayPosts.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-8 py-12 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
                 <p className="text-sm text-zinc-700 dark:text-zinc-300">
-                  {trimmedPostSearch ? `No posts found for '${trimmedPostSearch}'` : 'No posts match this filter.'}
+                  {trimmedPostSearch
+                    ? `No posts found for '${trimmedPostSearch}'`
+                    : 'No posts yet.'}
                 </p>
               </div>
             ) : null}

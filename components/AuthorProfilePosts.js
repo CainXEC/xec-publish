@@ -153,11 +153,6 @@ const timeFilterBtnActive =
 const timeFilterBtnInactive =
   'rounded-lg border border-zinc-300 bg-transparent px-2.5 py-1.5 text-xs font-medium text-zinc-800 transition hover:bg-zinc-50 md:px-3 md:py-2 md:text-sm dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-900'
 
-const filterBtnActive =
-  'rounded-lg bg-emerald-100 px-2 py-1 text-[11px] font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-200 md:px-3 md:py-1.5 md:text-xs dark:bg-emerald-900/50 dark:text-emerald-200 dark:hover:bg-emerald-900'
-const filterBtnInactive =
-  'rounded-lg border border-zinc-300 bg-white px-2 py-1 text-[11px] font-medium text-zinc-700 transition hover:bg-zinc-50 md:px-3 md:py-1.5 md:text-xs dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800'
-
 const TEASER_CARD_MAX = 500
 function truncateTeaserPreview(text, maxLen = TEASER_CARD_MAX) {
   const s = text != null ? String(text) : ''
@@ -212,16 +207,9 @@ function PostCard({ post }) {
   )
 }
 
-export default function AuthorProfilePosts({
-  initialPosts,
-  postsErrorMessage,
-  readerWalletAddress = '',
-  readerUnlockedPostIds = [],
-  registerReaderPostFilterReset,
-}) {
+export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) {
   const [sortMode, setSortMode] = useState('earned')
   const [timeFilter, setTimeFilter] = useState('24h')
-  const [readerFilterMode, setReaderFilterMode] = useState('all')
   const [mergedPosts, setMergedPosts] = useState([])
   const [countsLoading, setCountsLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
@@ -231,36 +219,14 @@ export default function AuthorProfilePosts({
 
   const basePosts = useMemo(() => initialPosts ?? [], [initialPosts])
 
-  const unfilteredNonLegacy = useMemo(
+  const nonLegacyBase = useMemo(
     () => basePosts.filter((p) => p.legacy !== true),
     [basePosts],
   )
-
-  const readerFilteredPosts = useMemo(() => {
-    if (!readerWalletAddress || readerFilterMode === 'all') return basePosts
-    const unlockedSet = new Set(readerUnlockedPostIds)
-    if (readerFilterMode === 'unlocked') return basePosts.filter((p) => unlockedSet.has(p.id))
-    return basePosts.filter((p) => !unlockedSet.has(p.id))
-  }, [basePosts, readerFilterMode, readerUnlockedPostIds, readerWalletAddress])
-
-  const nonLegacyBase = useMemo(
-    () => readerFilteredPosts.filter((p) => p.legacy !== true),
-    [readerFilteredPosts],
-  )
   const legacyBase = useMemo(
-    () => readerFilteredPosts.filter((p) => p.legacy === true),
-    [readerFilteredPosts],
+    () => basePosts.filter((p) => p.legacy === true),
+    [basePosts],
   )
-
-  useEffect(() => {
-    if (!registerReaderPostFilterReset) return
-    registerReaderPostFilterReset(() => {
-      setReaderFilterMode('all')
-    })
-    return () => {
-      registerReaderPostFilterReset(() => {})
-    }
-  }, [registerReaderPostFilterReset])
 
   // Same as app/page.js: clear time window when leaving unlocks/earned sorts.
   useEffect(() => {
@@ -463,13 +429,7 @@ export default function AuthorProfilePosts({
 
         {nonLegacyBase.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-8 py-14 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
-            <p className="text-base text-zinc-700 dark:text-zinc-300">
-              {unfilteredNonLegacy.length > 0 &&
-              readerWalletAddress &&
-              readerFilterMode !== 'all'
-                ? 'No posts match this filter.'
-                : 'No posts yet'}
-            </p>
+            <p className="text-base text-zinc-700 dark:text-zinc-300">No posts yet</p>
           </div>
         ) : (
           <>
@@ -536,50 +496,6 @@ export default function AuthorProfilePosts({
                     {opt.label}
                   </button>
                 ))}
-              </div>
-            ) : null}
-
-            {readerWalletAddress ? (
-              <div
-                className="mb-2 flex flex-wrap gap-1.5 md:gap-2"
-                role="group"
-                aria-label="Filter posts"
-              >
-                <button
-                  type="button"
-                  aria-pressed={readerFilterMode === 'all'}
-                  onClick={() => {
-                    setCurrentPage(1)
-                    setReaderFilterMode('all')
-                  }}
-                  className={readerFilterMode === 'all' ? filterBtnActive : filterBtnInactive}
-                >
-                  All Posts
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={readerFilterMode === 'unlocked'}
-                  onClick={() => {
-                    setCurrentPage(1)
-                    setReaderFilterMode('unlocked')
-                  }}
-                  className={
-                    readerFilterMode === 'unlocked' ? filterBtnActive : filterBtnInactive
-                  }
-                >
-                  Unlocked
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={readerFilterMode === 'locked'}
-                  onClick={() => {
-                    setCurrentPage(1)
-                    setReaderFilterMode('locked')
-                  }}
-                  className={readerFilterMode === 'locked' ? filterBtnActive : filterBtnInactive}
-                >
-                  Locked
-                </button>
               </div>
             ) : null}
 

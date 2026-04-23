@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Nav from '@/components/Nav'
 import AuthorProfilePosts from '@/components/AuthorProfilePosts'
 import CopyableAddress from '@/components/CopyableAddress'
@@ -18,46 +18,18 @@ export default function AuthorProfilePageClient({
   postsErrorMessage,
 }) {
   const [readerWalletAddress, setReaderWalletAddress] = useState('')
-  const [readerUnlockedPostIds, setReaderUnlockedPostIds] = useState([])
   const [isFollowing, setIsFollowing] = useState(false)
   const [followerCount, setFollowerCount] = useState(0)
   const [followLoading, setFollowLoading] = useState(false)
-  const resetReaderPostFilterRef = useRef(() => {})
 
-  const registerReaderPostFilterReset = useCallback((fn) => {
-    resetReaderPostFilterRef.current = typeof fn === 'function' ? fn : () => {}
+  const applyReaderWallet = useCallback(async (walletAddress) => {
+    setReaderWalletAddress(walletAddress)
+    localStorage.setItem('readerWalletAddress', walletAddress)
   }, [])
-
-  const fetchReaderUnlocks = useCallback(async (walletAddress) => {
-    if (!walletAddress) return []
-    const res = await fetch(
-      `/api/reader-unlocks?walletAddress=${encodeURIComponent(walletAddress)}`,
-      { cache: 'no-store' },
-    )
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error(data?.error || 'Could not fetch reader unlocks')
-    return Array.isArray(data?.unlockedPostIds) ? data.unlockedPostIds : []
-  }, [])
-
-  const applyReaderWallet = useCallback(
-    async (walletAddress, unlockedPostIdsFromVerify) => {
-      setReaderWalletAddress(walletAddress)
-      localStorage.setItem('readerWalletAddress', walletAddress)
-      if (Array.isArray(unlockedPostIdsFromVerify)) {
-        setReaderUnlockedPostIds(unlockedPostIdsFromVerify)
-      } else {
-        const ids = await fetchReaderUnlocks(walletAddress)
-        setReaderUnlockedPostIds(ids)
-      }
-    },
-    [fetchReaderUnlocks],
-  )
 
   const handleReaderLogoutExtra = useCallback(() => {
     setReaderWalletAddress('')
-    setReaderUnlockedPostIds([])
     setIsFollowing(false)
-    resetReaderPostFilterRef.current()
   }, [])
 
   useEffect(() => {
@@ -167,13 +139,7 @@ export default function AuthorProfilePageClient({
           ) : null}
         </header>
 
-        <AuthorProfilePosts
-          initialPosts={initialPosts}
-          postsErrorMessage={postsErrorMessage}
-          readerWalletAddress={readerWalletAddress}
-          readerUnlockedPostIds={readerUnlockedPostIds}
-          registerReaderPostFilterReset={registerReaderPostFilterReset}
-        />
+        <AuthorProfilePosts initialPosts={initialPosts} postsErrorMessage={postsErrorMessage} />
       </main>
     </div>
   )
