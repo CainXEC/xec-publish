@@ -230,7 +230,7 @@ function PostCard({ post }) {
 }
 
 export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) {
-  const [sortMode, setSortMode] = useState('earned')
+  const [sortMode, setSortMode] = useState('newest')
   const [timeFilter, setTimeFilter] = useState('24h')
   const [openMenu, setOpenMenu] = useState(/** @type {string | null} */ (null))
   const [mergedPosts, setMergedPosts] = useState([])
