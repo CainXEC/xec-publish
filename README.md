@@ -19,6 +19,12 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 ## Environment variables
 
 - **`COOKIE_SECRET`** — Random secret (e.g. 32+ hex characters) used to HMAC-sign per-post unlock cookies. Required for `/api/verify-payment` and `/api/check-unlock` to set cookies. Copy the value from `.env.local` for local dev.
+- **`OPENAI_API_KEY`** — Required for the AI audio narration feature (OpenAI TTS).
+
+```bash
+OPENAI_API_KEY=sk-...
+# Required for the AI audio narration feature (OpenAI TTS)
+```
 
 **Vercel:** In the project on [vercel.com](https://vercel.com), open **Settings → Environment Variables**, add `COOKIE_SECRET` with the same kind of random value (generate a new secret for production; do not commit it). Apply to Production, Preview, and Development as needed, then redeploy.
 

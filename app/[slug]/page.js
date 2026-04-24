@@ -2,6 +2,7 @@ import { cache } from 'react'
 import { notFound } from 'next/navigation'
 import PostPageClient from '../posts/[slug]/PostPageClient'
 import { createServerSupabase } from '@/lib/supabase-server'
+import { isAudioStale } from '@/lib/audioConfig'
 
 function countRowsByPostId(rows) {
   const map = {}
@@ -28,7 +29,7 @@ const getLegacyPublishedPostBySlug = cache(async (rawSlug) => {
   const { data: postRow, error: postError } = await supabase
     .from('posts')
     .select(
-      'id, author_id, title, teaser, body, price_xec, published, slug, created_at, published_at, reading_time_minutes, authors ( username, xec_address )',
+      'id, author_id, title, teaser, body, audio_url, audio_source_hash, price_xec, published, slug, created_at, published_at, reading_time_minutes, authors ( username, xec_address )',
     )
     .eq('slug', slug)
     .eq('published', true)
@@ -39,7 +40,10 @@ const getLegacyPublishedPostBySlug = cache(async (rawSlug) => {
 
   const authorRel = postRow.authors
   const authorRow = Array.isArray(authorRel) ? authorRel[0] : authorRel
-  const post = { ...postRow }
+  const post = {
+    ...postRow,
+    audio_is_stale: isAudioStale(postRow.body, postRow.audio_source_hash),
+  }
   delete post.authors
 
   const postIds = [post.id]

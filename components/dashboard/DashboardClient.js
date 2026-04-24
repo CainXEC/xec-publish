@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import AudioPaywallModal from '@/components/dashboard/AudioPaywallModal'
 import FilterDropdown from '@/components/FilterDropdown'
+import { getAudioPriceForPost, getPlainTextCharCount } from '@/lib/audioPricing'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { supabase } from '@/lib/supabase-browser'
 import { fetchAllUnlockCountRows } from '@/lib/supabaseUnlockCounts'
@@ -131,11 +133,15 @@ function formatRelativeTime(iso) {
   return diffDay === 1 ? '1 day ago' : `${diffDay} days ago`
 }
 
-function DashboardPostCard({ post, deletingId, onDelete }) {
+function DashboardPostCard({ post, deletingId, onDelete, onOpenAudioModal }) {
   const n = unlockCountFromPost(post)
   const unlockStat = n === 1 ? '🔓 1 unlock' : `🔓 ${n} unlocks`
   const readTime = formatReadingTimeLabel(post.reading_time_minutes)
   const priceLabel = formatXec(post.price_xec)
+  const audioCharCount = getPlainTextCharCount(post.body ?? '')
+  const audioPriceXec = getAudioPriceForPost(audioCharCount)
+  const hasAudio = Boolean(post.audio_url)
+  const isAudioStale = Boolean(post.is_audio_stale)
   const publicHref =
     post.slug && post.legacy
       ? `/${encodeURIComponent(post.slug)}`
@@ -177,6 +183,34 @@ function DashboardPostCard({ post, deletingId, onDelete }) {
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {!hasAudio ? (
+            <button
+              type="button"
+              onClick={() => onOpenAudioModal(post, 'add')}
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            >
+              Add audio narration{' '}
+              <span className="text-zinc-500 dark:text-zinc-400">(~{audioPriceXec} XEC)</span>
+            </button>
+          ) : isAudioStale ? (
+            <div className="flex flex-col items-start gap-1">
+              <button
+                type="button"
+                onClick={() => onOpenAudioModal(post, 'regenerate')}
+                className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-900 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200 dark:hover:bg-amber-900/50"
+              >
+                Regenerate audio{' '}
+                <span className="text-amber-700 dark:text-amber-300">(~{audioPriceXec} XEC)</span>
+              </button>
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                ⚠️ Audio is from a previous version.
+              </span>
+            </div>
+          ) : (
+            <span className="inline-flex items-center rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+              🎧 Has audio narration ✓
+            </span>
+          )}
           {!post.published ? (
             <Link
               href={`/dashboard/preview/${encodeURIComponent(post.id)}`}
@@ -231,6 +265,9 @@ export default function DashboardClient({
     () => (notifications ?? []).map((n) => ({ ...n, read: Boolean(n.read) })),
   )
   const [legacySectionOpen, setLegacySectionOpen] = useState(false)
+  const [audioModalPost, setAudioModalPost] = useState(null)
+  const [audioModalOpen, setAudioModalOpen] = useState(false)
+  const [audioModalMode, setAudioModalMode] = useState('add')
   const copyTimeoutRef = useRef(null)
 
   // Stats come from the server — no loading state needed
@@ -461,6 +498,28 @@ export default function DashboardClient({
       setCopiedAddress(false)
     }
   }, [xecAddress])
+
+  const handleOpenAudioModal = useCallback((post, mode = 'add') => {
+    setAudioModalPost(post)
+    setAudioModalMode(mode === 'regenerate' ? 'regenerate' : 'add')
+    setAudioModalOpen(true)
+  }, [])
+
+  const handleAudioGenerated = useCallback((audioUrl) => {
+    if (!audioModalPost?.id || !audioUrl) return
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === audioModalPost.id
+          ? {
+              ...p,
+              audio_url: audioUrl,
+              audio_generated_at: new Date().toISOString(),
+              is_audio_stale: false,
+            }
+          : p,
+      ),
+    )
+  }, [audioModalPost?.id])
 
   useEffect(() => {
     return () => {
@@ -704,6 +763,7 @@ export default function DashboardClient({
                       post={post}
                       deletingId={deletingId}
                       onDelete={() => void handleDeletePost(post.id)}
+                      onOpenAudioModal={handleOpenAudioModal}
                     />
                   ))}
                 </ul>
@@ -767,6 +827,7 @@ export default function DashboardClient({
                     }}
                     deletingId={deletingId}
                     onDelete={() => void handleDeletePost(post.id)}
+                    onOpenAudioModal={handleOpenAudioModal}
                   />
                 ))}
               </ul>
@@ -774,6 +835,13 @@ export default function DashboardClient({
           </section>
         ) : null}
       </main>
+      <AudioPaywallModal
+        open={audioModalOpen}
+        onClose={() => setAudioModalOpen(false)}
+        post={audioModalPost}
+        mode={audioModalMode}
+        onAudioGenerated={handleAudioGenerated}
+      />
     </div>
   )
 }

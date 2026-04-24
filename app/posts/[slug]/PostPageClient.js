@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import ArticleAudioPlayer from '@/components/ArticleAudioPlayer'
 import Nav from '@/components/Nav'
 import { charCounterClassName } from '@/lib/charCounterClassName'
 import { encodePostIdOpReturnRaw } from '@/lib/opReturnEncode'
@@ -852,6 +853,12 @@ export default function PostPageClient({
               💬 {commentCount} {commentCount === 1 ? 'comment' : 'comments'}
             </button>
           </p>
+
+          {unlocked && post.audio_url ? (
+            <div className="mt-4 mb-4">
+              <ArticleAudioPlayer postId={post.id} isStale={Boolean(post.audio_is_stale)} />
+            </div>
+          ) : null}
 
           <section className="mt-8 overflow-hidden">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">

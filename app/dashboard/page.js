@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import Nav from '@/components/Nav'
 import DashboardClient from '@/components/dashboard/DashboardClient'
+import { isAudioStale } from '@/lib/audioConfig'
 
 export default async function DashboardPage() {
   const supabase = await createSupabaseServerClient()
@@ -49,6 +50,10 @@ export default async function DashboardPage() {
   ])
 
   const rows = unlockRows ?? []
+  const postsWithAudioStale = (posts ?? []).map((post) => ({
+    ...post,
+    is_audio_stale: isAudioStale(post.body, post.audio_source_hash),
+  }))
   let totalXec = 0
   for (const r of rows) {
     const s = Number(r.amount_xec)
@@ -64,7 +69,7 @@ export default async function DashboardPage() {
         bio={author?.bio ?? ''}
         xecAddress={author?.xec_address ?? ''}
         notifications={notifications ?? []}
-        initialPosts={posts ?? []}
+        initialPosts={postsWithAudioStale}
         loadError={postsError?.message ?? null}
         initialTotalUnlocks={rows.length}
         initialTotalXecRaw={totalXec}
