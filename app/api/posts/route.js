@@ -148,7 +148,7 @@ export async function GET(request) {
 
   // ── UNLOCKS or EARNED sort: fetch all IDs + aggregates, sort, then fetch page ──
   const earnedSort = sortMode === 'earned'
-  const publishCutoff = timeFilter !== 'all' ? getSinceTimestamp(timeFilter) : null
+  const since = getSinceTimestamp(timeFilter)
 
   // Step 1: all published post IDs + created_at for tiebreaking
   let idQuery = supabase
@@ -160,10 +160,6 @@ export async function GET(request) {
   if (followedAuthorIds) {
     idQuery = idQuery.in('author_id', followedAuthorIds)
   }
-  if (publishCutoff) {
-    idQuery = idQuery.gte('published_at', publishCutoff)
-  }
-
   const { data: idRows, error: idError } = await idQuery
 
   if (idError) {
@@ -189,8 +185,8 @@ export async function GET(request) {
 
   if (earnedSort) {
     const [earnedRes, countRes] = await Promise.all([
-      supabase.rpc('get_unlock_earnings', { post_ids: allIds, since: null }),
-      supabase.rpc('get_unlock_counts', { post_ids: allIds, since: null }),
+      supabase.rpc('get_unlock_earnings', { post_ids: allIds, since }),
+      supabase.rpc('get_unlock_counts', { post_ids: allIds, since }),
     ])
     if (earnedRes.error) {
       return NextResponse.json({ error: earnedRes.error.message }, { status: 500 })
@@ -203,7 +199,7 @@ export async function GET(request) {
   } else {
     const { data: unlockRowsAll, error: unlockError } = await supabase.rpc(
       'get_unlock_counts',
-      { post_ids: allIds, since: null },
+      { post_ids: allIds, since },
     )
     if (unlockError) {
       return NextResponse.json({ error: unlockError.message }, { status: 500 })

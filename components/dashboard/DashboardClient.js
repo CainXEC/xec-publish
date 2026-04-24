@@ -32,17 +32,6 @@ function getSinceTimestamp(timeFilter) {
   return now.toISOString()
 }
 
-function filterPublishedPostsByCutoff(posts, cutoffIso) {
-  if (!cutoffIso) return posts
-  const cutoff = new Date(cutoffIso).getTime()
-  if (!Number.isFinite(cutoff)) return posts
-  return posts.filter((p) => {
-    if (!p?.published_at) return false
-    const publishedAt = new Date(p.published_at).getTime()
-    return Number.isFinite(publishedAt) && publishedAt >= cutoff
-  })
-}
-
 const DASHBOARD_SORT_OPTIONS = [
   { value: 'earned', label: 'Most earned' },
   { value: 'unlocks', label: 'Most unlocked' },
@@ -281,20 +270,6 @@ export default function DashboardClient({
     () => posts.filter((p) => p.legacy !== true),
     [posts],
   )
-  const publishCutoff = useMemo(
-    () =>
-      sortMode === 'unlocks' || sortMode === 'earned'
-        ? getSinceTimestamp(timeFilter)
-        : null,
-    [sortMode, timeFilter],
-  )
-  const eligiblePostsForMetric = useMemo(
-    () =>
-      publishCutoff
-        ? filterPublishedPostsByCutoff(nonLegacyPosts, publishCutoff)
-        : nonLegacyPosts,
-    [nonLegacyPosts, publishCutoff],
-  )
   const draftPosts = useMemo(
     () => nonLegacyPosts.filter((p) => !p.published),
     [nonLegacyPosts],
@@ -318,12 +293,13 @@ export default function DashboardClient({
     let cancelled = false
 
     async function loadLegacyUnlockCounts() {
-      const sourceLegacy = publishCutoff
-        ? filterPublishedPostsByCutoff(legacyPosts, publishCutoff)
-        : legacyPosts
+      const sourceLegacy = legacyPosts
       const postIds = sourceLegacy.map((p) => p.id).filter(Boolean)
       if (postIds.length === 0) return
-      const metricSince = null
+      const metricSince =
+        sortMode === 'unlocks' || sortMode === 'earned'
+          ? getSinceTimestamp(timeFilter)
+          : null
       const unlockPromise = fetchAllUnlockCountRows(supabase, postIds, metricSince)
       const earningsPromise =
         sortMode === 'earned'
@@ -347,7 +323,7 @@ export default function DashboardClient({
     return () => {
       cancelled = true
     }
-  }, [legacySectionOpen, legacyPosts, publishCutoff, sortMode])
+  }, [legacySectionOpen, legacyPosts, sortMode, timeFilter])
 
   useEffect(() => {
     let cancelled = false
@@ -358,14 +334,17 @@ export default function DashboardClient({
         setEarningsMap({})
         return
       }
-      const postIds = eligiblePostsForMetric.map((p) => p.id).filter(Boolean)
+      const postIds = nonLegacyPosts.map((p) => p.id).filter(Boolean)
       if (postIds.length === 0) {
         setUnlockCountMap({})
         setEarningsMap({})
         return
       }
 
-      const metricSince = null
+      const metricSince =
+        sortMode === 'unlocks' || sortMode === 'earned'
+          ? getSinceTimestamp(timeFilter)
+          : null
 
       const unlockPromise = fetchAllUnlockCountRows(supabase, postIds, metricSince)
       const earningsPromise =
@@ -399,12 +378,11 @@ export default function DashboardClient({
     return () => {
       cancelled = true
     }
-  }, [eligiblePostsForMetric, sortMode])
+  }, [nonLegacyPosts, sortMode, timeFilter])
 
   const sortedPosts = useMemo(() => {
     if (sortMode === 'drafts') return sortPostsByNewest(draftPosts)
-    const sourcePosts =
-      sortMode === 'newest' ? nonLegacyPosts : eligiblePostsForMetric
+    const sourcePosts = nonLegacyPosts
     const withCounts = sourcePosts.map((p) => ({
       ...p,
       unlocks: [{ count: unlockCountMap[p.id] ?? 0 }],
@@ -413,7 +391,7 @@ export default function DashboardClient({
     if (sortMode === 'newest') return sortPostsByNewest(withCounts)
     if (sortMode === 'earned') return sortPostsByEarned(withCounts)
     return sortPostsByUnlocksThenNewest(withCounts)
-  }, [draftPosts, earningsMap, eligiblePostsForMetric, nonLegacyPosts, sortMode, unlockCountMap])
+  }, [draftPosts, earningsMap, nonLegacyPosts, sortMode, unlockCountMap])
 
   const totalPages = Math.max(1, Math.ceil(sortedPosts.length / PAGE_SIZE))
   const effectivePage = Math.max(1, Math.min(currentPage, totalPages))

@@ -145,17 +145,6 @@ function getSinceTimestamp(timeFilter) {
   return now.toISOString()
 }
 
-function filterPublishedPostsByCutoff(posts, cutoffIso) {
-  if (!cutoffIso) return posts
-  const cutoff = new Date(cutoffIso).getTime()
-  if (!Number.isFinite(cutoff)) return posts
-  return posts.filter((p) => {
-    if (!p?.published_at) return false
-    const publishedAt = new Date(p.published_at).getTime()
-    return Number.isFinite(publishedAt) && publishedAt >= cutoff
-  })
-}
-
 const AUTHOR_SORT_OPTIONS = [
   { value: 'earned', label: 'Most earned' },
   { value: 'unlocks', label: 'Most unlocked' },
@@ -263,13 +252,7 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
       await Promise.resolve()
       if (cancelled) return
 
-      const publishCutoff =
-        sortMode === 'unlocks' || sortMode === 'earned'
-          ? getSinceTimestamp(timeFilter)
-          : null
-      const sourcePosts = publishCutoff
-        ? filterPublishedPostsByCutoff(nonLegacyBase, publishCutoff)
-        : nonLegacyBase
+      const sourcePosts = nonLegacyBase
 
       if (sourcePosts.length === 0) {
         setMergedPosts([])
@@ -277,7 +260,10 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
         return
       }
 
-      const metricSince = null
+      const metricSince =
+        sortMode === 'unlocks' || sortMode === 'earned'
+          ? getSinceTimestamp(timeFilter)
+          : null
 
       const canSkipCountsFetch =
         metricSince === null && sortMode !== 'earned' && postsHaveAllTimeCounts(sourcePosts)
@@ -339,14 +325,11 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
     let cancelled = false
 
     async function loadLegacyCounts() {
-      const publishCutoff =
+      const sourceLegacy = legacyBase
+      const metricSince =
         sortMode === 'unlocks' || sortMode === 'earned'
           ? getSinceTimestamp(timeFilter)
           : null
-      const sourceLegacy = publishCutoff
-        ? filterPublishedPostsByCutoff(legacyBase, publishCutoff)
-        : legacyBase
-      const metricSince = null
 
       if (sourceLegacy.length === 0) {
         setMergedLegacyPosts([])
