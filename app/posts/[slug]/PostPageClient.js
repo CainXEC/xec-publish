@@ -1044,15 +1044,7 @@ export default function PostPageClient({
                       : `Pay ${unlockPriceLabel} XEC to unlock`}
                   </button>
                   <p className="mt-1 text-center text-xs text-zinc-500 dark:text-zinc-500">
-                    (6% of payment goes to support the platform)
-                  </p>
-                  <p className="mt-2 text-center text-xs">
-                    <Link
-                      href="/how-it-works"
-                      className="text-zinc-500 transition hover:text-emerald-600 hover:underline dark:text-zinc-500 dark:hover:text-emerald-400"
-                    >
-                      New to eCash? Learn how to get started →
-                    </Link>
+                    (6% of all unlock payments go to support the platform)
                   </p>
                   {pollingActive && paymentInitiated ? (
                     <div className="mt-4 rounded-lg border border-zinc-200 bg-white/70 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900/60">
