@@ -228,7 +228,7 @@ export default function DashboardClient({
   initialTotalXecRaw,
 }) {
   const [posts, setPosts] = useState(initialPosts)
-  const [sortMode, setSortMode] = useState('earned')
+  const [sortMode, setSortMode] = useState('newest')
   const [timeFilter, setTimeFilter] = useState('24h')
   const [unlockCountMap, setUnlockCountMap] = useState({})
   const [earningsMap, setEarningsMap] = useState({})
