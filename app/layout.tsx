@@ -72,7 +72,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: themeInitScript }}
         />
       </head>
-      <body className="min-h-screen min-h-[100svh] flex flex-col">
+      <body className="min-h-screen min-h-[100svh]">
         {children}
         <Footer />
         <Analytics />
