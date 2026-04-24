@@ -385,6 +385,15 @@ export default function HomePage() {
                               >
                                 {post.title}
                               </Link>
+                              {post.audio_url ? (
+                                <span
+                                  className="relative z-10 ml-2 text-sm"
+                                  title="Audio narration available"
+                                  aria-label="Audio narration available"
+                                >
+                                  🎧
+                                </span>
+                              ) : null}
                             </h3>
                             <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
                               <Link href={`/u/${encodeURIComponent(username)}`} className="relative z-10 font-medium text-emerald-700 hover:text-emerald-800 underline-offset-2 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300">@{username}</Link>

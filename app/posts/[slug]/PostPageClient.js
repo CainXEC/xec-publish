@@ -856,7 +856,11 @@ export default function PostPageClient({
 
           {unlocked && post.audio_url ? (
             <div className="mt-4 mb-4">
-              <ArticleAudioPlayer postId={post.id} isStale={Boolean(post.audio_is_stale)} />
+              <ArticleAudioPlayer
+                postId={post.id}
+                isStale={Boolean(post.audio_is_stale)}
+                audioCharCount={post.audio_char_count ?? null}
+              />
             </div>
           ) : null}
 

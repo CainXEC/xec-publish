@@ -168,6 +168,15 @@ function DashboardPostCard({ post, deletingId, onDelete, onOpenAudioModal }) {
                 {post.title ?? 'Untitled post'}
               </p>
             )}
+            {post.audio_url ? (
+              <span
+                className="ml-2 text-sm text-zinc-900 dark:text-zinc-50"
+                title="Audio narration available"
+                aria-label="Audio narration available"
+              >
+                🎧
+              </span>
+            ) : null}
             {!post.published ? (
               <span className="inline-flex shrink-0 items-center rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
                 Draft

@@ -99,7 +99,7 @@ export async function GET(request) {
   if (sortMode === 'newest') {
     let newestQuery = supabase
       .from('posts')
-      .select('id, title, slug, teaser, reading_time_minutes, price_xec, created_at, published_at, author_id, authors(username)')
+      .select('id, title, slug, teaser, reading_time_minutes, price_xec, created_at, published_at, author_id, audio_url, authors(username)')
       .eq('published', true)
       .eq('legacy', false)
 
@@ -222,7 +222,7 @@ export async function GET(request) {
   const [pageRes, commentRes] = await Promise.all([
     supabase
       .from('posts')
-      .select('id, title, slug, teaser, reading_time_minutes, price_xec, created_at, published_at, author_id, authors(username)')
+      .select('id, title, slug, teaser, reading_time_minutes, price_xec, created_at, published_at, author_id, audio_url, authors(username)')
       .eq('legacy', false)
       .in('id', pageIds),
     supabase.rpc('get_comment_counts', { post_ids: pageIds }),

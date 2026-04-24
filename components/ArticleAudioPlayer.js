@@ -1,8 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 const SPEED_OPTIONS = [1, 1.25, 1.5, 2]
+const CHARS_PER_MINUTE = 850
 
 function formatAudioTime(seconds) {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
@@ -12,8 +13,92 @@ function formatAudioTime(seconds) {
   return `${mins}:${String(secs).padStart(2, '0')}`
 }
 
-export default function ArticleAudioPlayer({ postId, isStale = false }) {
+function PlayIcon() {
+  return (
+    <svg className="h-5 w-5 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  )
+}
+
+function PauseIcon() {
+  return (
+    <svg className="h-5 w-5 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+    </svg>
+  )
+}
+
+function BigPlayPauseButton({ isPlaying, disabled, onClick }) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => void onClick()}
+      aria-label={isPlaying ? 'Pause narration' : 'Play narration'}
+      className="flex h-14 w-14 shrink-0 cursor-pointer items-center justify-center rounded-full bg-emerald-600 transition active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-500"
+    >
+      {isPlaying ? <PauseIcon /> : <PlayIcon />}
+    </button>
+  )
+}
+
+function ScrubberTrack({
+  currentTime,
+  duration,
+  onSeek,
+  scrubRef,
+}) {
+  const safeDur = Number.isFinite(duration) && duration > 0 ? duration : 0
+  const pct = safeDur > 0 ? Math.min(100, (currentTime / safeDur) * 100) : 0
+
+  const seekFromEvent = (clientX) => {
+    const el = scrubRef.current
+    if (!el || safeDur <= 0) return
+    const rect = el.getBoundingClientRect()
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
+    onSeek(ratio * safeDur)
+  }
+
+  return (
+    <div className="w-full">
+      <div
+        ref={scrubRef}
+        role="slider"
+        tabIndex={0}
+        aria-valuemin={0}
+        aria-valuemax={Math.round(safeDur)}
+        aria-valuenow={Math.round(currentTime)}
+        aria-label="Audio progress"
+        onClick={(e) => seekFromEvent(e.clientX)}
+        onKeyDown={(e) => {
+          if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+          e.preventDefault()
+          const delta = e.key === 'ArrowLeft' ? -5 : 5
+          onSeek(Math.min(safeDur, Math.max(0, currentTime + delta)))
+        }}
+        className="relative h-1 w-full cursor-pointer rounded-full bg-emerald-200 dark:bg-emerald-900"
+      >
+        <div
+          className="pointer-events-none absolute inset-y-0 left-0 rounded-full bg-emerald-600 dark:bg-emerald-500"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="mt-1 flex items-center justify-between text-xs tabular-nums text-emerald-700 dark:text-emerald-300">
+        <span>{formatAudioTime(currentTime)}</span>
+        <span>{formatAudioTime(safeDur > 0 ? duration : 0)}</span>
+      </div>
+    </div>
+  )
+}
+
+export default function ArticleAudioPlayer({
+  postId,
+  isStale = false,
+  audioCharCount = null,
+}) {
   const audioRef = useRef(null)
+  const scrubRef = useRef(null)
   const shouldResumePlaybackRef = useRef(false)
   const isRefreshingRef = useRef(false)
 
@@ -27,9 +112,17 @@ export default function ArticleAudioPlayer({ postId, isStale = false }) {
   const [playbackRate, setPlaybackRate] = useState(1)
 
   const canPlay = Boolean(signedUrl) && !loading && !hidden
-  const progressMax = Number.isFinite(duration) && duration > 0 ? duration : 1
-  const progressValue = Number.isFinite(currentTime) ? Math.min(currentTime, progressMax) : 0
-  const speedOptions = useMemo(() => SPEED_OPTIONS, [])
+
+  const approxListenMin =
+    typeof audioCharCount === 'number' &&
+    Number.isFinite(audioCharCount) &&
+    audioCharCount > 0
+      ? Math.max(1, Math.round(audioCharCount / CHARS_PER_MINUTE))
+      : null
+  const metaLine =
+    approxListenMin != null
+      ? `AI-narrated · ${approxListenMin} min listen`
+      : 'AI-narrated · Playing'
 
   const requestSignedUrl = useCallback(async () => {
     if (!postId) return { ok: false, status: 400, reason: 'missing-post-id' }
@@ -164,109 +257,123 @@ export default function ArticleAudioPlayer({ postId, isStale = false }) {
     setIsPlaying(false)
   }, [playAudio])
 
-  const handleScrub = useCallback((e) => {
+  const seekTo = useCallback((t) => {
     const audio = audioRef.current
     if (!audio) return
-    const nextTime = Number(e.target.value)
-    if (!Number.isFinite(nextTime)) return
-    audio.currentTime = nextTime
-    setCurrentTime(nextTime)
+    const next = Number(t)
+    if (!Number.isFinite(next)) return
+    audio.currentTime = next
+    setCurrentTime(next)
   }, [])
 
-  const handleSpeedChange = useCallback((e) => {
-    const nextRate = Number(e.target.value)
-    if (!Number.isFinite(nextRate)) return
-    setPlaybackRate(nextRate)
+  const skipBy = useCallback((deltaSec) => {
+    const audio = audioRef.current
+    if (!audio) return
+    const dur = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : Infinity
+    const next = Math.min(dur, Math.max(0, (audio.currentTime || 0) + deltaSec))
+    audio.currentTime = next
+    setCurrentTime(next)
+  }, [])
+
+  const cycleSpeed = useCallback(() => {
+    setPlaybackRate((r) => {
+      const idx = SPEED_OPTIONS.indexOf(r)
+      const nextIdx = idx < 0 ? 0 : (idx + 1) % SPEED_OPTIONS.length
+      return SPEED_OPTIONS[nextIdx]
+    })
   }, [])
 
   if (hidden) return null
+
   if (loading) {
     return (
-      <div className="rounded-xl border border-zinc-200 bg-white/80 p-4 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900/70 dark:text-zinc-300">
+      <div className="w-full rounded-lg border-[0.5px] border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
         Loading audio narration...
       </div>
     )
   }
+
   if (!canPlay) return null
 
+  const cardClass =
+    'w-full rounded-lg border-[0.5px] border-emerald-200 bg-emerald-50 px-5 py-4 dark:border-emerald-900 dark:bg-emerald-950/30'
+
   return (
-    <section className="rounded-xl border border-zinc-200 bg-white/90 p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/70">
-      <p className="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-        🎧 AI audio narration
-      </p>
+    <>
+      <section className={cardClass} aria-label="Article audio narration">
+        <audio
+          ref={audioRef}
+          src={signedUrl}
+          preload="none"
+          onTimeUpdate={() => {
+            const audio = audioRef.current
+            if (!audio) return
+            setCurrentTime(audio.currentTime || 0)
+          }}
+          onLoadedMetadata={() => {
+            const audio = audioRef.current
+            if (!audio) return
+            setDuration(audio.duration || 0)
+          }}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onEnded={() => setIsPlaying(false)}
+          onError={() => {
+            void refreshSignedUrl({ retryPlayback: isPlaying || shouldResumePlaybackRef.current })
+          }}
+        />
 
-      <audio
-        ref={audioRef}
-        src={signedUrl}
-        preload="none"
-        onTimeUpdate={() => {
-          const audio = audioRef.current
-          if (!audio) return
-          setCurrentTime(audio.currentTime || 0)
-        }}
-        onLoadedMetadata={() => {
-          const audio = audioRef.current
-          if (!audio) return
-          setDuration(audio.duration || 0)
-        }}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        onEnded={() => setIsPlaying(false)}
-        onError={() => {
-          void refreshSignedUrl({ retryPlayback: isPlaying || shouldResumePlaybackRef.current })
-        }}
-      />
-
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => void togglePlayPause()}
-          className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-          aria-label={isPlaying ? 'Pause narration' : 'Play narration'}
-        >
-          {isPlaying ? 'Pause' : 'Play'}
-        </button>
-
-        <div className="min-w-[10rem] flex-1">
-          <input
-            type="range"
-            min={0}
-            max={progressMax}
-            step="0.1"
-            value={progressValue}
-            onChange={handleScrub}
-            className="h-8 w-full cursor-pointer"
-            aria-label="Audio progress"
-          />
-          <div className="mt-1 flex items-center justify-between text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
-            <span>{formatAudioTime(currentTime)}</span>
-            <span>{formatAudioTime(duration)}</span>
+        <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-3 min-[500px]:grid-cols-[auto_minmax(0,1fr)_auto] min-[500px]:grid-rows-[auto_auto] min-[500px]:items-center min-[500px]:gap-x-4 min-[500px]:gap-y-2">
+          <div className="col-start-1 row-start-1 self-start min-[500px]:row-span-2 min-[500px]:self-center">
+            <BigPlayPauseButton isPlaying={isPlaying} disabled={false} onClick={togglePlayPause} />
+          </div>
+          <div className="col-start-2 row-start-1 flex min-w-0 flex-col gap-0.5 min-[500px]:gap-2">
+            <p className="text-sm font-medium leading-snug text-zinc-900 dark:text-zinc-50">
+              🎧 Listen to this article
+            </p>
+            <p className="text-xs font-normal text-emerald-700 dark:text-emerald-300">{metaLine}</p>
+          </div>
+          <div className="col-span-2 col-start-1 row-start-2 min-w-0 min-[500px]:col-span-1 min-[500px]:col-start-2 min-[500px]:row-start-2">
+            <ScrubberTrack
+              scrubRef={scrubRef}
+              currentTime={currentTime}
+              duration={duration}
+              onSeek={seekTo}
+            />
+          </div>
+          <div className="col-span-2 col-start-1 row-start-3 flex flex-row flex-wrap items-center justify-center gap-2 min-[500px]:col-span-1 min-[500px]:col-start-3 min-[500px]:row-start-1 min-[500px]:row-span-2 min-[500px]:justify-end">
+            <button
+              type="button"
+              onClick={() => skipBy(-15)}
+              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-[0.5px] border-emerald-200 bg-white text-[10px] font-medium text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-800 dark:bg-zinc-950 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+              aria-label="Skip back 15 seconds"
+            >
+              -15
+            </button>
+            <button
+              type="button"
+              onClick={() => skipBy(15)}
+              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-[0.5px] border-emerald-200 bg-white text-[10px] font-medium text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-800 dark:bg-zinc-950 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+              aria-label="Skip forward 15 seconds"
+            >
+              +15
+            </button>
+            <button
+              type="button"
+              onClick={cycleSpeed}
+              className="cursor-pointer rounded-full px-2.5 py-1 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100/80 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+              aria-label={`Playback speed ${playbackRate}x, click to change`}
+            >
+              {playbackRate}x
+            </button>
           </div>
         </div>
-
-        <label className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-zinc-300 bg-white px-2.5 text-sm text-zinc-700 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200">
-          <span className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Speed
-          </span>
-          <select
-            value={playbackRate}
-            onChange={handleSpeedChange}
-            className="bg-transparent py-1 text-sm outline-none"
-            aria-label="Playback speed"
-          >
-            {speedOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}x
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      </section>
       {isStale ? (
         <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
           ⚠️ Audio is from a previous version of this article.
         </p>
       ) : null}
-    </section>
+    </>
   )
 }

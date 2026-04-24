@@ -192,6 +192,15 @@ function PostCard({ post }) {
           >
             {post.title}
           </Link>
+          {post.audio_url ? (
+            <span
+              className="relative z-10 ml-2 text-sm"
+              title="Audio narration available"
+              aria-label="Audio narration available"
+            >
+              🎧
+            </span>
+          ) : null}
         </h3>
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
           <time dateTime={postDisplayTime(post) ?? undefined}>
