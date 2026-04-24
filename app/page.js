@@ -257,9 +257,6 @@ export default function HomePage() {
         ) : (
           <>
             <div className="mb-3">
-              <h2 className="sm:hidden text-lg font-semibold text-zinc-900 dark:text-zinc-100 text-center mb-3">
-                Customize your feed
-              </h2>
               <div className="grid grid-cols-3 gap-1.5 sm:hidden">
                 <FilterDropdown
                   menuId={MENU_SORT}
