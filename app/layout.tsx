@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
-import { Geist, Geist_Mono, Source_Serif_4 } from "next/font/google";
+import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import Script from "next/script";
 import Footer from "@/components/Footer";
 import "./globals.css";
@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const sourceSerif = Source_Serif_4({
+const newsreader = Newsreader({
   subsets: ["latin"],
-  variable: "--font-source-serif",
+  variable: "--font-newsreader",
   display: "swap",
   weight: ["400", "500", "600", "700"],
 });
@@ -68,7 +68,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${sourceSerif.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} h-full antialiased`}
     >
       <head>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
