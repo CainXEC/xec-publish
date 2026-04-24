@@ -776,7 +776,7 @@ export default function PostPageClient({
         onReaderLogoutExtra={handleReaderLogoutExtra}
       />
       <main className="mx-auto w-full max-w-3xl px-4 pt-10 pb-6">
-        <article className="rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <article className="px-0 py-4">
           <h1 className="text-3xl font-semibold leading-tight text-zinc-900 dark:text-zinc-50">
             {post.title}
           </h1>
@@ -1030,7 +1030,7 @@ export default function PostPageClient({
           ) : null}
 
           {showPaywall ? (
-            <section className="mt-10 rounded-xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-700 dark:bg-zinc-950">
+            <section className="mt-10 px-0 py-4">
               {bip21Url ? (
                 <>
                   <button
