@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
 import { encodePostIdOpReturnRaw } from '@/lib/opReturnEncode'
 import { triggerPaymentSuccessEffect } from '@/lib/paymentSuccessEffect'
 import { buildPublishFeeBip21 } from '@/lib/paymentSplit'
@@ -286,21 +285,26 @@ export default function AudioPaywallModal({
           id="audio-paywall-title"
           className="text-lg font-semibold text-zinc-900 dark:text-zinc-50"
         >
-          {mode === 'regenerate'
-            ? 'Regenerate AI audio narration'
-            : 'Add AI audio narration'}
+          {mode === 'regenerate' ? 'Regenerate AI audio' : 'Add AI audio'}
         </h2>
-        <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-          {mode === 'regenerate'
-            ? "You've edited this article. The existing audio is from a previous version. Regenerate the audio now to match your updated post."
-            : 'Generate an AI voice narration of this article. Readers will hear a warm, natural reading of your full post.'}
-          <br />
-          Cost: {audioPriceXec} XEC (based on current article length)
-          <br />
-          {mode === 'regenerate'
-            ? 'One-time payment. The new audio will replace the previous one.'
-            : 'One-time payment. Audio becomes available to readers who unlock your post.'}
-        </p>
+        {mode === 'regenerate' ? (
+          <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+            You&apos;ve edited this article. The existing audio is from a previous version. Regenerate the audio now to
+            match your updated post.
+            <br />
+            Cost: {audioPriceXec} XEC (based on current article length)
+            <br />
+            One-time payment. The new audio will replace the previous one.
+          </p>
+        ) : (
+          <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+            Generate an AI voice narration of this article.
+            <br />
+            Cost: {audioPriceXec.toLocaleString('en-US')} XEC (based on current article length)
+            <br />
+            One-time payment. Audio becomes available to readers who unlock your post.
+          </p>
+        )}
         <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-500">
           ({plainCharCount.toLocaleString('en-US')} characters × {XEC_PER_CHARACTER} XEC = {audioPriceXec.toLocaleString('en-US')} XEC)
         </p>
@@ -327,15 +331,6 @@ export default function AudioPaywallModal({
             </div>
           </div>
         ) : null}
-        <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-500">
-          Don&apos;t have enough XEC?{' '}
-          <Link
-            href="/how-it-works"
-            className="font-medium text-emerald-700 underline hover:text-emerald-800 dark:text-emerald-400"
-          >
-            Get eCash
-          </Link>
-        </p>
         <div className="mt-6 flex flex-row items-center gap-2 whitespace-nowrap">
           <button
             type="button"
