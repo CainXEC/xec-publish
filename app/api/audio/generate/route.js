@@ -258,51 +258,70 @@ export async function POST(request) {
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   console.log(`${LOG_PREFIX} tts chunks`, { postId, chunkCount: chunks.length, ttsChars: ttsInput.length })
   const ttsStartedAt = Date.now()
-  const buffers = []
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i]
-    const chunkStartedAt = Date.now()
-    console.log(`${LOG_PREFIX} openai tts chunk start`, {
+  let chunkResults
+  try {
+    chunkResults = await Promise.all(
+      chunks.map(async (chunk, i) => {
+        const chunkStart = Date.now()
+        console.log(`${LOG_PREFIX} openai tts chunk start`, {
+          postId,
+          chunkIndex: i,
+          chunkChars: chunk.length,
+        })
+        try {
+          const mp3Response = await openai.audio.speech.create({
+            model: TTS_MODEL,
+            voice: TTS_VOICE,
+            input: chunk,
+            instructions: TTS_INSTRUCTIONS,
+            response_format: 'mp3',
+          })
+          const buffer = Buffer.from(await mp3Response.arrayBuffer())
+          const chunkElapsedMs = Date.now() - chunkStart
+          console.log(
+            `[audio-gen] chunk ${i + 1}/${chunks.length} took ${chunkElapsedMs}ms`,
+          )
+          console.log(`${LOG_PREFIX} openai tts chunk success`, {
+            postId,
+            chunkIndex: i,
+            elapsedMs: chunkElapsedMs,
+            bytes: buffer.length,
+          })
+          return { index: i, buffer, elapsedMs: chunkElapsedMs }
+        } catch (error) {
+          console.error(
+            `[audio-gen] chunk ${i + 1}/${chunks.length} failed`,
+            error,
+          )
+          const wrapped = new Error(
+            error?.message || 'OpenAI speech generation failed',
+          )
+          wrapped.chunkIndex = i
+          wrapped.cause = error
+          throw wrapped
+        }
+      }),
+    )
+  } catch (err) {
+    const chunkIdx = typeof err.chunkIndex === 'number' ? err.chunkIndex : null
+    console.error(`${LOG_PREFIX} openai tts chunk failed`, {
       postId,
-      chunkIndex: i,
-      chunkChars: chunk.length,
+      chunkIndex: chunkIdx,
+      chunkCount: chunks.length,
+      message: err?.message,
     })
-    try {
-      const mp3 = await openai.audio.speech.create({
-        model: TTS_MODEL,
-        voice: TTS_VOICE,
-        input: chunk,
-        instructions: TTS_INSTRUCTIONS,
-        response_format: 'mp3',
-      })
-      const buf = Buffer.from(await mp3.arrayBuffer())
-      buffers.push(buf)
-      console.log(`${LOG_PREFIX} openai tts chunk success`, {
-        postId,
-        chunkIndex: i,
-        elapsedMs: Date.now() - chunkStartedAt,
-        bytes: buf.length,
-      })
-    } catch (err) {
-      console.error(`${LOG_PREFIX} openai tts chunk failed`, {
-        postId,
-        chunkIndex: i,
-        chunkCount: chunks.length,
-        message: err?.message,
-      })
-      return NextResponse.json(
-        {
-          error: 'audio_generation_failed',
-          detail: `TTS failed on chunk ${i + 1} of ${chunks.length}: ${err?.message || 'OpenAI speech generation failed'}`,
-        },
-        { status: 500 },
-      )
-    }
+    const detail =
+      chunkIdx != null
+        ? `TTS failed on chunk ${chunkIdx + 1} of ${chunks.length}: ${err?.message || 'OpenAI speech generation failed'}`
+        : `TTS failed: ${err?.message || 'OpenAI speech generation failed'}`
+    return NextResponse.json({ error: 'audio_generation_failed', detail }, { status: 500 })
   }
-  const audioBuffer = Buffer.concat(buffers)
+  const allBuffers = chunkResults.map((r) => r.buffer)
+  const audioBuffer = Buffer.concat(allBuffers)
   console.log(`${LOG_PREFIX} openai tts all chunks done`, {
     postId,
     chunkCount: chunks.length,
+    parallelism: chunks.length,
     totalMs: Date.now() - ttsStartedAt,
     totalBytes: audioBuffer.length,
   })
