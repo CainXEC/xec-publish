@@ -60,33 +60,39 @@ function ScrubberTrack({
     onSeek(ratio * safeDur)
   }
 
+  const timeLabel = `${formatAudioTime(currentTime)} / ${formatAudioTime(safeDur > 0 ? duration : 0)}`
+
   return (
     <div className="w-full">
-      <div
-        ref={scrubRef}
-        role="slider"
-        tabIndex={0}
-        aria-valuemin={0}
-        aria-valuemax={Math.round(safeDur)}
-        aria-valuenow={Math.round(currentTime)}
-        aria-label="Audio progress"
-        onClick={(e) => seekFromEvent(e.clientX)}
-        onKeyDown={(e) => {
-          if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
-          e.preventDefault()
-          const delta = e.key === 'ArrowLeft' ? -5 : 5
-          onSeek(Math.min(safeDur, Math.max(0, currentTime + delta)))
-        }}
-        className="relative h-1 w-full cursor-pointer rounded-full bg-emerald-200 dark:bg-emerald-900"
-      >
+      <div className="flex flex-col items-stretch gap-1 min-[420px]:flex-row min-[420px]:items-center min-[420px]:gap-2">
         <div
-          className="pointer-events-none absolute inset-y-0 left-0 rounded-full bg-emerald-600 dark:bg-emerald-500"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <div className="mt-1 flex items-center justify-between text-xs tabular-nums text-emerald-700 dark:text-emerald-300">
-        <span>{formatAudioTime(currentTime)}</span>
-        <span>{formatAudioTime(safeDur > 0 ? duration : 0)}</span>
+          ref={scrubRef}
+          role="slider"
+          tabIndex={0}
+          aria-valuemin={0}
+          aria-valuemax={Math.round(safeDur)}
+          aria-valuenow={Math.round(currentTime)}
+          aria-label="Audio progress"
+          onClick={(e) => seekFromEvent(e.clientX)}
+          onKeyDown={(e) => {
+            if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+            e.preventDefault()
+            const delta = e.key === 'ArrowLeft' ? -5 : 5
+            onSeek(Math.min(safeDur, Math.max(0, currentTime + delta)))
+          }}
+          className="relative h-1 w-full min-w-0 cursor-pointer rounded-full bg-zinc-200 dark:bg-zinc-800 min-[420px]:flex-1"
+        >
+          <div
+            className="pointer-events-none absolute inset-y-0 left-0 rounded-full bg-emerald-600 dark:bg-emerald-500"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <span
+          className="shrink-0 self-end text-xs tabular-nums text-zinc-600 dark:text-zinc-400 min-[420px]:self-auto"
+          aria-live="polite"
+        >
+          {timeLabel}
+        </span>
       </div>
     </div>
   )
@@ -287,7 +293,7 @@ export default function ArticleAudioPlayer({
 
   if (loading) {
     return (
-      <div className="w-full rounded-lg border-[0.5px] border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+      <div className="w-full rounded-lg border-[0.5px] border-zinc-200 bg-zinc-100 px-5 py-4 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
         Loading audio narration...
       </div>
     )
@@ -296,7 +302,7 @@ export default function ArticleAudioPlayer({
   if (!canPlay) return null
 
   const cardClass =
-    'w-full rounded-lg border-[0.5px] border-emerald-200 bg-emerald-50 px-5 py-4 dark:border-emerald-900 dark:bg-emerald-950/30'
+    'w-full rounded-lg border-[0.5px] border-zinc-200 bg-zinc-100 px-5 py-4 dark:border-zinc-800 dark:bg-zinc-900'
 
   return (
     <>
@@ -331,7 +337,7 @@ export default function ArticleAudioPlayer({
             <p className="text-sm font-medium leading-snug text-zinc-900 dark:text-zinc-50">
               🎧 Listen to this article
             </p>
-            <p className="text-xs font-normal text-emerald-700 dark:text-emerald-300">{metaLine}</p>
+            <p className="text-xs font-normal text-zinc-600 dark:text-zinc-400">{metaLine}</p>
           </div>
           <div className="col-span-2 col-start-1 row-start-2 min-w-0 min-[500px]:col-span-1 min-[500px]:col-start-2 min-[500px]:row-start-2">
             <ScrubberTrack
@@ -345,7 +351,7 @@ export default function ArticleAudioPlayer({
             <button
               type="button"
               onClick={() => skipBy(-15)}
-              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-[0.5px] border-emerald-200 bg-white text-[10px] font-medium text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-800 dark:bg-zinc-950 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-[0.5px] border-zinc-200 bg-white text-[10px] font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-800/60"
               aria-label="Skip back 15 seconds"
             >
               -15
@@ -353,7 +359,7 @@ export default function ArticleAudioPlayer({
             <button
               type="button"
               onClick={() => skipBy(15)}
-              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-[0.5px] border-emerald-200 bg-white text-[10px] font-medium text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-800 dark:bg-zinc-950 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-[0.5px] border-zinc-200 bg-white text-[10px] font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-800/60"
               aria-label="Skip forward 15 seconds"
             >
               +15
