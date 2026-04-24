@@ -73,8 +73,8 @@ const heroHeadlineWordmarkStyle = {
 }
 
 const heroSteps = [
-  { n: '1', label: 'Write story' },
-  { n: '2', label: 'Set price' },
+  { n: '1', label: 'Write a story' },
+  { n: '2', label: 'Set your price' },
   { n: '3', label: 'Readers unlock' },
 ]
 
