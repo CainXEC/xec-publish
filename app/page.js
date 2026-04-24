@@ -72,12 +72,6 @@ const heroHeadlineWordmarkStyle = {
   fontWeight: 500,
 }
 
-const heroSteps = [
-  { n: '1', label: 'Write a story' },
-  { n: '2', label: 'Set your price' },
-  { n: '3', label: 'Readers unlock' },
-]
-
 export default function HomePage() {
   const [posts, setPosts] = useState([])
   const [sortMode, setSortMode] = useState('earned')
@@ -240,18 +234,6 @@ export default function HomePage() {
             <br />
             to unlock your story.
           </h1>
-          <div className="mt-4 flex items-center justify-center gap-2 sm:gap-6">
-            {heroSteps.map((step) => (
-              <div key={step.n} className="flex items-center gap-1.5 sm:gap-2">
-                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-zinc-900 text-[11px] font-medium text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 sm:h-7 sm:w-7 sm:text-[13px]">
-                  {step.n}
-                </span>
-                <span className="text-xs font-normal whitespace-nowrap text-zinc-600 dark:text-zinc-400 sm:text-[15px]">
-                  {step.label}
-                </span>
-              </div>
-            ))}
-          </div>
           <div className="mt-6 flex flex-wrap justify-center gap-2.5">
             <Link
               href={authorLoggedIn ? '/dashboard' : '/login'}
