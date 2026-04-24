@@ -253,7 +253,7 @@ export default function PublishPaywallModal({
       aria-modal="true"
       aria-labelledby="publish-paywall-title"
     >
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+      <div className="max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
         <h2
           id="publish-paywall-title"
           className="text-lg font-semibold text-zinc-900 dark:text-zinc-50"
@@ -261,7 +261,11 @@ export default function PublishPaywallModal({
           Pay to publish
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-          Publishing costs 100 XEC. This helps prevent spam and keeps the platform sustainable.
+          Publishing costs 100 XEC to help prevent
+          <span className="hidden sm:inline">
+            <br />
+          </span>{' '}
+          spam and keep the platform sustainable.
         </p>
         {!platformAddressForLatestTx ? (
           <p className="mt-4 text-sm text-red-600 dark:text-red-400" role="alert">
