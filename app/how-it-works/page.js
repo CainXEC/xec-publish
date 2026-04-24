@@ -32,11 +32,11 @@ const readersSteps = [
 const readerFaqItems = [
   {
     q: 'What is eCash (XEC)?',
-    a: 'eCash is a fast, low-fee digital cash. Its ticker is XEC. On Proof of Writing, readers send small amounts of XEC to writers to unlock their stories. Transactions confirm in seconds and cost a fraction of a cent.',
+    a: 'eCash is cash for the internet. A decentralized form of electronic cash that is near instant, with low-fees, and censorship resistant. Its ticker is XEC. On Proof of Writing, readers send XEC to writers to unlock their stories in mere seconds.',
   },
   {
     q: 'How do I unlock an article?',
-    a: 'Click the pay button on any article and your Cashtab wallet will open with the payment pre-filled. Once you confirm the transaction, the article unlocks automatically within a few seconds.',
+    a: 'Click the pay button on any article and your Cashtab wallet will open automatically with the payment pre-filled. Assuming you have enough funds, confirm the transaction and you will be redirected to the article and watch as it unlocks within a few seconds.',
   },
   {
     q: "What's the minimum unlock price?",
@@ -56,7 +56,7 @@ const readerFaqItems = [
   },
   {
     q: 'Why eCash and not Bitcoin or a stablecoin?',
-    a: 'eCash is fast (1-second confirmations) and cheap (sub-cent fees), which makes microtransactions practical. Most other chains either cost too much or settle too slowly for unlocking a 50-cent article.',
+    a: 'eCash was seen to have the best infrastructure and roadmap to support a project like Proof of Writing. No other chain comes close.',
   },
   {
     q: "I paid but the article didn't unlock — what do I do?",
@@ -64,7 +64,7 @@ const readerFaqItems = [
   },
   {
     q: 'Is my personal information safe?',
-    a: "Readers don't need an account or any personal information. You only need a wallet.",
+    a: "Readers don't need a traditional account that requires you to reveal any personal information. You only need a wallet.",
   },
 ]
 
