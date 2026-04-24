@@ -193,49 +193,59 @@ export default function HowItWorksPage() {
           </p>
         </header>
 
-        <section className="mt-12">
+        <section className="mt-6">
           <h2
             className="text-[28px] text-zinc-900 dark:text-zinc-50"
             style={{ fontFamily: WORDMARK_FONT_FAMILY, fontWeight: 500, lineHeight: 1.1 }}
           >
             For readers
           </h2>
-          <div className="mt-4 flex flex-col gap-4">
+          <div className="mt-6 flex flex-col gap-4">
             {readersSteps.map((step) => (
               <StepCard key={step.num} step={step} />
             ))}
           </div>
         </section>
 
-        <section className="mt-12">
-          <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">Reader FAQ</h3>
-          <div className="mt-4">
+        <section className="mt-6">
+          <h2
+            className="text-[28px] text-zinc-900 dark:text-zinc-50"
+            style={{ fontFamily: WORDMARK_FONT_FAMILY, fontWeight: 500, lineHeight: 1.1 }}
+          >
+            Reader FAQ
+          </h2>
+          <div className="mt-6">
             <FaqList items={readerFaqItems} />
           </div>
         </section>
 
-        <section className="mt-12">
+        <section className="mt-6">
           <h2
             className="text-[28px] text-zinc-900 dark:text-zinc-50"
             style={{ fontFamily: WORDMARK_FONT_FAMILY, fontWeight: 500, lineHeight: 1.1 }}
           >
             For writers
           </h2>
-          <div className="mt-4 flex flex-col gap-4">
+          <div className="mt-6 flex flex-col gap-4">
             {writerSteps.map((step) => (
               <StepCard key={step.num} step={step} />
             ))}
           </div>
         </section>
 
-        <section className="mt-12">
-          <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">Writer FAQ</h3>
-          <div className="mt-4">
+        <section className="mt-6">
+          <h2
+            className="text-[28px] text-zinc-900 dark:text-zinc-50"
+            style={{ fontFamily: WORDMARK_FONT_FAMILY, fontWeight: 500, lineHeight: 1.1 }}
+          >
+            Writer FAQ
+          </h2>
+          <div className="mt-6">
             <FaqList items={writerFaqItems} />
           </div>
         </section>
 
-        <section className="mt-12 rounded-md bg-zinc-100 px-6 py-6 text-center dark:bg-zinc-900/80">
+        <section className="mt-6 rounded-md bg-zinc-100 px-6 py-6 text-center dark:bg-zinc-900/80">
           <h3 className="text-base font-medium text-zinc-900 dark:text-zinc-100">Still need help?</h3>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
             Reach us on{' '}
