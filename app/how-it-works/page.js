@@ -84,7 +84,7 @@ const writerSteps = [
   {
     num: '03',
     title: 'Publish and set your price',
-    body: 'Write your post, set an unlock price (minimum 100 XEC), and publish. Readers send XEC to unlock. You keep 94% of every payment.',
+    body: 'Write your post, set an unlock price and publish by paying 100 XEC (100 XEC payment is to limit spam on the platform). Readers send XEC to unlock. You keep 94% of every payment.',
   },
 ]
 
