@@ -35,7 +35,7 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
   const [sortMode, setSortMode] = useState('earned')
-  const [timeFilter, setTimeFilter] = useState('24h')
+  const [timeFilter, setTimeFilter] = useState('all')
   const [openMenu, setOpenMenu] = useState(/** @type {string | null} */ (null))
   /** `null` = loading or failed to load (show —). */
   const [platformStats, setPlatformStats] = useState(null)
