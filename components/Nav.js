@@ -601,7 +601,7 @@ export default function Nav({
                   handleReaderLogin()
                 }}
                 disabled={readerLoginBusy}
-                className="h-11 w-full rounded-lg border border-emerald-300 bg-emerald-50 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950"
+                className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-emerald-300 bg-emerald-50 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950"
               >
                 {readerLoginBusy ? 'Waiting for payment...' : 'Connect reader wallet'}
               </button>
@@ -614,7 +614,7 @@ export default function Nav({
                   void handleAuthorLogout()
                   closeMobileNav()
                 }}
-                className="block h-11 w-full rounded-md bg-black text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
+                className="inline-flex h-11 w-full items-center justify-center rounded-md bg-black text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
               >
                 Logout
               </button>
@@ -622,7 +622,7 @@ export default function Nav({
               <Link
                 href="/dashboard"
                 onClick={closeMobileNav}
-                className="block h-11 rounded-md bg-black text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
+                className="inline-flex h-11 w-full items-center justify-center rounded-md bg-black text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
               >
                 Dashboard
               </Link>
@@ -630,7 +630,7 @@ export default function Nav({
               <Link
                 href="/login"
                 onClick={closeMobileNav}
-                className="block h-11 rounded-md bg-black text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
+                className="inline-flex h-11 w-full items-center justify-center rounded-md bg-black text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
               >
                 Start writing
               </Link>
