@@ -758,7 +758,7 @@ export default function PostPageClient({
       />
       <main className="mx-auto w-full max-w-3xl px-4 pt-4 pb-6">
         <article className="px-0 py-4">
-          <h1 className="text-3xl font-semibold leading-tight text-zinc-900 dark:text-zinc-50">
+          <h1 className="font-article-title text-3xl font-semibold leading-tight text-zinc-900 dark:text-zinc-50">
             {post.title}
           </h1>
           <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">

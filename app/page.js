@@ -377,7 +377,7 @@ export default function HomePage() {
                       return (
                         <li key={post.id}>
                           <div className="relative block cursor-pointer overflow-hidden rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-[box-shadow,border-color] duration-200 hover:border-zinc-400 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-500 dark:hover:shadow-lg/20">
-                            <h3 className="text-xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+                            <h3 className="font-article-title text-xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
                               <Link
                                 prefetch={false}
                                 href={postHref}

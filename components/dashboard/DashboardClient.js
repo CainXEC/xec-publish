@@ -164,12 +164,12 @@ function DashboardPostCard({ post, deletingId, onDelete }) {
                 href={publicHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-w-0 text-base font-medium text-emerald-700 underline-offset-2 hover:text-emerald-600 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
+                className="font-article-title min-w-0 text-base font-medium text-emerald-700 underline-offset-2 hover:text-emerald-600 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
               >
                 {post.title ?? 'Untitled post'}
               </Link>
             ) : (
-              <p className="min-w-0 text-base font-medium text-zinc-900 dark:text-zinc-50">
+              <p className="font-article-title min-w-0 text-base font-medium text-zinc-900 dark:text-zinc-50">
                 {post.title ?? 'Untitled post'}
               </p>
             )}

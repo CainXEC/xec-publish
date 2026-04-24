@@ -24,6 +24,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
+.font-article-title {
+  font-family: var(--font-source-serif), Georgia, serif;
+}
+
 html,
 body {
   overscroll-behavior-y: none;
