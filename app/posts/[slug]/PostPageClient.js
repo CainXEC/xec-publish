@@ -775,7 +775,7 @@ export default function PostPageClient({
         onReaderWalletSynced={handleReaderWalletSynced}
         onReaderLogoutExtra={handleReaderLogoutExtra}
       />
-      <main className="mx-auto w-full max-w-3xl px-4 pt-10 pb-6">
+      <main className="mx-auto w-full max-w-3xl px-4 pt-4 pb-6">
         <article className="px-0 py-4">
           <h1 className="text-3xl font-semibold leading-tight text-zinc-900 dark:text-zinc-50">
             {post.title}
@@ -1030,7 +1030,7 @@ export default function PostPageClient({
           ) : null}
 
           {showPaywall ? (
-            <section className="mt-10 px-0 py-4">
+            <section className="mt-4 px-0 py-4">
               {bip21Url ? (
                 <>
                   <button
