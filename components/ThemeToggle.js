@@ -17,6 +17,7 @@ export default function ThemeToggle() {
     } catch {
       /* ignore */
     }
+    document.cookie = `theme=${next ? 'dark' : 'light'}; path=/; max-age=31536000; samesite=lax`
     setIsDark(next)
   }, [])
 
