@@ -198,7 +198,7 @@ function DashboardPostCard({ post, deletingId, onDelete, onOpenAudioModal }) {
               onClick={() => onOpenAudioModal(post, 'add')}
               className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
-              Add audio narration{' '}
+              Add audio{' '}
               <span className="text-zinc-500 dark:text-zinc-400">(~{audioPriceXec} XEC)</span>
             </button>
           ) : isAudioStale ? (
@@ -217,7 +217,7 @@ function DashboardPostCard({ post, deletingId, onDelete, onOpenAudioModal }) {
             </div>
           ) : (
             <span className="inline-flex items-center rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
-              🎧 Has audio narration ✓
+              🎧 Has audio ✓
             </span>
           )}
           {!post.published ? (
