@@ -426,7 +426,7 @@ export default function Nav({
     ) : null
 
   const readerWalletConnectedBar = readerWalletAddress ? (
-    <div className="flex flex-nowrap items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
+    <div className="flex h-9 flex-nowrap items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-xs font-medium whitespace-nowrap text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
       <span
         className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
         aria-hidden
@@ -455,7 +455,7 @@ export default function Nav({
       type="button"
       onClick={handleReaderLogin}
       disabled={readerLoginBusy}
-      className="inline-flex min-h-[2.5rem] shrink-0 items-center justify-center rounded-md border border-zinc-300 bg-transparent px-[18px] py-2.5 text-sm font-semibold text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-600 dark:text-zinc-200 dark:hover:border-zinc-500 dark:hover:bg-zinc-900"
+      className="inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 bg-transparent px-4 text-sm font-semibold text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-600 dark:text-zinc-200 dark:hover:border-zinc-500 dark:hover:bg-zinc-900"
     >
       {readerLoginBusy ? 'Waiting for payment...' : 'Reader Login'}
     </button>
@@ -466,21 +466,21 @@ export default function Nav({
       <button
         type="button"
         onClick={() => void handleAuthorLogout()}
-        className="inline-flex items-center justify-center rounded-md bg-black px-[18px] py-2.5 text-sm font-medium whitespace-nowrap text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+        className="inline-flex h-9 items-center justify-center rounded-md bg-black px-4 text-sm font-medium whitespace-nowrap text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
       >
         Logout
       </button>
     ) : authorLoggedIn ? (
       <Link
         href="/dashboard"
-        className="inline-flex items-center justify-center rounded-md bg-black px-[18px] py-2.5 text-sm font-medium whitespace-nowrap text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+        className="inline-flex h-9 items-center justify-center rounded-md bg-black px-4 text-sm font-medium whitespace-nowrap text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
       >
         Dashboard
       </Link>
     ) : (
       <Link
         href="/login"
-        className="inline-flex items-center justify-center rounded-md bg-black px-[18px] py-2.5 text-sm font-medium whitespace-nowrap text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+        className="inline-flex h-9 items-center justify-center rounded-md bg-black px-4 text-sm font-medium whitespace-nowrap text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
       >
         Start writing
       </Link>
@@ -491,7 +491,8 @@ export default function Nav({
       ref={mobileNavRef}
       className="sticky top-0 z-30 border-b-[0.5px] border-zinc-200 bg-white/90 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90"
     >
-        <div className="relative mx-auto grid min-h-14 max-w-5xl grid-cols-[auto_1fr_auto] items-center px-4 sm:flex sm:items-center sm:gap-3 sm:px-6">
+        <div className="relative mx-auto max-w-5xl px-4 sm:px-6">
+          <div className="grid min-h-14 grid-cols-[auto_1fr_auto] items-center sm:hidden">
           <button
             type="button"
             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white text-lg leading-none text-zinc-800 transition hover:bg-zinc-50 sm:hidden dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
@@ -510,15 +511,19 @@ export default function Nav({
           <div className="justify-self-end sm:hidden">
             <ThemeToggle />
           </div>
+          </div>
 
-          <div className="hidden min-w-0 flex-1 items-center justify-end overflow-x-auto sm:flex">
-            <div className="flex shrink-0 flex-nowrap items-center justify-end">
-              <div className="ml-3 flex shrink-0 items-center gap-1.5">
+          <div className="hidden min-h-14 grid-cols-[1fr_auto_1fr] items-center gap-4 sm:grid">
+            <div className="flex min-w-0 items-center justify-start gap-2">
+              <div className="shrink-0">{authorCtaMarketingSolid}</div>
+              <div className="shrink-0">{readerBlockMarketingDesktop}</div>
+            </div>
+            <div className="flex min-w-0 items-center justify-center">
+              {navLogo}
+            </div>
+            <div className="flex min-w-0 items-center justify-end gap-1.5">
                 {desktopSearch}
                 <ThemeToggle />
-              </div>
-              <div className="ml-2.5 shrink-0">{readerBlockMarketingDesktop}</div>
-              <div className="ml-2 shrink-0">{authorCtaMarketingSolid}</div>
             </div>
           </div>
         </div>
