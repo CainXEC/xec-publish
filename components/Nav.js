@@ -556,7 +556,7 @@ export default function Nav({
                   onChange={(e) => onPostSearchChange(e.target.value)}
                   placeholder="Search posts..."
                   autoComplete="off"
-                  className={`h-10 w-full ${searchInputClassName}`}
+                  className={`h-11 w-full ${searchInputClassName}`}
                 />
                 {postSearchQuery ? (
                   <button
@@ -583,7 +583,7 @@ export default function Nav({
                   closeMobileNav()
                 }}
                 title={readerWalletAddress}
-                className="flex w-full flex-nowrap items-center justify-between gap-2 whitespace-nowrap rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-left text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/50"
+                className="flex h-11 w-full flex-nowrap items-center justify-between gap-2 whitespace-nowrap rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-left text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/50"
               >
                 <span
                   className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
@@ -601,7 +601,7 @@ export default function Nav({
                   handleReaderLogin()
                 }}
                 disabled={readerLoginBusy}
-                className="w-full rounded-lg border border-emerald-300 bg-emerald-50 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950"
+                className="h-11 w-full rounded-lg border border-emerald-300 bg-emerald-50 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950"
               >
                 {readerLoginBusy ? 'Waiting for payment...' : 'Connect reader wallet'}
               </button>
@@ -614,7 +614,7 @@ export default function Nav({
                   void handleAuthorLogout()
                   closeMobileNav()
                 }}
-                className="block w-full rounded-md bg-black py-2.5 text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
+                className="block h-11 w-full rounded-md bg-black text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
               >
                 Logout
               </button>
@@ -622,7 +622,7 @@ export default function Nav({
               <Link
                 href="/dashboard"
                 onClick={closeMobileNav}
-                className="block rounded-md bg-black py-2.5 text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
+                className="block h-11 rounded-md bg-black text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
               >
                 Dashboard
               </Link>
@@ -630,7 +630,7 @@ export default function Nav({
               <Link
                 href="/login"
                 onClick={closeMobileNav}
-                className="block rounded-md bg-black py-2.5 text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
+                className="block h-11 rounded-md bg-black text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
               >
                 Start writing
               </Link>
