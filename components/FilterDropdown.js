@@ -243,7 +243,7 @@ export default function FilterDropdown({
                 type="button"
                 role="option"
                 aria-selected={selectedHere}
-                className={`flex w-full items-center px-3 py-2 text-left text-xs sm:text-sm ${
+                className={`flex w-full items-center px-3 py-2 text-left text-xs focus:outline-none focus-visible:bg-emerald-50 sm:text-sm dark:focus-visible:bg-emerald-900/30 ${
                   selectedHere
                     ? 'bg-emerald-50 font-medium text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-100'
                     : 'text-zinc-800 hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800'
