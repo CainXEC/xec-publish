@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { encodePostIdOpReturnRaw } from '@/lib/opReturnEncode'
+import { triggerPaymentSuccessEffect } from '@/lib/paymentSuccessEffect'
 import { buildPublishFeeBip21 } from '@/lib/paymentSplit'
+import {
+  getSharedAudioContext,
+  primeAudioContextOnUserGesture,
+} from '@/lib/webAudioUnlock'
 
 const PUBLISH_FEE_XEC = 100
 
@@ -17,6 +22,7 @@ export default function PublishPaywallModal({
   const pollRef = useRef(null)
   const baselineTxidRef = useRef('')
   const lastHandledTxidRef = useRef('')
+  const publishAudioContextRef = useRef(null)
   const onPaymentConfirmedRef = useRef(onPaymentConfirmed)
 
   useEffect(() => {
@@ -136,6 +142,7 @@ export default function PublishPaywallModal({
           setPayError(null)
           try {
             await Promise.resolve(onPaymentConfirmedRef.current?.())
+            triggerPaymentSuccessEffect(publishAudioContextRef.current ?? undefined)
           } catch (err) {
             const msg = err instanceof Error ? err.message : 'Could not complete publish.'
             setPayError(msg)
@@ -201,6 +208,13 @@ export default function PublishPaywallModal({
         'Publishing is temporarily unavailable, please contact support.',
       )
       return
+    }
+    if (typeof window !== 'undefined') {
+      const ctx = getSharedAudioContext()
+      publishAudioContextRef.current = ctx
+      if (ctx) {
+        void primeAudioContextOnUserGesture(ctx)
+      }
     }
     openPublishCashtab(publishFeeCashtabUrl)
     startPublishFeePolling()

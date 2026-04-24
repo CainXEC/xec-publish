@@ -6,10 +6,10 @@ import Nav from '@/components/Nav'
 import { charCounterClassName } from '@/lib/charCounterClassName'
 import { encodePostIdOpReturnRaw } from '@/lib/opReturnEncode'
 import { buildPaywallBip21, computePaymentSplit } from '@/lib/paymentSplit'
+import { triggerPaymentSuccessEffect } from '@/lib/paymentSuccessEffect'
 import {
   ensureAudioContextRunning,
   getSharedAudioContext,
-  playSuccessChime,
   primeAudioContextOnUserGesture,
 } from '@/lib/webAudioUnlock'
 import { sanitizePostBodyHtml } from '@/lib/sanitizePostBodyHtml'
@@ -66,7 +66,6 @@ export default function PostPageClient({
   const payLastHandledTxidRef = useRef('')
   /** Shared AudioContext, primed on Pay click (user gesture) for mobile unlock sound after async verify. */
   const unlockAudioContextRef = useRef(null)
-  const unlockFlashTimeoutRef = useRef(null)
 
   const [commentCount, setCommentCount] = useState(initialCommentCount)
   const [unlockCount, setUnlockCount] = useState(initialUnlockCount)
@@ -81,7 +80,6 @@ export default function PostPageClient({
   const [copiedShareLink, setCopiedShareLink] = useState(false)
   const [isAuthorSession, setIsAuthorSession] = useState(false)
   const [authorAccessToken, setAuthorAccessToken] = useState('')
-  const [showUnlockFlash, setShowUnlockFlash] = useState(false)
   const [readerWalletAddress, setReaderWalletAddress] = useState('')
   const [isFollowingAuthor, setIsFollowingAuthor] = useState(false)
   const [followAuthorBusy, setFollowAuthorBusy] = useState(false)
@@ -231,20 +229,7 @@ export default function PostPageClient({
   }, [])
 
   const triggerPaywallUnlockEffect = useCallback(() => {
-    setShowUnlockFlash(true)
-    if (typeof window !== 'undefined') {
-      const ctx = unlockAudioContextRef.current ?? getSharedAudioContext()
-      playSuccessChime(ctx)
-    }
-    if (typeof window !== 'undefined') {
-      if (unlockFlashTimeoutRef.current) {
-        clearTimeout(unlockFlashTimeoutRef.current)
-      }
-      unlockFlashTimeoutRef.current = window.setTimeout(() => {
-        unlockFlashTimeoutRef.current = null
-        setShowUnlockFlash(false)
-      }, 800)
-    }
+    triggerPaymentSuccessEffect(unlockAudioContextRef.current ?? undefined)
   }, [])
 
   const checkUnlock = useCallback(async (postId, walletAddress) => {
@@ -465,10 +450,6 @@ export default function PostPageClient({
       if (payTxPollRef.current) {
         clearInterval(payTxPollRef.current)
         payTxPollRef.current = null
-      }
-      if (unlockFlashTimeoutRef.current) {
-        clearTimeout(unlockFlashTimeoutRef.current)
-        unlockFlashTimeoutRef.current = null
       }
     }
   }, [])
@@ -1072,9 +1053,6 @@ export default function PostPageClient({
           ) : null}
         </article>
       </main>
-      {showUnlockFlash ? (
-        <div className="post-unlock-flash-overlay" aria-hidden />
-      ) : null}
     </div>
   )
 }
