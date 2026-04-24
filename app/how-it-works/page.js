@@ -25,7 +25,7 @@ const readersSteps = [
   {
     num: '03',
     title: 'Come back and unlock',
-    body: "Open any article on Proof of Writing, use the pay button to send the payment from your wallet, and the full story unlocks automatically after a few seconds. You can also click Reader login to send a dust transaction from your wallet so the site remembers which articles you've already unlocked.",
+    body: "Open any article on Proof of Writing, use the pay button to send the payment from your wallet, and the full story unlocks after a few seconds. When you unlock an article it automatically logs you in as a reader, but you can also login by sending a dust transaction from your wallet and the site will remember which articles you've already unlocked.",
   },
 ]
 
@@ -77,7 +77,9 @@ const writerSteps = [
   {
     num: '02',
     title: 'Set your wallet for payouts',
-    body: 'Add your XEC wallet address in your profile settings. This is where every unlock payment goes — directly, instantly, no platform middleman.',
+    body: "Add your XEC wallet address in your profile settings. This is where all your payments are sent. If you don't have an XEC wallet address create a Cashtab wallet in seconds.",
+    linkHref: 'https://cashtab.com',
+    linkLabel: 'Get Cashtab wallet →',
   },
   {
     num: '03',
