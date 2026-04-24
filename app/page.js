@@ -295,8 +295,8 @@ export default function HomePage() {
                 />
               </div>
               <div className="hidden items-center justify-between gap-4 sm:flex">
-                <h2 className="font-article-title text-lg font-semibold tracking-tight text-zinc-900 sm:pl-6 sm:text-3xl dark:text-zinc-50">
-                  Published articles
+                <h2 className="font-article-title text-lg font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
+                  Latest stories...
                 </h2>
                 <div className="flex shrink-0 items-center gap-1.5">
                   <FilterDropdown
