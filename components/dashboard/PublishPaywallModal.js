@@ -253,7 +253,7 @@ export default function PublishPaywallModal({
       aria-modal="true"
       aria-labelledby="publish-paywall-title"
     >
-      <div className="max-h-[90vh] w-full max-w-[20.5rem] sm:max-w-[19.875rem] overflow-y-auto rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+      <div className="max-h-[90vh] w-full max-w-[20.5rem] sm:max-w-[26.5rem] overflow-y-auto rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
         <h2
           id="publish-paywall-title"
           className="text-lg font-semibold text-zinc-900 dark:text-zinc-50"
@@ -286,7 +286,7 @@ export default function PublishPaywallModal({
             Get eCash
           </Link>
         </p>
-        <div className="mt-6 flex flex-wrap gap-2">
+        <div className="mt-6 flex flex-row items-center gap-2 flex-wrap min-[360px]:flex-nowrap">
           <button
             type="button"
             onClick={handlePublishPaywallPay}
