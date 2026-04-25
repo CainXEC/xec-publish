@@ -141,3 +141,19 @@ body {
 .rich-text-editor .tiptap u {
   text-decoration: underline;
 }
+
+/* Hero typewriter: terminal-style cursor blink (~0.53s on / 0.53s off) */
+@keyframes blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-blink {
+  animation: blink 1.06s step-end infinite;
+}

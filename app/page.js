@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import FilterDropdown from '@/components/FilterDropdown'
+import HeroHeadline from '@/components/HeroHeadline'
 import Nav from '@/components/Nav'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { supabase } from '@/lib/supabase-browser'
@@ -225,15 +226,7 @@ export default function HomePage() {
 
       <main className="mx-auto max-w-5xl px-4 pt-6 pb-6 sm:px-6 sm:pb-6">
         <section className="mb-6 mx-auto w-full text-center" aria-labelledby="home-hero-heading">
-          <h1
-            id="home-hero-heading"
-            className="mx-auto max-w-none text-[clamp(1.625rem,8vw,2.25rem)] text-zinc-900 sm:text-[clamp(2rem,5vw,3.25rem)] dark:text-zinc-50"
-            style={heroHeadlineWordmarkStyle}
-          >
-            <span className="whitespace-nowrap">Write to earn. Use eCash</span>
-            <br />
-            to unlock your story.
-          </h1>
+          <HeroHeadline wordmarkStyle={heroHeadlineWordmarkStyle} />
           <div className="mt-6 flex flex-wrap justify-center gap-2.5">
             <Link
               href={authorLoggedIn ? '/dashboard' : '/login'}
