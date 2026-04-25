@@ -873,7 +873,7 @@ export default function PostPageClient({
             </div>
           ) : null}
 
-          <section className="mt-8 overflow-hidden">
+          <section className="mt-4 overflow-hidden">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Preview
               {previewReadTimeLabel ? (
@@ -1031,7 +1031,7 @@ export default function PostPageClient({
           ) : null}
 
           {showPaywall ? (
-            <section className="mt-4 px-0 py-4">
+            <section className="mt-2 px-0 py-4">
               {bip21Url ? (
                 <>
                   <button
