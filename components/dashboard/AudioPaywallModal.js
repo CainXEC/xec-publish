@@ -301,8 +301,6 @@ export default function AudioPaywallModal({
             Generate an AI voice narration of this article.
             <br />
             Cost: {audioPriceXec.toLocaleString('en-US')} XEC (based on current article length)
-            <br />
-            One-time payment. Audio becomes available to readers who unlock your post.
           </p>
         )}
         <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-500">
