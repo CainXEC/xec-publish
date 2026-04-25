@@ -29,6 +29,7 @@ const MENU_SORT = 'leaderboard-sort'
 const MENU_TIME = 'leaderboard-time'
 const SORT_PILL_MIN_WIDTH = '15ch'
 const TIME_PILL_MIN_WIDTH = '10ch'
+const WORDMARK_FONT_FAMILY = "'American Typewriter', serif"
 
 export default function LeaderboardPage() {
   const [rows, setRows] = useState([])
@@ -114,10 +115,13 @@ export default function LeaderboardPage() {
     <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
       <Nav />
 
-      <main className="mx-auto max-w-5xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-6">
+      <main className="mx-auto max-w-5xl px-4 pt-4 pb-6 sm:px-6 sm:pt-6 sm:pb-6">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-2xl">
-            <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
+            <h1
+              className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl"
+              style={{ fontFamily: WORDMARK_FONT_FAMILY }}
+            >
               Author Leaderboard
             </h1>
             <p className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
