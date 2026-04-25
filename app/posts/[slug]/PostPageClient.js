@@ -758,7 +758,7 @@ export default function PostPageClient({
         onReaderLogoutExtra={handleReaderLogoutExtra}
       />
       <main className="mx-auto w-full max-w-3xl px-4 pt-4 pb-6">
-        <article className="px-0 py-4">
+        <article className="px-0 pb-4">
           <h1 className="font-article-title text-3xl font-semibold leading-tight text-zinc-900 dark:text-zinc-50">
             {post.title}
             {post.audio_url && (
