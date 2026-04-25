@@ -115,17 +115,16 @@ export default function LeaderboardPage() {
       <Nav />
 
       <main className="mx-auto max-w-5xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-6">
-        <div className="mb-4 max-w-2xl">
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
-            Author Leaderboard
-          </h1>
-          <p className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
-            Rankings by unlocks or author earnings.
-          </p>
-        </div>
-
-        <div className="mb-3 mt-4 flex items-center gap-2 sm:gap-4">
-          <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="max-w-2xl">
+            <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
+              Author Leaderboard
+            </h1>
+            <p className="mt-3 text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
+              Rankings by unlocks or author earnings.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
             <FilterDropdown
               menuId={MENU_SORT}
               openMenu={openMenu}
