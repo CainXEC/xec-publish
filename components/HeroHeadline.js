@@ -1,8 +1,6 @@
 'use client'
 
-import { useLayoutEffect, useState, useEffect, useRef } from 'react'
-
-const SESSION_KEY = 'hero-typed'
+import { useState, useEffect, useRef } from 'react'
 
 const FULL_TEXT = 'Write to earn. Use eCash to unlock your story.'
 const BREAK_PREFIX = 'Write to earn. Use eCash'
@@ -24,47 +22,39 @@ export default function HeroHeadline({ wordmarkStyle }) {
   const [showCursor, setShowCursor] = useState(true)
   const cursorTimeoutRef = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null))
 
-  useLayoutEffect(() => {
-    if (typeof window === 'undefined') return
-    try {
-      if (window.sessionStorage.getItem(SESSION_KEY) === 'true') {
-        setTyped(FULL_TEXT)
-        setShowCursor(false)
-      }
-    } catch {
-      /* sessionStorage can throw in edge cases */
-    }
-  }, [])
-
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    try {
-      if (window.sessionStorage.getItem(SESSION_KEY) === 'true') {
-        return
-      }
-    } catch {
-      return
-    }
+    let cancelled = false
+    const pendingRef = { id: /** @type {ReturnType<typeof setTimeout> | null} */ (null) }
 
     let i = 0
-    const id = window.setInterval(() => {
+    const tick = () => {
+      if (cancelled) return
       i += 1
       setTyped(FULL_TEXT.slice(0, i))
       if (i >= FULL_TEXT.length) {
-        window.clearInterval(id)
-        try {
-          window.sessionStorage.setItem(SESSION_KEY, 'true')
-        } catch {
-          /* ignore */
-        }
         cursorTimeoutRef.current = window.setTimeout(() => {
           setShowCursor(false)
         }, POST_TYPE_CURSOR_MS)
+        return
       }
-    }, CH_MS)
+      const lastChar = FULL_TEXT[i - 1]
+      let nextDelay = CH_MS
+      if (lastChar === '.') {
+        nextDelay = 600
+      } else if (lastChar === ',' || lastChar === ';') {
+        nextDelay = 200
+      }
+      pendingRef.id = window.setTimeout(tick, nextDelay)
+    }
+
+    pendingRef.id = window.setTimeout(tick, CH_MS)
 
     return () => {
-      window.clearInterval(id)
+      cancelled = true
+      if (pendingRef.id) {
+        clearTimeout(pendingRef.id)
+        pendingRef.id = null
+      }
       if (cursorTimeoutRef.current) {
         clearTimeout(cursorTimeoutRef.current)
         cursorTimeoutRef.current = null
