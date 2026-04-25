@@ -61,7 +61,7 @@ export default function FilterDropdown({
   const triggerRef = useRef(null)
   const menuRef = useRef(null)
   const ghostBlockTimerRef = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null))
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 0 })
+  const [menuPosition, setMenuPosition] = useState(null)
   const [blockGhostClicks, setBlockGhostClicks] = useState(false)
   const listboxId = useId()
   const isOpen = openMenu === menuId
@@ -70,7 +70,10 @@ export default function FilterDropdown({
   const triggerText = selected?.label ?? String(value)
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) {
+      setMenuPosition(null)
+      return
+    }
     const updatePosition = () => {
       const el = triggerRef.current
       if (!el) return
@@ -226,7 +229,7 @@ export default function FilterDropdown({
   ].join(' ')
 
   const menuPanel =
-    isOpen && !disabled ? (
+    isOpen && !disabled && menuPosition ? (
       <div
         ref={menuRef}
         id={listboxId}
