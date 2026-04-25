@@ -78,9 +78,9 @@ export default function HeroHeadline({ wordmarkStyle }) {
         <span> to unlock your story.</span>
       </div>
       <h1
-        className={`absolute top-0 left-0 w-full min-h-0 text-center ${headingClass}`}
+        className={`absolute top-0 left-0 right-0 z-10 w-full min-h-0 text-center ${headingClass}`}
         id="home-hero-heading"
-        style={wordmarkStyle}
+        style={{ ...wordmarkStyle, visibility: 'visible' }}
         aria-label={heroAria}
       >
         <span className="whitespace-nowrap" aria-hidden="true">
