@@ -116,7 +116,7 @@ export default function LeaderboardPage() {
       <Nav />
 
       <main className="mx-auto max-w-5xl px-4 pt-4 pb-6 sm:px-6 sm:pt-6 sm:pb-6">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-2xl">
             <h1
               className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl"
