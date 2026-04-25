@@ -88,14 +88,13 @@ export default function HeroHeadline({ wordmarkStyle }) {
         </span>
         {showLineBreak ? <br /> : null}
         <span aria-hidden="true">{afterBreak}</span>
-        {showCursor ? (
-          <span
-            className="animate-blink -mb-0.5 ml-0.5 inline-block w-[0.2em] min-w-[0.1em] translate-y-px text-current"
-            aria-hidden
-          >
-            |
-          </span>
-        ) : null}
+        <span
+          className={`-mb-0.5 ml-0.5 inline-block w-[0.2em] min-w-[0.1em] translate-y-px text-current ${showCursor ? 'animate-blink' : ''}`}
+          style={{ visibility: showCursor ? 'visible' : 'hidden' }}
+          aria-hidden="true"
+        >
+          |
+        </span>
       </h1>
     </div>
   )
