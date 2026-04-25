@@ -893,7 +893,7 @@ export default function PostPageClient({
           ) : null}
 
           {unlocked ? (
-            <section className="mt-10 border-t border-zinc-200 pt-8 dark:border-zinc-700">
+            <section className="mt-6 border-t border-zinc-200 pt-6 dark:border-zinc-700">
               <div
                 className="prose prose-zinc dark:prose-invert max-w-none text-base"
                 dangerouslySetInnerHTML={{
