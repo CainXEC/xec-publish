@@ -1,13 +1,16 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('Homepage', () => {
+  const heroHeading = (page) =>
+    page.getByRole('heading', { name: /Write to earn\. Use eCash to unlock your story\./ })
+
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 })
   })
 
   test('loads and shows latest articles', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('Write to earn')).toBeVisible()
+    await expect(heroHeading(page)).toBeVisible()
   })
 
   test('search filters posts', async ({ page }) => {
@@ -25,7 +28,7 @@ test.describe('Homepage', () => {
 
   test('sort buttons work', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByText('Write to earn')).toBeVisible()
+    await expect(heroHeading(page)).toBeVisible()
   })
 
   test('dark mode toggle works', async ({ page }) => {
