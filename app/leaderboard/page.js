@@ -124,10 +124,7 @@ export default function LeaderboardPage() {
           </p>
         </div>
 
-        <div className="mb-3 flex items-center gap-2 sm:gap-4">
-          <h2 className="hidden min-[360px]:block text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
-            Leaderboard
-          </h2>
+        <div className="mb-3 mt-4 flex items-center gap-2 sm:gap-4">
           <div className="ml-auto flex shrink-0 items-center gap-1.5">
             <FilterDropdown
               menuId={MENU_SORT}
