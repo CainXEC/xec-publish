@@ -191,6 +191,7 @@ export default function FilterDropdown({
         aria-label={`${ariaLabel}: ${triggerText}`}
         title={disabled && disabledHint ? disabledHint : undefined}
         onPointerDown={(e) => {
+          e.stopPropagation()
           e.preventDefault()
           if (disabled) return
           toggleOpen()
@@ -249,10 +250,12 @@ export default function FilterDropdown({
                     : 'text-zinc-800 hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800'
                 }`}
                 onPointerDown={(e) => {
+                  e.stopPropagation()
                   e.preventDefault()
                   selectOption(opt.value)
                 }}
                 onClick={(e) => {
+                  e.stopPropagation()
                   // Keyboard activation dispatches click without pointerdown.
                   if (e.detail !== 0) return
                   selectOption(opt.value)

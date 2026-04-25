@@ -88,7 +88,7 @@ export default function AuthorProfilePageClient({
         onReaderWalletSynced={applyReaderWallet}
         onReaderLogoutExtra={handleReaderLogoutExtra}
       />
-      <main className="mx-auto max-w-5xl px-4 pt-10 pb-6 sm:px-6 sm:pt-14 sm:pb-6">
+      <main className="mx-auto max-w-5xl px-4 pt-4 pb-6 sm:px-6 sm:pt-6 sm:pb-6">
         <header className="border-b border-zinc-200 pb-10 dark:border-zinc-800">
           <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Author
