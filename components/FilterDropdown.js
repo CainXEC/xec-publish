@@ -1,7 +1,9 @@
 'use client'
 
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+
+const GHOST_CLICK_BLOCK_MS = 380
 
 function ChevronDownIcon({ className }) {
   return (
@@ -58,7 +60,9 @@ export default function FilterDropdown({
 }) {
   const triggerRef = useRef(null)
   const menuRef = useRef(null)
+  const ghostBlockTimerRef = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null))
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 0 })
+  const [blockGhostClicks, setBlockGhostClicks] = useState(false)
   const listboxId = useId()
   const isOpen = openMenu === menuId
 
@@ -102,11 +106,16 @@ export default function FilterDropdown({
     const id = requestAnimationFrame(() => {
       const menu = menuRef.current
       if (!menu) return
+      const escaped =
+        typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+          ? CSS.escape(value)
+          : value.replace(/"/g, '\\"')
+      const match = menu.querySelector(`button[data-filter-value="${escaped}"]:not([disabled])`)
       const buttons = [...menu.querySelectorAll('button:not([disabled])')]
-      buttons[0]?.focus()
+      ;(match instanceof HTMLButtonElement ? match : buttons[0])?.focus()
     })
     return () => cancelAnimationFrame(id)
-  }, [isOpen])
+  }, [isOpen, value])
 
   useEffect(() => {
     if (!isOpen || disabled) return
@@ -122,6 +131,21 @@ export default function FilterDropdown({
   }, [isOpen, disabled, setOpenMenu])
 
   const close = () => setOpenMenu(null)
+
+  const armGhostClickBlocker = useCallback(() => {
+    setBlockGhostClicks(true)
+    if (ghostBlockTimerRef.current) clearTimeout(ghostBlockTimerRef.current)
+    ghostBlockTimerRef.current = setTimeout(() => {
+      ghostBlockTimerRef.current = null
+      setBlockGhostClicks(false)
+    }, GHOST_CLICK_BLOCK_MS)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (ghostBlockTimerRef.current) clearTimeout(ghostBlockTimerRef.current)
+    }
+  }, [])
 
   const focusablesInMenu = () => {
     const menu = menuRef.current
@@ -183,6 +207,7 @@ export default function FilterDropdown({
   }
 
   const selectOption = (nextValue) => {
+    armGhostClickBlocker()
     onChange(nextValue)
     close()
     triggerRef.current?.focus()
@@ -242,11 +267,12 @@ export default function FilterDropdown({
               id={rowId}
               type="button"
               role="option"
+              data-filter-value={opt.value}
               aria-selected={selectedHere}
-              className={`flex w-full items-center px-3 py-2 text-left text-xs focus:outline-none focus-visible:bg-emerald-50 sm:text-sm dark:focus-visible:bg-emerald-900/30 ${
+              className={`flex w-full items-center px-3 py-2 text-left text-xs focus:outline-none sm:text-sm ${
                 selectedHere
-                  ? 'bg-emerald-50 font-medium text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-100'
-                  : 'text-zinc-800 hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800'
+                  ? 'bg-emerald-50 font-medium text-emerald-900 focus-visible:ring-2 focus-visible:ring-emerald-600/35 focus-visible:ring-inset dark:bg-emerald-950/50 dark:text-emerald-100 dark:focus-visible:ring-emerald-400/30'
+                  : 'text-zinc-800 hover:bg-zinc-50 focus-visible:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-zinc-400/40 focus-visible:ring-inset dark:text-zinc-200 dark:hover:bg-zinc-800 dark:focus-visible:bg-zinc-800 dark:focus-visible:ring-zinc-500/35'
               }`}
               onPointerDown={(e) => {
                 e.stopPropagation()
@@ -256,7 +282,8 @@ export default function FilterDropdown({
               onClick={(e) => {
                 e.stopPropagation()
                 e.preventDefault()
-                // Keyboard activation dispatches click without pointerdown.
+                // Pointer path selects in onPointerDown; synthesized click must be absorbed only.
+                // Keyboard activation dispatches click with detail === 0 (no preceding pointerdown).
                 if (e.detail !== 0) return
                 selectOption(opt.value)
               }}
@@ -300,6 +327,24 @@ export default function FilterDropdown({
       </button>
       {typeof document !== 'undefined' && menuPanel
         ? createPortal(menuPanel, document.body)
+        : null}
+      {typeof document !== 'undefined' && blockGhostClicks
+        ? createPortal(
+            <div
+              aria-hidden
+              className="fixed inset-0 z-[200]"
+              style={{ pointerEvents: 'auto', touchAction: 'none' }}
+              onPointerDown={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+              }}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+              }}
+            />,
+            document.body,
+          )
         : null}
     </div>
   )
