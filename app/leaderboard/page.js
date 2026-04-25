@@ -128,7 +128,8 @@ export default function LeaderboardPage() {
               Rankings by unlocks or author earnings.
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="self-end sm:self-auto">
+            <div className="flex shrink-0 items-center gap-1.5">
             <FilterDropdown
               menuId={MENU_SORT}
               openMenu={openMenu}
@@ -149,6 +150,7 @@ export default function LeaderboardPage() {
               onChange={(v) => setTimeFilter(v)}
               minWidth={TIME_PILL_MIN_WIDTH}
             />
+            </div>
           </div>
         </div>
 
