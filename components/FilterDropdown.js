@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 function ChevronDownIcon({ className }) {
   return (
@@ -57,11 +58,33 @@ export default function FilterDropdown({
 }) {
   const triggerRef = useRef(null)
   const menuRef = useRef(null)
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 0 })
   const listboxId = useId()
   const isOpen = openMenu === menuId
 
   const selected = options.find((o) => o.value === value)
   const triggerText = selected?.label ?? String(value)
+
+  useEffect(() => {
+    if (!isOpen) return
+    const updatePosition = () => {
+      const el = triggerRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      setMenuPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      })
+    }
+    updatePosition()
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+    return () => {
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+    }
+  }, [isOpen])
 
   useEffect(() => {
     if (!isOpen) return
@@ -177,6 +200,74 @@ export default function FilterDropdown({
         : 'cursor-pointer border-zinc-200 bg-zinc-100 text-zinc-900 hover:bg-zinc-200 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-100 dark:hover:bg-zinc-800',
   ].join(' ')
 
+  const menuPanel =
+    isOpen && !disabled ? (
+      <div
+        ref={menuRef}
+        id={listboxId}
+        role="listbox"
+        aria-labelledby={triggerId}
+        tabIndex={-1}
+        onKeyDownCapture={onMenuKeyDownCapture}
+        style={{
+          position: 'fixed',
+          top: `${menuPosition.top}px`,
+          left: `${menuPosition.left}px`,
+          width: `${menuPosition.width}px`,
+        }}
+        className="z-[100] rounded-xl border border-zinc-200 bg-zinc-100 py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900/80"
+      >
+        {options.map((opt) => {
+          const selectedHere = opt.value === value
+          const optDisabled = Boolean(opt.disabled)
+          const rowId = `${listboxId}-opt-${opt.value}`
+          return optDisabled ? (
+            <div
+              key={opt.value}
+              id={rowId}
+              role="option"
+              aria-selected={selectedHere}
+              aria-disabled="true"
+              title={opt.disabledHint ?? ''}
+              className="flex cursor-not-allowed items-center px-3 py-2 text-left text-xs text-zinc-400 opacity-50 sm:text-sm dark:text-zinc-500"
+            >
+              <span className="min-w-0 flex-1">{opt.label}</span>
+              {opt.disabledHint ? (
+                <span className="sr-only">{opt.disabledHint}</span>
+              ) : null}
+            </div>
+          ) : (
+            <button
+              key={opt.value}
+              id={rowId}
+              type="button"
+              role="option"
+              aria-selected={selectedHere}
+              className={`flex w-full items-center px-3 py-2 text-left text-xs focus:outline-none focus-visible:bg-emerald-50 sm:text-sm dark:focus-visible:bg-emerald-900/30 ${
+                selectedHere
+                  ? 'bg-emerald-50 font-medium text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-100'
+                  : 'text-zinc-800 hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800'
+              }`}
+              onPointerDown={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                selectOption(opt.value)
+              }}
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                // Keyboard activation dispatches click without pointerdown.
+                if (e.detail !== 0) return
+                selectOption(opt.value)
+              }}
+            >
+              <span className="min-w-0 flex-1">{opt.label}</span>
+            </button>
+          )
+        })}
+      </div>
+    ) : null
+
   return (
     <div className={`relative ${fullWidth ? 'w-full min-w-0' : 'shrink-0'}`}>
       <button
@@ -207,66 +298,9 @@ export default function FilterDropdown({
           }`}
         />
       </button>
-
-      {isOpen && !disabled ? (
-        <div
-          ref={menuRef}
-          id={listboxId}
-          role="listbox"
-          aria-labelledby={triggerId}
-          tabIndex={-1}
-          onKeyDownCapture={onMenuKeyDownCapture}
-          className="absolute left-0 right-0 top-full z-50 mt-1 rounded-xl border border-zinc-200 bg-zinc-100 py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900/80"
-        >
-          {options.map((opt) => {
-            const selectedHere = opt.value === value
-            const optDisabled = Boolean(opt.disabled)
-            const rowId = `${listboxId}-opt-${opt.value}`
-            return optDisabled ? (
-              <div
-                key={opt.value}
-                id={rowId}
-                role="option"
-                aria-selected={selectedHere}
-                aria-disabled="true"
-                title={opt.disabledHint ?? ''}
-                className="flex cursor-not-allowed items-center px-3 py-2 text-left text-xs text-zinc-400 opacity-50 sm:text-sm dark:text-zinc-500"
-              >
-                <span className="min-w-0 flex-1">{opt.label}</span>
-                {opt.disabledHint ? (
-                  <span className="sr-only">{opt.disabledHint}</span>
-                ) : null}
-              </div>
-            ) : (
-              <button
-                key={opt.value}
-                id={rowId}
-                type="button"
-                role="option"
-                aria-selected={selectedHere}
-                className={`flex w-full items-center px-3 py-2 text-left text-xs focus:outline-none focus-visible:bg-emerald-50 sm:text-sm dark:focus-visible:bg-emerald-900/30 ${
-                  selectedHere
-                    ? 'bg-emerald-50 font-medium text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-100'
-                    : 'text-zinc-800 hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800'
-                }`}
-                onPointerDown={(e) => {
-                  e.stopPropagation()
-                  e.preventDefault()
-                  selectOption(opt.value)
-                }}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  // Keyboard activation dispatches click without pointerdown.
-                  if (e.detail !== 0) return
-                  selectOption(opt.value)
-                }}
-              >
-                <span className="min-w-0 flex-1">{opt.label}</span>
-              </button>
-            )
-          })}
-        </div>
-      ) : null}
+      {typeof document !== 'undefined' && menuPanel
+        ? createPortal(menuPanel, document.body)
+        : null}
     </div>
   )
 }
