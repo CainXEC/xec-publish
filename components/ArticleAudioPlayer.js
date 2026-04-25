@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 const SPEED_OPTIONS = [1, 1.25, 1.5, 2]
-const CHARS_PER_MINUTE = 850
 
 function formatAudioTime(seconds) {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
@@ -15,7 +14,7 @@ function formatAudioTime(seconds) {
 
 function PlayIcon() {
   return (
-    <svg className="h-5 w-5 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <svg className="h-3.5 w-3.5 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
       <path d="M8 5v14l11-7z" />
     </svg>
   )
@@ -23,7 +22,7 @@ function PlayIcon() {
 
 function PauseIcon() {
   return (
-    <svg className="h-5 w-5 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <svg className="h-3.5 w-3.5 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
       <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
     </svg>
   )
@@ -36,7 +35,7 @@ function BigPlayPauseButton({ isPlaying, disabled, onClick }) {
       disabled={disabled}
       onClick={() => void onClick()}
       aria-label={isPlaying ? 'Pause narration' : 'Play narration'}
-      className="flex h-14 w-14 shrink-0 cursor-pointer items-center justify-center rounded-full bg-emerald-600 transition active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-500"
+      className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-emerald-600 transition active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-500"
     >
       {isPlaying ? <PauseIcon /> : <PlayIcon />}
     </button>
@@ -60,40 +59,28 @@ function ScrubberTrack({
     onSeek(ratio * safeDur)
   }
 
-  const timeLabel = `${formatAudioTime(currentTime)} / ${formatAudioTime(safeDur > 0 ? duration : 0)}`
-
   return (
-    <div className="w-full">
-      <div className="flex flex-col items-stretch gap-1 min-[420px]:flex-row min-[420px]:items-center min-[420px]:gap-2">
-        <div
-          ref={scrubRef}
-          role="slider"
-          tabIndex={0}
-          aria-valuemin={0}
-          aria-valuemax={Math.round(safeDur)}
-          aria-valuenow={Math.round(currentTime)}
-          aria-label="Audio progress"
-          onClick={(e) => seekFromEvent(e.clientX)}
-          onKeyDown={(e) => {
-            if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
-            e.preventDefault()
-            const delta = e.key === 'ArrowLeft' ? -5 : 5
-            onSeek(Math.min(safeDur, Math.max(0, currentTime + delta)))
-          }}
-          className="relative h-1 w-full min-w-0 cursor-pointer rounded-full bg-zinc-200 dark:bg-zinc-800 min-[420px]:flex-1"
-        >
-          <div
-            className="pointer-events-none absolute inset-y-0 left-0 rounded-full bg-emerald-600 dark:bg-emerald-500"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
-        <span
-          className="shrink-0 self-end text-xs tabular-nums text-zinc-600 dark:text-zinc-400 min-[420px]:self-auto"
-          aria-live="polite"
-        >
-          {timeLabel}
-        </span>
-      </div>
+    <div
+      ref={scrubRef}
+      role="slider"
+      tabIndex={0}
+      aria-valuemin={0}
+      aria-valuemax={Math.round(safeDur)}
+      aria-valuenow={Math.round(currentTime)}
+      aria-label="Audio progress"
+      onClick={(e) => seekFromEvent(e.clientX)}
+      onKeyDown={(e) => {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+        e.preventDefault()
+        const delta = e.key === 'ArrowLeft' ? -5 : 5
+        onSeek(Math.min(safeDur, Math.max(0, currentTime + delta)))
+      }}
+      className="relative h-[3px] w-full min-w-0 cursor-pointer rounded-full bg-zinc-200 dark:bg-zinc-800"
+    >
+      <div
+        className="pointer-events-none absolute inset-y-0 left-0 rounded-full bg-emerald-600 dark:bg-emerald-500"
+        style={{ width: `${pct}%` }}
+      />
     </div>
   )
 }
@@ -101,7 +88,6 @@ function ScrubberTrack({
 export default function ArticleAudioPlayer({
   postId,
   isStale = false,
-  audioCharCount = null,
 }) {
   const audioRef = useRef(null)
   const scrubRef = useRef(null)
@@ -118,17 +104,6 @@ export default function ArticleAudioPlayer({
   const [playbackRate, setPlaybackRate] = useState(1)
 
   const canPlay = Boolean(signedUrl) && !loading && !hidden
-
-  const approxListenMin =
-    typeof audioCharCount === 'number' &&
-    Number.isFinite(audioCharCount) &&
-    audioCharCount > 0
-      ? Math.max(1, Math.round(audioCharCount / CHARS_PER_MINUTE))
-      : null
-  const metaLine =
-    approxListenMin != null
-      ? `AI-narrated · ${approxListenMin} min listen`
-      : 'AI-narrated · Playing'
 
   const requestSignedUrl = useCallback(async () => {
     if (!postId) return { ok: false, status: 400, reason: 'missing-post-id' }
@@ -293,7 +268,7 @@ export default function ArticleAudioPlayer({
 
   if (loading) {
     return (
-      <div className="w-full rounded-lg border-[0.5px] border-zinc-200 bg-zinc-100 px-5 py-4 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+      <div className="w-full rounded-lg border-[0.5px] border-zinc-200 bg-zinc-100 px-3 py-2.5 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
         Loading audio narration...
       </div>
     )
@@ -302,7 +277,8 @@ export default function ArticleAudioPlayer({
   if (!canPlay) return null
 
   const cardClass =
-    'w-full rounded-lg border-[0.5px] border-zinc-200 bg-zinc-100 px-5 py-4 dark:border-zinc-800 dark:bg-zinc-900'
+    'w-full rounded-lg border-[0.5px] border-zinc-200 bg-zinc-100 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-900'
+  const timeLabel = `${formatAudioTime(currentTime)} / ${formatAudioTime(duration > 0 ? duration : 0)}`
 
   return (
     <>
@@ -329,17 +305,27 @@ export default function ArticleAudioPlayer({
           }}
         />
 
-        <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-3 min-[500px]:grid-cols-[auto_minmax(0,1fr)_auto] min-[500px]:grid-rows-[auto_auto] min-[500px]:items-center min-[500px]:gap-x-4 min-[500px]:gap-y-2">
-          <div className="col-start-1 row-start-1 self-start min-[500px]:row-span-2 min-[500px]:self-center">
+        <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => skipBy(-15)}
+              className="flex h-[26px] w-[26px] shrink-0 cursor-pointer items-center justify-center text-[9px] font-medium text-zinc-600 transition hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              aria-label="Skip back 15 seconds"
+            >
+              -15
+            </button>
             <BigPlayPauseButton isPlaying={isPlaying} disabled={false} onClick={togglePlayPause} />
+            <button
+              type="button"
+              onClick={() => skipBy(15)}
+              className="flex h-[26px] w-[26px] shrink-0 cursor-pointer items-center justify-center text-[9px] font-medium text-zinc-600 transition hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              aria-label="Skip forward 15 seconds"
+            >
+              +15
+            </button>
           </div>
-          <div className="col-start-2 row-start-1 flex min-w-0 flex-col gap-0.5 min-[500px]:gap-2">
-            <p className="text-sm font-medium leading-snug text-zinc-900 dark:text-zinc-50">
-              🎧 Listen to this article
-            </p>
-            <p className="text-xs font-normal text-zinc-600 dark:text-zinc-400">{metaLine}</p>
-          </div>
-          <div className="col-span-2 col-start-1 row-start-2 min-w-0 min-[500px]:col-span-1 min-[500px]:col-start-2 min-[500px]:row-start-2">
+          <div className="min-w-0 flex-1">
             <ScrubberTrack
               scrubRef={scrubRef}
               currentTime={currentTime}
@@ -347,27 +333,17 @@ export default function ArticleAudioPlayer({
               onSeek={seekTo}
             />
           </div>
-          <div className="col-span-2 col-start-1 row-start-3 flex flex-row flex-wrap items-center justify-center gap-2 min-[500px]:col-span-1 min-[500px]:col-start-3 min-[500px]:row-start-1 min-[500px]:row-span-2 min-[500px]:justify-end">
-            <button
-              type="button"
-              onClick={() => skipBy(-15)}
-              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-[0.5px] border-zinc-200 bg-white text-[10px] font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-800/60"
-              aria-label="Skip back 15 seconds"
-            >
-              -15
-            </button>
-            <button
-              type="button"
-              onClick={() => skipBy(15)}
-              className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-[0.5px] border-zinc-200 bg-white text-[10px] font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-800/60"
-              aria-label="Skip forward 15 seconds"
-            >
-              +15
-            </button>
+          <span
+            className="shrink-0 whitespace-nowrap text-[11px] tabular-nums text-zinc-600 dark:text-zinc-400"
+            aria-live="polite"
+          >
+            {timeLabel}
+          </span>
+          <div className="shrink-0">
             <button
               type="button"
               onClick={cycleSpeed}
-              className="cursor-pointer rounded-full px-2.5 py-1 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100/80 dark:text-emerald-300 dark:hover:bg-emerald-950/50"
+              className="cursor-pointer rounded bg-zinc-200/60 px-1.5 py-0.5 text-[11px] font-medium text-zinc-700 transition hover:bg-zinc-300/60 dark:bg-zinc-800/60 dark:text-zinc-300 dark:hover:bg-zinc-700/70"
               aria-label={`Playback speed ${playbackRate}x, click to change`}
             >
               {playbackRate}x
