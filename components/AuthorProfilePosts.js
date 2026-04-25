@@ -432,7 +432,7 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
 
   if (postsErrorMessage) {
     return (
-      <section className="mt-10">
+      <section className="mt-4">
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Posts</h2>
         <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-6 dark:border-red-900/50 dark:bg-red-950/40">
           <p className="text-sm text-red-800 dark:text-red-200">{postsErrorMessage}</p>
@@ -443,7 +443,7 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
 
   if (basePosts.length === 0) {
     return (
-      <section className="mt-10">
+      <section className="mt-4">
         <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Posts</h2>
         <div className="mt-6 rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-8 py-14 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
           <p className="text-base text-zinc-700 dark:text-zinc-300">No posts yet</p>
@@ -454,7 +454,7 @@ export default function AuthorProfilePosts({ initialPosts, postsErrorMessage }) 
 
   return (
     <>
-      <section className="mt-10">
+      <section className="mt-4">
         {nonLegacyBase.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-8 py-14 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
             <p className="text-base text-zinc-700 dark:text-zinc-300">No posts yet</p>
