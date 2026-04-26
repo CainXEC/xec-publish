@@ -78,6 +78,10 @@ export default function FilterDropdown({
       const el = triggerRef.current
       if (!el) return
       const rect = el.getBoundingClientRect()
+      if (rect.width === 0 || rect.height === 0) {
+        setMenuPosition(null)
+        return
+      }
       setMenuPosition({
         top: rect.bottom + 4,
         left: rect.left,
