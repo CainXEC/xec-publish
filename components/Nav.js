@@ -26,8 +26,6 @@ const searchInputClassName =
  * @param {{
  *   authorCtaOverride?: 'logout'
  *   showPostSearch?: boolean
- *   postSearchQuery?: string
- *   onPostSearchChange?: (value: string) => void
  *   onReaderWalletSynced?: (
  *     walletAddress: string,
  *     unlockedPostIds?: string[],
@@ -38,8 +36,6 @@ const searchInputClassName =
 export default function Nav({
   authorCtaOverride,
   showPostSearch = false,
-  postSearchQuery = '',
-  onPostSearchChange,
   onReaderWalletSynced,
   onReaderLogoutExtra,
 }) {
@@ -50,9 +46,7 @@ export default function Nav({
   const [readerLoginError, setReaderLoginError] = useState('')
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [desktopSearchOpen, setDesktopSearchOpen] = useState(false)
-  const [internalSearchQuery, setInternalSearchQuery] = useState(
-    typeof postSearchQuery === 'string' ? postSearchQuery : '',
-  )
+  const [searchInputValue, setSearchInputValue] = useState('')
   const mobileNavRef = useRef(null)
   const desktopSearchRef = useRef(null)
   const desktopSearchInputRef = useRef(null)
@@ -75,36 +69,17 @@ export default function Nav({
     () => platformAddress.replace(/^ecash:/, ''),
     [platformAddress],
   )
-  const canLiveSearch = typeof onPostSearchChange === 'function'
-  const effectiveSearchQuery = canLiveSearch ? postSearchQuery : internalSearchQuery
-
-  const setSearchQuery = useCallback(
-    (nextValue) => {
-      if (canLiveSearch) {
-        onPostSearchChange(nextValue)
-        return
-      }
-      setInternalSearchQuery(nextValue)
-    },
-    [canLiveSearch, onPostSearchChange],
-  )
-
   const handleSearchSubmit = useCallback(
     (e) => {
       e.preventDefault()
-      const trimmed = String(effectiveSearchQuery ?? '').trim()
+      const trimmed = String(searchInputValue ?? '').trim()
       if (!trimmed) return
       const params = new URLSearchParams({ q: trimmed })
       router.push(`/search?${params.toString()}`)
       setMobileNavOpen(false)
     },
-    [effectiveSearchQuery, router],
+    [searchInputValue, router],
   )
-
-  useEffect(() => {
-    if (!canLiveSearch) return
-    setInternalSearchQuery(postSearchQuery ?? '')
-  }, [canLiveSearch, postSearchQuery])
 
   const stopReaderTxPolling = useCallback(() => {
     if (latestTxPollRef.current) {
@@ -411,16 +386,16 @@ export default function Nav({
                 ref={desktopSearchInputRef}
                 id="post-search-desktop"
                 type="search"
-                value={effectiveSearchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchInputValue}
+                onChange={(e) => setSearchInputValue(e.target.value)}
                 placeholder="Search…"
                 autoComplete="off"
                 className={`h-9 min-h-9 w-64 ${searchInputClassName}`}
               />
-              {effectiveSearchQuery ? (
+              {searchInputValue ? (
                 <button
                   type="button"
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => setSearchInputValue('')}
                   className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-base leading-none text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                   aria-label="Clear search"
                 >
@@ -449,7 +424,7 @@ export default function Nav({
                 <circle cx="11" cy="11" r="7" />
                 <path d="m20 20-3.5-3.5" />
               </svg>
-              {effectiveSearchQuery ? (
+              {searchInputValue ? (
                 <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-emerald-500" />
               ) : null}
             </button>
@@ -585,16 +560,16 @@ export default function Nav({
                 <input
                   id="post-search-mobile-marketing"
                   type="search"
-                  value={effectiveSearchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={searchInputValue}
+                  onChange={(e) => setSearchInputValue(e.target.value)}
                   placeholder="Search posts..."
                   autoComplete="off"
                   className={`h-11 w-full ${searchInputClassName}`}
                 />
-                {effectiveSearchQuery ? (
+                {searchInputValue ? (
                   <button
                     type="button"
-                    onClick={() => setSearchQuery('')}
+                    onClick={() => setSearchInputValue('')}
                     className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-base leading-none text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                     aria-label="Clear search"
                   >

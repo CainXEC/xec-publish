@@ -88,25 +88,11 @@ export default function HomeClient({
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState(initialLoadError)
   const [readerWalletAddress, setReaderWalletAddress] = useState('')
-  const [postSearchQuery, setPostSearchQuery] = useState('')
   const [followingOnly, setFollowingOnly] = useState(false)
   const [refetchTrigger, setRefetchTrigger] = useState(0)
   const [openMenu, setOpenMenu] = useState(/** @type {string | null} */ (null))
   const [authorLoggedIn, setAuthorLoggedIn] = useState(false)
   const didSkipInitialFetchRef = useRef(false)
-
-  const trimmedPostSearch = postSearchQuery.trim()
-  const displayPosts = useMemo(() => {
-    if (!trimmedPostSearch) return posts
-    const q = trimmedPostSearch.toLowerCase()
-    return posts.filter((post) => {
-      const title = String(post.title ?? '').toLowerCase()
-      const teaser = String(post.teaser ?? '').toLowerCase()
-      const author = authorFromPost(post)
-      const username = String(author?.username ?? '').toLowerCase()
-      return title.includes(q) || teaser.includes(q) || username.includes(q)
-    })
-  }, [posts, trimmedPostSearch])
 
   const applyReaderWallet = useCallback(async (walletAddress) => {
     setReaderWalletAddress(walletAddress)
@@ -138,7 +124,7 @@ export default function HomeClient({
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [sortMode, postSearchQuery, timeFilter, followingOnly])
+  }, [sortMode, timeFilter, followingOnly])
 
   useEffect(() => {
     setOpenMenu(null)
@@ -211,7 +197,7 @@ export default function HomeClient({
   }, [currentPage, timeFilter, sortMode, followingOnly, readerWalletAddress, refetchTrigger])
 
   const showPostSearch = !loading && !loadError
-  const showPaginationRow = displayPosts.length > 0 && (currentPage > 1 || hasNextPage)
+  const showPaginationRow = posts.length > 0 && (currentPage > 1 || hasNextPage)
 
   const audienceOptions = useMemo(
     () => [
@@ -230,8 +216,6 @@ export default function HomeClient({
     <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
       <Nav
         showPostSearch={showPostSearch}
-        postSearchQuery={postSearchQuery}
-        onPostSearchChange={setPostSearchQuery}
         onReaderWalletSynced={applyReaderWallet}
         onReaderLogoutExtra={handleReaderLogoutExtra}
       />
@@ -283,26 +267,13 @@ export default function HomeClient({
               <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading posts…</p>
             ) : posts.length === 0 && !readerWalletAddress ? (
               <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-8 py-16 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
-                <p className="text-lg text-zinc-700 dark:text-zinc-300">
-                  {trimmedPostSearch
-                    ? `No posts found for '${trimmedPostSearch}'`
-                    : 'No posts yet. Be the first to write something.'}
-                </p>
+                <p className="text-lg text-zinc-700 dark:text-zinc-300">No posts yet. Be the first to write something.</p>
               </div>
             ) : (
               <>
-                {displayPosts.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-8 py-12 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
-                    <p className="text-sm text-zinc-700 dark:text-zinc-300">
-                      {trimmedPostSearch
-                        ? `No posts found for '${trimmedPostSearch}'`
-                        : 'No posts yet.'}
-                    </p>
-                  </div>
-                ) : null}
-                {displayPosts.length > 0 ? (
+                {posts.length > 0 ? (
                   <ul className="flex flex-col gap-1.5 md:gap-2">
-                    {displayPosts.map((post) => {
+                    {posts.map((post) => {
                       const author = authorFromPost(post)
                       const username = author?.username?.trim() || 'Unknown'
                       const postHref = `/posts/${encodeURIComponent(post.slug)}`

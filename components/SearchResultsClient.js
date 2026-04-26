@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
 import Nav from '@/components/Nav'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 
@@ -51,7 +50,6 @@ export default function SearchResultsClient({
   hasNextPage,
   total,
 }) {
-  const [searchQuery, setSearchQuery] = useState(query ?? '')
   const safePage = Number.isFinite(Number(page)) ? Math.max(1, Number(page)) : 1
   const hasPrevPage = safePage > 1
   const start = total > 0 ? (safePage - 1) * PAGE_SIZE + 1 : 0
@@ -59,11 +57,7 @@ export default function SearchResultsClient({
 
   return (
     <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
-      <Nav
-        showPostSearch
-        postSearchQuery={searchQuery}
-        onPostSearchChange={setSearchQuery}
-      />
+      <Nav showPostSearch />
       <main className="mx-auto max-w-5xl px-4 pt-6 pb-6 sm:px-6 sm:pb-6">
         <section className="mb-4">
           <h1 className="font-article-title text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
