@@ -13,7 +13,7 @@ test.describe('Homepage', () => {
     await expect(heroHeading(page)).toBeVisible()
   })
 
-  test('search filters posts', async ({ page }) => {
+  test('search submits to dedicated /search page and shows empty state', async ({ page }) => {
     await page.goto('/')
     // Search is hidden until the homepage finishes loading (Nav `showPostSearch`).
     await expect(page.locator('ul li').first()).toBeVisible({ timeout: 20000 })
@@ -22,8 +22,10 @@ test.describe('Homepage', () => {
     await openSearch.click()
     const search = page.locator('#post-search-desktop')
     await expect(search).toBeVisible({ timeout: 5000 })
-    await search.fill('nonexistent post xyz')
-    await expect(page.getByText(/No posts found/)).toBeVisible({ timeout: 5000 })
+    await search.fill('nonexistentpostxyz')
+    await search.press('Enter')
+    await page.waitForURL(/\/search\?q=/, { timeout: 5000 })
+    await expect(page.getByText(/No posts found matching/i)).toBeVisible({ timeout: 5000 })
   })
 
   test('sort buttons work', async ({ page }) => {
