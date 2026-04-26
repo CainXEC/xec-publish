@@ -157,3 +157,10 @@ body {
 .animate-blink {
   animation: blink 1.06s step-end infinite;
 }
+
+/* Hide the native browser clear button on search inputs (WebKit/Blink) */
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
