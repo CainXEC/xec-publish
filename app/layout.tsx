@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { Analytics } from "@vercel/analytics/next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import Footer from "@/components/Footer";
+import ScrollToTopOnRouteChange from "@/components/ScrollToTopOnRouteChange";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -80,6 +81,7 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="min-h-screen min-h-[100svh]">
+        <ScrollToTopOnRouteChange />
         {children}
         <Footer />
         <Analytics />
