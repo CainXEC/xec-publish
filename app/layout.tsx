@@ -86,7 +86,7 @@ export default async function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-screen">
+      <body className="min-h-[100dvh]">
         <ScrollToTopOnRouteChange />
         {children}
         <Footer />
