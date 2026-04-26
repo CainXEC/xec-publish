@@ -50,6 +50,9 @@ export default function Nav({
   const [readerLoginError, setReaderLoginError] = useState('')
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [desktopSearchOpen, setDesktopSearchOpen] = useState(false)
+  const [internalSearchQuery, setInternalSearchQuery] = useState(
+    typeof postSearchQuery === 'string' ? postSearchQuery : '',
+  )
   const mobileNavRef = useRef(null)
   const desktopSearchRef = useRef(null)
   const desktopSearchInputRef = useRef(null)
@@ -72,6 +75,36 @@ export default function Nav({
     () => platformAddress.replace(/^ecash:/, ''),
     [platformAddress],
   )
+  const canLiveSearch = typeof onPostSearchChange === 'function'
+  const effectiveSearchQuery = canLiveSearch ? postSearchQuery : internalSearchQuery
+
+  const setSearchQuery = useCallback(
+    (nextValue) => {
+      if (canLiveSearch) {
+        onPostSearchChange(nextValue)
+        return
+      }
+      setInternalSearchQuery(nextValue)
+    },
+    [canLiveSearch, onPostSearchChange],
+  )
+
+  const handleSearchSubmit = useCallback(
+    (e) => {
+      e.preventDefault()
+      const trimmed = String(effectiveSearchQuery ?? '').trim()
+      if (!trimmed) return
+      const params = new URLSearchParams({ q: trimmed })
+      router.push(`/search?${params.toString()}`)
+      setMobileNavOpen(false)
+    },
+    [effectiveSearchQuery, router],
+  )
+
+  useEffect(() => {
+    if (!canLiveSearch) return
+    setInternalSearchQuery(postSearchQuery ?? '')
+  }, [canLiveSearch, postSearchQuery])
 
   const stopReaderTxPolling = useCallback(() => {
     if (latestTxPollRef.current) {
@@ -362,7 +395,7 @@ export default function Nav({
   )
 
   const desktopSearch =
-    showPostSearch && typeof onPostSearchChange === 'function' ? (
+    showPostSearch ? (
       <div ref={desktopSearchRef} className="relative">
         <div
           className={`overflow-hidden transition-[width,opacity] duration-200 ${
@@ -370,7 +403,7 @@ export default function Nav({
           }`}
         >
           {desktopSearchOpen ? (
-            <div className="relative">
+            <form className="relative" onSubmit={handleSearchSubmit}>
               <label htmlFor="post-search-desktop" className="sr-only">
                 Search posts
               </label>
@@ -378,23 +411,23 @@ export default function Nav({
                 ref={desktopSearchInputRef}
                 id="post-search-desktop"
                 type="search"
-                value={postSearchQuery}
-                onChange={(e) => onPostSearchChange(e.target.value)}
+                value={effectiveSearchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search…"
                 autoComplete="off"
                 className={`h-9 min-h-9 w-64 ${searchInputClassName}`}
               />
-              {postSearchQuery ? (
+              {effectiveSearchQuery ? (
                 <button
                   type="button"
-                  onClick={() => onPostSearchChange('')}
+                  onClick={() => setSearchQuery('')}
                   className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-base leading-none text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                   aria-label="Clear search"
                 >
                   ×
                 </button>
               ) : null}
-            </div>
+            </form>
           ) : (
             <button
               type="button"
@@ -416,7 +449,7 @@ export default function Nav({
                 <circle cx="11" cy="11" r="7" />
                 <path d="m20 20-3.5-3.5" />
               </svg>
-              {postSearchQuery ? (
+              {effectiveSearchQuery ? (
                 <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-emerald-500" />
               ) : null}
             </button>
@@ -544,31 +577,31 @@ export default function Nav({
             className="mx-auto flex max-w-5xl flex-col gap-2 px-4 pt-2 pb-3 sm:px-6"
             aria-label="Mobile navigation"
           >
-            {showPostSearch && typeof onPostSearchChange === 'function' ? (
-              <div className="relative">
+            {showPostSearch ? (
+              <form className="relative" onSubmit={handleSearchSubmit}>
                 <label htmlFor="post-search-mobile-marketing" className="sr-only">
                   Search posts
                 </label>
                 <input
                   id="post-search-mobile-marketing"
                   type="search"
-                  value={postSearchQuery}
-                  onChange={(e) => onPostSearchChange(e.target.value)}
+                  value={effectiveSearchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search posts..."
                   autoComplete="off"
                   className={`h-11 w-full ${searchInputClassName}`}
                 />
-                {postSearchQuery ? (
+                {effectiveSearchQuery ? (
                   <button
                     type="button"
-                    onClick={() => onPostSearchChange('')}
+                    onClick={() => setSearchQuery('')}
                     className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-base leading-none text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                     aria-label="Clear search"
                   >
                     ×
                   </button>
                 ) : null}
-              </div>
+              </form>
             ) : null}
 
             {readerLoginError ? (
