@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useRef, useState, useCallback } from 'react'
+import { useEffect, useId, useRef, useState, useCallback, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 
 const GHOST_CLICK_BLOCK_MS = 380
@@ -69,7 +69,7 @@ export default function FilterDropdown({
   const selected = options.find((o) => o.value === value)
   const triggerText = selected?.label ?? String(value)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isOpen) {
       setMenuPosition(null)
       return
@@ -206,6 +206,7 @@ export default function FilterDropdown({
 
   const toggleOpen = () => {
     if (disabled) return
+    if (!isOpen) setMenuPosition(null)
     setOpenMenu(isOpen ? null : menuId)
   }
 
