@@ -79,8 +79,14 @@ export default async function RootLayout({
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <link rel="apple-touch-icon" href="/favicon.svg" />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "if ('scrollRestoration' in history) history.scrollRestoration = 'manual';",
+          }}
+        />
       </head>
-      <body className="min-h-screen min-h-[100svh]">
+      <body className="min-h-screen">
         <ScrollToTopOnRouteChange />
         {children}
         <Footer />
