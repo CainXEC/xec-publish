@@ -364,8 +364,13 @@ export default function PostPageClient({
       if (cancelled) return
       const session = sessionData?.session
       const userId = session?.user?.id
-      setIsAuthorSession(Boolean(userId && userId === post.author_id))
+      const authorSession = Boolean(userId && userId === post.author_id)
+      setIsAuthorSession(authorSession)
       setAuthorAccessToken(session?.access_token ?? '')
+      if (authorSession) {
+        // Author never needs unlock checks/paywall for own post.
+        setUnlockCheckPending(false)
+      }
     }
     void loadAuthorSessionState()
     return () => {
@@ -383,21 +388,21 @@ export default function PostPageClient({
   }, [isAuthorSession, post?.id])
 
   useEffect(() => {
-    if (!post?.id || !unlocked) return
+    if (!post?.id || (!unlocked && !isAuthorSession)) return
     void fetchComments(post.id)
-  }, [post?.id, unlocked, fetchComments])
+  }, [post?.id, unlocked, isAuthorSession, fetchComments])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (!post?.id || unlocked) return
+    if (!post?.id || unlocked || isAuthorSession) return
     if (sessionStorage.getItem('pollingActive') === 'true') {
       setPollingActive(true)
       sessionStorage.removeItem('pollingActive')
     }
-  }, [post?.id, unlocked])
+  }, [post?.id, unlocked, isAuthorSession])
 
   useEffect(() => {
-    if (!pollingActive || !post?.id || unlocked) return
+    if (!pollingActive || !post?.id || unlocked || isAuthorSession) return
 
     pollRef.current = setInterval(() => {
       const storedWallet =
@@ -413,10 +418,10 @@ export default function PostPageClient({
         pollRef.current = null
       }
     }
-  }, [pollingActive, post?.id, unlocked, checkUnlock])
+  }, [pollingActive, post?.id, unlocked, isAuthorSession, checkUnlock])
 
   useEffect(() => {
-    if (!post?.id || unlocked) return
+    if (!post?.id || unlocked || isAuthorSession) return
 
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
@@ -432,7 +437,7 @@ export default function PostPageClient({
     return () => {
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [post?.id, unlocked, checkUnlock])
+  }, [post?.id, unlocked, isAuthorSession, checkUnlock])
 
   useEffect(() => {
     const onVisible = () => {
@@ -749,7 +754,8 @@ export default function PostPageClient({
 
   const articleDateIso = post.published_at ?? post.created_at
   const previewReadTimeLabel = formatReadingTimeLabel(post.reading_time_minutes)
-  const showPaywall = !unlocked && !unlockCheckPending
+  const canViewFullPost = unlocked || isAuthorSession
+  const showPaywall = !canViewFullPost && !unlockCheckPending
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
@@ -863,7 +869,7 @@ export default function PostPageClient({
             </button>
           </p>
 
-          {unlocked && post.audio_url ? (
+          {canViewFullPost && post.audio_url ? (
             <div className="mt-4 mb-4">
               <ArticleAudioPlayer
                 postId={post.id}
@@ -888,11 +894,11 @@ export default function PostPageClient({
             </p>
           </section>
 
-          {unlockCheckPending && !unlocked ? (
+          {unlockCheckPending && !canViewFullPost ? (
             <p className="mt-10 text-sm text-zinc-600 dark:text-zinc-400">Checking access...</p>
           ) : null}
 
-          {unlocked ? (
+          {canViewFullPost ? (
             <section className="mt-6 border-t border-zinc-200 pt-6 dark:border-zinc-700">
               <div
                 className="prose prose-zinc dark:prose-invert max-w-none text-base"
