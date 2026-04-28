@@ -1,6 +1,5 @@
 export const runtime = 'nodejs'
 
-import textToSpeech from '@google-cloud/text-to-speech'
 import { NextResponse } from 'next/server'
 import { ChronikClient } from 'chronik-client'
 import { getOutputScriptFromAddress } from 'ecashaddrjs'
@@ -258,10 +257,6 @@ export async function POST(request) {
     )
   }
 
-  const ttsClient = new textToSpeech.TextToSpeechClient({
-    apiKey: process.env.GOOGLE_TTS_API_KEY,
-  })
-
   const selectedVoice = VOICE_MAP[voicePreference]
 
   console.log(`${LOG_PREFIX} tts chunks`, {
@@ -283,17 +278,28 @@ export async function POST(request) {
           chunkChars: chunk.length,
         })
         try {
-          const [response] = await ttsClient.synthesizeSpeech({
-            input: { text: chunk },
-            voice: {
-              languageCode: 'en-US',
-              name: selectedVoice,
-            },
-            audioConfig: {
-              audioEncoding: 'MP3',
-            },
-          })
-          const buffer = Buffer.from(response.audioContent)
+          const response = await fetch(
+            `https://texttospeech.googleapis.com/v1/text:synthesize?key=${process.env.GOOGLE_TTS_API_KEY}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                input: { text: chunk },
+                voice: {
+                  languageCode: 'en-US',
+                  name: selectedVoice,
+                },
+                audioConfig: {
+                  audioEncoding: 'MP3',
+                },
+              }),
+            }
+          )
+          const data = await response.json()
+          if (!response.ok) {
+            throw new Error(data?.error?.message || 'Google TTS REST call failed')
+          }
+          const buffer = Buffer.from(data.audioContent, 'base64')
           const chunkElapsedMs = Date.now() - chunkStart
           console.log(`[audio-gen] chunk ${i + 1}/${chunks.length} took ${chunkElapsedMs}ms`)
           console.log(`${LOG_PREFIX} google tts chunk success`, {
