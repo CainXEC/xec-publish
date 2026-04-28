@@ -26,15 +26,21 @@ export default function AudioPaywallModal({
 }) {
   const [payError, setPayError] = useState(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [voicePreference, setVoicePreference] = useState('male')
   const pollRef = useRef(null)
   const baselineTxidRef = useRef('')
   const lastHandledTxidRef = useRef('')
   const audioContextRef = useRef(null)
   const onAudioGeneratedRef = useRef(onAudioGenerated)
+  const voicePreferenceRef = useRef(voicePreference)
 
   useEffect(() => {
     onAudioGeneratedRef.current = onAudioGenerated
   }, [onAudioGenerated])
+
+  useEffect(() => {
+    voicePreferenceRef.current = voicePreference
+  }, [voicePreference])
 
   const postId = post?.id ?? ''
   const plainCharCount = useMemo(
@@ -167,7 +173,11 @@ export default function AudioPaywallModal({
               method: 'POST',
               credentials: 'include',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ post_id: postId, payment_txid: latestTxid }),
+              body: JSON.stringify({
+                post_id: postId,
+                payment_txid: latestTxid,
+                voice_preference: voicePreferenceRef.current,
+              }),
             })
             const generateData = await generateRes.json().catch(() => ({}))
             if (!generateRes.ok) {
@@ -306,6 +316,40 @@ export default function AudioPaywallModal({
         <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-500">
           ({plainCharCount.toLocaleString('en-US')} characters × {XEC_PER_CHARACTER} XEC = {audioPriceXec.toLocaleString('en-US')} XEC)
         </p>
+
+        {/* Voice selector */}
+        <div className="mt-4">
+          <p className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Narrator voice
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setVoicePreference('male')}
+              disabled={isGenerating}
+              className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
+                voicePreference === 'male'
+                  ? 'border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500 dark:bg-emerald-500 dark:text-emerald-950'
+                  : 'border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-800'
+              } disabled:opacity-50`}
+            >
+              Male
+            </button>
+            <button
+              type="button"
+              onClick={() => setVoicePreference('female')}
+              disabled={isGenerating}
+              className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
+                voicePreference === 'female'
+                  ? 'border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500 dark:bg-emerald-500 dark:text-emerald-950'
+                  : 'border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-800'
+              } disabled:opacity-50`}
+            >
+              Female
+            </button>
+          </div>
+        </div>
+
         {!platformAddressForLatestTx ? (
           <p className="mt-4 text-sm text-red-600 dark:text-red-400" role="alert">
             Audio generation is temporarily unavailable, please contact support.
