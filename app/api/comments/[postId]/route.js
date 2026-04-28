@@ -45,7 +45,7 @@ export async function POST(request, { params }) {
     )
   }
   const content = rawContent.trim()
-  const payerAddress = truncateWallet(body?.payer_address)
+  let payerAddress = truncateWallet(body?.payer_address)
 
   if (!content) {
     return NextResponse.json({ error: 'Comment content is required' }, { status: 400 })
@@ -69,6 +69,17 @@ export async function POST(request, { params }) {
         .maybeSingle()
       if (!postError && ownedPost) {
         verified = true
+        if (!payerAddress) {
+          const { data: authorRow } = await supabaseService
+            .from('authors')
+            .select('username')
+            .eq('id', userData.user.id)
+            .maybeSingle()
+          const username = String(authorRow?.username ?? '').trim()
+          if (username) {
+            payerAddress = `@${username}`
+          }
+        }
       }
     }
   }
