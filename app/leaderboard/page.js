@@ -45,7 +45,8 @@ export default function LeaderboardPage() {
     setLoading(true)
     setLoadError(null)
     try {
-      const params = new URLSearchParams({ timeFilter })
+      const sortBy = sortMode === 'earned' ? 'xec' : 'unlocks'
+      const params = new URLSearchParams({ timeFilter, sortBy })
       const res = await fetch(`/api/leaderboard?${params}`)
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -58,7 +59,7 @@ export default function LeaderboardPage() {
     } finally {
       setLoading(false)
     }
-  }, [timeFilter])
+  }, [timeFilter, sortMode])
 
   useEffect(() => {
     void load()
