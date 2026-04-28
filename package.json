@@ -15,6 +15,7 @@
     "test:all": "vitest run && playwright test"
   },
   "dependencies": {
+    "@google-cloud/text-to-speech": "^6.4.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.101.1",
     "@tiptap/extension-heading": "^3.22.3",
