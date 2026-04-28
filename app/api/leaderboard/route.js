@@ -15,9 +15,10 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url)
   const timeFilter = searchParams.get('timeFilter') ?? 'all'
   const since = getSinceTimestamp(timeFilter)
+  const sortBy = searchParams.get('sortBy') ?? 'unlocks'
 
   const supabase = createServerSupabase()
-  const { data, error } = await supabase.rpc('get_leaderboard', { since })
+  const { data, error } = await supabase.rpc('get_leaderboard', { since, sort_by: sortBy })
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
