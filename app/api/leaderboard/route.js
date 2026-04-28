@@ -29,7 +29,7 @@ export async function GET(request) {
     post_count: Number(r.post_count) || 0,
     total_unlocks: Number(r.total_unlocks) || 0,
     total_xec: Number(r.total_xec) || 0,
-  }))
+  })).slice(0, 10)
 
   return NextResponse.json(
     { rows },
