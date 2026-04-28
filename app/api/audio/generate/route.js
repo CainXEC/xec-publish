@@ -139,7 +139,7 @@ export async function POST(request) {
   const postId = typeof body?.post_id === 'string' ? body.post_id.trim() : ''
   const paymentTxid =
     typeof body?.payment_txid === 'string' ? body.payment_txid.trim() : ''
-  const voicePreference = body?.voice_preference === 'male' ? 'male' : 'female'
+  const voicePreference = body?.voice_preference === 'female' ? 'female' : 'male'
 
   if (!postId) {
     return NextResponse.json({ error: 'missing_post_id' }, { status: 400 })
