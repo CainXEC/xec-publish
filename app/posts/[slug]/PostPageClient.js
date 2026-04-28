@@ -672,7 +672,7 @@ export default function PostPageClient({
   ])
 
   const handlePostComment = useCallback(async () => {
-    if (!post?.id || !unlocked) return
+    if (!post?.id || (!unlocked && !isAuthorSession)) return
     const content = commentText.trim()
     if (!content) {
       setCommentActionError('Comment content is required.')
@@ -686,9 +686,13 @@ export default function PostPageClient({
           ? (localStorage.getItem('readerWalletAddress') || '').trim()
           : ''
 
+      const headers = { 'Content-Type': 'application/json' }
+      if (authorAccessToken) {
+        headers.Authorization = `Bearer ${authorAccessToken}`
+      }
       const res = await fetch(`/api/comments/${encodeURIComponent(post.id)}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           content,
           payer_address: payerAddress || undefined,
@@ -705,7 +709,15 @@ export default function PostPageClient({
     } finally {
       setCommentSubmitting(false)
     }
-  }, [commentText, fetchCommentCount, fetchComments, post?.id, unlocked])
+  }, [
+    authorAccessToken,
+    commentText,
+    fetchCommentCount,
+    fetchComments,
+    isAuthorSession,
+    post?.id,
+    unlocked,
+  ])
 
   const handleDeleteComment = useCallback(async (commentId) => {
     if (!post?.id || !commentId) return

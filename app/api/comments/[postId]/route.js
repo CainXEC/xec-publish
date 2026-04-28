@@ -53,8 +53,28 @@ export async function POST(request, { params }) {
 
   let verified = false
 
+  const authHeader = request.headers.get('authorization') || ''
+  const match = authHeader.match(/^Bearer\s+(.+)$/i)
+  const accessToken = match?.[1]
+  if (accessToken) {
+    const { data: userData, error: userError } = await supabase.auth.getUser(accessToken)
+    if (!userError && userData?.user?.id) {
+      const supabaseService = createServerSupabase()
+      const { data: ownedPost, error: postError } = await supabaseService
+        .from('posts')
+        .select('id')
+        .eq('id', postId)
+        .eq('author_id', userData.user.id)
+        .limit(1)
+        .maybeSingle()
+      if (!postError && ownedPost) {
+        verified = true
+      }
+    }
+  }
+
   const rawCookie = request.cookies.get(`unlock_${postId}`)?.value
-  if (rawCookie) {
+  if (!verified && rawCookie) {
     const { valid } = verifyCookieValue(postId, rawCookie)
     if (valid) verified = true
   }
