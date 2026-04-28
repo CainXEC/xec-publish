@@ -1,6 +1,6 @@
 export const runtime = 'nodejs'
 
-import OpenAI from 'openai'
+import textToSpeech from '@google-cloud/text-to-speech'
 import { NextResponse } from 'next/server'
 import { ChronikClient } from 'chronik-client'
 import { getOutputScriptFromAddress } from 'ecashaddrjs'
@@ -10,9 +10,6 @@ import { createSupabaseServerClient } from '@/lib/supabase-server'
 import {
   AUDIO_MAX_TOTAL_CHARS,
   AUDIO_STORAGE_BUCKET,
-  TTS_INSTRUCTIONS,
-  TTS_MODEL,
-  TTS_VOICE,
   getAudioPriceForPost,
   getPlainTextCharCount,
   getPlainTextFromHtml,
@@ -21,6 +18,11 @@ import {
 import { chunkTextForTTS } from '@/lib/audioChunking'
 
 const LOG_PREFIX = '[audio-generate]'
+
+const VOICE_MAP = {
+  male: 'en-US-Chirp3-HD-Iapetus',
+  female: 'en-US-Chirp3-HD-Laomedeia',
+}
 
 const chronik = new ChronikClient([
   'https://chronik.e.cash',
@@ -137,6 +139,7 @@ export async function POST(request) {
   const postId = typeof body?.post_id === 'string' ? body.post_id.trim() : ''
   const paymentTxid =
     typeof body?.payment_txid === 'string' ? body.payment_txid.trim() : ''
+  const voicePreference = body?.voice_preference === 'male' ? 'male' : 'female'
 
   if (!postId) {
     return NextResponse.json({ error: 'missing_post_id' }, { status: 400 })
@@ -248,40 +251,52 @@ export async function POST(request) {
     )
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.GOOGLE_TTS_API_KEY) {
     return NextResponse.json(
-      { error: 'audio_generation_failed', detail: 'OPENAI_API_KEY is not configured' },
+      { error: 'audio_generation_failed', detail: 'GOOGLE_TTS_API_KEY is not configured' },
       { status: 500 },
     )
   }
 
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  console.log(`${LOG_PREFIX} tts chunks`, { postId, chunkCount: chunks.length, ttsChars: ttsInput.length })
+  const ttsClient = new textToSpeech.TextToSpeechClient({
+    apiKey: process.env.GOOGLE_TTS_API_KEY,
+  })
+
+  const selectedVoice = VOICE_MAP[voicePreference]
+
+  console.log(`${LOG_PREFIX} tts chunks`, {
+    postId,
+    chunkCount: chunks.length,
+    ttsChars: ttsInput.length,
+    voice: selectedVoice,
+  })
+
   const ttsStartedAt = Date.now()
   let chunkResults
   try {
     chunkResults = await Promise.all(
       chunks.map(async (chunk, i) => {
         const chunkStart = Date.now()
-        console.log(`${LOG_PREFIX} openai tts chunk start`, {
+        console.log(`${LOG_PREFIX} google tts chunk start`, {
           postId,
           chunkIndex: i,
           chunkChars: chunk.length,
         })
         try {
-          const mp3Response = await openai.audio.speech.create({
-            model: TTS_MODEL,
-            voice: TTS_VOICE,
-            input: chunk,
-            instructions: TTS_INSTRUCTIONS,
-            response_format: 'mp3',
+          const [response] = await ttsClient.synthesizeSpeech({
+            input: { text: chunk },
+            voice: {
+              languageCode: 'en-US',
+              name: selectedVoice,
+            },
+            audioConfig: {
+              audioEncoding: 'MP3',
+            },
           })
-          const buffer = Buffer.from(await mp3Response.arrayBuffer())
+          const buffer = Buffer.from(response.audioContent)
           const chunkElapsedMs = Date.now() - chunkStart
-          console.log(
-            `[audio-gen] chunk ${i + 1}/${chunks.length} took ${chunkElapsedMs}ms`,
-          )
-          console.log(`${LOG_PREFIX} openai tts chunk success`, {
+          console.log(`[audio-gen] chunk ${i + 1}/${chunks.length} took ${chunkElapsedMs}ms`)
+          console.log(`${LOG_PREFIX} google tts chunk success`, {
             postId,
             chunkIndex: i,
             elapsedMs: chunkElapsedMs,
@@ -289,12 +304,9 @@ export async function POST(request) {
           })
           return { index: i, buffer, elapsedMs: chunkElapsedMs }
         } catch (error) {
-          console.error(
-            `[audio-gen] chunk ${i + 1}/${chunks.length} failed`,
-            error,
-          )
+          console.error(`[audio-gen] chunk ${i + 1}/${chunks.length} failed`, error)
           const wrapped = new Error(
-            error?.message || 'OpenAI speech generation failed',
+            error?.message || 'Google TTS generation failed',
           )
           wrapped.chunkIndex = i
           wrapped.cause = error
@@ -304,7 +316,7 @@ export async function POST(request) {
     )
   } catch (err) {
     const chunkIdx = typeof err.chunkIndex === 'number' ? err.chunkIndex : null
-    console.error(`${LOG_PREFIX} openai tts chunk failed`, {
+    console.error(`${LOG_PREFIX} google tts chunk failed`, {
       postId,
       chunkIndex: chunkIdx,
       chunkCount: chunks.length,
@@ -312,16 +324,16 @@ export async function POST(request) {
     })
     const detail =
       chunkIdx != null
-        ? `TTS failed on chunk ${chunkIdx + 1} of ${chunks.length}: ${err?.message || 'OpenAI speech generation failed'}`
-        : `TTS failed: ${err?.message || 'OpenAI speech generation failed'}`
+        ? `TTS failed on chunk ${chunkIdx + 1} of ${chunks.length}: ${err?.message || 'Google TTS generation failed'}`
+        : `TTS failed: ${err?.message || 'Google TTS generation failed'}`
     return NextResponse.json({ error: 'audio_generation_failed', detail }, { status: 500 })
   }
+
   const allBuffers = chunkResults.map((r) => r.buffer)
   const audioBuffer = Buffer.concat(allBuffers)
-  console.log(`${LOG_PREFIX} openai tts all chunks done`, {
+  console.log(`${LOG_PREFIX} google tts all chunks done`, {
     postId,
     chunkCount: chunks.length,
-    parallelism: chunks.length,
     totalMs: Date.now() - ttsStartedAt,
     totalBytes: audioBuffer.length,
   })
@@ -373,6 +385,7 @@ export async function POST(request) {
       audio_generated_at: new Date().toISOString(),
       audio_char_count: charCount,
       audio_source_hash: sourceHash,
+      audio_voice: voicePreference,
     })
     .eq('id', post.id)
 
@@ -393,5 +406,6 @@ export async function POST(request) {
     post_id: post.id,
     audio_url: fileName,
     char_count: charCount,
+    voice: voicePreference,
   })
 }
