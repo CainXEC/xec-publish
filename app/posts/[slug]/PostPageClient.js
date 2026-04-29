@@ -84,6 +84,7 @@ export default function PostPageClient({
   const [readerWalletAddress, setReaderWalletAddress] = useState('')
   const [isFollowingAuthor, setIsFollowingAuthor] = useState(false)
   const [followAuthorBusy, setFollowAuthorBusy] = useState(false)
+  const [isAdminSession, setIsAdminSession] = useState(false)
   const commentCopyTimeoutsRef = useRef({})
   const shareCopyTimeoutRef = useRef(null)
 
@@ -311,21 +312,6 @@ export default function PostPageClient({
     async function initialUnlock() {
       setUnlockCheckPending(true)
 
-      const { data: userData } = await supabase.auth.getUser()
-      const user = userData?.user
-      if (user && !cancelled) {
-        const { data: authorData } = await supabase
-          .from('authors')
-          .select('is_admin')
-          .eq('id', user.id)
-          .maybeSingle()
-        if (!cancelled && authorData?.is_admin === true) {
-          setUnlocked(true)
-          setUnlockCheckPending(false)
-          return
-        }
-      }
-
       let ok = await checkUnlock(post.id)
       if (!ok && typeof window !== 'undefined') {
         const storedWallet = (
@@ -367,6 +353,18 @@ export default function PostPageClient({
       const authorSession = Boolean(userId && userId === post.author_id)
       setIsAuthorSession(authorSession)
       setAuthorAccessToken(session?.access_token ?? '')
+      if (userId) {
+        const { data: authorData } = await supabase
+          .from('authors')
+          .select('is_admin')
+          .eq('id', userId)
+          .maybeSingle()
+        if (!cancelled) {
+          setIsAdminSession(authorData?.is_admin === true)
+        }
+      } else if (!cancelled) {
+        setIsAdminSession(false)
+      }
       if (authorSession) {
         // Author never needs unlock checks/paywall for own post.
         setUnlockCheckPending(false)
@@ -881,7 +879,7 @@ export default function PostPageClient({
             </button>
           </p>
 
-          {canViewFullPost && post.audio_url ? (
+          {(canViewFullPost || isAdminSession) && post.audio_url ? (
             <div className="mt-4 mb-4">
               <ArticleAudioPlayer
                 postId={post.id}

@@ -30,17 +30,38 @@ export async function GET(request) {
   }
 
   let isAuthor = false
+  let isAdmin = false
+  let userId = null
   try {
     const supabaseAuth = await createSupabaseServerClient()
     const { data: userData, error: userError } = await supabaseAuth.auth.getUser()
-    if (!userError && userData?.user?.id && userData.user.id === post.author_id) {
-      isAuthor = true
+    if (!userError && userData?.user?.id) {
+      userId = userData.user.id
+      if (userData.user.id === post.author_id) {
+        isAuthor = true
+      }
     }
   } catch {
     isAuthor = false
   }
 
-  if (!isAuthor) {
+  if (userId && !isAuthor) {
+    const supabaseAdmin = createSupabaseAdminClient()
+    if (!supabaseAdmin) {
+      return NextResponse.json({ error: 'Supabase admin client is not configured' }, { status: 500 })
+    }
+    const { data: authorRow, error: authorError } = await supabaseAdmin
+      .from('authors')
+      .select('is_admin')
+      .eq('id', userId)
+      .maybeSingle()
+    if (authorError) {
+      return NextResponse.json({ error: authorError.message }, { status: 500 })
+    }
+    isAdmin = authorRow?.is_admin === true
+  }
+
+  if (!isAuthor && !isAdmin) {
     let hasValidUnlock = false
     let hadCookieContext = false
     const rawCookie = request.cookies.get(`unlock_${postId}`)?.value
