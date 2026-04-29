@@ -16,7 +16,7 @@ test.describe('Homepage', () => {
   test('search submits to dedicated /search page and shows empty state', async ({ page }) => {
     await page.goto('/')
     // Search is hidden until the homepage finishes loading (Nav `showPostSearch`).
-    await expect(page.locator('ul li').first()).toBeVisible({ timeout: 20000 })
+    await expect(page.locator('article, ul li').first()).toBeVisible({ timeout: 20000 })
     const openSearch = page.locator('#post-search-desktop-toggle')
     await expect(openSearch).toBeVisible({ timeout: 20_000 })
     await openSearch.click()
