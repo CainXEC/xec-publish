@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import ArticleAudioPlayer from '@/components/ArticleAudioPlayer'
 import Nav from '@/components/Nav'
@@ -52,6 +53,7 @@ export default function PostPageClient({
   initialUnlockCount,
   initialCommentCount,
 }) {
+  const router = useRouter()
   const [post] = useState(initialPost)
   const [author] = useState(initialAuthor)
 
@@ -85,6 +87,7 @@ export default function PostPageClient({
   const [isFollowingAuthor, setIsFollowingAuthor] = useState(false)
   const [followAuthorBusy, setFollowAuthorBusy] = useState(false)
   const [isAdminSession, setIsAdminSession] = useState(false)
+  const [pinBusy, setPinBusy] = useState(false)
   const commentCopyTimeoutsRef = useRef({})
   const shareCopyTimeoutRef = useRef(null)
 
@@ -758,6 +761,26 @@ export default function PostPageClient({
     post?.id,
   ])
 
+  const handlePinHomepage = useCallback(async () => {
+    if (!post?.id || pinBusy) return
+    setPinBusy(true)
+    try {
+      const method = post.pinned === true ? 'DELETE' : 'POST'
+      const res = await fetch(`/api/posts/${encodeURIComponent(post.id)}/pin`, {
+        method,
+        credentials: 'include',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        window.alert(data?.error || 'Could not update pin.')
+        return
+      }
+      router.refresh()
+    } finally {
+      setPinBusy(false)
+    }
+  }, [pinBusy, post.id, post.pinned, router])
+
   if (!post) {
     return null
   }
@@ -775,6 +798,18 @@ export default function PostPageClient({
       />
       <main className="mx-auto w-full max-w-3xl px-4 pt-4 pb-6">
         <article className="px-0 pb-4">
+          {isAdminSession ? (
+            <p className="mb-2">
+              <button
+                type="button"
+                onClick={() => void handlePinHomepage()}
+                disabled={pinBusy}
+                className="text-xs font-medium text-amber-800 underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50 dark:text-amber-300 dark:hover:text-amber-200"
+              >
+                {pinBusy ? '…' : post.pinned === true ? '📌 Unpin' : '📌 Pin to homepage'}
+              </button>
+            </p>
+          ) : null}
           <h1 className="font-article-title text-3xl font-semibold leading-tight text-zinc-900 dark:text-zinc-50">
             {post.title}
             {post.audio_url && (

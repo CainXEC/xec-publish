@@ -42,6 +42,69 @@ function truncateTeaserPreview(text, maxLen = TEASER_CARD_MAX) {
   return `${s.slice(0, maxLen)}...`
 }
 
+function HomePostCard({ post, sortMode, pinnedBadge = false }) {
+  const author = authorFromPost(post)
+  const username = author?.username?.trim() || 'Unknown'
+  const postHref = `/posts/${encodeURIComponent(post.slug)}`
+  const priceLabel = formatXec(post.price_xec)
+  const unlocksN = post.unlockCount ?? 0
+  const commentsN = post.commentCount ?? 0
+  const unlockStat = unlocksN === 1 ? '🔓 1 unlock' : `🔓 ${unlocksN} unlocks`
+  const commentStat = commentsN === 1 ? '💬 1 comment' : `💬 ${commentsN} comments`
+  const readTime = formatReadingTimeLabel(post.reading_time_minutes)
+  const earningsSats = Number(post.earnings)
+  const earningsStat =
+    sortMode === 'earned' && Number.isFinite(earningsSats)
+      ? `💰 ${Math.round(earningsSats / 100).toLocaleString('en-US')} XEC earned`
+      : null
+
+  return (
+    <div
+      role="listitem"
+      className={
+        pinnedBadge
+          ? 'relative block cursor-pointer overflow-hidden rounded-2xl border border-amber-300/80 bg-amber-50/40 p-6 shadow-sm transition-[box-shadow,border-color] duration-200 hover:border-amber-400 hover:shadow-md dark:border-amber-700/50 dark:bg-amber-950/25 dark:hover:border-amber-600 dark:hover:shadow-lg/20'
+          : 'relative block cursor-pointer overflow-hidden rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-[box-shadow,border-color] duration-200 hover:border-zinc-400 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-500 dark:hover:shadow-lg/20'
+      }
+    >
+      {pinnedBadge ? (
+        <p className="mb-2 text-xs font-semibold tracking-wide text-amber-900 dark:text-amber-200">📌 Pinned</p>
+      ) : null}
+      <h3 className="font-article-title text-xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+        <Link
+          prefetch={false}
+          href={postHref}
+          className="rounded-sm text-inherit after:absolute after:inset-0 after:content-[''] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
+        >
+          {post.title}
+        </Link>
+        {post.audio_url ? (
+          <span className="relative z-10 ml-2 text-sm" title="Audio narration available" aria-label="Audio narration available">
+            🎧
+          </span>
+        ) : null}
+      </h3>
+      <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
+        <Link href={`/u/${encodeURIComponent(username)}`} className="relative z-10 font-medium text-emerald-700 hover:text-emerald-800 underline-offset-2 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300">
+          @{username}
+        </Link>
+        <span aria-hidden className="text-zinc-300 dark:text-zinc-600">
+          ·
+        </span>
+        <time dateTime={(post.published_at ?? post.created_at) ?? undefined}>{formatPublishedDate(post.published_at ?? post.created_at)}</time>
+      </p>
+      <p className="mt-4 break-words line-clamp-4 overflow-hidden text-base leading-relaxed text-zinc-600 dark:text-zinc-400">{truncateTeaserPreview(post.teaser)}</p>
+      <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
+        <span>{priceLabel} XEC</span>
+        {earningsStat ? <span className="font-normal text-zinc-600 dark:text-zinc-400">{earningsStat}</span> : null}
+        <span className="font-normal text-zinc-600 dark:text-zinc-400">{unlockStat}</span>
+        <span className="font-normal text-zinc-600 dark:text-zinc-400">{commentStat}</span>
+        {readTime ? <span className="font-normal text-zinc-600 dark:text-zinc-400">{readTime}</span> : null}
+      </p>
+    </div>
+  )
+}
+
 const HOME_SORT_OPTIONS = [
   { value: 'earned', label: 'Most earned' },
   { value: 'unlocks', label: 'Most unlocked' },
@@ -74,6 +137,7 @@ const heroHeadlineWordmarkStyle = {
 
 export default function HomeClient({
   initialPosts,
+  initialPinnedPost = null,
   initialHasNextPage,
   initialSort,
   initialTimeFilter,
@@ -81,6 +145,7 @@ export default function HomeClient({
   initialLoadError = null,
 }) {
   const [posts, setPosts] = useState(initialPosts ?? [])
+  const [pinnedPost, setPinnedPost] = useState(initialPinnedPost ?? null)
   const [sortMode, setSortMode] = useState(initialSort ?? 'earned')
   const [timeFilter, setTimeFilter] = useState(initialTimeFilter ?? '24h')
   const [currentPage, setCurrentPage] = useState(initialPage ?? 1)
@@ -176,9 +241,11 @@ export default function HomeClient({
         if (data.error) {
           setLoadError(data.error)
           setPosts([])
+          setPinnedPost(null)
           setHasNextPage(false)
         } else {
           setPosts(data.posts ?? [])
+          setPinnedPost(currentPage === 1 ? data.pinnedPost ?? null : null)
           setHasNextPage(data.hasNextPage ?? false)
         }
         setLoading(false)
@@ -187,6 +254,7 @@ export default function HomeClient({
         if (cancelled) return
         setLoadError(err.message)
         setPosts([])
+        setPinnedPost(null)
         setHasNextPage(false)
         setLoading(false)
       })
@@ -196,8 +264,10 @@ export default function HomeClient({
     }
   }, [currentPage, timeFilter, sortMode, followingOnly, readerWalletAddress, refetchTrigger])
 
+  const showPinnedCard = currentPage === 1 && Boolean(pinnedPost)
   const showPostSearch = !loading && !loadError
-  const showPaginationRow = posts.length > 0 && (currentPage > 1 || hasNextPage)
+  const showPaginationRow =
+    (posts.length > 0 || showPinnedCard) && (currentPage > 1 || hasNextPage)
 
   const audienceOptions = useMemo(
     () => [
@@ -263,78 +333,20 @@ export default function HomeClient({
               </div>
             </div>
 
-            {loading ? (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading posts…</p>
-            ) : posts.length === 0 && !readerWalletAddress ? (
+            {loading ? <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading posts…</p> : null}
+            {!loading && posts.length === 0 && !showPinnedCard && !readerWalletAddress ? (
               <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-8 py-16 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
                 <p className="text-lg text-zinc-700 dark:text-zinc-300">No posts yet. Be the first to write something.</p>
               </div>
-            ) : (
-              <>
-                {posts.length > 0 ? (
-                  <ul className="flex flex-col gap-1.5 md:gap-2">
-                    {posts.map((post) => {
-                      const author = authorFromPost(post)
-                      const username = author?.username?.trim() || 'Unknown'
-                      const postHref = `/posts/${encodeURIComponent(post.slug)}`
-                      const priceLabel = formatXec(post.price_xec)
-                      const unlocksN = post.unlockCount ?? 0
-                      const commentsN = post.commentCount ?? 0
-                      const unlockStat = unlocksN === 1 ? '🔓 1 unlock' : `🔓 ${unlocksN} unlocks`
-                      const commentStat = commentsN === 1 ? '💬 1 comment' : `💬 ${commentsN} comments`
-                      const readTime = formatReadingTimeLabel(post.reading_time_minutes)
-                      const earningsSats = Number(post.earnings)
-                      const earningsStat =
-                        sortMode === 'earned' && Number.isFinite(earningsSats)
-                          ? `💰 ${Math.round(earningsSats / 100).toLocaleString('en-US')} XEC earned`
-                          : null
-
-                      return (
-                        <li key={post.id}>
-                          <div className="relative block cursor-pointer overflow-hidden rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-[box-shadow,border-color] duration-200 hover:border-zinc-400 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-500 dark:hover:shadow-lg/20">
-                            <h3 className="font-article-title text-xl font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
-                              <Link
-                                prefetch={false}
-                                href={postHref}
-                                className="rounded-sm text-inherit after:absolute after:inset-0 after:content-[''] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
-                              >
-                                {post.title}
-                              </Link>
-                              {post.audio_url ? (
-                                <span className="relative z-10 ml-2 text-sm" title="Audio narration available" aria-label="Audio narration available">
-                                  🎧
-                                </span>
-                              ) : null}
-                            </h3>
-                            <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
-                              <Link href={`/u/${encodeURIComponent(username)}`} className="relative z-10 font-medium text-emerald-700 hover:text-emerald-800 underline-offset-2 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300">@{username}</Link>
-                              <span aria-hidden className="text-zinc-300 dark:text-zinc-600">·</span>
-                              <time dateTime={(post.published_at ?? post.created_at) ?? undefined}>
-                                {formatPublishedDate(post.published_at ?? post.created_at)}
-                              </time>
-                            </p>
-                            <p className="mt-4 break-words line-clamp-4 overflow-hidden text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
-                              {truncateTeaserPreview(post.teaser)}
-                            </p>
-                            <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                              <span>{priceLabel} XEC</span>
-                              {earningsStat ? (
-                                <span className="font-normal text-zinc-600 dark:text-zinc-400">
-                                  {earningsStat}
-                                </span>
-                              ) : null}
-                              <span className="font-normal text-zinc-600 dark:text-zinc-400">{unlockStat}</span>
-                              <span className="font-normal text-zinc-600 dark:text-zinc-400">{commentStat}</span>
-                              {readTime ? <span className="font-normal text-zinc-600 dark:text-zinc-400">{readTime}</span> : null}
-                            </p>
-                          </div>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                ) : null}
-              </>
-            )}
+            ) : null}
+            {showPinnedCard || posts.length > 0 ? (
+              <div role="list" className="mt-2 flex flex-col gap-1.5 md:mt-0 md:gap-2">
+                {showPinnedCard ? <HomePostCard key={pinnedPost.id} post={pinnedPost} sortMode={sortMode} pinnedBadge /> : null}
+                {posts.map((post) => (
+                  <HomePostCard key={post.id} post={post} sortMode={sortMode} />
+                ))}
+              </div>
+            ) : null}
           </>
         )}
         {showPaginationRow ? (

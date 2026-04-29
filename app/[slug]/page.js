@@ -29,7 +29,7 @@ const getLegacyPublishedPostBySlug = cache(async (rawSlug) => {
   const { data: postRow, error: postError } = await supabase
     .from('posts')
     .select(
-      'id, author_id, title, teaser, body, audio_url, audio_char_count, audio_source_hash, price_xec, published, slug, created_at, published_at, reading_time_minutes, authors ( username, xec_address )',
+      'id, author_id, title, teaser, body, audio_url, audio_char_count, audio_source_hash, price_xec, published, pinned, slug, created_at, published_at, reading_time_minutes, authors ( username, xec_address )',
     )
     .eq('slug', slug)
     .eq('published', true)

@@ -7,7 +7,7 @@ export default async function HomePage() {
   const initialPage = 1
 
   try {
-    const { posts, hasNextPage } = await getHomepagePosts({
+    const { posts, hasNextPage, pinnedPost } = await getHomepagePosts({
       sort: initialSort,
       timeFilter: initialTimeFilter,
       page: initialPage,
@@ -19,6 +19,7 @@ export default async function HomePage() {
     return (
       <HomeClient
         initialPosts={posts}
+        initialPinnedPost={pinnedPost}
         initialHasNextPage={hasNextPage}
         initialSort={initialSort}
         initialTimeFilter={initialTimeFilter}
@@ -29,6 +30,7 @@ export default async function HomePage() {
     return (
       <HomeClient
         initialPosts={[]}
+        initialPinnedPost={null}
         initialHasNextPage={false}
         initialSort={initialSort}
         initialTimeFilter={initialTimeFilter}
