@@ -1,9 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import RichTextEditor from '@/components/RichTextEditor'
 import PublishPaywallModal from '@/components/dashboard/PublishPaywallModal'
 import { supabase } from '@/lib/supabase-browser'
 import { calculateReadingTimeMinutes } from '@/lib/calculateReadingTimeMinutes'
@@ -16,6 +16,10 @@ import {
   POST_TITLE_MAX,
 } from '@/lib/postFieldLimits'
 import { postBodyHasMeaningfulText } from '@/lib/postBodyHasMeaningfulText'
+
+const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), {
+  ssr: false,
+})
 
 const DEFAULT_NEW_POST_BODY =
   '<p></p><div data-paywall-break="true"></div><p></p>'

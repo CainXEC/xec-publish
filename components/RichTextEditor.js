@@ -125,7 +125,7 @@ export default function RichTextEditor({
   const maxLabel = maxPlainTextChars.toLocaleString('en-US')
   const countLabel = charCount.toLocaleString('en-US')
   const counterClass = charCounterClassName(charCount, maxPlainTextChars, BODY_WARN_WITHIN)
-  const hasPaywallBreak = docHasPaywallBreak(editor.getJSON())
+  const hasPaywallBreak = editor ? docHasPaywallBreak(editor.getJSON()) : false
 
   if (!editor) {
     return (
