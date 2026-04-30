@@ -10,7 +10,7 @@ export default async function AuthorProfilePage({ params }) {
 
   const username = decodeURIComponent(raw.trim())
 
-  const { error, author, posts: postList } =
+  const { error, author, posts: postList, totalUnlocks, totalEarnings } =
     await loadAuthorProfileByUsername(username)
 
   if (!author) {
@@ -23,6 +23,8 @@ export default async function AuthorProfilePage({ params }) {
     <AuthorProfilePageClient
       author={author}
       initialPosts={postList}
+      totalUnlocks={totalUnlocks}
+      totalEarnings={totalEarnings}
       postsErrorMessage={postsErrorMessage}
     />
   )

@@ -9,12 +9,16 @@ import CopyableAddress from '@/components/CopyableAddress'
  * @param {{
  *   author: { id: string, username: string, xec_address?: string | null, bio?: string | null }
  *   initialPosts: unknown[]
+ *   totalUnlocks: number
+ *   totalEarnings: number
  *   postsErrorMessage: string | null
  * }} props
  */
 export default function AuthorProfilePageClient({
   author,
   initialPosts,
+  totalUnlocks = 0,
+  totalEarnings = 0,
   postsErrorMessage,
 }) {
   const [readerWalletAddress, setReaderWalletAddress] = useState('')
@@ -131,6 +135,22 @@ export default function AuthorProfilePageClient({
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
               {followerCount} {followerCount === 1 ? 'follower' : 'followers'}
             </p>
+          </div>
+          <div className="mt-4 flex gap-6 text-sm text-zinc-600 dark:text-zinc-400">
+            <span>
+              🔓{' '}
+              <strong className="text-zinc-900 dark:text-zinc-50">
+                {Number(totalUnlocks).toLocaleString('en-US')}
+              </strong>{' '}
+              unlocks
+            </span>
+            <span>
+              💰{' '}
+              <strong className="text-zinc-900 dark:text-zinc-50">
+                {Math.round(Number(totalEarnings) / 100).toLocaleString('en-US')}
+              </strong>{' '}
+              XEC earned
+            </span>
           </div>
           {bioText ? (
             <p className="mt-6 max-w-2xl whitespace-pre-wrap text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
