@@ -47,6 +47,35 @@ function formatArticlePublishedDate(iso) {
   })
 }
 
+function formatXec(amount) {
+  const n = Number(amount)
+  if (!Number.isFinite(n)) return '0'
+  return n.toLocaleString('en-US')
+}
+
+function splitBodyAtPaywall(html) {
+  const src = typeof html === 'string' ? html : ''
+  const marker = '<div data-paywall-break="true"></div>'
+  const exactIdx = src.indexOf(marker)
+  if (exactIdx !== -1) {
+    return {
+      preview: src.slice(0, exactIdx),
+      locked: src.slice(exactIdx + marker.length),
+    }
+  }
+
+  const markerRegex = /<div[^>]*data-paywall-break(?:="true")?[^>]*>\s*<\/div>/i
+  const match = markerRegex.exec(src)
+  if (!match) return { preview: src, locked: null }
+
+  const start = match.index
+  const end = start + match[0].length
+  return {
+    preview: src.slice(0, start),
+    locked: src.slice(end),
+  }
+}
+
 export default function PostPageClient({
   initialPost,
   initialAuthor,
@@ -490,7 +519,7 @@ export default function PostPageClient({
   const cashtabUrl = bip21Url
     ? `https://cashtab.com/#/send?bip21=${bip21Url}`
     : ''
-  const unlockPriceLabel = Number(priceXec).toLocaleString()
+  const unlockPriceLabel = formatXec(priceXec)
 
   function openCashtab(url) {
     if (!url || typeof window === 'undefined') return
@@ -787,8 +816,14 @@ export default function PostPageClient({
 
   const articleDateIso = post.published_at ?? post.created_at
   const previewReadTimeLabel = formatReadingTimeLabel(post.reading_time_minutes)
-  const canViewFullPost = unlocked || isAuthorSession
+  const canViewFullPost = unlocked || isAuthorSession || isAdminSession
   const showPaywall = !canViewFullPost && !unlockCheckPending
+  const bodyHtmlRaw = typeof post.body === 'string' ? post.body : ''
+  const splitBody = splitBodyAtPaywall(bodyHtmlRaw)
+  const hasPaywallMarker = splitBody.locked !== null
+  const previewHtml = sanitizePostBodyHtml(splitBody.preview)
+  const lockedSampleHtml = sanitizePostBodyHtml((splitBody.locked ?? '').slice(0, 300))
+  const fullBodyHtml = sanitizePostBodyHtml(bodyHtmlRaw)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
@@ -924,23 +959,79 @@ export default function PostPageClient({
             </div>
           ) : null}
 
-          <section className="mt-4 overflow-hidden">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Preview
-              {previewReadTimeLabel ? (
-                <span className="font-normal normal-case text-zinc-500 dark:text-zinc-400">
-                  {' '}
-                  ({previewReadTimeLabel})
-                </span>
-              ) : null}
-            </h2>
-            <p className="mt-2 break-words whitespace-pre-wrap text-base leading-7 text-zinc-800 dark:text-zinc-200">
-              {post.teaser}
-            </p>
-          </section>
-
           {unlockCheckPending && !canViewFullPost ? (
             <p className="mt-10 text-sm text-zinc-600 dark:text-zinc-400">Checking access...</p>
+          ) : null}
+
+          {showPaywall && hasPaywallMarker ? (
+            <section className="mt-6 border-t border-zinc-200 pt-6 dark:border-zinc-700">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Preview
+                {previewReadTimeLabel ? (
+                  <span className="font-normal normal-case text-zinc-500 dark:text-zinc-400">
+                    {' '}
+                    ({previewReadTimeLabel})
+                  </span>
+                ) : null}
+              </h2>
+              <div className="relative mt-3">
+                <div
+                  className="prose prose-zinc dark:prose-invert max-w-none text-base"
+                  dangerouslySetInnerHTML={{ __html: previewHtml }}
+                />
+
+                <div className="relative mt-6">
+                  <div
+                    className="prose prose-zinc dark:prose-invert line-clamp-3 max-w-none opacity-60"
+                    dangerouslySetInnerHTML={{ __html: lockedSampleHtml }}
+                  />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-white dark:to-zinc-950" />
+                </div>
+
+                <div className="mt-0 border-t border-zinc-200 py-8 text-center dark:border-zinc-800">
+                  <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+                    Read the full story for {formatXec(post.price_xec)} XEC
+                  </p>
+                  {bip21Url ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled={payBusy}
+                        onClick={handlePayToUnlock}
+                        className="inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60 dark:bg-emerald-400 dark:text-emerald-950"
+                      >
+                        {payBusy
+                          ? 'Opening wallet…'
+                          : `Pay ${unlockPriceLabel} XEC to unlock`}
+                      </button>
+                      <p className="mt-1 text-center text-xs text-zinc-500 dark:text-zinc-500">
+                        (6% of all unlock payments go to support the platform)
+                      </p>
+                      {pollingActive && paymentInitiated ? (
+                        <div className="mt-4 rounded-lg border border-zinc-200 bg-white/70 px-4 py-3 text-left dark:border-zinc-700 dark:bg-zinc-900/60">
+                          <div className="flex items-center gap-3">
+                            <span
+                              aria-hidden
+                              className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-emerald-500 dark:border-zinc-600 dark:border-t-emerald-400"
+                            />
+                            <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                              Waiting for payment confirmation...
+                            </p>
+                          </div>
+                          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                            This usually takes a few seconds
+                          </p>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
+                      Payment details are not configured for this post yet.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </section>
           ) : null}
 
           {canViewFullPost ? (
@@ -948,7 +1039,7 @@ export default function PostPageClient({
               <div
                 className="prose prose-zinc dark:prose-invert max-w-none text-base"
                 dangerouslySetInnerHTML={{
-                  __html: sanitizePostBodyHtml(post.body ?? ''),
+                  __html: fullBodyHtml,
                 }}
               />
 
@@ -1081,7 +1172,7 @@ export default function PostPageClient({
             </section>
           ) : null}
 
-          {showPaywall ? (
+          {showPaywall && !hasPaywallMarker ? (
             <section className="mt-2 px-0 py-4">
               {bip21Url ? (
                 <>
