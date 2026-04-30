@@ -13,7 +13,6 @@ import { countPlainTextCharsFromHtml } from '@/lib/plainTextCharCount'
 import {
   POST_BODY_PLAIN_MAX,
   POST_SLUG_MAX,
-  POST_TEASER_MAX,
   POST_TITLE_MAX,
 } from '@/lib/postFieldLimits'
 import { postBodyHasMeaningfulText } from '@/lib/postBodyHasMeaningfulText'
@@ -31,9 +30,6 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
   )
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(
     Boolean(String(initialPost.slug ?? '').trim()),
-  )
-  const [teaser, setTeaser] = useState(() =>
-    String(initialPost.teaser ?? '').slice(0, POST_TEASER_MAX),
   )
   const [body, setBody] = useState(initialPost.body ?? '')
   const [priceXec, setPriceXec] = useState(
@@ -103,7 +99,6 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
     const updatePayload = {
       title: title.trim(),
       slug: finalSlug,
-      teaser: teaser.trim(),
       body: bodyTrimmed,
       reading_time_minutes: calculateReadingTimeMinutes(bodyTrimmed),
       price_xec: price,
@@ -141,7 +136,6 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
     published,
     router,
     slug,
-    teaser,
     title,
   ])
 
@@ -179,7 +173,6 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
       const updatePayload = {
         title: title.trim(),
         slug: finalSlug,
-        teaser: teaser.trim(),
         body: bodyTrimmed,
         reading_time_minutes: calculateReadingTimeMinutes(bodyTrimmed),
         price_xec: price,
@@ -200,7 +193,7 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
     } catch {
       setAutoSaveStatus('error')
     }
-  }, [body, postId, priceXec, slug, teaser, title])
+  }, [body, postId, priceXec, slug, title])
 
   const slugFieldError = useMemo(() => {
     const t = slug.trim()
@@ -219,7 +212,7 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
     }
-  }, [title, teaser, body, priceXec, slug, autoSave])
+  }, [title, body, priceXec, slug, autoSave])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -363,28 +356,6 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
                   {slugFieldError}
                 </p>
               ) : null}
-            </div>
-
-            <div>
-              <label htmlFor="teaser" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Teaser
-              </label>
-              <textarea
-                id="teaser"
-                name="teaser"
-                required
-                rows={4}
-                maxLength={POST_TEASER_MAX}
-                value={teaser}
-                onChange={(e) => setTeaser(e.target.value.slice(0, POST_TEASER_MAX))}
-                className="mt-1 w-full resize-y rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-500"
-                placeholder="Free preview shown before payment"
-              />
-              <p
-                className={`mt-1 text-right text-xs tabular-nums ${charCounterClassName(teaser.length, POST_TEASER_MAX, 20)}`}
-              >
-                {teaser.length}/{POST_TEASER_MAX}
-              </p>
             </div>
 
             <div>

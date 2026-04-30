@@ -8,6 +8,7 @@ import TextAlign from '@tiptap/extension-text-align'
 import { CharacterCount } from '@tiptap/extensions/character-count'
 import { POST_BODY_PLAIN_MAX } from '@/lib/postFieldLimits'
 import { charCounterClassName } from '@/lib/charCounterClassName'
+import { PaywallBreak } from '@/lib/tiptap/PaywallBreak'
 
 const BODY_WARN_WITHIN = 10_000
 
@@ -54,6 +55,13 @@ function readPlainCharCount(editor) {
   }
 }
 
+function docHasPaywallBreak(node) {
+  if (!node || typeof node !== 'object') return false
+  if (node.type === 'paywallBreak') return true
+  if (!Array.isArray(node.content)) return false
+  return node.content.some((child) => docHasPaywallBreak(child))
+}
+
 export default function RichTextEditor({
   content = '',
   onChange,
@@ -78,6 +86,7 @@ export default function RichTextEditor({
         limit: maxPlainTextChars,
         mode: 'textSize',
       }),
+      PaywallBreak,
     ],
     [maxPlainTextChars],
   )
@@ -116,6 +125,7 @@ export default function RichTextEditor({
   const maxLabel = maxPlainTextChars.toLocaleString('en-US')
   const countLabel = charCount.toLocaleString('en-US')
   const counterClass = charCounterClassName(charCount, maxPlainTextChars, BODY_WARN_WITHIN)
+  const hasPaywallBreak = docHasPaywallBreak(editor.getJSON())
 
   if (!editor) {
     return (
@@ -207,6 +217,24 @@ export default function RichTextEditor({
             onAction={() => editor.chain().focus().toggleBlockquote().run()}
           >
             “
+          </ToolbarButton>
+          <ToolbarSeparator />
+          <ToolbarButton
+            title={
+              hasPaywallBreak
+                ? 'Paywall marker already exists'
+                : 'Insert paywall marker'
+            }
+            disabled={hasPaywallBreak}
+            onAction={() =>
+              editor
+                .chain()
+                .focus()
+                .insertContent({ type: 'paywallBreak' })
+                .run()
+            }
+          >
+            🔒 Paywall
           </ToolbarButton>
           <ToolbarSeparator />
           <ToolbarButton
