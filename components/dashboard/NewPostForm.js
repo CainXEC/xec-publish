@@ -23,6 +23,20 @@ const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), {
 
 const DEFAULT_NEW_POST_BODY =
   '<p></p><div data-paywall-break="true"></div><p></p>'
+const PAYWALL_MARKER = '<div data-paywall-break="true"></div>'
+
+function extractTeaserFromBody(html) {
+  const src = String(html ?? '')
+  const markerIdx = src.indexOf(PAYWALL_MARKER)
+  const preview = markerIdx === -1 ? src : src.slice(0, markerIdx)
+  const plain = preview
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return plain.slice(0, 300)
+}
 
 export default function NewPostForm({ xecAddress: initialXecAddress }) {
   const router = useRouter()
@@ -87,6 +101,7 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
       author_id: userId,
       title: title.trim(),
       slug: finalSlug,
+      teaser: extractTeaserFromBody(bodyTrimmed),
       body: bodyTrimmed,
       reading_time_minutes: calculateReadingTimeMinutes(bodyTrimmed),
       price_xec: safePrice,

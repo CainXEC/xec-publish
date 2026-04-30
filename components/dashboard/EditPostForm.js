@@ -17,6 +17,21 @@ import {
 } from '@/lib/postFieldLimits'
 import { postBodyHasMeaningfulText } from '@/lib/postBodyHasMeaningfulText'
 
+const PAYWALL_MARKER = '<div data-paywall-break="true"></div>'
+
+function extractTeaserFromBody(html) {
+  const src = String(html ?? '')
+  const markerIdx = src.indexOf(PAYWALL_MARKER)
+  const preview = markerIdx === -1 ? src : src.slice(0, markerIdx)
+  const plain = preview
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return plain.slice(0, 300)
+}
+
 export default function EditPostForm({ postId, xecAddress: initialXecAddress, initialPost }) {
   const router = useRouter()
   const bodyLabelId = useId()
@@ -99,6 +114,7 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
     const updatePayload = {
       title: title.trim(),
       slug: finalSlug,
+      teaser: extractTeaserFromBody(bodyTrimmed),
       body: bodyTrimmed,
       reading_time_minutes: calculateReadingTimeMinutes(bodyTrimmed),
       price_xec: price,
@@ -173,6 +189,7 @@ export default function EditPostForm({ postId, xecAddress: initialXecAddress, in
       const updatePayload = {
         title: title.trim(),
         slug: finalSlug,
+        teaser: extractTeaserFromBody(bodyTrimmed),
         body: bodyTrimmed,
         reading_time_minutes: calculateReadingTimeMinutes(bodyTrimmed),
         price_xec: price,
