@@ -29,6 +29,13 @@ function formatPublishedDate(iso) {
   })
 }
 
+function formatShortDate(dateStr) {
+  if (!dateStr) return ''
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(
+    new Date(dateStr),
+  )
+}
+
 function authorFromPost(post) {
   const a = post.authors
   if (!a) return null
@@ -121,17 +128,14 @@ const HOME_TIME_OPTIONS = [
 
 const MENU_SORT = 'home-sort'
 const MENU_TIME = 'home-time'
-const MENU_AUDIENCE = 'home-audience'
 const SORT_PILL_MIN_WIDTH = '15ch'
 const TIME_PILL_MIN_WIDTH = '10ch'
-const AUDIENCE_PILL_MIN_WIDTH = '11ch'
-
-const WORDMARK_FONT_FAMILY = "'American Typewriter', serif"
 
 const heroHeadlineWordmarkStyle = {
-  fontFamily: WORDMARK_FONT_FAMILY,
-  letterSpacing: '-0.01em',
-  lineHeight: 1.1,
+  fontFamily: "'Newsreader', 'Times New Roman', serif",
+  fontSize: 'clamp(2.5rem, 5vw, 3.5rem)',
+  lineHeight: 1.05,
+  letterSpacing: '-0.02em',
   fontWeight: 500,
 }
 
@@ -269,18 +273,9 @@ export default function HomeClient({
   const showPaginationRow =
     (posts.length > 0 || showPinnedCard) && (currentPage > 1 || hasNextPage)
 
-  const audienceOptions = useMemo(
-    () => [
-      { value: 'all', label: 'All' },
-      {
-        value: 'following',
-        label: 'Following',
-        disabled: !readerWalletAddress,
-        disabledHint: 'Sign in to follow writers.',
-      },
-    ],
-    [readerWalletAddress],
-  )
+  const displayPosts = showPinnedCard
+    ? [{ ...pinnedPost, pinned: true }, ...posts]
+    : posts
 
   return (
     <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
@@ -290,10 +285,10 @@ export default function HomeClient({
         onReaderLogoutExtra={handleReaderLogoutExtra}
       />
 
-      <main className="mx-auto max-w-5xl px-4 pt-6 pb-6 sm:px-6 sm:pb-6">
-        <section className="mb-6 mx-auto w-full text-center" aria-labelledby="home-hero-heading">
-          <HeroHeadline wordmarkStyle={heroHeadlineWordmarkStyle} />
-          <div className="mt-6 flex flex-wrap justify-center gap-2.5">
+      <main className="mx-auto max-w-5xl px-4 pt-8 pb-10 sm:px-6 sm:pt-12">
+        <section className="mb-0 mx-auto w-full text-left" aria-labelledby="home-hero-heading">
+          <HeroHeadline wordmarkStyle={heroHeadlineWordmarkStyle} align="left" />
+          <div className="mt-6 flex flex-wrap justify-start gap-2.5">
             <Link
               href={authorLoggedIn ? '/dashboard' : '/login'}
               className="inline-flex items-center justify-center rounded-md bg-black px-[18px] py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
@@ -315,36 +310,122 @@ export default function HomeClient({
           </div>
         ) : (
           <>
-            <div className="mb-3">
-              <div className="grid grid-cols-3 gap-1.5 sm:hidden">
-                <FilterDropdown menuId={MENU_SORT} openMenu={openMenu} setOpenMenu={setOpenMenu} value={sortMode} options={HOME_SORT_OPTIONS} ariaLabel="Sort posts" onChange={(v) => setSortMode(v)} minWidth={SORT_PILL_MIN_WIDTH} fullWidth />
-                <FilterDropdown menuId={MENU_TIME} openMenu={openMenu} setOpenMenu={setOpenMenu} value={timeFilter} options={HOME_TIME_OPTIONS} ariaLabel="Time range for unlocks and earnings" disabled={sortMode === 'newest'} disabledHint="Time range does not apply when sorting by Newest." onChange={(v) => setTimeFilter(v)} minWidth={TIME_PILL_MIN_WIDTH} fullWidth />
-                <FilterDropdown menuId={MENU_AUDIENCE} openMenu={openMenu} setOpenMenu={setOpenMenu} value={followingOnly ? 'following' : 'all'} options={audienceOptions} ariaLabel="Audience" onChange={(v) => setFollowingOnly(v === 'following')} minWidth={AUDIENCE_PILL_MIN_WIDTH} fullWidth />
-              </div>
-              <div className="hidden items-center justify-between gap-4 sm:flex">
-                <h2 className="font-article-title text-lg font-semibold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
-                  Latest stories...
-                </h2>
-                <div className="flex shrink-0 items-center gap-1.5">
+            <div className="mt-14 sm:mt-16">
+              <div className="flex items-end justify-between">
+                <div className="flex items-baseline gap-6">
+                  <button
+                    type="button"
+                    onClick={() => setFollowingOnly(false)}
+                    className={`font-article-title text-xl sm:text-2xl transition-colors ${
+                      !followingOnly
+                        ? 'font-medium text-zinc-900 dark:text-zinc-100'
+                        : 'font-normal text-zinc-400 dark:text-zinc-600'
+                    }`}
+                  >
+                    All stories
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFollowingOnly(true)}
+                    className={`font-article-title text-xl sm:text-2xl transition-colors ${
+                      followingOnly
+                        ? 'font-medium text-zinc-900 dark:text-zinc-100'
+                        : 'font-normal text-zinc-400 dark:text-zinc-600'
+                    }`}
+                  >
+                    Following
+                  </button>
+                </div>
+                <div className="hidden items-center gap-1.5 pb-1 sm:flex">
                   <FilterDropdown menuId={MENU_SORT} openMenu={openMenu} setOpenMenu={setOpenMenu} value={sortMode} options={HOME_SORT_OPTIONS} ariaLabel="Sort posts" onChange={(v) => setSortMode(v)} minWidth={SORT_PILL_MIN_WIDTH} />
                   <FilterDropdown menuId={MENU_TIME} openMenu={openMenu} setOpenMenu={setOpenMenu} value={timeFilter} options={HOME_TIME_OPTIONS} ariaLabel="Time range for unlocks and earnings" disabled={sortMode === 'newest'} disabledHint="Time range does not apply when sorting by Newest." onChange={(v) => setTimeFilter(v)} minWidth={TIME_PILL_MIN_WIDTH} />
-                  <FilterDropdown menuId={MENU_AUDIENCE} openMenu={openMenu} setOpenMenu={setOpenMenu} value={followingOnly ? 'following' : 'all'} options={audienceOptions} ariaLabel="Audience" onChange={(v) => setFollowingOnly(v === 'following')} minWidth={AUDIENCE_PILL_MIN_WIDTH} />
                 </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-1.5 sm:hidden">
+                <FilterDropdown menuId={MENU_SORT} openMenu={openMenu} setOpenMenu={setOpenMenu} value={sortMode} options={HOME_SORT_OPTIONS} ariaLabel="Sort posts" onChange={(v) => setSortMode(v)} minWidth={SORT_PILL_MIN_WIDTH} fullWidth />
+                <FilterDropdown menuId={MENU_TIME} openMenu={openMenu} setOpenMenu={setOpenMenu} value={timeFilter} options={HOME_TIME_OPTIONS} ariaLabel="Time range for unlocks and earnings" disabled={sortMode === 'newest'} disabledHint="Time range does not apply when sorting by Newest." onChange={(v) => setTimeFilter(v)} minWidth={TIME_PILL_MIN_WIDTH} fullWidth />
               </div>
             </div>
 
             {loading ? <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading posts…</p> : null}
-            {!loading && posts.length === 0 && !showPinnedCard && !readerWalletAddress ? (
+            {!loading && followingOnly && displayPosts.length === 0 ? (
+              <div className="py-16 text-center text-sm text-zinc-500 dark:text-zinc-500">
+                {readerWalletAddress
+                  ? 'No posts from authors you follow yet. Explore all stories and follow some writers.'
+                  : 'Log in as a reader to see posts from authors you follow.'}
+              </div>
+            ) : null}
+            {!loading && !followingOnly && displayPosts.length === 0 && !readerWalletAddress ? (
               <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-8 py-16 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
                 <p className="text-lg text-zinc-700 dark:text-zinc-300">No posts yet. Be the first to write something.</p>
               </div>
             ) : null}
-            {showPinnedCard || posts.length > 0 ? (
-              <div role="list" className="mt-2 flex flex-col gap-1.5 md:mt-0 md:gap-2">
-                {showPinnedCard ? <HomePostCard key={pinnedPost.id} post={pinnedPost} sortMode={sortMode} pinnedBadge /> : null}
-                {posts.map((post) => (
-                  <HomePostCard key={post.id} post={post} sortMode={sortMode} />
-                ))}
+            {displayPosts.length > 0 ? (
+              <div role="list" className="mt-4 border-t border-zinc-200 dark:border-zinc-800">
+                {displayPosts.map((post) => {
+                  const author = authorFromPost(post)
+                  const isLegacy = Boolean(post.legacy)
+                  const slug = isLegacy
+                    ? `/${encodeURIComponent(post.slug)}`
+                    : `/posts/${encodeURIComponent(post.slug)}`
+                  const earningsXec = post.earnings ? Math.round(post.earnings / 100) : 0
+                  const isPinned = Boolean(post.pinned)
+
+                  return (
+                    <article
+                      key={post.id}
+                      className="grid grid-cols-[52px_1fr_auto] items-baseline gap-3 border-b border-zinc-100 py-4 sm:grid-cols-[68px_1fr_auto] sm:gap-6 sm:py-5 dark:border-zinc-900"
+                    >
+                      <time className="pt-0.5 text-xs tabular-nums text-zinc-400 dark:text-zinc-600">
+                        {formatShortDate(post.published_at ?? post.created_at)}
+                        {isPinned ? (
+                          <span className="mt-0.5 block text-[10px] text-amber-600 dark:text-amber-400">
+                            📌
+                          </span>
+                        ) : null}
+                      </time>
+
+                      <div className="min-w-0">
+                        <h3 className="mb-1.5 font-article-title text-lg font-medium leading-snug text-zinc-900 sm:text-xl dark:text-zinc-100">
+                          <Link href={slug} className="transition-opacity hover:opacity-70">
+                            {post.title}
+                            {post.audio_url ? (
+                              <span className="ml-1.5 text-sm" aria-label="Audio narration available" title="Audio narration available">
+                                🎧
+                              </span>
+                            ) : null}
+                          </Link>
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-x-1.5 text-sm text-zinc-500 dark:text-zinc-500">
+                          <Link
+                            href={`/${author?.username}`}
+                            className="transition-colors hover:text-zinc-900 dark:hover:text-zinc-100"
+                          >
+                            @{author?.username}
+                          </Link>
+                          {post.reading_time_minutes ? (
+                            <>
+                              <span aria-hidden>·</span>
+                              <span>{post.reading_time_minutes} min</span>
+                            </>
+                          ) : null}
+                          {earningsXec > 0 ? (
+                            <>
+                              <span aria-hidden>·</span>
+                              <span className="text-emerald-700 dark:text-emerald-500">
+                                {earningsXec.toLocaleString()} XEC earned
+                              </span>
+                            </>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="whitespace-nowrap pt-0.5 font-article-title text-base font-medium tabular-nums text-emerald-700 sm:text-lg dark:text-emerald-500">
+                        {Number(post.price_xec).toLocaleString()} XEC
+                      </div>
+                    </article>
+                  )
+                })}
               </div>
             ) : null}
           </>

@@ -17,7 +17,7 @@ const headingClass =
 /**
  * Invisible static layer reserves final two-line height; typing renders in a matching absolutely positioned h1.
  */
-export default function HeroHeadline({ wordmarkStyle }) {
+export default function HeroHeadline({ wordmarkStyle, align = 'center' }) {
   const [typed, setTyped] = useState('')
   const [showCursor, setShowCursor] = useState(true)
   const cursorTimeoutRef = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null))
@@ -66,10 +66,12 @@ export default function HeroHeadline({ wordmarkStyle }) {
   const afterBreak = typed.slice(breakIndex)
   const showLineBreak = typed.length > breakIndex
 
+  const alignClass = align === 'left' ? 'text-left' : 'text-center'
+
   return (
-    <div className="relative mx-auto w-full text-center">
+    <div className={`relative mx-auto w-full ${alignClass}`}>
       <div
-        className={`invisible w-full min-h-0 select-none text-center ${headingClass}`}
+        className={`invisible w-full min-h-0 select-none ${alignClass} ${headingClass}`}
         style={wordmarkStyle}
         aria-hidden="true"
       >
@@ -78,7 +80,7 @@ export default function HeroHeadline({ wordmarkStyle }) {
         <span> to unlock your story.</span>
       </div>
       <h1
-        className={`absolute top-0 left-0 right-0 z-10 w-full min-h-0 text-center ${headingClass}`}
+        className={`absolute top-0 left-0 right-0 z-10 w-full min-h-0 ${alignClass} ${headingClass}`}
         id="home-hero-heading"
         style={{ ...wordmarkStyle, visibility: 'visible' }}
         aria-label={heroAria}
