@@ -133,7 +133,7 @@ const TIME_PILL_MIN_WIDTH = '10ch'
 
 const heroHeadlineWordmarkStyle = {
   fontFamily: "'Newsreader', 'Times New Roman', serif",
-  fontSize: 'clamp(2.5rem, 5vw, 3.5rem)',
+  fontSize: 'clamp(1.875rem, 8vw, 3.5rem)',
   lineHeight: 1.05,
   letterSpacing: '-0.02em',
   fontWeight: 500,
@@ -311,12 +311,12 @@ export default function HomeClient({
         ) : (
           <>
             <div className="mt-14 sm:mt-16">
-              <div className="flex items-end justify-between">
-                <div className="flex items-baseline gap-6">
+              <div className="mt-4 flex items-center justify-between gap-2">
+                <div className="flex shrink-0 items-baseline gap-3 sm:gap-6">
                   <button
                     type="button"
                     onClick={() => setFollowingOnly(false)}
-                    className={`font-article-title text-xl sm:text-2xl transition-colors ${
+                    className={`font-article-title text-base sm:text-2xl transition-colors ${
                       !followingOnly
                         ? 'font-medium text-zinc-900 dark:text-zinc-100'
                         : 'font-normal text-zinc-400 dark:text-zinc-600'
@@ -327,7 +327,7 @@ export default function HomeClient({
                   <button
                     type="button"
                     onClick={() => setFollowingOnly(true)}
-                    className={`font-article-title text-xl sm:text-2xl transition-colors ${
+                    className={`font-article-title text-base sm:text-2xl transition-colors ${
                       followingOnly
                         ? 'font-medium text-zinc-900 dark:text-zinc-100'
                         : 'font-normal text-zinc-400 dark:text-zinc-600'
@@ -336,14 +336,10 @@ export default function HomeClient({
                     Following
                   </button>
                 </div>
-                <div className="hidden items-center gap-1.5 pb-1 sm:flex">
+                <div className="flex shrink-0 items-center gap-1 pb-1 sm:gap-1.5">
                   <FilterDropdown menuId={MENU_SORT} openMenu={openMenu} setOpenMenu={setOpenMenu} value={sortMode} options={HOME_SORT_OPTIONS} ariaLabel="Sort posts" onChange={(v) => setSortMode(v)} minWidth={SORT_PILL_MIN_WIDTH} />
                   <FilterDropdown menuId={MENU_TIME} openMenu={openMenu} setOpenMenu={setOpenMenu} value={timeFilter} options={HOME_TIME_OPTIONS} ariaLabel="Time range for unlocks and earnings" disabled={sortMode === 'newest'} disabledHint="Time range does not apply when sorting by Newest." onChange={(v) => setTimeFilter(v)} minWidth={TIME_PILL_MIN_WIDTH} />
                 </div>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-1.5 sm:hidden">
-                <FilterDropdown menuId={MENU_SORT} openMenu={openMenu} setOpenMenu={setOpenMenu} value={sortMode} options={HOME_SORT_OPTIONS} ariaLabel="Sort posts" onChange={(v) => setSortMode(v)} minWidth={SORT_PILL_MIN_WIDTH} fullWidth />
-                <FilterDropdown menuId={MENU_TIME} openMenu={openMenu} setOpenMenu={setOpenMenu} value={timeFilter} options={HOME_TIME_OPTIONS} ariaLabel="Time range for unlocks and earnings" disabled={sortMode === 'newest'} disabledHint="Time range does not apply when sorting by Newest." onChange={(v) => setTimeFilter(v)} minWidth={TIME_PILL_MIN_WIDTH} fullWidth />
               </div>
             </div>
 
@@ -374,7 +370,7 @@ export default function HomeClient({
                   return (
                     <article
                       key={post.id}
-                      className="grid grid-cols-[52px_1fr_auto] items-baseline gap-3 border-b border-zinc-100 py-4 sm:grid-cols-[68px_1fr_auto] sm:gap-6 sm:py-5 dark:border-zinc-900"
+                      className="grid grid-cols-[40px_1fr_auto] items-baseline gap-3 border-b border-zinc-100 py-4 sm:grid-cols-[68px_1fr_auto] sm:gap-6 sm:py-5 dark:border-zinc-900"
                     >
                       <time className="pt-0.5 text-xs tabular-nums text-zinc-400 dark:text-zinc-600">
                         {formatShortDate(post.published_at ?? post.created_at)}
@@ -420,8 +416,13 @@ export default function HomeClient({
                         </div>
                       </div>
 
-                      <div className="whitespace-nowrap pt-0.5 font-article-title text-base font-medium tabular-nums text-emerald-700 sm:text-lg dark:text-emerald-500">
-                        {Number(post.price_xec).toLocaleString()} XEC
+                      <div className="whitespace-nowrap pt-0.5 font-article-title text-sm font-medium tabular-nums text-emerald-700 sm:text-lg dark:text-emerald-500">
+                        <span className="hidden sm:inline">
+                          {Number(post.price_xec).toLocaleString()} XEC
+                        </span>
+                        <span className="sm:hidden">
+                          {Number(post.price_xec).toLocaleString()}
+                        </span>
                       </div>
                     </article>
                   )

@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react'
 const FULL_TEXT = 'Write to earn. Use eCash to unlock your story.'
 const BREAK_PREFIX = 'Write to earn. Use eCash'
 const breakIndex = BREAK_PREFIX.length
+const MOBILE_FIRST_BREAK_INDEX = 'Write to earn.'.length
 const CH_MS = 75
 const POST_TYPE_CURSOR_MS = 3000
 
@@ -62,9 +63,14 @@ export default function HeroHeadline({ wordmarkStyle, align = 'center' }) {
     }
   }, [])
 
-  const beforeBreak = typed.slice(0, breakIndex)
-  const afterBreak = typed.slice(breakIndex)
-  const showLineBreak = typed.length > breakIndex
+  const mobileLine1 = typed.slice(0, MOBILE_FIRST_BREAK_INDEX)
+  const mobileLine2 = typed
+    .slice(MOBILE_FIRST_BREAK_INDEX, breakIndex)
+    .replace(/^\s+/, '')
+  const mobileLine3 = typed.slice(breakIndex).replace(/^\s+/, '')
+
+  const desktopLine1 = typed.slice(0, breakIndex)
+  const desktopLine2 = typed.slice(breakIndex).replace(/^\s+/, '')
 
   const alignClass = align === 'left' ? 'text-left' : 'text-center'
 
@@ -75,9 +81,18 @@ export default function HeroHeadline({ wordmarkStyle, align = 'center' }) {
         style={wordmarkStyle}
         aria-hidden="true"
       >
-        <span className="whitespace-nowrap">Write to earn. Use eCash</span>
-        <br />
-        <span> to unlock your story.</span>
+        <span className="sm:hidden">
+          <span>Write to earn.</span>
+          <br />
+          <span>Use eCash to</span>
+          <br />
+          <span>unlock your story.</span>
+        </span>
+        <span className="hidden sm:inline">
+          <span className="whitespace-nowrap">Write to earn. Use eCash</span>
+          <br />
+          <span> to unlock your story.</span>
+        </span>
       </div>
       <h1
         className={`absolute top-0 left-0 right-0 z-10 w-full min-h-0 ${alignClass} ${headingClass}`}
@@ -85,11 +100,18 @@ export default function HeroHeadline({ wordmarkStyle, align = 'center' }) {
         style={{ ...wordmarkStyle, visibility: 'visible' }}
         aria-label={heroAria}
       >
-        <span className="whitespace-nowrap" aria-hidden="true">
-          {beforeBreak}
+        <span className="sm:hidden" aria-hidden="true">
+          <span>{mobileLine1}</span>
+          {typed.length >= MOBILE_FIRST_BREAK_INDEX ? <br className="sm:hidden" /> : null}
+          <span>{mobileLine2}</span>
+          {typed.length >= breakIndex ? <br /> : null}
+          <span>{mobileLine3}</span>
         </span>
-        {showLineBreak ? <br /> : null}
-        <span aria-hidden="true">{afterBreak}</span>
+        <span className="hidden sm:inline" aria-hidden="true">
+          <span className="whitespace-nowrap">{desktopLine1}</span>
+          {typed.length >= breakIndex ? <br className="hidden sm:block" /> : null}
+          <span>{desktopLine2}</span>
+        </span>
         <span
           className={`-mb-0.5 ml-0.5 inline-block w-[0.2em] min-w-[0.1em] translate-y-px text-current ${showCursor ? 'animate-blink' : ''}`}
           style={{ visibility: showCursor ? 'visible' : 'hidden' }}
