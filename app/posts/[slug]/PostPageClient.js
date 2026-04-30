@@ -982,13 +982,13 @@ export default function PostPageClient({
 
                 <div className="relative mt-6">
                   <div
-                    className="prose prose-zinc dark:prose-invert line-clamp-3 max-w-none opacity-60"
+                    className="prose prose-zinc dark:prose-invert max-w-none opacity-60"
                     dangerouslySetInnerHTML={{ __html: lockedSampleHtml }}
                   />
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-white dark:to-zinc-950" />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-zinc-50 dark:to-zinc-950" />
                 </div>
 
-                <div className="mt-0 border-t border-zinc-200 py-8 text-center dark:border-zinc-800">
+                <div className="py-8 text-center">
                   <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
                     Read the full story for {formatXec(post.price_xec)} XEC
                   </p>
