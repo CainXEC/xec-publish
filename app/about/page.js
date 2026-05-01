@@ -12,8 +12,8 @@ export default function AboutPage() {
       <main className="mx-auto max-w-2xl px-4 pt-4 pb-6 sm:px-6 sm:pt-6 sm:pb-6">
         <section>
           <h1
-            className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl"
-            style={{ fontFamily: WORDMARK_FONT_FAMILY }}
+            className="text-[clamp(2rem,5vw,3.25rem)] tracking-tight text-zinc-900 dark:text-zinc-50"
+            style={{ fontFamily: WORDMARK_FONT_FAMILY, fontWeight: 500, lineHeight: 1.1 }}
           >
             About Proof of Writing
           </h1>
