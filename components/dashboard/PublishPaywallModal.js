@@ -21,6 +21,7 @@ export default function PublishPaywallModal({
   onPublishPaymentPollingEnded,
 }) {
   const [payError, setPayError] = useState(null)
+  const [waiting, setWaiting] = useState(false)
   const pollRef = useRef(null)
   const baselineTxidRef = useRef('')
   const lastHandledTxidRef = useRef('')
@@ -89,12 +90,14 @@ export default function PublishPaywallModal({
   useEffect(() => {
     if (!isOpen) {
       stopPublishFeePolling()
+      setWaiting(false)
     }
   }, [isOpen, stopPublishFeePolling])
 
   useEffect(() => {
     if (isOpen) {
       setPayError(null)
+      setWaiting(false)
     }
   }, [isOpen, postId])
 
@@ -154,6 +157,8 @@ export default function PublishPaywallModal({
             const msg = err instanceof Error ? err.message : 'Could not complete publish.'
             setPayError(msg)
             onPublishPaymentPollingEndedRef.current?.()
+          } finally {
+            setWaiting(false)
           }
           return
         }
@@ -164,6 +169,7 @@ export default function PublishPaywallModal({
           if (errLower.includes('already used')) {
             stopPublishFeePolling()
             setPayError(err || 'This transaction was already used.')
+            setWaiting(false)
             onPublishPaymentPollingEndedRef.current?.()
             return
           }
@@ -174,6 +180,7 @@ export default function PublishPaywallModal({
           ) {
             stopPublishFeePolling()
             setPayError(err)
+            setWaiting(false)
             onPublishPaymentPollingEndedRef.current?.()
             return
           }
@@ -183,12 +190,14 @@ export default function PublishPaywallModal({
         if (verifyRes.status === 401 || verifyRes.status === 403) {
           stopPublishFeePolling()
           setPayError(verifyData.error || 'Not authorized.')
+          setWaiting(false)
           onPublishPaymentPollingEndedRef.current?.()
           return
         }
         if (verifyRes.status === 404) {
           stopPublishFeePolling()
           setPayError(verifyData.error || 'Post not found.')
+          setWaiting(false)
           onPublishPaymentPollingEndedRef.current?.()
           return
         }
@@ -231,11 +240,13 @@ export default function PublishPaywallModal({
     }
     openPublishCashtab(publishFeeCashtabUrl)
     startPublishFeePolling()
+    setWaiting(true)
   }
 
   function handlePublishPaywallCancel() {
     stopPublishFeePolling()
     setPayError(null)
+    setWaiting(false)
     try {
       sessionStorage.removeItem('pollingActive')
     } catch {
@@ -273,41 +284,55 @@ export default function PublishPaywallModal({
         >
           Pay to publish
         </h2>
-        <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-          Publishing costs 100 XEC to help prevent
-          <span className="hidden sm:inline">
-            <br />
-          </span>{' '}
-          spam and keep the platform sustainable.
-        </p>
-        {!platformAddressForLatestTx ? (
-          <p className="mt-4 text-sm text-red-600 dark:text-red-400" role="alert">
-            Publishing is temporarily unavailable, please contact support.
-          </p>
-        ) : null}
-        {payError ? (
-          <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
-            {payError}
-          </p>
-        ) : null}
-        <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-500">
-          Don&apos;t have 100 XEC?{' '}
-          <Link
-            href="/how-it-works"
-            className="font-medium text-emerald-700 underline hover:text-emerald-800 dark:text-emerald-400"
-          >
-            Get eCash
-          </Link>
-        </p>
+        {waiting ? (
+          <div className="flex flex-col items-center gap-3 py-6 text-center">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-700 dark:border-zinc-600 dark:border-t-zinc-200" />
+            <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Waiting for payment...</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Complete the payment in Cashtab to publish your post.
+            </p>
+          </div>
+        ) : (
+          <>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+              Publishing costs 100 XEC to help prevent
+              <span className="hidden sm:inline">
+                <br />
+              </span>{' '}
+              spam and keep the platform sustainable.
+            </p>
+            {!platformAddressForLatestTx ? (
+              <p className="mt-4 text-sm text-red-600 dark:text-red-400" role="alert">
+                Publishing is temporarily unavailable, please contact support.
+              </p>
+            ) : null}
+            {payError ? (
+              <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
+                {payError}
+              </p>
+            ) : null}
+            <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-500">
+              Don&apos;t have 100 XEC?{' '}
+              <Link
+                href="/how-it-works"
+                className="font-medium text-emerald-700 underline hover:text-emerald-800 dark:text-emerald-400"
+              >
+                Get eCash
+              </Link>
+            </p>
+          </>
+        )}
         <div className="mt-6 flex flex-row items-center gap-2 whitespace-nowrap">
-          <button
-            type="button"
-            onClick={handlePublishPaywallPay}
-            disabled={!publishFeeCashtabUrl}
-            className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400"
-          >
-            Pay 100 XEC to publish
-          </button>
+          {!waiting ? (
+            <button
+              type="button"
+              onClick={handlePublishPaywallPay}
+              disabled={!publishFeeCashtabUrl}
+              className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400"
+            >
+              Pay 100 XEC to publish
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={handlePublishPaywallCancel}
