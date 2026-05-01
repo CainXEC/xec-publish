@@ -826,12 +826,12 @@ export default function PostPageClient({
   const fullBodyHtml = sanitizePostBodyHtml(bodyHtmlRaw)
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
+    <div className="flex min-h-0 flex-1 flex-col bg-white dark:bg-zinc-950">
       <Nav
         onReaderWalletSynced={handleReaderWalletSynced}
         onReaderLogoutExtra={handleReaderLogoutExtra}
       />
-      <main className="mx-auto w-full max-w-3xl px-4 pt-4 pb-6">
+      <main className="mx-auto w-full max-w-3xl px-4 pt-8 pb-6 sm:pt-10">
         <article className="px-0 pb-4">
           {isAdminSession ? (
             <p className="mb-2">
@@ -845,7 +845,7 @@ export default function PostPageClient({
               </button>
             </p>
           ) : null}
-          <h1 className="font-article-title text-3xl font-semibold leading-tight text-zinc-900 dark:text-zinc-50">
+          <h1 className="font-article-title text-3xl sm:text-4xl font-medium leading-tight text-zinc-900 dark:text-zinc-50">
             {post.title}
             {post.audio_url && (
               <span
@@ -863,7 +863,7 @@ export default function PostPageClient({
               <>
                 <Link
                   href={`/u/${encodeURIComponent(author.username.trim())}`}
-                  className="font-medium text-emerald-700 hover:text-emerald-800 underline-offset-2 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
+                  className="font-medium text-zinc-700 transition-colors hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
                 >
                   @{author.username.trim()}
                 </Link>
@@ -931,7 +931,7 @@ export default function PostPageClient({
               </span>
             ) : null}
           </div>
-          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium text-zinc-600 dark:text-zinc-400">
+          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-500">
             <span>
               🔓 {unlockCount} {unlockCount === 1 ? 'unlock' : 'unlocks'}
             </span>
@@ -964,7 +964,7 @@ export default function PostPageClient({
           ) : null}
 
           {showPaywall && hasPaywallMarker ? (
-            <section className="mt-6 border-t border-zinc-200 pt-6 dark:border-zinc-700">
+            <section className="mt-6 border-t border-zinc-100 pt-6 dark:border-zinc-800">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                 Preview
                 {previewReadTimeLabel ? (
@@ -985,7 +985,7 @@ export default function PostPageClient({
                     className="prose prose-zinc dark:prose-invert max-w-none opacity-60"
                     dangerouslySetInnerHTML={{ __html: lockedSampleHtml }}
                   />
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-zinc-50 dark:to-zinc-950" />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-white dark:to-zinc-950" />
                 </div>
 
                 <div className="py-8 text-center">
@@ -1035,7 +1035,7 @@ export default function PostPageClient({
           ) : null}
 
           {canViewFullPost ? (
-            <section className="mt-6 border-t border-zinc-200 pt-6 dark:border-zinc-700">
+            <section className="mt-6 border-t border-zinc-100 pt-6 dark:border-zinc-800">
               <div
                 className="prose prose-zinc dark:prose-invert max-w-none text-base"
                 dangerouslySetInnerHTML={{
@@ -1045,7 +1045,7 @@ export default function PostPageClient({
 
               <section
                 id="comments"
-                className="mt-10 border-t border-zinc-200 pt-8 dark:border-zinc-700"
+                className="mt-10 border-t border-zinc-100 pt-8 dark:border-zinc-800"
               >
                 <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
                   Comments
