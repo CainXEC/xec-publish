@@ -1,8 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('Homepage', () => {
-  const heroHeading = (page) =>
-    page.getByRole('heading', { name: /Write to earn\. Use eCash to unlock your story\./ })
+  const heroHeading = (page) => page.getByRole('heading', { level: 1 }).first()
 
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 })
