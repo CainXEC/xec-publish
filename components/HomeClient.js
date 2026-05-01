@@ -139,7 +139,7 @@ const TIME_PILL_MIN_WIDTH = '10ch'
 
 const heroHeadlineWordmarkStyle = {
   fontFamily: "'Newsreader', 'Times New Roman', serif",
-  fontSize: 'clamp(2.25rem, 10vw, 5rem)',
+  fontSize: 'clamp(2.25rem, 8.5vw, 5rem)',
   lineHeight: 1.0,
   letterSpacing: '-0.02em',
   fontWeight: 500,
