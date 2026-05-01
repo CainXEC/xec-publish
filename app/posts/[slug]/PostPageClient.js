@@ -1006,16 +1006,17 @@ export default function PostPageClient({
                 </div>
 
                 <div className="py-8 text-center">
-                  <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-                    Read the full story for {formatXec(post.price_xec)} XEC
-                  </p>
                   {bip21Url ? (
                     <>
                       <button
                         type="button"
                         disabled={payBusy}
                         onClick={handlePayToUnlock}
-                        className="inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60 dark:bg-emerald-400 dark:text-emerald-950"
+                        className="inline-flex w-full items-center justify-center rounded-lg px-4 py-3.5 text-sm font-semibold text-white transition-all duration-200 hover:scale-[1.01] hover:opacity-90 active:scale-[0.99] disabled:opacity-60 disabled:hover:scale-100"
+                        style={{
+                          background: 'linear-gradient(135deg, #059669 0%, #0d9488 100%)',
+                          animation: 'glow-pulse 2.2s ease-in-out infinite',
+                        }}
                       >
                         {payBusy
                           ? 'Opening wallet…'
