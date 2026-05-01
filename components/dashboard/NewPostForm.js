@@ -328,7 +328,7 @@ export default function NewPostForm() {
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-zinc-50 px-4 py-10 dark:bg-zinc-950">
-      <main className="mx-auto w-full max-w-2xl">
+      <main className="mx-auto w-full max-w-5xl">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">New post</h1>
@@ -341,7 +341,7 @@ export default function NewPostForm() {
           </Link>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
+        <form onSubmit={handleSubmit} className="w-full py-6">
           <div className="flex flex-col gap-5">
             <div>
               <label htmlFor="title" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
