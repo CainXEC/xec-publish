@@ -64,6 +64,8 @@ function HomePostCard({ post, sortMode, pinnedBadge = false }) {
     sortMode === 'earned' && Number.isFinite(earningsSats)
       ? `💰 ${Math.round(earningsSats / 100).toLocaleString('en-US')} XEC earned`
       : null
+  const cardDateIso =
+    sortMode === 'newest' ? post.created_at ?? post.published_at : post.published_at ?? post.created_at
 
   return (
     <div
@@ -98,7 +100,7 @@ function HomePostCard({ post, sortMode, pinnedBadge = false }) {
         <span aria-hidden className="text-zinc-300 dark:text-zinc-600">
           ·
         </span>
-        <time dateTime={(post.published_at ?? post.created_at) ?? undefined}>{formatPublishedDate(post.published_at ?? post.created_at)}</time>
+        <time dateTime={cardDateIso ?? undefined}>{formatPublishedDate(cardDateIso)}</time>
       </p>
       <p className="mt-4 break-words line-clamp-4 overflow-hidden text-base leading-relaxed text-zinc-600 dark:text-zinc-400">{truncateTeaserPreview(post.teaser)}</p>
       <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
@@ -397,14 +399,21 @@ export default function HomeClient({
                     ? `/${encodeURIComponent(post.slug)}`
                     : `/posts/${encodeURIComponent(post.slug)}`
                   const isPinned = Boolean(post.pinned)
+                  const listDateIso =
+                    sortMode === 'newest'
+                      ? post.created_at ?? post.published_at
+                      : post.published_at ?? post.created_at
 
                   return (
                     <article
                       key={post.id}
                       className="grid grid-cols-[40px_1fr_auto] items-baseline gap-3 border-b border-zinc-100 py-4 sm:grid-cols-[68px_1fr_auto] sm:gap-6 sm:py-5 dark:border-zinc-900"
                     >
-                      <time className="pt-0.5 text-xs tabular-nums text-zinc-400 dark:text-zinc-600">
-                        {formatShortDate(post.published_at ?? post.created_at)}
+                      <time
+                        className="pt-0.5 text-xs tabular-nums text-zinc-400 dark:text-zinc-600"
+                        dateTime={listDateIso ?? undefined}
+                      >
+                        {formatShortDate(listDateIso)}
                         {isPinned ? (
                           <span className="mt-0.5 block text-[10px] text-amber-600 dark:text-amber-400">
                             📌
