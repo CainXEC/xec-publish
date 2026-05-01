@@ -934,37 +934,27 @@ export default function PostPageClient({
               </span>
             ) : null}
           </div>
-          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-500">
-            <span>
-              🔓 {unlockCount} {unlockCount === 1 ? 'unlock' : 'unlocks'}
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-zinc-500 dark:text-zinc-500">
+            <span className="flex items-center gap-1">
+              🔓 <span>{unlockCount}</span>
             </span>
-            {earningsXec > 0 ? (
-              <>
-                <span aria-hidden className="text-zinc-300 dark:text-zinc-600">
-                  ·
-                </span>
-                <span>
-                  <span className="text-zinc-500 dark:text-zinc-500">💰 </span>
-                  <span className="tabular-nums text-emerald-700 dark:text-emerald-500">
-                    {earningsXec.toLocaleString()}
-                  </span>
-                  <span className="text-zinc-500 dark:text-zinc-500"> XEC earned</span>
-                </span>
-              </>
-            ) : null}
-            <span aria-hidden className="text-zinc-300 dark:text-zinc-600">
-              ·
-            </span>
+
             <button
               type="button"
-              className="inline cursor-pointer border-0 bg-transparent p-0 font-inherit text-inherit underline-offset-2 hover:underline"
               onClick={() =>
                 document.getElementById('comments')?.scrollIntoView({ behavior: 'smooth' })
               }
+              className="flex items-center gap-1 border-0 bg-transparent p-0 font-inherit text-inherit transition-colors hover:text-zinc-900 dark:hover:text-zinc-100"
             >
-              💬 {commentCount} {commentCount === 1 ? 'comment' : 'comments'}
+              💬 <span>{commentCount}</span>
             </button>
-          </p>
+
+            {earningsXec > 0 ? (
+              <span className="flex items-center gap-1">
+                💰 <span>{earningsXec.toLocaleString()}</span>
+              </span>
+            ) : null}
+          </div>
 
           {(canViewFullPost || isAdminSession) && post.audio_url ? (
             <div className="mt-4 mb-4">
