@@ -396,7 +396,6 @@ export default function HomeClient({
                   const slug = isLegacy
                     ? `/${encodeURIComponent(post.slug)}`
                     : `/posts/${encodeURIComponent(post.slug)}`
-                  const earningsXec = post.earnings ? Math.round(post.earnings / 100) : 0
                   const isPinned = Boolean(post.pinned)
 
                   return (
@@ -435,14 +434,6 @@ export default function HomeClient({
                             <>
                               <span aria-hidden>·</span>
                               <span>{post.reading_time_minutes} min</span>
-                            </>
-                          ) : null}
-                          {earningsXec > 0 ? (
-                            <>
-                              <span aria-hidden>·</span>
-                              <span className="text-emerald-700 dark:text-emerald-500">
-                                {earningsXec.toLocaleString()} XEC earned
-                              </span>
                             </>
                           ) : null}
                         </div>
