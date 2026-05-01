@@ -343,7 +343,7 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
         </div>
 
         {xecAddress ? (
-          <p className="mb-6 min-w-0 max-w-full overflow-hidden rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+          <p className="mb-6 min-w-0 max-w-full overflow-hidden text-sm text-zinc-600 dark:text-zinc-400">
             <span className="font-medium text-zinc-800 dark:text-zinc-200">Payout address (XEC):</span>{' '}
             <span className="break-all font-mono text-zinc-900 dark:text-zinc-100">{xecAddress}</span>
           </p>

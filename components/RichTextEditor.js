@@ -95,7 +95,7 @@ export default function RichTextEditor({
     () => ({
       attributes: {
         class:
-          'tiptap ProseMirror min-h-[240px] px-3 py-2 text-sm text-zinc-900 outline-none focus:outline-none dark:text-zinc-50',
+          'tiptap ProseMirror min-h-[300px] px-3 py-2 text-[17.5px] text-zinc-900 outline-none focus:outline-none dark:text-zinc-50',
         role: 'textbox',
         'aria-multiline': 'true',
         ...(ariaLabelledBy ? { 'aria-labelledby': ariaLabelledBy } : {}),
@@ -145,9 +145,7 @@ export default function RichTextEditor({
 
   return (
     <div className={className}>
-      <div
-        className={`rich-text-editor flex h-64 flex-col overflow-hidden rounded-lg border border-zinc-300 bg-white md:h-96 dark:border-zinc-600 dark:bg-zinc-950`}
-      >
+      <div className={`rich-text-editor flex h-80 flex-col overflow-hidden md:h-[480px]`}>
         <div
           className="z-10 flex flex-wrap items-center gap-1 border-b border-zinc-200 bg-white px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-900"
           role="toolbar"
