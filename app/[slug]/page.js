@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import PostPageClient from '../posts/[slug]/PostPageClient'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { isAudioStale } from '@/lib/audioConfig'
+import { sumAmountRowsByPostId } from '@/lib/supabaseUnlockEarnings'
 
 function countRowsByPostId(rows) {
   const map = {}
@@ -40,17 +41,21 @@ const getLegacyPublishedPostBySlug = cache(async (rawSlug) => {
 
   const authorRel = postRow.authors
   const authorRow = Array.isArray(authorRel) ? authorRel[0] : authorRel
+  const postIds = [postRow.id]
+  const [unlockRes, commentRes, earnedRes] = await Promise.all([
+    supabase.rpc('get_unlock_counts', { post_ids: postIds, since: null }),
+    supabase.rpc('get_comment_counts', { post_ids: postIds }),
+    supabase.rpc('get_unlock_earnings', { post_ids: postIds, since: null }),
+  ])
+
+  const earningsById = earnedRes.error ? {} : sumAmountRowsByPostId(earnedRes.data ?? [])
+
   const post = {
     ...postRow,
     audio_is_stale: isAudioStale(postRow.body, postRow.audio_source_hash),
+    earnings: earningsById[postRow.id] ?? 0,
   }
   delete post.authors
-
-  const postIds = [post.id]
-  const [unlockRes, commentRes] = await Promise.all([
-    supabase.rpc('get_unlock_counts', { post_ids: postIds, since: null }),
-    supabase.rpc('get_comment_counts', { post_ids: postIds }),
-  ])
 
   const unlockById = unlockRes.error
     ? {}

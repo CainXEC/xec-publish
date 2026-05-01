@@ -815,6 +815,9 @@ export default function PostPageClient({
   }
 
   const articleDateIso = post.published_at ?? post.created_at
+  const earningsSats = Number(post.earnings ?? 0)
+  const earningsXec =
+    Number.isFinite(earningsSats) && earningsSats > 0 ? Math.round(earningsSats / 100) : 0
   const previewReadTimeLabel = formatReadingTimeLabel(post.reading_time_minutes)
   const canViewFullPost = unlocked || isAuthorSession || isAdminSession
   const showPaywall = !canViewFullPost && !unlockCheckPending
@@ -935,6 +938,20 @@ export default function PostPageClient({
             <span>
               🔓 {unlockCount} {unlockCount === 1 ? 'unlock' : 'unlocks'}
             </span>
+            {earningsXec > 0 ? (
+              <>
+                <span aria-hidden className="text-zinc-300 dark:text-zinc-600">
+                  ·
+                </span>
+                <span>
+                  <span className="text-zinc-500 dark:text-zinc-500">💰 </span>
+                  <span className="tabular-nums text-emerald-700 dark:text-emerald-500">
+                    {earningsXec.toLocaleString()}
+                  </span>
+                  <span className="text-zinc-500 dark:text-zinc-500"> XEC earned</span>
+                </span>
+              </>
+            ) : null}
             <span aria-hidden className="text-zinc-300 dark:text-zinc-600">
               ·
             </span>
