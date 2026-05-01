@@ -392,13 +392,19 @@ export default function PostPageClient({
           .eq('id', userId)
           .maybeSingle()
         if (!cancelled) {
-          setIsAdminSession(authorData?.is_admin === true)
+          const adminSession = authorData?.is_admin === true
+          setIsAdminSession(adminSession)
+          if (adminSession) {
+            setUnlocked(true)
+            setUnlockCheckPending(false)
+          }
         }
       } else if (!cancelled) {
         setIsAdminSession(false)
       }
       if (authorSession) {
         // Author never needs unlock checks/paywall for own post.
+        setUnlocked(true)
         setUnlockCheckPending(false)
       }
     }
