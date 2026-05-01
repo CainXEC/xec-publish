@@ -7,7 +7,6 @@ const BREAK_PREFIX = 'The place where'
 const breakIndex = BREAK_PREFIX.length
 const CH_MS = 75
 const POST_TYPE_CURSOR_MS = 3000
-const MIDLINE_PAUSE_MS = 400
 
 const heroAria = 'The place where attention is earned.'
 
@@ -37,13 +36,7 @@ export default function HeroHeadline({ wordmarkStyle, align = 'center' }) {
         }, POST_TYPE_CURSOR_MS)
         return
       }
-      let nextDelay = CH_MS
-      if (i === breakIndex) {
-        nextDelay = MIDLINE_PAUSE_MS
-      } else if (FULL_TEXT[i - 1] === ',' || FULL_TEXT[i - 1] === ';') {
-        nextDelay = 200
-      }
-      pendingRef.id = window.setTimeout(tick, nextDelay)
+      pendingRef.id = window.setTimeout(tick, CH_MS)
     }
 
     pendingRef.id = window.setTimeout(tick, CH_MS)
@@ -61,8 +54,8 @@ export default function HeroHeadline({ wordmarkStyle, align = 'center' }) {
     }
   }, [])
 
-  const line1 = typed.slice(0, breakIndex)
-  const line2 = typed.slice(breakIndex).replace(/^\s+/, '')
+  const beforeBreak = typed.slice(0, breakIndex)
+  const afterBreak = typed.slice(breakIndex).trimStart()
 
   const alignClass = align === 'left' ? 'text-left' : 'text-center'
 
@@ -84,10 +77,10 @@ export default function HeroHeadline({ wordmarkStyle, align = 'center' }) {
         aria-label={heroAria}
       >
         <span className="whitespace-nowrap" aria-hidden="true">
-          {line1}
+          {beforeBreak}
         </span>
         {typed.length >= breakIndex ? <br /> : null}
-        <span aria-hidden="true">{line2}</span>
+        <span aria-hidden="true">{afterBreak}</span>
         <span
           className={`-mb-0.5 ml-0.5 inline-block w-[0.2em] min-w-[0.1em] translate-y-px text-current ${showCursor ? 'animate-blink' : ''}`}
           style={{ visibility: showCursor ? 'visible' : 'hidden' }}
