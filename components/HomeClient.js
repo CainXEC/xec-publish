@@ -169,7 +169,10 @@ export default function HomeClient({
   const [refetchTrigger, setRefetchTrigger] = useState(0)
   const [openMenu, setOpenMenu] = useState(/** @type {string | null} */ (null))
   const [authorLoggedIn, setAuthorLoggedIn] = useState(false)
-  const didSkipInitialFetchRef = useRef(false)
+  /** Skip first effect run(s) so SSR data is used without a client fetch. In dev, React Strict Mode runs the effect twice on mount with identical deps — skip both so the second pass does not set loading and refetch. */
+  const clientFetchSkipsRemaining = useRef(
+    process.env.NODE_ENV !== 'production' ? 2 : 1,
+  )
 
   const applyReaderWallet = useCallback(async (walletAddress) => {
     setReaderWalletAddress(walletAddress)
@@ -224,8 +227,8 @@ export default function HomeClient({
   }, [followingOnly])
 
   useEffect(() => {
-    if (!didSkipInitialFetchRef.current) {
-      didSkipInitialFetchRef.current = true
+    if (clientFetchSkipsRemaining.current > 0) {
+      clientFetchSkipsRemaining.current -= 1
       return
     }
 
