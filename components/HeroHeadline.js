@@ -2,15 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react'
 
-const FULL_TEXT = 'A place where attention must be earned.'
-const BREAK_PREFIX = 'A place where attention'
+const FULL_TEXT = 'The place where attention is earned.'
+const BREAK_PREFIX = 'The place where'
 const breakIndex = BREAK_PREFIX.length
 const CH_MS = 75
 const POST_TYPE_CURSOR_MS = 3000
 const MIDLINE_PAUSE_MS = 400
 
-const heroAria =
-  'A place where attention must be earned.'
+const heroAria = 'The place where attention is earned.'
 
 const headingClass =
   'mx-auto max-w-none text-[clamp(1.625rem,8vw,2.25rem)] text-zinc-900 sm:text-[clamp(2rem,5vw,3.25rem)] dark:text-zinc-50'
@@ -74,9 +73,9 @@ export default function HeroHeadline({ wordmarkStyle, align = 'center' }) {
         style={wordmarkStyle}
         aria-hidden="true"
       >
-        <span className="whitespace-nowrap">A place where attention</span>
+        <span className="whitespace-nowrap">The place where</span>
         <br />
-        <span>must be earned.</span>
+        <span>attention is earned.</span>
       </div>
       <h1
         className={`absolute top-0 left-0 right-0 z-10 w-full min-h-0 ${alignClass} ${headingClass}`}
