@@ -399,34 +399,25 @@ export default function HomeClient({
                     ? `/${encodeURIComponent(post.slug)}`
                     : `/posts/${encodeURIComponent(post.slug)}`
                   const isPinned = Boolean(post.pinned)
-                  const listDateIso =
-                    sortMode === 'newest'
-                      ? post.created_at ?? post.published_at
-                      : post.published_at ?? post.created_at
 
                   return (
                     <article
                       key={post.id}
-                      className="grid grid-cols-[40px_1fr_auto] items-baseline gap-3 border-b border-zinc-100 py-4 sm:grid-cols-[68px_1fr_auto] sm:gap-6 sm:py-5 dark:border-zinc-900"
+                      className="grid grid-cols-[1fr_auto] items-baseline gap-3 border-b border-zinc-100 py-4 sm:gap-6 sm:py-5 dark:border-zinc-900"
                     >
-                      <time
-                        className="pt-0.5 text-xs tabular-nums text-zinc-400 dark:text-zinc-600"
-                        dateTime={listDateIso ?? undefined}
-                      >
-                        {formatShortDate(listDateIso)}
-                        {isPinned ? (
-                          <span className="mt-0.5 block text-[10px] text-amber-600 dark:text-amber-400">
-                            📌
-                          </span>
-                        ) : null}
-                      </time>
-
                       <div className="min-w-0">
                         <h3 className="mb-1.5 font-article-title text-lg font-medium leading-snug text-zinc-900 sm:text-xl dark:text-zinc-100">
+                          {isPinned ? (
+                            <span className="mr-1 text-sm text-amber-600 dark:text-amber-400">📌</span>
+                          ) : null}
                           <Link href={slug} className="transition-opacity hover:opacity-70">
                             {post.title}
                             {post.audio_url ? (
-                              <span className="ml-1.5 text-sm" aria-label="Audio narration available" title="Audio narration available">
+                              <span
+                                className="ml-1.5 text-sm"
+                                aria-label="Audio narration available"
+                                title="Audio narration available"
+                              >
                                 🎧
                               </span>
                             ) : null}
@@ -445,16 +436,13 @@ export default function HomeClient({
                               <span>{post.reading_time_minutes} min</span>
                             </>
                           ) : null}
+                          <span aria-hidden>·</span>
+                          <span>{formatShortDate(post.published_at ?? post.created_at)}</span>
                         </div>
                       </div>
 
-                      <div className="whitespace-nowrap pt-0.5 font-article-title text-sm font-medium tabular-nums text-emerald-700 sm:text-lg dark:text-emerald-500">
-                        <span className="hidden sm:inline">
-                          {Number(post.price_xec).toLocaleString()} XEC
-                        </span>
-                        <span className="sm:hidden">
-                          {Number(post.price_xec).toLocaleString()}
-                        </span>
+                      <div className="pt-0.5 font-article-title text-base font-medium tabular-nums whitespace-nowrap text-emerald-700 sm:text-lg dark:text-emerald-500">
+                        {Number(post.price_xec).toLocaleString()} XEC
                       </div>
                     </article>
                   )
