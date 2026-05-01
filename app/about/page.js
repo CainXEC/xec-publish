@@ -1,15 +1,21 @@
 'use client'
 
+import Link from 'next/link'
 import Nav from '@/components/Nav'
+
+const WORDMARK_FONT_FAMILY = "'American Typewriter', serif"
 
 export default function AboutPage() {
   return (
     <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
       <Nav />
-      <main className="mx-auto max-w-2xl px-4 pt-12 pb-6 sm:px-6 sm:pt-16 sm:pb-6">
-        <section className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-10">
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl">
-            About
+      <main className="mx-auto max-w-2xl px-4 pt-4 pb-6 sm:px-6 sm:pt-6 sm:pb-6">
+        <section>
+          <h1
+            className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-4xl"
+            style={{ fontFamily: WORDMARK_FONT_FAMILY }}
+          >
+            About Proof of Writing
           </h1>
           <div className="mt-5 space-y-4 text-base leading-relaxed text-zinc-700 dark:text-zinc-300">
             <p>
@@ -34,6 +40,15 @@ export default function AboutPage() {
               Proof Of Writing was made for you.
             </p>
           </div>
+          <p className="mt-8 text-sm text-zinc-500 dark:text-zinc-400">
+            Want to learn how the platform works?{' '}
+            <Link
+              href="/how-it-works"
+              className="text-zinc-700 underline underline-offset-2 transition-colors hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
+            >
+              Read How it works →
+            </Link>
+          </p>
           <p className="mt-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
             <a
               href="https://t.me/proofofwriting"
