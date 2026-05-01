@@ -53,7 +53,7 @@ export default async function DraftPreviewPage({ params }) {
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
-      <Nav authorCtaOverride="logout" />
+      <Nav />
       <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/50">
         <div className="mx-auto flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
