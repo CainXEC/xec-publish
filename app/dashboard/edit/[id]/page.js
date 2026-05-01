@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
-import EditPostForm from '@/components/dashboard/EditPostForm'
+import NewPostForm from '@/components/dashboard/NewPostForm'
 
 export default async function EditPostPage({ params }) {
   const resolved = await params
@@ -36,12 +36,6 @@ export default async function EditPostPage({ params }) {
   if (!user) {
     redirect('/login')
   }
-
-  const { data: author } = await supabase
-    .from('authors')
-    .select('xec_address')
-    .eq('id', user.id)
-    .maybeSingle()
 
   const { data: post, error: postError } = await supabase
     .from('posts')
@@ -89,11 +83,5 @@ export default async function EditPostPage({ params }) {
     )
   }
 
-  return (
-    <EditPostForm
-      postId={postId}
-      xecAddress={author?.xec_address ?? ''}
-      initialPost={post}
-    />
-  )
+  return <NewPostForm existingPost={post} />
 }

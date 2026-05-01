@@ -38,26 +38,53 @@ function extractTeaserFromBody(html) {
   return plain.slice(0, 300)
 }
 
-export default function NewPostForm() {
+/** @param {{ existingPost?: object | null }} [props] Optional server-loaded post to edit (must include `id`). */
+export default function NewPostForm({ existingPost = null }) {
   const router = useRouter()
   const bodyLabelId = useId()
+  const editingPostId = existingPost?.id ?? null
+  const isEditMode = Boolean(editingPostId)
   const autosaveTimerRef = useRef(null)
-  const autosaveIdRef = useRef(null)
+  const autosaveIdRef = useRef(editingPostId)
   const userIdRef = useRef(null)
 
-  const [title, setTitle] = useState('')
-  const [slug, setSlug] = useState('')
-  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
-  const [body, setBody] = useState(DEFAULT_NEW_POST_BODY)
-  const [priceXec, setPriceXec] = useState('100')
-  const [published, setPublished] = useState(false)
-  const [publishPaid, setPublishPaid] = useState(false)
+  const [title, setTitle] = useState(() =>
+    existingPost
+      ? String(existingPost.title ?? '').slice(0, POST_TITLE_MAX)
+      : '',
+  )
+  const [slug, setSlug] = useState(() =>
+    existingPost
+      ? String(existingPost.slug ?? '').slice(0, POST_SLUG_MAX)
+      : '',
+  )
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(() =>
+    existingPost ? Boolean(String(existingPost.slug ?? '').trim()) : false,
+  )
+  const [body, setBody] = useState(
+    () => existingPost?.body ?? DEFAULT_NEW_POST_BODY,
+  )
+  const [priceXec, setPriceXec] = useState(() =>
+    existingPost &&
+    existingPost.price_xec != null &&
+    existingPost.price_xec !== ''
+      ? String(existingPost.price_xec)
+      : '100',
+  )
+  const [published, setPublished] = useState(() =>
+    Boolean(existingPost?.published),
+  )
+  const [publishPaid, setPublishPaid] = useState(() =>
+    Boolean(existingPost?.publish_paid),
+  )
   const [showPublishPaywall, setShowPublishPaywall] = useState(false)
   const [publishPaywallPostId, setPublishPaywallPostId] = useState(null)
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
-  const [autosaveStatus, setAutosaveStatus] = useState('Draft not yet saved')
+  const [autosaveStatus, setAutosaveStatus] = useState(() =>
+    editingPostId ? 'Saved' : 'Draft not yet saved',
+  )
 
   const slugFieldError = useMemo(() => {
     const t = slug.trim()
@@ -96,6 +123,8 @@ export default function NewPostForm() {
     const safePrice = Number.isFinite(price) ? price : 100
     const bodyTrimmed = body.trim()
     const targetId = forceId ?? autosaveIdRef.current
+    // New drafts: autosave keeps published false until explicit publish. Edits: preserve checkbox.
+    const publishedForPayload = nextPublished ? true : isEditMode ? published : false
     const payload = {
       author_id: userId,
       title: title.trim(),
@@ -104,7 +133,7 @@ export default function NewPostForm() {
       body: bodyTrimmed,
       reading_time_minutes: calculateReadingTimeMinutes(bodyTrimmed),
       price_xec: safePrice,
-      published: nextPublished,
+      published: publishedForPayload,
     }
 
     if (nextPublished) {
@@ -141,7 +170,7 @@ export default function NewPostForm() {
     if (insertError) throw insertError
     if (insertedRow?.id) autosaveIdRef.current = insertedRow.id
     return { id: insertedRow?.id ?? null, finalSlug }
-  }, [body, getCurrentUserId, priceXec, slug, title])
+  }, [body, getCurrentUserId, isEditMode, priceXec, published, slug, title])
 
   const handlePublishPaymentConfirmed = useCallback(async () => {
     setPublishPaid(true)
@@ -331,7 +360,9 @@ export default function NewPostForm() {
       <main className="mx-auto w-full max-w-5xl">
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">New post</h1>
+            <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+              {isEditMode ? 'Edit post' : 'New post'}
+            </h1>
           </div>
           <Link
             href="/dashboard"
@@ -422,6 +453,7 @@ export default function NewPostForm() {
                 </span>
               </span>
               <RichTextEditor
+                key={editingPostId ?? 'new'}
                 className="mt-1"
                 content={body}
                 onChange={setBody}
@@ -477,7 +509,7 @@ export default function NewPostForm() {
               disabled={submitting}
               className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
             >
-              {submitting ? 'Saving…' : 'Create post'}
+              {submitting ? 'Saving…' : isEditMode ? 'Save changes' : 'Create post'}
             </button>
           </div>
         </form>
