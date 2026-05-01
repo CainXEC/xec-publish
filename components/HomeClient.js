@@ -388,6 +388,10 @@ export default function HomeClient({
               <div role="list" className="mt-4 border-t border-zinc-200 dark:border-zinc-800">
                 {displayPosts.map((post) => {
                   const author = authorFromPost(post)
+                  const authorUsername = author?.username?.trim()
+                  const authorProfileHref = authorUsername
+                    ? `/u/${encodeURIComponent(authorUsername)}`
+                    : '#'
                   const isLegacy = Boolean(post.legacy)
                   const slug = isLegacy
                     ? `/${encodeURIComponent(post.slug)}`
@@ -422,7 +426,7 @@ export default function HomeClient({
                         </h3>
                         <div className="flex flex-wrap items-center gap-x-1.5 text-sm text-zinc-500 dark:text-zinc-500">
                           <Link
-                            href={`/${author?.username}`}
+                            href={authorProfileHref}
                             className="transition-colors hover:text-zinc-900 dark:hover:text-zinc-100"
                           >
                             @{author?.username}
