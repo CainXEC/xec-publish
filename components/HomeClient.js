@@ -184,6 +184,9 @@ export default function HomeClient({
     setFollowingOnly(false)
   }, [])
 
+  /** Only the "Following" feed uses readerWalletAddress in /api/posts; omit from fetch deps when off so Nav/localStorage sync does not retrigger a redundant client fetch. */
+  const readerWalletForFollowingFetch = followingOnly ? readerWalletAddress : ''
+
   useEffect(() => {
     if (!readerWalletAddress) setFollowingOnly(false)
   }, [readerWalletAddress])
@@ -277,7 +280,14 @@ export default function HomeClient({
     return () => {
       cancelled = true
     }
-  }, [currentPage, timeFilter, sortMode, followingOnly, readerWalletAddress, refetchTrigger])
+  }, [
+    currentPage,
+    timeFilter,
+    sortMode,
+    followingOnly,
+    readerWalletForFollowingFetch,
+    refetchTrigger,
+  ])
 
   const showPinnedCard = currentPage === 1 && Boolean(pinnedPost)
   const showPostSearch = !loading && !loadError
