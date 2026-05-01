@@ -138,10 +138,10 @@ const SORT_PILL_MIN_WIDTH = '15ch'
 const TIME_PILL_MIN_WIDTH = '10ch'
 
 const heroHeadlineWordmarkStyle = {
-  fontFamily: "'Newsreader', 'Times New Roman', serif",
+  fontFamily: "'American Typewriter', 'Courier New', serif",
   fontSize: 'clamp(2.25rem, 8.5vw, 5rem)',
-  lineHeight: 1.0,
-  letterSpacing: '-0.02em',
+  lineHeight: 1.05,
+  letterSpacing: '-0.01em',
   fontWeight: 500,
 }
 
