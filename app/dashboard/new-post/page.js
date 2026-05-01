@@ -12,11 +12,5 @@ export default async function NewPostPage() {
     redirect('/login')
   }
 
-  const { data: author } = await supabase
-    .from('authors')
-    .select('xec_address')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  return <NewPostForm xecAddress={author?.xec_address ?? ''} />
+  return <NewPostForm />
 }

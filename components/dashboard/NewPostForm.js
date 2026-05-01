@@ -38,10 +38,9 @@ function extractTeaserFromBody(html) {
   return plain.slice(0, 300)
 }
 
-export default function NewPostForm({ xecAddress: initialXecAddress }) {
+export default function NewPostForm() {
   const router = useRouter()
   const bodyLabelId = useId()
-  const [xecAddress] = useState(initialXecAddress ?? '')
   const autosaveTimerRef = useRef(null)
   const autosaveIdRef = useRef(null)
   const userIdRef = useRef(null)
@@ -341,17 +340,6 @@ export default function NewPostForm({ xecAddress: initialXecAddress }) {
             Back to dashboard
           </Link>
         </div>
-
-        {xecAddress ? (
-          <p className="mb-6 min-w-0 max-w-full overflow-hidden text-sm text-zinc-600 dark:text-zinc-400">
-            <span className="font-medium text-zinc-800 dark:text-zinc-200">Payout address (XEC):</span>{' '}
-            <span className="break-all font-mono text-zinc-900 dark:text-zinc-100">{xecAddress}</span>
-          </p>
-        ) : (
-          <p className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
-            No XEC address on file. Add one in your author profile if your app supports it.
-          </p>
-        )}
 
         <form
           onSubmit={handleSubmit}
