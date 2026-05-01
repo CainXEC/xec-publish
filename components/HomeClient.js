@@ -309,6 +309,9 @@ export default function HomeClient({
       <main className="mx-auto max-w-5xl px-4 pt-8 pb-10 sm:px-6">
         <section className="mb-10 mx-auto w-full text-left" aria-labelledby="home-hero-heading">
           <HeroHeadline wordmarkStyle={heroHeadlineWordmarkStyle} align="left" />
+          <p className="mt-4 max-w-lg text-base leading-relaxed text-zinc-500 dark:text-zinc-400 sm:text-lg">
+            Write to earn and use eCash to unlock your story.
+          </p>
           <div className="mt-6 flex flex-wrap justify-start gap-2.5">
             <Link
               href={authorLoggedIn ? '/dashboard' : '/login'}
