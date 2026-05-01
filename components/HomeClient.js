@@ -121,7 +121,7 @@ const HOME_SORT_OPTIONS = [
 ]
 
 const HOME_SORT_OPTIONS_MOBILE = [
-  { value: 'earned', label: '📈' },
+  { value: 'earned', label: '💰' },
   { value: 'unlocks', label: '🔓' },
   { value: 'newest', label: '🕐' },
 ]
