@@ -291,7 +291,7 @@ export default function HomeClient({
         onReaderLogoutExtra={handleReaderLogoutExtra}
       />
 
-      <main className="mx-auto max-w-5xl px-4 pt-10 pb-10 sm:px-6">
+      <main className="mx-auto max-w-5xl px-4 pt-8 pb-10 sm:px-6">
         <section className="mb-10 mx-auto w-full text-left" aria-labelledby="home-hero-heading">
           <HeroHeadline wordmarkStyle={heroHeadlineWordmarkStyle} align="left" />
           <div className="mt-6 flex flex-wrap justify-start gap-2.5">
