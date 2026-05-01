@@ -17,6 +17,8 @@ export default function PublishPaywallModal({
   onClose,
   postId,
   onPaymentConfirmed,
+  onCashtabOpened,
+  onPublishPaymentPollingEnded,
 }) {
   const [payError, setPayError] = useState(null)
   const pollRef = useRef(null)
@@ -24,10 +26,15 @@ export default function PublishPaywallModal({
   const lastHandledTxidRef = useRef('')
   const publishAudioContextRef = useRef(null)
   const onPaymentConfirmedRef = useRef(onPaymentConfirmed)
+  const onPublishPaymentPollingEndedRef = useRef(onPublishPaymentPollingEnded)
 
   useEffect(() => {
     onPaymentConfirmedRef.current = onPaymentConfirmed
   }, [onPaymentConfirmed])
+
+  useEffect(() => {
+    onPublishPaymentPollingEndedRef.current = onPublishPaymentPollingEnded
+  }, [onPublishPaymentPollingEnded])
 
   const platformAddressForLatestTx = useMemo(() => {
     const raw =
@@ -146,6 +153,7 @@ export default function PublishPaywallModal({
           } catch (err) {
             const msg = err instanceof Error ? err.message : 'Could not complete publish.'
             setPayError(msg)
+            onPublishPaymentPollingEndedRef.current?.()
           }
           return
         }
@@ -156,6 +164,7 @@ export default function PublishPaywallModal({
           if (errLower.includes('already used')) {
             stopPublishFeePolling()
             setPayError(err || 'This transaction was already used.')
+            onPublishPaymentPollingEndedRef.current?.()
             return
           }
           if (
@@ -165,6 +174,7 @@ export default function PublishPaywallModal({
           ) {
             stopPublishFeePolling()
             setPayError(err)
+            onPublishPaymentPollingEndedRef.current?.()
             return
           }
           return
@@ -173,11 +183,13 @@ export default function PublishPaywallModal({
         if (verifyRes.status === 401 || verifyRes.status === 403) {
           stopPublishFeePolling()
           setPayError(verifyData.error || 'Not authorized.')
+          onPublishPaymentPollingEndedRef.current?.()
           return
         }
         if (verifyRes.status === 404) {
           stopPublishFeePolling()
           setPayError(verifyData.error || 'Post not found.')
+          onPublishPaymentPollingEndedRef.current?.()
           return
         }
       } catch {
@@ -199,6 +211,7 @@ export default function PublishPaywallModal({
       /* ignore */
     }
     window.open(url, '_blank', 'noopener,noreferrer')
+    onCashtabOpened?.()
   }
 
   function handlePublishPaywallPay() {

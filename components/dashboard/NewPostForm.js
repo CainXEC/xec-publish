@@ -81,6 +81,7 @@ export default function NewPostForm({ existingPost = null }) {
   const [publishPaywallPostId, setPublishPaywallPostId] = useState(null)
 
   const [submitting, setSubmitting] = useState(false)
+  const [publishPaymentWaiting, setPublishPaymentWaiting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
   const [autosaveStatus, setAutosaveStatus] = useState(() =>
     editingPostId ? 'Saved' : 'Draft not yet saved',
@@ -188,6 +189,7 @@ export default function NewPostForm({ existingPost = null }) {
       setSubmitError(msg)
     } finally {
       setSubmitting(false)
+      setPublishPaymentWaiting(false)
     }
   }, [persistDraft, router])
 
@@ -333,6 +335,7 @@ export default function NewPostForm({ existingPost = null }) {
 
       if (!okToPublish) {
         setPublishPaywallPostId(draftId)
+        setPublishPaymentWaiting(false)
         setShowPublishPaywall(true)
         return
       }
@@ -504,22 +507,44 @@ export default function NewPostForm({ existingPost = null }) {
               </p>
             ) : null}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-            >
-              {submitting ? 'Saving…' : isEditMode ? 'Save changes' : 'Create post'}
-            </button>
+            {publishPaymentWaiting ? (
+              <div className="rounded-lg border border-zinc-200 bg-white/70 px-4 py-3 text-left dark:border-zinc-700 dark:bg-zinc-900/60">
+                <div className="flex items-center gap-3">
+                  <span
+                    aria-hidden
+                    className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-zinc-300 border-t-emerald-500 dark:border-zinc-600 dark:border-t-emerald-400"
+                  />
+                  <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                    Waiting for payment...
+                  </p>
+                </div>
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                  This usually takes a few seconds
+                </p>
+              </div>
+            ) : (
+              <button
+                type="submit"
+                disabled={submitting}
+                className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+              >
+                {submitting ? 'Saving…' : isEditMode ? 'Save changes' : 'Create post'}
+              </button>
+            )}
           </div>
         </form>
       </main>
 
       <PublishPaywallModal
         isOpen={showPublishPaywall}
-        onClose={() => setShowPublishPaywall(false)}
+        onClose={() => {
+          setShowPublishPaywall(false)
+          setPublishPaymentWaiting(false)
+        }}
         postId={publishPaywallPostId ?? ''}
         onPaymentConfirmed={handlePublishPaymentConfirmed}
+        onCashtabOpened={() => setPublishPaymentWaiting(true)}
+        onPublishPaymentPollingEnded={() => setPublishPaymentWaiting(false)}
       />
     </div>
   )
