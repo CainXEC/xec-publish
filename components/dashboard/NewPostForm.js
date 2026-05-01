@@ -376,7 +376,8 @@ export default function NewPostForm({ existingPost = null }) {
         </div>
 
         <form onSubmit={handleSubmit} className="w-full py-6">
-          <div className="flex flex-col gap-5">
+          <div className="w-full sm:max-w-2xl">
+            <div className="flex flex-col gap-5">
             <div>
               <label htmlFor="title" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 Title
@@ -531,6 +532,7 @@ export default function NewPostForm({ existingPost = null }) {
                 {submitting ? 'Saving…' : isEditMode ? 'Save changes' : 'Create post'}
               </button>
             )}
+            </div>
           </div>
         </form>
       </main>
