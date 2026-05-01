@@ -118,6 +118,12 @@ const HOME_SORT_OPTIONS = [
   { value: 'newest', label: 'Newest' },
 ]
 
+const HOME_SORT_OPTIONS_MOBILE = [
+  { value: 'earned', label: '📈' },
+  { value: 'unlocks', label: '🔓' },
+  { value: 'newest', label: '🕐' },
+]
+
 const HOME_TIME_OPTIONS = [
   { value: '24h', label: '24h' },
   { value: '7d', label: '7d' },
@@ -310,7 +316,7 @@ export default function HomeClient({
           </div>
         ) : (
           <>
-            <div className="mt-14 sm:mt-16">
+            <div className="mt-8 sm:mt-10">
               <div className="mt-4 flex items-center justify-between gap-2">
                 <div className="flex shrink-0 items-baseline gap-3 sm:gap-6">
                   <button
@@ -337,7 +343,29 @@ export default function HomeClient({
                   </button>
                 </div>
                 <div className="flex shrink-0 items-center gap-1 pb-1 sm:gap-1.5">
-                  <FilterDropdown menuId={MENU_SORT} openMenu={openMenu} setOpenMenu={setOpenMenu} value={sortMode} options={HOME_SORT_OPTIONS} ariaLabel="Sort posts" onChange={(v) => setSortMode(v)} minWidth={SORT_PILL_MIN_WIDTH} />
+                  <div className="sm:hidden">
+                    <FilterDropdown
+                      menuId={MENU_SORT}
+                      openMenu={openMenu}
+                      setOpenMenu={setOpenMenu}
+                      value={sortMode}
+                      options={HOME_SORT_OPTIONS_MOBILE}
+                      ariaLabel="Sort"
+                      onChange={(v) => setSortMode(v)}
+                    />
+                  </div>
+                  <div className="hidden sm:block">
+                    <FilterDropdown
+                      menuId={MENU_SORT}
+                      openMenu={openMenu}
+                      setOpenMenu={setOpenMenu}
+                      value={sortMode}
+                      options={HOME_SORT_OPTIONS}
+                      ariaLabel="Sort posts"
+                      onChange={(v) => setSortMode(v)}
+                      minWidth={SORT_PILL_MIN_WIDTH}
+                    />
+                  </div>
                   <FilterDropdown menuId={MENU_TIME} openMenu={openMenu} setOpenMenu={setOpenMenu} value={timeFilter} options={HOME_TIME_OPTIONS} ariaLabel="Time range for unlocks and earnings" disabled={sortMode === 'newest'} disabledHint="Time range does not apply when sorting by Newest." onChange={(v) => setTimeFilter(v)} minWidth={TIME_PILL_MIN_WIDTH} />
                 </div>
               </div>
