@@ -341,10 +341,7 @@ export default function NewPostForm() {
           </Link>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-        >
+        <form onSubmit={handleSubmit} className="p-6">
           <div className="flex flex-col gap-5">
             <div>
               <label htmlFor="title" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
