@@ -89,7 +89,7 @@ export default function NewPostForm() {
     const userId = await getCurrentUserId()
     let finalSlug = slug.trim().slice(0, POST_SLUG_MAX)
     if (!finalSlug || !isUrlSafeSlug(finalSlug)) {
-      finalSlug = generateSlug(title.trim() || 'post').slice(0, POST_SLUG_MAX)
+      finalSlug = generateSlug(title.trim()).slice(0, POST_SLUG_MAX)
     }
 
     const price = Number(priceXec)
@@ -252,7 +252,7 @@ export default function NewPostForm() {
 
       let finalSlug = slug.trim().slice(0, POST_SLUG_MAX)
       if (!finalSlug || !isUrlSafeSlug(finalSlug)) {
-        finalSlug = generateSlug(title.trim() || 'post').slice(0, POST_SLUG_MAX)
+        finalSlug = generateSlug(title.trim()).slice(0, POST_SLUG_MAX)
       }
       setSlug(finalSlug)
 
