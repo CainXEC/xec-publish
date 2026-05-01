@@ -992,10 +992,10 @@ export default function PostPageClient({
                     className="prose prose-zinc dark:prose-invert max-w-none opacity-60"
                     dangerouslySetInnerHTML={{ __html: lockedSampleHtml }}
                   />
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-white dark:to-zinc-950" />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-white dark:to-zinc-950" />
                 </div>
 
-                <div className="py-8 text-center">
+                <div className="pt-3 pb-6 text-center">
                   {bip21Url ? (
                     <>
                       <button
