@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import PublishPaywallModal from '@/components/dashboard/PublishPaywallModal'
 import { supabase } from '@/lib/supabase-browser'
@@ -361,20 +360,6 @@ export default function NewPostForm({ existingPost = null }) {
   return (
     <div className="flex min-h-full flex-1 flex-col bg-zinc-50 px-4 py-10 dark:bg-zinc-950">
       <main className="mx-auto w-full max-w-5xl">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-              {isEditMode ? 'Edit post' : 'New post'}
-            </h1>
-          </div>
-          <Link
-            href="/dashboard"
-            className="text-sm font-medium text-zinc-700 underline dark:text-zinc-300"
-          >
-            Back to dashboard
-          </Link>
-        </div>
-
         <form onSubmit={handleSubmit} className="w-full py-6">
           <div className="mx-auto w-full sm:max-w-2xl">
             <div className="flex flex-col gap-5">
