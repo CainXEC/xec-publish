@@ -5,7 +5,8 @@ export const metadata = {
   description: 'Everything you need to read or write on Proof of Writing.',
 }
 
-const WORDMARK_FONT_FAMILY = "'American Typewriter', serif"
+const WORDMARK_FONT_FAMILY =
+  "'American Typewriter', var(--font-courier-prime), 'Courier New', serif"
 
 const readersSteps = [
   {

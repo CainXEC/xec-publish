@@ -336,7 +336,8 @@ export default function Nav({
   const wordmarkInner = (
     <span
       style={{
-        fontFamily: "'American Typewriter', serif",
+        fontFamily:
+          "'American Typewriter', var(--font-courier-prime), 'Courier New', serif",
         color: 'var(--color-text-primary)',
         letterSpacing: '0.04em',
         lineHeight: '1',

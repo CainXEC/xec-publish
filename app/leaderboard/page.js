@@ -29,7 +29,8 @@ const MENU_SORT = 'leaderboard-sort'
 const MENU_TIME = 'leaderboard-time'
 const SORT_PILL_MIN_WIDTH = '15ch'
 const TIME_PILL_MIN_WIDTH = '10ch'
-const WORDMARK_FONT_FAMILY = "'American Typewriter', serif"
+const WORDMARK_FONT_FAMILY =
+  "'American Typewriter', var(--font-courier-prime), 'Courier New', serif"
 
 export default function LeaderboardPage() {
   const [rows, setRows] = useState([])

@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import Nav from '@/components/Nav'
 
-const WORDMARK_FONT_FAMILY = "'American Typewriter', serif"
+const WORDMARK_FONT_FAMILY =
+  "'American Typewriter', var(--font-courier-prime), 'Courier New', serif"
 
 export default function AboutPage() {
   return (
