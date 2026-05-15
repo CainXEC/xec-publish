@@ -453,12 +453,10 @@ export default function HomeClient({
                               <span>{post.reading_time_minutes} min</span>
                             </>
                           ) : null}
-                          {post.unlockCount > 0 ? (
-                            <>
-                              <span aria-hidden>·</span>
-                              <span>🔓 {post.unlockCount}</span>
-                            </>
-                          ) : null}
+                          <>
+                            <span aria-hidden>·</span>
+                            <span>🔓 {post.unlockCount ?? 0}</span>
+                          </>
                           <span aria-hidden>·</span>
                           <span>{formatShortDate(post.published_at ?? post.created_at)}</span>
                         </div>
