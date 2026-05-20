@@ -202,19 +202,14 @@ function DashboardPostCard({ post, deletingId, onDelete, onOpenAudioModal }) {
               <span className="text-zinc-500 dark:text-zinc-400">(~{audioPriceXec} XEC)</span>
             </button>
           ) : isAudioStale ? (
-            <div className="flex flex-col items-start gap-1">
-              <button
-                type="button"
-                onClick={() => onOpenAudioModal(post, 'regenerate')}
-                className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-900 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200 dark:hover:bg-amber-900/50"
-              >
-                Regenerate audio{' '}
-                <span className="text-amber-700 dark:text-amber-300">(~{audioPriceXec} XEC)</span>
-              </button>
-              <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                ⚠️ Audio is from a previous version.
-              </span>
-            </div>
+            <button
+              type="button"
+              onClick={() => onOpenAudioModal(post, 'regenerate')}
+              className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-900 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200 dark:hover:bg-amber-900/50"
+            >
+              Regenerate audio{' '}
+              <span className="text-amber-700 dark:text-amber-300">(~{audioPriceXec} XEC)</span>
+            </button>
           ) : (
             <span className="inline-flex items-center rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
               🎧 Has audio ✓
