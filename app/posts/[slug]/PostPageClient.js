@@ -941,6 +941,9 @@ export default function PostPageClient({
             ) : null}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-zinc-500 dark:text-zinc-500">
+            {post.reading_time_minutes ? (
+              <span>{post.reading_time_minutes} min read</span>
+            ) : null}
             <span className="flex items-center gap-1">
               🔓 <span>{unlockCount}</span>
             </span>
