@@ -95,6 +95,8 @@ export default function SearchResultsClient({
                       <Link
                         prefetch={false}
                         href={postHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="rounded-sm text-inherit after:absolute after:inset-0 after:content-[''] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
                       >
                         {post.title}
