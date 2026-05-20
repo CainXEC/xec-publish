@@ -44,9 +44,9 @@ export default async function DashboardPage() {
     admin
       ? admin
           .from('unlocks')
-          .select('amount_xec, post_id, posts!inner(author_id, legacy)')
+          .select('amount_xec, post_id, posts!inner(author_id)')
           .eq('posts.author_id', user.id)
-          .eq('posts.legacy', false)
+          .eq('posts.published', true)
       : Promise.resolve({ data: null }),
   ])
 

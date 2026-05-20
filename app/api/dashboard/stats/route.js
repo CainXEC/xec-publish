@@ -29,9 +29,9 @@ export async function GET() {
 
   const { data, error } = await admin
     .from('unlocks')
-    .select('amount_xec, post_id, posts!inner(author_id, legacy)')
+    .select('amount_xec, post_id, posts!inner(author_id)')
     .eq('posts.author_id', user.id)
-    .eq('posts.legacy', false)
+    .eq('posts.published', true)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
