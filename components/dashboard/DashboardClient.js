@@ -164,21 +164,30 @@ function DashboardPostCard({ post, deletingId, onDelete, onOpenAudioModal }) {
                 className="min-w-0 text-base font-medium text-emerald-700 underline-offset-2 hover:text-emerald-600 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
               >
                 {post.title ?? 'Untitled post'}
+                {post.audio_url ? (
+                  <span
+                    className="whitespace-nowrap text-sm text-zinc-900 dark:text-zinc-50"
+                    title="Audio narration available"
+                    aria-label="Audio narration available"
+                  >
+                    &nbsp;🎧
+                  </span>
+                ) : null}
               </Link>
             ) : (
               <p className="min-w-0 text-base font-medium text-zinc-900 dark:text-zinc-50">
                 {post.title ?? 'Untitled post'}
+                {post.audio_url ? (
+                  <span
+                    className="whitespace-nowrap text-sm"
+                    title="Audio narration available"
+                    aria-label="Audio narration available"
+                  >
+                    &nbsp;🎧
+                  </span>
+                ) : null}
               </p>
             )}
-            {post.audio_url ? (
-              <span
-                className="ml-2 text-sm text-zinc-900 dark:text-zinc-50"
-                title="Audio narration available"
-                aria-label="Audio narration available"
-              >
-                🎧
-              </span>
-            ) : null}
             {!post.published ? (
               <span className="inline-flex shrink-0 items-center rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
                 Draft

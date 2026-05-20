@@ -85,11 +85,11 @@ export default async function DraftPreviewPage({ params }) {
             {post.title}
             {audioUrl ? (
               <span
-                className="ml-2 align-middle text-2xl"
+                className="whitespace-nowrap align-middle text-2xl"
                 title="Audio narration available"
                 aria-label="Audio narration available"
               >
-                🎧
+                &nbsp;🎧
               </span>
             ) : null}
           </h1>

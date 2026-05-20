@@ -191,16 +191,16 @@ function PostCard({ post }) {
             className="transition after:absolute after:inset-0 after:content-[''] hover:text-emerald-700 dark:hover:text-emerald-400"
           >
             {post.title}
+            {post.audio_url ? (
+              <span
+                className="relative z-10 whitespace-nowrap text-sm"
+                title="Audio narration available"
+                aria-label="Audio narration available"
+              >
+                &nbsp;🎧
+              </span>
+            ) : null}
           </Link>
-          {post.audio_url ? (
-            <span
-              className="relative z-10 ml-2 text-sm"
-              title="Audio narration available"
-              aria-label="Audio narration available"
-            >
-              🎧
-            </span>
-          ) : null}
         </h3>
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
           <time dateTime={postDisplayTime(post) ?? undefined}>

@@ -858,11 +858,11 @@ export default function PostPageClient({
             {post.title}
             {post.audio_url && (
               <span
-                className="ml-2 align-middle text-2xl"
+                className="whitespace-nowrap align-middle text-2xl"
                 title="Audio narration available"
                 aria-label="Audio narration available"
               >
-                🎧
+                &nbsp;🎧
               </span>
             )}
           </h1>

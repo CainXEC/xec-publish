@@ -86,12 +86,16 @@ function HomePostCard({ post, sortMode, pinnedBadge = false }) {
           className="rounded-sm text-inherit after:absolute after:inset-0 after:content-[''] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
         >
           {post.title}
+          {post.audio_url ? (
+            <span
+              className="relative z-10 whitespace-nowrap text-sm"
+              title="Audio narration available"
+              aria-label="Audio narration available"
+            >
+              &nbsp;🎧
+            </span>
+          ) : null}
         </Link>
-        {post.audio_url ? (
-          <span className="relative z-10 ml-2 text-sm" title="Audio narration available" aria-label="Audio narration available">
-            🎧
-          </span>
-        ) : null}
       </h3>
       <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
         <Link href={`/u/${encodeURIComponent(username)}`} className="relative z-10 font-medium text-emerald-700 hover:text-emerald-800 underline-offset-2 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300">
@@ -431,11 +435,11 @@ export default function HomeClient({
                             {post.title}
                             {post.audio_url ? (
                               <span
-                                className="ml-1.5 text-sm"
+                                className="whitespace-nowrap text-sm"
                                 aria-label="Audio narration available"
                                 title="Audio narration available"
                               >
-                                🎧
+                                &nbsp;🎧
                               </span>
                             ) : null}
                           </Link>
