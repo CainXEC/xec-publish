@@ -27,6 +27,7 @@ export default async function DashboardPage() {
       .from('posts')
       .select('*')
       .eq('author_id', user.id)
+      .order('published', { ascending: true })
       .order('created_at', { ascending: false }),
     supabase
       .from('authors')

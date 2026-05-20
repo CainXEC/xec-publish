@@ -101,11 +101,13 @@ function sortPostsByUnlocksThenNewest(rows) {
 }
 
 function sortPostsByNewest(rows) {
-  return [...rows].sort((a, b) => {
-    const tb = new Date(b.created_at).getTime()
-    const ta = new Date(a.created_at).getTime()
-    return tb - ta
-  })
+  const byCreatedDesc = (a, b) =>
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  const drafts = rows.filter((p) => !p.published)
+  const published = rows.filter((p) => p.published)
+  drafts.sort(byCreatedDesc)
+  published.sort(byCreatedDesc)
+  return [...drafts, ...published]
 }
 
 function earnedPrimaryValue(post) {
