@@ -85,10 +85,7 @@ function ScrubberTrack({
   )
 }
 
-export default function ArticleAudioPlayer({
-  postId,
-  isStale = false,
-}) {
+export default function ArticleAudioPlayer({ postId }) {
   const audioRef = useRef(null)
   const scrubRef = useRef(null)
   const shouldResumePlaybackRef = useRef(false)
@@ -351,11 +348,6 @@ export default function ArticleAudioPlayer({
           </div>
         </div>
       </section>
-      {isStale ? (
-        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-          ⚠️ Audio is from a previous version of this article.
-        </p>
-      ) : null}
     </>
   )
 }
