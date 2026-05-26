@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ThemeToggle from '@/components/ThemeToggle'
 import {
@@ -40,7 +40,9 @@ export default function Nav({
   onReaderLogoutExtra,
 }) {
   const router = useRouter()
+  const pathname = usePathname()
   const [authorLoggedIn, setAuthorLoggedIn] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const [readerWalletAddress, setReaderWalletAddress] = useState('')
   const [readerLoginBusy, setReaderLoginBusy] = useState(false)
   const [readerLoginError, setReaderLoginError] = useState('')
@@ -249,6 +251,34 @@ export default function Nav({
       stopReaderTxPolling()
     }
   }, [stopReaderTxPolling])
+
+  const showDashboardButton = authorLoggedIn && authorCtaOverride !== 'logout'
+
+  useEffect(() => {
+    if (!showDashboardButton) return
+
+    const fetchCount = async () => {
+      try {
+        const res = await fetch('/api/notifications/unread-count')
+        if (res.ok) {
+          const { count } = await res.json()
+          setUnreadCount(typeof count === 'number' && Number.isFinite(count) ? count : 0)
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    void fetchCount()
+    const interval = setInterval(() => void fetchCount(), 60_000)
+    return () => clearInterval(interval)
+  }, [showDashboardButton])
+
+  useEffect(() => {
+    if (pathname === '/dashboard') {
+      setUnreadCount(0)
+    }
+  }, [pathname])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -482,9 +512,14 @@ export default function Nav({
     ) : authorLoggedIn ? (
       <Link
         href="/dashboard"
-        className="inline-flex h-9 items-center justify-center rounded-md bg-black px-4 text-sm font-medium whitespace-nowrap text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+        className="relative inline-flex h-9 items-center justify-center rounded-md bg-black px-4 text-sm font-medium whitespace-nowrap text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
       >
         Dashboard
+        {unreadCount > 0 ? (
+          <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold leading-none text-white">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        ) : null}
       </Link>
     ) : (
       <Link
@@ -631,9 +666,14 @@ export default function Nav({
               <Link
                 href="/dashboard"
                 onClick={closeMobileNav}
-                className="inline-flex h-11 w-full items-center justify-center rounded-md bg-black text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
+                className="relative inline-flex h-11 w-full items-center justify-center rounded-md bg-black text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
               >
                 Dashboard
+                {unreadCount > 0 ? (
+                  <span className="absolute top-1.5 right-3 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold leading-none text-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                ) : null}
               </Link>
             ) : (
               <Link
