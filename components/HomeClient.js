@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import FilterDropdown from '@/components/FilterDropdown'
 import HeroHeadline from '@/components/HeroHeadline'
@@ -173,7 +174,9 @@ export default function HomeClient({
   const [followingOnly, setFollowingOnly] = useState(false)
   const [refetchTrigger, setRefetchTrigger] = useState(0)
   const [openMenu, setOpenMenu] = useState(/** @type {string | null} */ (null))
+  const pathname = usePathname()
   const [authorLoggedIn, setAuthorLoggedIn] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   /** Skip first effect run(s) so SSR data is used without a client fetch. In dev, React Strict Mode runs the effect twice on mount with identical deps — skip both so the second pass does not set loading and refetch. */
   const clientFetchSkipsRemaining = useRef(
     process.env.NODE_ENV !== 'production' ? 2 : 1,
@@ -209,6 +212,32 @@ export default function HomeClient({
       sub.subscription.unsubscribe()
     }
   }, [])
+
+  useEffect(() => {
+    if (!authorLoggedIn) return
+
+    const fetchCount = async () => {
+      try {
+        const res = await fetch('/api/notifications/unread-count')
+        if (res.ok) {
+          const { count } = await res.json()
+          setUnreadCount(typeof count === 'number' && Number.isFinite(count) ? count : 0)
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    void fetchCount()
+    const interval = setInterval(() => void fetchCount(), 60_000)
+    return () => clearInterval(interval)
+  }, [authorLoggedIn])
+
+  useEffect(() => {
+    if (pathname === '/dashboard') {
+      setUnreadCount(0)
+    }
+  }, [pathname])
 
   useEffect(() => {
     setCurrentPage(1)
@@ -318,12 +347,28 @@ export default function HomeClient({
             Write to earn and use eCash to unlock your story.
           </p>
           <div className="mt-6 flex flex-wrap justify-start gap-2.5">
-            <Link
-              href={authorLoggedIn ? '/dashboard' : '/login'}
-              className="inline-flex items-center justify-center rounded-md bg-black px-[18px] py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
-            >
-              {authorLoggedIn ? 'Dashboard' : 'Start writing'}
-            </Link>
+            {authorLoggedIn ? (
+              <div className="relative inline-flex">
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center justify-center rounded-md bg-black px-[18px] py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+                >
+                  Dashboard
+                </Link>
+                {unreadCount > 0 ? (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold leading-none text-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                ) : null}
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center rounded-md bg-black px-[18px] py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+              >
+                Start writing
+              </Link>
+            )}
             <Link
               href="/how-it-works"
               className="inline-flex items-center justify-center rounded-md border border-zinc-300 bg-transparent px-[18px] py-2.5 text-sm font-medium text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:border-zinc-500 dark:hover:bg-zinc-900"
