@@ -1,53 +1,8 @@
 import { ImageResponse } from 'next/og'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 
-export const runtime = 'edge'
-
-async function getCSSFontUrl(cssUrl) {
-  const css = await fetch(cssUrl, {
-    headers: {
-      'User-Agent':
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    },
-  }).then((r) => {
-    if (!r.ok) throw new Error(`Font CSS fetch failed: ${r.status} ${cssUrl}`)
-    return r.text()
-  })
-  const match = css.match(/src:\s*url\(([^)]+)\)\s*format\(['"]woff2['"]\)/)
-  if (match?.[1]) return match[1].replace(/['"]/g, '')
-  const fallback = css.match(/src:\s*url\(([^)]+)\)/)
-  return fallback ? fallback[1].replace(/['"]/g, '') : null
-}
-
-async function loadOgFonts() {
-  const [newsreaderUrl, courierUrl] = await Promise.all([
-    getCSSFontUrl(
-      'https://fonts.googleapis.com/css2?family=Newsreader:wght@500&display=swap',
-    ),
-    getCSSFontUrl(
-      'https://fonts.googleapis.com/css2?family=Courier+Prime&display=swap',
-    ),
-  ])
-
-  if (!newsreaderUrl || !courierUrl) {
-    throw new Error('Could not parse font URLs from Google Fonts CSS')
-  }
-
-  const [newsreaderFont, courierPrimeFont] = await Promise.all([
-    fetch(newsreaderUrl).then((res) => {
-      if (!res.ok) throw new Error(`Newsreader woff2 failed: ${res.status}`)
-      return res.arrayBuffer()
-    }),
-    fetch(courierUrl).then((res) => {
-      if (!res.ok) throw new Error(`Courier Prime woff2 failed: ${res.status}`)
-      return res.arrayBuffer()
-    }),
-  ])
-
-  return [
-    { name: 'Newsreader', data: newsreaderFont, style: 'normal', weight: 500 },
-    { name: 'Courier Prime', data: courierPrimeFont, style: 'normal', weight: 400 },
-  ]
-}
+export const runtime = 'nodejs'
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
@@ -59,7 +14,15 @@ export async function GET(request) {
   let fonts = []
 
   try {
-    fonts = await loadOgFonts()
+    const [newsreaderFont, courierPrimeFont] = await Promise.all([
+      readFile(join(process.cwd(), 'public/fonts/newsreader-500.ttf')),
+      readFile(join(process.cwd(), 'public/fonts/courier-prime-400.ttf')),
+    ])
+
+    fonts = [
+      { name: 'Newsreader', data: newsreaderFont, style: 'normal', weight: 500 },
+      { name: 'Courier Prime', data: courierPrimeFont, style: 'normal', weight: 400 },
+    ]
   } catch (err) {
     console.error('[og] Font loading failed:', err)
   }
