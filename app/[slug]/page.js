@@ -1,6 +1,7 @@
 import { cache } from 'react'
 import { notFound } from 'next/navigation'
 import PostPageClient from '../posts/[slug]/PostPageClient'
+import { articleOpenGraphMetadata } from '@/lib/articleOgMetadata'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { isAudioStale } from '@/lib/audioConfig'
 import { sumAmountRowsByPostId } from '@/lib/supabaseUnlockEarnings'
@@ -72,7 +73,8 @@ const getLegacyPublishedPostBySlug = cache(async (rawSlug) => {
   }
 })
 
-const siteUrl = 'https://www.proofofwriting.com'
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL || 'https://www.proofofwriting.com'
 
 /** @param {{ params: Promise<{ slug: string }> }} props */
 export async function generateMetadata({ params }) {
@@ -83,35 +85,14 @@ export async function generateMetadata({ params }) {
   const data = await getLegacyPublishedPostBySlug(slug)
   if (!data) return {}
 
-  const { post } = data
+  const { post, author } = data
+  const authorUsername = author?.username?.trim() ?? ''
 
-  const description = post.teaser?.slice(0, 160)
-
-  return {
-    title: `${post.title} | Proof Of Writing`,
-    description,
-    openGraph: {
-      title: post.title,
-      description,
-      url: `${siteUrl}/${encodeURIComponent(post.slug)}`,
-      siteName: 'Proof Of Writing',
-      images: [
-        {
-          url: `${siteUrl}/og-image.png`,
-          width: 1200,
-          height: 630,
-          alt: post.title,
-        },
-      ],
-      type: 'article',
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: post.title,
-      description,
-      images: [`${siteUrl}/og-image.png`],
-    },
-  }
+  return articleOpenGraphMetadata({
+    post,
+    authorUsername,
+    pageUrl: `${siteUrl}/${encodeURIComponent(post.slug)}`,
+  })
 }
 
 export default async function LegacyRootPostPage({ params }) {
