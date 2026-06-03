@@ -52,6 +52,7 @@ export async function GET(request) {
               letterSpacing: '0.14em',
               color: '#059669',
               textTransform: 'uppercase',
+              flexShrink: 0,
             }}
           >
             PROOF of WRITING
@@ -60,11 +61,17 @@ export async function GET(request) {
           <div
             style={{
               fontFamily: titleFont,
-              fontSize: title.length > 80 ? '44px' : '52px',
+              fontSize:
+                title.length > 100 ? '38px' : title.length > 80 ? '44px' : '52px',
               lineHeight: 1.15,
               color: '#18181b',
               fontWeight: 500,
               maxWidth: '1000px',
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              overflow: 'hidden',
+              padding: '24px 0',
             }}
           >
             {title}
@@ -78,6 +85,7 @@ export async function GET(request) {
               fontSize: '18px',
               color: '#059669',
               fontFamily: wordmarkFont,
+              flexShrink: 0,
             }}
           >
             {author ? <span>@{author}</span> : null}
