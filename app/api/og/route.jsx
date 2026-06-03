@@ -47,7 +47,7 @@ export async function GET(request) {
           <div
             style={{
               fontFamily: wordmarkFont,
-              fontSize: '14px',
+              fontSize: '26px',
               letterSpacing: '0.14em',
               color: '#059669',
               textTransform: 'uppercase',
@@ -69,7 +69,7 @@ export async function GET(request) {
               style={{
                 fontFamily: titleFont,
                 fontSize:
-                  title.length > 100 ? '38px' : title.length > 80 ? '44px' : '52px',
+                  title.length > 100 ? '54px' : title.length > 80 ? '64px' : '76px',
                 lineHeight: 1.15,
                 color: '#18181b',
                 fontWeight: 500,
@@ -84,12 +84,12 @@ export async function GET(request) {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '16px',
-                fontSize: '18px',
+                gap: '20px',
+                fontSize: '32px',
                 color: '#059669',
                 fontFamily: wordmarkFont,
                 flexShrink: 0,
-                marginTop: '28px',
+                marginTop: '36px',
               }}
             >
               {author ? <span>@{author}</span> : null}
