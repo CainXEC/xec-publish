@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import PublishPaywallModal from '@/components/dashboard/PublishPaywallModal'
+import { warmOgImageForPost } from '@/app/dashboard/warmOgImage'
 import { supabase } from '@/lib/supabase-browser'
 import { calculateReadingTimeMinutes } from '@/lib/calculateReadingTimeMinutes'
 import { charCounterClassName } from '@/lib/charCounterClassName'
@@ -177,10 +178,13 @@ export default function NewPostForm({ existingPost = null }) {
     setShowPublishPaywall(false)
     setSubmitting(true)
     try {
-      await persistDraft({
+      const { id: publishedId } = await persistDraft({
         forceId: autosaveIdRef.current,
         nextPublished: true,
       })
+      if (publishedId) {
+        await warmOgImageForPost(publishedId)
+      }
       router.push('/dashboard')
       router.refresh()
     } catch (e) {
@@ -340,10 +344,13 @@ export default function NewPostForm({ existingPost = null }) {
       }
 
       try {
-        await persistDraft({
+        const { id: publishedId } = await persistDraft({
           forceId: autosaveIdRef.current,
           nextPublished: true,
         })
+        if (publishedId) {
+          await warmOgImageForPost(publishedId)
+        }
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Could not save post.'
         setSubmitError(msg)

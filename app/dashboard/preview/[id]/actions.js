@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { warmOgImageForPost } from '@/app/dashboard/warmOgImage'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 
 export async function publishDraftPost(formData) {
@@ -31,6 +32,8 @@ export async function publishDraftPost(formData) {
   if (error || !data) {
     redirect('/dashboard')
   }
+
+  await warmOgImageForPost(postId)
 
   revalidatePath('/dashboard')
   revalidatePath('/')
