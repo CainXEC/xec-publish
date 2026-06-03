@@ -31,7 +31,7 @@ export async function GET(request) {
   const wordmarkFont = fonts.length > 0 ? 'Courier Prime' : 'monospace'
 
   try {
-    return new ImageResponse(
+    const imageResponse = new ImageResponse(
       (
         <div
           style={{
@@ -104,8 +104,21 @@ export async function GET(request) {
         fonts: fonts.length > 0 ? fonts : undefined,
       },
     )
+
+    const response = new Response(imageResponse.body, {
+      headers: {
+        ...Object.fromEntries(imageResponse.headers.entries()),
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'CDN-Cache-Control': 'public, max-age=31536000',
+      },
+    })
+
+    return response
   } catch (err) {
     console.error('[og] ImageResponse failed:', err)
-    return new Response('Failed to generate image', { status: 500 })
+    return new Response('Failed to generate image', {
+      status: 500,
+      headers: { 'Cache-Control': 'no-store' },
+    })
   }
 }
