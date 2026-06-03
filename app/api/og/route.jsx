@@ -40,7 +40,6 @@ export async function GET(request) {
             background: '#ffffff',
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'space-between',
             padding: '60px 64px',
             borderLeft: '8px solid #059669',
           }}
@@ -60,41 +59,47 @@ export async function GET(request) {
 
           <div
             style={{
-              fontFamily: titleFont,
-              fontSize:
-                title.length > 100 ? '38px' : title.length > 80 ? '44px' : '52px',
-              lineHeight: 1.15,
-              color: '#18181b',
-              fontWeight: 500,
-              maxWidth: '1000px',
               flex: 1,
               display: 'flex',
-              alignItems: 'center',
-              overflow: 'hidden',
-              padding: '24px 0',
+              flexDirection: 'column',
+              justifyContent: 'center',
             }}
           >
-            {title}
-          </div>
+            <div
+              style={{
+                fontFamily: titleFont,
+                fontSize:
+                  title.length > 100 ? '38px' : title.length > 80 ? '44px' : '52px',
+                lineHeight: 1.15,
+                color: '#18181b',
+                fontWeight: 500,
+                maxWidth: '1000px',
+                overflow: 'hidden',
+              }}
+            >
+              {title}
+            </div>
 
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px',
-              fontSize: '18px',
-              color: '#059669',
-              fontFamily: wordmarkFont,
-              flexShrink: 0,
-            }}
-          >
-            {author ? <span>@{author}</span> : null}
-            {readTime ? <span style={{ margin: '0 4px' }}>·</span> : null}
-            {readTime ? <span>{readTime} min read</span> : null}
-            {price ? <span style={{ margin: '0 4px' }}>·</span> : null}
-            {price ? (
-              <span>{Number(price).toLocaleString()} XEC to unlock</span>
-            ) : null}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                fontSize: '18px',
+                color: '#059669',
+                fontFamily: wordmarkFont,
+                flexShrink: 0,
+                marginTop: '28px',
+              }}
+            >
+              {author ? <span>@{author}</span> : null}
+              {readTime ? <span style={{ margin: '0 4px' }}>·</span> : null}
+              {readTime ? <span>{readTime} min read</span> : null}
+              {price ? <span style={{ margin: '0 4px' }}>·</span> : null}
+              {price ? (
+                <span>{Number(price).toLocaleString()} XEC to unlock</span>
+              ) : null}
+            </div>
           </div>
         </div>
       ),
