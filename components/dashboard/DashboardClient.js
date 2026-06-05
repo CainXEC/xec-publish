@@ -12,6 +12,7 @@ import {
   fetchAllUnlockEarningsRows,
   sumAmountRowsByPostId,
 } from '@/lib/supabaseUnlockEarnings'
+import { deletePostAudio } from '@/app/dashboard/deletePostAudio'
 
 const PAGE_SIZE = 25
 
@@ -23,6 +24,9 @@ function formatXec(amount) {
 
 const DELETE_CONFIRM =
   'Are you sure you want to delete this post? This cannot be undone.'
+
+const DELETE_AUDIO_CONFIRM =
+  "Delete the audio narration for this post? This can't be undone — you'll need to pay again to regenerate it."
 
 function getSinceTimestamp(timeFilter) {
   if (timeFilter === 'all') return null
@@ -135,7 +139,14 @@ function formatRelativeTime(iso) {
   return diffDay === 1 ? '1 day ago' : `${diffDay} days ago`
 }
 
-function DashboardPostCard({ post, deletingId, onDelete, onOpenAudioModal }) {
+function DashboardPostCard({
+  post,
+  deletingId,
+  deletingAudioId,
+  onDelete,
+  onDeleteAudio,
+  onOpenAudioModal,
+}) {
   const n = unlockCountFromPost(post)
   const unlockStat = n === 1 ? '🔓 1 unlock' : `🔓 ${n} unlocks`
   const readTime = formatReadingTimeLabel(post.reading_time_minutes)
@@ -212,19 +223,32 @@ function DashboardPostCard({ post, deletingId, onDelete, onOpenAudioModal }) {
               Add audio{' '}
               <span className="text-zinc-500 dark:text-zinc-400">(~{audioPriceXec} XEC)</span>
             </button>
-          ) : isAudioStale ? (
-            <button
-              type="button"
-              onClick={() => onOpenAudioModal(post, 'regenerate')}
-              className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-900 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200 dark:hover:bg-amber-900/50"
-            >
-              Regenerate audio{' '}
-              <span className="text-amber-700 dark:text-amber-300">(~{audioPriceXec} XEC)</span>
-            </button>
           ) : (
-            <span className="inline-flex items-center rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
-              🎧 Has audio ✓
-            </span>
+            <>
+              {isAudioStale ? (
+                <button
+                  type="button"
+                  onClick={() => onOpenAudioModal(post, 'regenerate')}
+                  className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-900 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200 dark:hover:bg-amber-900/50"
+                >
+                  Regenerate audio{' '}
+                  <span className="text-amber-700 dark:text-amber-300">(~{audioPriceXec} XEC)</span>
+                </button>
+              ) : (
+                <span className="inline-flex items-center rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                  🎧 Has audio ✓
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => void onDeleteAudio()}
+                disabled={deletingAudioId !== null}
+                className="rounded-lg border border-zinc-200 bg-zinc-100 px-2.5 py-1.5 text-sm font-medium text-zinc-600 transition hover:bg-zinc-200 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                aria-label="Delete audio narration"
+              >
+                {deletingAudioId === post.id ? 'Deleting…' : 'Delete audio'}
+              </button>
+            </>
           )}
           {!post.published ? (
             <Link
@@ -272,6 +296,7 @@ export default function DashboardClient({
   const [earningsMap, setEarningsMap] = useState({})
   const [deleteError, setDeleteError] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
+  const [deletingAudioId, setDeletingAudioId] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [openMenu, setOpenMenu] = useState(/** @type {string | null} */ (null))
   const [copiedAddress, setCopiedAddress] = useState(false)
@@ -455,6 +480,42 @@ export default function DashboardClient({
 
   const hasPrevPage = effectivePage > 1 && sortedPosts.length > 0
   const hasNextPage = effectivePage < totalPages
+
+  const handleDeleteAudio = useCallback(async (postId) => {
+    if (!window.confirm(DELETE_AUDIO_CONFIRM)) return
+
+    setDeleteError(null)
+    setDeletingAudioId(postId)
+
+    try {
+      const result = await deletePostAudio(postId)
+      if (!result.ok) {
+        setDeleteError(result.error || 'Could not delete audio narration.')
+        return
+      }
+
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                audio_url: null,
+                audio_generated_at: null,
+                audio_char_count: null,
+                audio_source_hash: null,
+                is_audio_stale: false,
+              }
+            : p,
+        ),
+      )
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : 'Something went wrong while deleting audio.',
+      )
+    } finally {
+      setDeletingAudioId(null)
+    }
+  }, [])
 
   const handleDeletePost = useCallback(async (postId) => {
     if (!window.confirm(DELETE_CONFIRM)) return
@@ -777,7 +838,9 @@ export default function DashboardClient({
                       key={post.id}
                       post={post}
                       deletingId={deletingId}
+                      deletingAudioId={deletingAudioId}
                       onDelete={() => void handleDeletePost(post.id)}
+                      onDeleteAudio={() => void handleDeleteAudio(post.id)}
                       onOpenAudioModal={handleOpenAudioModal}
                     />
                   ))}
@@ -841,7 +904,9 @@ export default function DashboardClient({
                       unlocks: [{ count: unlockCountMap[post.id] ?? 0 }],
                     }}
                     deletingId={deletingId}
+                    deletingAudioId={deletingAudioId}
                     onDelete={() => void handleDeletePost(post.id)}
+                    onDeleteAudio={() => void handleDeleteAudio(post.id)}
                     onOpenAudioModal={handleOpenAudioModal}
                   />
                 ))}
