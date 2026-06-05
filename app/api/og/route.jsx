@@ -35,19 +35,19 @@ export async function GET(request) {
       (
         <div
           style={{
-            width: '1200px',
-            height: '630px',
+            width: '2400px',
+            height: '1260px',
             background: '#ffffff',
             display: 'flex',
             flexDirection: 'column',
-            padding: '60px 64px',
-            borderLeft: '8px solid #059669',
+            padding: '120px 128px',
+            borderLeft: '16px solid #059669',
           }}
         >
           <div
             style={{
               fontFamily: wordmarkFont,
-              fontSize: '26px',
+              fontSize: '52px',
               letterSpacing: '0.14em',
               color: '#059669',
               textTransform: 'uppercase',
@@ -69,11 +69,11 @@ export async function GET(request) {
               style={{
                 fontFamily: titleFont,
                 fontSize:
-                  title.length > 100 ? '54px' : title.length > 80 ? '64px' : '76px',
+                  title.length > 100 ? '108px' : title.length > 80 ? '128px' : '152px',
                 lineHeight: 1.15,
                 color: '#18181b',
                 fontWeight: 500,
-                maxWidth: '1000px',
+                maxWidth: '2000px',
                 overflow: 'hidden',
               }}
             >
@@ -84,18 +84,18 @@ export async function GET(request) {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '20px',
-                fontSize: '32px',
+                gap: '40px',
+                fontSize: '64px',
                 color: '#059669',
                 fontFamily: wordmarkFont,
                 flexShrink: 0,
-                marginTop: '36px',
+                marginTop: '72px',
               }}
             >
               {author ? <span>@{author}</span> : null}
-              {readTime ? <span style={{ margin: '0 4px' }}>·</span> : null}
+              {readTime ? <span style={{ margin: '0 8px' }}>·</span> : null}
               {readTime ? <span>{readTime} min read</span> : null}
-              {price ? <span style={{ margin: '0 4px' }}>·</span> : null}
+              {price ? <span style={{ margin: '0 8px' }}>·</span> : null}
               {price ? (
                 <span>{Number(price).toLocaleString()} XEC to unlock</span>
               ) : null}
@@ -104,8 +104,8 @@ export async function GET(request) {
         </div>
       ),
       {
-        width: 1200,
-        height: 630,
+        width: 2400,
+        height: 1260,
         fonts: fonts.length > 0 ? fonts : undefined,
       },
     )
