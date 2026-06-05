@@ -13,6 +13,7 @@ import {
   getPlainTextCharCount,
   getPlainTextFromHtml,
   hashPostBody,
+  removePostAudioStorageFiles,
 } from '@/lib/audioConfig'
 import { chunkTextForTTS } from '@/lib/audioChunking'
 
@@ -343,6 +344,18 @@ export async function POST(request) {
     totalMs: Date.now() - ttsStartedAt,
     totalBytes: audioBuffer.length,
   })
+
+  const cleanupResult = await removePostAudioStorageFiles(supabaseAdmin, post.id)
+  if (!cleanupResult.ok) {
+    console.error(`${LOG_PREFIX} storage cleanup failed`, {
+      postId,
+      message: cleanupResult.error,
+    })
+    return NextResponse.json(
+      { error: 'audio_generation_failed', detail: cleanupResult.error },
+      { status: 500 },
+    )
+  }
 
   const fileName = `${post.id}.mp3`
   const { error: uploadError } = await supabaseAdmin.storage

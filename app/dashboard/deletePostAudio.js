@@ -1,24 +1,8 @@
 'use server'
 
-import { AUDIO_STORAGE_BUCKET } from '@/lib/audioConfig'
+import { removePostAudioStorageFiles } from '@/lib/audioConfig'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
-
-function getPostAudioStoragePath(postId, audioUrl) {
-  const trimmed = typeof audioUrl === 'string' ? audioUrl.trim() : ''
-  if (trimmed) return trimmed
-  return `${postId}.mp3`
-}
-
-function isStorageObjectMissingError(error) {
-  if (!error) return false
-  const msg = (error.message || '').toLowerCase()
-  return (
-    msg.includes('not found') ||
-    msg.includes('does not exist') ||
-    msg.includes('object not found')
-  )
-}
 
 export async function deletePostAudio(postId) {
   const id = typeof postId === 'string' ? postId.trim() : ''
@@ -41,7 +25,7 @@ export async function deletePostAudio(postId) {
 
   const { data: post, error: postError } = await supabase
     .from('posts')
-    .select('id, author_id, audio_url')
+    .select('id, author_id')
     .eq('id', id)
     .maybeSingle()
 
@@ -63,13 +47,9 @@ export async function deletePostAudio(postId) {
     }
   }
 
-  const storagePath = getPostAudioStoragePath(id, post.audio_url)
-  const { error: removeError } = await supabaseAdmin.storage
-    .from(AUDIO_STORAGE_BUCKET)
-    .remove([storagePath])
-
-  if (removeError && !isStorageObjectMissingError(removeError)) {
-    return { ok: false, error: removeError.message }
+  const cleanupResult = await removePostAudioStorageFiles(supabaseAdmin, id)
+  if (!cleanupResult.ok) {
+    return { ok: false, error: cleanupResult.error }
   }
 
   const { error: updateError } = await supabaseAdmin
@@ -79,6 +59,7 @@ export async function deletePostAudio(postId) {
       audio_generated_at: null,
       audio_char_count: null,
       audio_source_hash: null,
+      audio_voice: null,
     })
     .eq('id', id)
     .eq('author_id', user.id)
