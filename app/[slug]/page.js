@@ -1,7 +1,9 @@
 import { cache } from 'react'
+import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import PostPageClient from '../posts/[slug]/PostPageClient'
 import { articleOpenGraphMetadata } from '@/lib/articleOgMetadata'
+import { preparePublicPostPageData } from '@/lib/preparePublicPostPageData'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { isAudioStale } from '@/lib/audioConfig'
 import { sumAmountRowsByPostId } from '@/lib/supabaseUnlockEarnings'
@@ -103,12 +105,8 @@ export default async function LegacyRootPostPage({ params }) {
     notFound()
   }
 
-  return (
-    <PostPageClient
-      initialPost={data.post}
-      initialAuthor={data.author}
-      initialUnlockCount={data.unlockCount}
-      initialCommentCount={data.commentCount}
-    />
-  )
+  const cookieStore = await cookies()
+  const pageProps = await preparePublicPostPageData(data, cookieStore)
+
+  return <PostPageClient {...pageProps} />
 }

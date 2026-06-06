@@ -14,7 +14,6 @@ import {
   getSharedAudioContext,
   primeAudioContextOnUserGesture,
 } from '@/lib/webAudioUnlock'
-import { sanitizePostBodyHtml } from '@/lib/sanitizePostBodyHtml'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { supabase } from '@/lib/supabase-browser'
 
@@ -53,31 +52,11 @@ function formatXec(amount) {
   return n.toLocaleString('en-US')
 }
 
-function splitBodyAtPaywall(html) {
-  const src = typeof html === 'string' ? html : ''
-  const marker = '<div data-paywall-break="true"></div>'
-  const exactIdx = src.indexOf(marker)
-  if (exactIdx !== -1) {
-    return {
-      preview: src.slice(0, exactIdx),
-      locked: src.slice(exactIdx + marker.length),
-    }
-  }
-
-  const markerRegex = /<div[^>]*data-paywall-break(?:="true")?[^>]*>\s*<\/div>/i
-  const match = markerRegex.exec(src)
-  if (!match) return { preview: src, locked: null }
-
-  const start = match.index
-  const end = start + match[0].length
-  return {
-    preview: src.slice(0, start),
-    locked: src.slice(end),
-  }
-}
-
 export default function PostPageClient({
   initialPost,
+  initialBodyHtml,
+  initialUnlocked = false,
+  hasPaywallMarker = false,
   initialAuthor,
   initialUnlockCount,
   initialCommentCount,
@@ -85,9 +64,10 @@ export default function PostPageClient({
   const router = useRouter()
   const [post] = useState(initialPost)
   const [author] = useState(initialAuthor)
+  const [bodyHtml, setBodyHtml] = useState(initialBodyHtml ?? '')
 
-  const [unlocked, setUnlocked] = useState(false)
-  const [unlockCheckPending, setUnlockCheckPending] = useState(true)
+  const [unlocked, setUnlocked] = useState(initialUnlocked)
+  const [unlockCheckPending, setUnlockCheckPending] = useState(!initialUnlocked)
 
   const [pollingActive, setPollingActive] = useState(false)
   const pollRef = useRef(null)
@@ -119,6 +99,17 @@ export default function PostPageClient({
   const [pinBusy, setPinBusy] = useState(false)
   const commentCopyTimeoutsRef = useRef({})
   const shareCopyTimeoutRef = useRef(null)
+
+  useEffect(() => {
+    setBodyHtml(initialBodyHtml ?? '')
+  }, [initialBodyHtml])
+
+  useEffect(() => {
+    setUnlocked(initialUnlocked)
+    if (initialUnlocked) {
+      setUnlockCheckPending(false)
+    }
+  }, [initialUnlocked])
 
   const syncReaderWalletFromStorage = useCallback(() => {
     if (typeof window === 'undefined') return
@@ -276,10 +267,11 @@ export default function PostPageClient({
     if (data.unlocked) {
       setUnlocked(true)
       setPollingActive(false)
+      router.refresh()
       return true
     }
     return false
-  }, [])
+  }, [router])
 
   const fetchCommentCount = useCallback(async (postId) => {
     if (!postId) return
@@ -338,6 +330,7 @@ export default function PostPageClient({
 
   useEffect(() => {
     if (!post?.id) return
+    if (initialUnlocked) return
 
     let cancelled = false
 
@@ -356,23 +349,24 @@ export default function PostPageClient({
       if (!cancelled) setUnlockCheckPending(false)
     }
 
-    initialUnlock()
+    void initialUnlock()
 
     return () => {
       cancelled = true
     }
-  }, [post?.id, checkUnlock])
+  }, [post?.id, checkUnlock, initialUnlocked])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
     function onReaderLoggedOut() {
       setUnlocked(false)
+      router.refresh()
     }
     window.addEventListener('readerLoggedOut', onReaderLoggedOut)
     return () => {
       window.removeEventListener('readerLoggedOut', onReaderLoggedOut)
     }
-  }, [])
+  }, [router])
 
   useEffect(() => {
     if (!post?.author_id) return
@@ -397,6 +391,7 @@ export default function PostPageClient({
           if (adminSession) {
             setUnlocked(true)
             setUnlockCheckPending(false)
+            router.refresh()
           }
         }
       } else if (!cancelled) {
@@ -406,13 +401,14 @@ export default function PostPageClient({
         // Author never needs unlock checks/paywall for own post.
         setUnlocked(true)
         setUnlockCheckPending(false)
+        router.refresh()
       }
     }
     void loadAuthorSessionState()
     return () => {
       cancelled = true
     }
-  }, [post?.author_id])
+  }, [post?.author_id, router])
 
   useEffect(() => {
     if (!isAuthorSession || !post?.id) return
@@ -660,6 +656,7 @@ export default function PostPageClient({
           triggerPaywallUnlockEffect()
           setUnlocked(true)
           setPollingActive(false)
+          router.refresh()
           if (payTxPollRef.current) {
             clearInterval(payTxPollRef.current)
             payTxPollRef.current = null
@@ -682,6 +679,7 @@ export default function PostPageClient({
             triggerPaywallUnlockEffect()
             setUnlocked(true)
             setPollingActive(false)
+            router.refresh()
             if (payTxPollRef.current) {
               clearInterval(payTxPollRef.current)
               payTxPollRef.current = null
@@ -704,6 +702,7 @@ export default function PostPageClient({
     fetchUnlockCount,
     persistReaderAfterPaywallUnlock,
     post?.id,
+    router,
     triggerPaywallUnlockEffect,
   ])
 
@@ -827,12 +826,6 @@ export default function PostPageClient({
   const previewReadTimeLabel = formatReadingTimeLabel(post.reading_time_minutes)
   const canViewFullPost = unlocked || isAuthorSession || isAdminSession
   const showPaywall = !canViewFullPost && !unlockCheckPending
-  const bodyHtmlRaw = typeof post.body === 'string' ? post.body : ''
-  const splitBody = splitBodyAtPaywall(bodyHtmlRaw)
-  const hasPaywallMarker = splitBody.locked !== null
-  const previewHtml = sanitizePostBodyHtml(splitBody.preview)
-  const lockedSampleHtml = sanitizePostBodyHtml((splitBody.locked ?? '').slice(0, 300))
-  const fullBodyHtml = sanitizePostBodyHtml(bodyHtmlRaw)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-white dark:bg-zinc-950">
@@ -990,21 +983,13 @@ export default function PostPageClient({
                   </span>
                 ) : null}
               </h2>
-              <div className="relative mt-3">
+              <div className="mt-3">
                 <div
                   className="prose prose-zinc dark:prose-invert max-w-none text-base"
-                  dangerouslySetInnerHTML={{ __html: previewHtml }}
+                  dangerouslySetInnerHTML={{ __html: bodyHtml }}
                 />
 
-                <div className="relative mt-6">
-                  <div
-                    className="prose prose-zinc dark:prose-invert max-w-none opacity-60"
-                    dangerouslySetInnerHTML={{ __html: lockedSampleHtml }}
-                  />
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-white dark:to-zinc-950" />
-                </div>
-
-                <div className="pt-3 pb-6 text-center">
+                <div className="pt-6 pb-6 text-center">
                   {bip21Url ? (
                     <>
                       <button
@@ -1056,7 +1041,7 @@ export default function PostPageClient({
               <div
                 className="prose prose-zinc dark:prose-invert max-w-none text-base"
                 dangerouslySetInnerHTML={{
-                  __html: fullBodyHtml,
+                  __html: bodyHtml,
                 }}
               />
 
@@ -1190,7 +1175,14 @@ export default function PostPageClient({
           ) : null}
 
           {showPaywall && !hasPaywallMarker ? (
-            <section className="mt-2 px-0 py-4">
+            <section className="mt-6 border-t border-zinc-100 pt-6 dark:border-zinc-800">
+              {bodyHtml ? (
+                <div
+                  className="prose prose-zinc dark:prose-invert max-w-none text-base"
+                  dangerouslySetInnerHTML={{ __html: bodyHtml }}
+                />
+              ) : null}
+              <div className="mt-2 px-0 py-4">
               {bip21Url ? (
                 <>
                   <button
@@ -1228,6 +1220,7 @@ export default function PostPageClient({
                   Payment details are not configured for this post yet.
                 </p>
               )}
+              </div>
             </section>
           ) : null}
         </article>
