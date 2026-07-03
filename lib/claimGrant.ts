@@ -33,7 +33,7 @@ import { hostHandleCard } from "./hostHandleCard";
 import { findMintPayment, verifyMintTxid } from "./mintPayments";
 
 const CHRONIK_URLS = ["https://chronik.e.cash", "https://chronik-native.fabien.cash"];
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
+const supabase = createClient((process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 const PROOF_ADDRESS = process.env.MINT_PAYMENT_ADDRESS!;
 const CLAIM_WINDOW_ENDS = process.env.CLAIM_WINDOW_ENDS ? Date.parse(process.env.CLAIM_WINDOW_ENDS) : Infinity;
 const PROOF_MINUTES = 20;
