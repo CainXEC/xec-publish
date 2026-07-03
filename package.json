@@ -60,6 +60,7 @@
     "jsdom": "25.0.1",
     "playwright": "^1.59.1",
     "tailwindcss": "^4",
+    "tsx": "^4.22.5",
     "typescript": "^5.9.3",
     "vitest": "^4.1.4"
   },
