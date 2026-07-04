@@ -93,13 +93,18 @@ export default function FeedThreadClient({
         <Link href="/" className="wordmark">
           proofofwriting
         </Link>
-        <Link href="/mint" className="toplink">
-          mint a handle
-        </Link>
+        <div className="toplinks">
+          <Link href="/articles" className="toplink">
+            articles
+          </Link>
+          <Link href="/mint" className="toplink">
+            mint a handle
+          </Link>
+        </div>
       </div>
 
       <main className="wrap" style={{ paddingTop: '28px' }}>
-        <Link href="/feed" className="back">
+        <Link href="/" className="back">
           ← Back to feed
         </Link>
 

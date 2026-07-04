@@ -68,9 +68,14 @@ export default function FeedClient({
         <Link href="/" className="wordmark">
           proofofwriting
         </Link>
-        <Link href="/mint" className="toplink">
-          mint a handle
-        </Link>
+        <div className="toplinks">
+          <Link href="/articles" className="toplink">
+            articles
+          </Link>
+          <Link href="/mint" className="toplink">
+            mint a handle
+          </Link>
+        </div>
       </div>
 
       <div className="head">

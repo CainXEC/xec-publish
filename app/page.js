@@ -1,42 +1,31 @@
-import HomeClient from '@/components/HomeClient'
-import { getHomepagePosts } from '@/lib/getHomepagePosts'
+import FeedClient from '@/components/feed/FeedClient'
+import { getFeedPage } from '@/lib/getFeed'
+import { getAuthedAccount } from '@/lib/authHelpers'
+
+export const dynamic = 'force-dynamic'
 
 export default async function HomePage() {
-  const initialSort = 'earned'
-  const initialTimeFilter = '24h'
-  const initialPage = 1
+  let posts = []
+  let hasNextPage = false
+  let loadError = null
 
   try {
-    const { posts, hasNextPage, pinnedPost } = await getHomepagePosts({
-      sort: initialSort,
-      timeFilter: initialTimeFilter,
-      page: initialPage,
-      pageSize: 25,
-      followingOnly: false,
-      walletAddress: '',
-    })
-
-    return (
-      <HomeClient
-        initialPosts={posts}
-        initialPinnedPost={pinnedPost}
-        initialHasNextPage={hasNextPage}
-        initialSort={initialSort}
-        initialTimeFilter={initialTimeFilter}
-        initialPage={initialPage}
-      />
-    )
+    const result = await getFeedPage({ page: 1 })
+    posts = result.posts
+    hasNextPage = result.hasNextPage
   } catch (err) {
-    return (
-      <HomeClient
-        initialPosts={[]}
-        initialPinnedPost={null}
-        initialHasNextPage={false}
-        initialSort={initialSort}
-        initialTimeFilter={initialTimeFilter}
-        initialPage={initialPage}
-        initialLoadError={err?.message || 'Failed to load posts'}
-      />
-    )
+    loadError = err?.message || 'Failed to load feed'
   }
+
+  const acct = await getAuthedAccount()
+
+  return (
+    <FeedClient
+      initialPosts={posts}
+      initialHasNextPage={hasNextPage}
+      initialPage={1}
+      initialLoadError={loadError}
+      viewerAccountId={acct?.accountId ?? null}
+    />
+  )
 }

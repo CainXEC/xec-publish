@@ -327,6 +327,15 @@ export default function Nav({ authorCtaOverride, showPostSearch = false }) {
     </Link>
   )
 
+  const articlesLinkDesktop = (
+    <Link
+      href="/articles"
+      className="inline-flex h-9 items-center whitespace-nowrap text-sm font-medium text-zinc-700 transition hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white"
+    >
+      Articles
+    </Link>
+  )
+
   const authClusterDesktop =
     authorCtaOverride === 'logout' ? (
       <button
@@ -373,8 +382,9 @@ export default function Nav({ authorCtaOverride, showPostSearch = false }) {
           </div>
 
           <div className="hidden min-h-14 grid-cols-[1fr_auto_1fr] items-center gap-4 sm:grid">
-            <div className="flex min-w-0 items-center justify-start gap-2">
+            <div className="flex min-w-0 items-center justify-start gap-3">
               <div className="shrink-0">{authClusterDesktop}</div>
+              <div className="shrink-0">{articlesLinkDesktop}</div>
             </div>
             <div className="flex min-w-0 items-center justify-center">
               {navLogo}
@@ -396,6 +406,14 @@ export default function Nav({ authorCtaOverride, showPostSearch = false }) {
             className="mx-auto flex max-w-5xl flex-col gap-2 px-4 pt-2 pb-3 sm:px-6"
             aria-label="Mobile navigation"
           >
+            <Link
+              href="/articles"
+              onClick={closeMobileNav}
+              className="inline-flex h-11 w-full items-center rounded-md px-1 text-sm font-medium text-zinc-800 transition hover:text-zinc-950 dark:text-zinc-200 dark:hover:text-white"
+            >
+              Articles
+            </Link>
+
             {showPostSearch ? (
               <form className="relative" onSubmit={handleSearchSubmit}>
                 <label htmlFor="post-search-mobile-marketing" className="sr-only">

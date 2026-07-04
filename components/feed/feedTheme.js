@@ -33,6 +33,7 @@ export const FEED_CSS = `
 .pow-feed .toplink{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);border:1px solid var(--line);
   border-radius:8px;padding:8px 14px;transition:border-color .15s,box-shadow .15s;}
 .pow-feed .toplink:hover{border-color:var(--cyan);box-shadow:0 0 16px rgba(61,240,255,.22);}
+.pow-feed .toplinks{display:flex;align-items:center;gap:10px;}
 
 /* ---- header ---- */
 .pow-feed .head{max-width:640px;margin:0 auto;padding:28px 20px 18px;text-align:center;}
