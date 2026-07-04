@@ -3,39 +3,12 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { isValidCashAddress } from 'ecashaddrjs'
-import { supabase } from '@/lib/supabase-browser'
+import { saveProfile } from '@/app/dashboard/saveProfile'
 
-function isValidXecAddress(address) {
-  try {
-    return isValidCashAddress(address.trim(), 'ecash')
-  } catch {
-    return false
-  }
-}
-
-const XEC_ADDRESS_INVALID_MESSAGE =
-  'Please enter a valid eCash (XEC) wallet address. It should start with ecash:q...'
-const XEC_WALLET_ADDRESS_HELPER = 'Your address should start with ecash:q'
-
-function formatSupabaseErrorForUser(err) {
-  if (!err) return 'Update failed.'
-  const bits = [err.message].filter(Boolean)
-  if (err.code) bits.push(`[${err.code}]`)
-  if (err.details) bits.push(String(err.details))
-  if (err.hint) bits.push(`Hint: ${err.hint}`)
-  return bits.join(' ')
-}
-
-export default function ProfileSettingsForm({
-  initialUsername,
-  initialBio,
-  initialXecAddress,
-}) {
+export default function ProfileSettingsForm({ initialUsername, initialBio }) {
   const router = useRouter()
   const [username, setUsername] = useState(initialUsername ?? '')
   const [bio, setBio] = useState(initialBio ?? '')
-  const [xecAddress, setXecAddress] = useState(initialXecAddress ?? '')
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
@@ -50,81 +23,15 @@ export default function ProfileSettingsForm({
     setSubmitting(true)
 
     try {
-      const { data: userData, error: userError } = await supabase.auth.getUser()
-      if (userError) {
-        console.error('[profile] getUser failed before update', {
-          message: userError.message,
-          name: userError.name,
-        })
-        setSubmitError(userError.message)
-        return
-      }
-      const user = userData.user
-      if (!user) {
-        console.error('[profile] no authenticated user before update')
+      const result = await saveProfile({ username, bio })
+      if (result?.unauthorized) {
         router.replace('/login')
         return
       }
-
-      const usernameTrimmed = username.trim()
-      const xecTrimmed = xecAddress.trim()
-      if (!usernameTrimmed) {
-        setSubmitError('Username is required.')
+      if (!result?.ok) {
+        setSubmitError(result?.error || 'Could not save profile.')
         return
       }
-      if (!xecTrimmed) {
-        setSubmitError('XEC wallet address is required.')
-        return
-      }
-      if (!isValidXecAddress(xecAddress)) {
-        setSubmitError(XEC_ADDRESS_INVALID_MESSAGE)
-        return
-      }
-
-      console.log('[profile] authors.update', {
-        authorRowId: user.id,
-        filter: { id: user.id },
-      })
-
-      const { data: updated, error: updateError } = await supabase
-        .from('authors')
-        .update({
-          username: usernameTrimmed,
-          bio: bio.trim() || null,
-          xec_address: xecTrimmed,
-        })
-        .eq('id', user.id)
-        .select('id')
-        .maybeSingle()
-
-      if (updateError) {
-        console.error('[profile] Supabase authors.update failed', {
-          message: updateError.message,
-          code: updateError.code,
-          details: updateError.details,
-          hint: updateError.hint,
-          authorId: user.id,
-        })
-        if (updateError.code === '23505' && updateError.message.includes('username')) {
-          setSubmitError('This username is already taken. Please choose a different one.')
-        } else {
-          setSubmitError(formatSupabaseErrorForUser(updateError))
-        }
-        return
-      }
-
-      if (!updated) {
-        console.error('[profile] authors.update returned no row (0 matches)', {
-          authorId: user.id,
-          note:
-            'Often caused by RLS denying UPDATE, or missing authors row for this user.',
-        })
-        setSubmitError(
-          'No profile row was updated. Your account is signed in, but the update matched 0 rows. Check that an authors row exists for your user id, and in Supabase that RLS policies allow UPDATE on authors where id = auth.uid().',
-        )
-        return
-      }
-
       setSavedMessage(true)
       router.refresh()
     } finally {
@@ -152,7 +59,16 @@ export default function ProfileSettingsForm({
         setDeleteError(data.error || 'Could not delete account.')
         return
       }
-      await supabase.auth.signOut()
+      // Account is gone — clear the wallet session so we're not "logged in" as
+      // a deleted account, and let the nav update.
+      try {
+        await fetch('/api/auth/logout', { method: 'POST', cache: 'no-store' })
+      } catch {
+        /* ignore */
+      }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('sessionChanged'))
+      }
       router.push('/')
       router.refresh()
     } finally {
@@ -173,7 +89,7 @@ export default function ProfileSettingsForm({
         <div className="mt-6 mb-6">
           <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Profile settings</h1>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            Update how readers see you on your public author page and where you receive XEC payouts.
+            Update how readers see you on your public author page.
           </p>
         </div>
 
@@ -222,28 +138,6 @@ export default function ProfileSettingsForm({
               />
             </div>
 
-            <div>
-              <label
-                htmlFor="xec_address"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-              >
-                XEC wallet address
-              </label>
-              <input
-                id="xec_address"
-                name="xec_address"
-                type="text"
-                autoComplete="off"
-                required
-                value={xecAddress}
-                onChange={(e) => setXecAddress(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 font-mono text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-500"
-              />
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
-                {XEC_WALLET_ADDRESS_HELPER}
-              </p>
-            </div>
-
             {submitError ? (
               <p className="text-sm text-red-600 dark:text-red-400" role="alert">
                 {submitError}
@@ -263,7 +157,6 @@ export default function ProfileSettingsForm({
             >
               {submitting ? 'Saving…' : 'Save changes'}
             </button>
-
           </div>
         </form>
 
