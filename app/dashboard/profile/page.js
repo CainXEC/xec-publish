@@ -6,8 +6,15 @@ import ProfileSettingsForm from '@/components/dashboard/ProfileSettingsForm'
 
 export default async function AuthorProfileSettingsPage() {
   const acct = await getAuthedAccount()
-  if (!acct?.authorId) {
+  // Any logged-in wallet can manage its display handle here — including a paid
+  // minter who holds a handle but has never written an article (no author row).
+  if (!acct) {
     redirect('/login')
+  }
+
+  // Reader-only holder (no author row): show just the display-handle picker.
+  if (!acct.authorId) {
+    return <ProfileSettingsForm hasAuthor={false} initialUsername="" initialBio="" />
   }
 
   const supabase = createSupabaseAdminClient()
@@ -37,6 +44,7 @@ export default async function AuthorProfileSettingsPage() {
 
   return (
     <ProfileSettingsForm
+      hasAuthor
       initialUsername={author.username ?? ''}
       initialBio={author.bio != null ? String(author.bio) : ''}
       initialXecAddress={author.xec_address ?? ''}

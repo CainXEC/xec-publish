@@ -29,6 +29,7 @@ import { encodeCashAddress } from "ecashaddrjs";
 import { randomUUID } from "node:crypto";
 import { encodePostIdOpReturnRaw, decodeOpReturnToPostId } from "@/lib/opReturnEncode";
 import { setSessionCookie } from "@/lib/session";
+import { heldHandlesForAddress } from "@/lib/heldHandles";
 
 const CHRONIK_URLS = ["https://chronik.e.cash", "https://chronik-native.fabien.cash"];
 let _chronik: ChronikClient | null = null;
@@ -171,8 +172,13 @@ export async function resolveOrCreateAccount(address: string): Promise<{ account
     .from("account_addresses").select("account_id").in("address", forms).limit(1);
   if (links?.[0]?.account_id) {
     const { data: acct } = await supabase
-      .from("accounts").select("id, author_id, display_handle").eq("id", links[0].account_id).maybeSingle();
-    if (acct) return { accountId: acct.id, authorId: acct.author_id ?? null, handle: acct.display_handle ?? null };
+      .from("accounts")
+      .select("id, author_id, display_handle, active_handle_token_id")
+      .eq("id", links[0].account_id).maybeSingle();
+    if (acct) {
+      const handle = await bindDefaultHandle(acct.id, address, acct.active_handle_token_id ?? null, acct.display_handle ?? null);
+      return { accountId: acct.id, authorId: acct.author_id ?? null, handle };
+    }
   }
 
   // 2) legacy author by xec_address
@@ -189,5 +195,46 @@ export async function resolveOrCreateAccount(address: string): Promise<{ account
   // link the proven address as primary
   await supabase.from("account_addresses").insert({ account_id: accountId, address, is_primary: true, verified_at: now });
 
-  return { accountId, authorId, handle: acct?.display_handle ?? null };
+  // a brand-new account holds no bound handle yet — bind one if the wallet has any
+  const handle = await bindDefaultHandle(accountId, address, null, acct?.display_handle ?? null);
+  return { accountId, authorId, handle };
+}
+
+// ---------------------------------------------------------------------------
+//  auto-bind a display handle at login
+//  On-chain holdings are the source of truth. If the wallet holds any of our
+//  handles and the account has no valid bound handle, bind the newest one as a
+//  sensible default (the user can change it later). If the account's current
+//  bound handle is still held, keep it — never override the user's choice.
+//
+//  BEST-EFFORT: an empty held-list may mean "Chronik is down", so we NEVER
+//  clear an existing binding here; reconciliation of a moved-away handle is
+//  handled lazily on read (resolveProfile.freshDisplayHandle).
+// ---------------------------------------------------------------------------
+async function bindDefaultHandle(
+  accountId: string,
+  address: string,
+  currentTokenId: string | null,
+  currentHandle: string | null,
+): Promise<string | null> {
+  const held = await heldHandlesForAddress(address);
+  if (held.length === 0) return currentHandle; // can't confirm holdings; leave as-is
+
+  // Keep the existing choice if it's still on-chain in this wallet.
+  if (currentTokenId && held.some((h) => h.tokenId === currentTokenId)) {
+    return currentHandle;
+  }
+
+  // Otherwise default to the newest held handle (heldHandlesForAddress is
+  // ordered newest-first).
+  const pick = held[0];
+  await supabase
+    .from("accounts")
+    .update({
+      active_handle_token_id: pick.tokenId,
+      display_handle: pick.handle,
+      display_handle_checked_at: new Date().toISOString(),
+    })
+    .eq("id", accountId);
+  return pick.handle;
 }
