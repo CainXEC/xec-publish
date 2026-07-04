@@ -1,15 +1,11 @@
 import { redirect } from 'next/navigation'
 import Nav from '@/components/Nav'
 import NewPostForm from '@/components/dashboard/NewPostForm'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { getAuthedAccount } from '@/lib/authHelpers'
 
 export default async function NewPostPage() {
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
+  const acct = await getAuthedAccount()
+  if (!acct?.authorId) {
     redirect('/login')
   }
 
