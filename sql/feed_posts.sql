@@ -19,8 +19,12 @@ CREATE TABLE IF NOT EXISTS public.feed_posts (
   payer_address     text NOT NULL,                  -- proven payer (tx.inputs[0])
   payout_address    text NOT NULL,                  -- snapshot; where replies to this post pay
   amount_sats       bigint NOT NULL,                -- total paid (author + platform)
-  created_at        timestamptz NOT NULL DEFAULT now()
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  deleted_at        timestamptz                     -- soft delete: author tombstoned the post
 );
+
+-- Soft-delete column (safe to re-run on an existing table).
+ALTER TABLE public.feed_posts ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
 
 -- Deny-by-default for anon/authenticated keys. The app only ever touches this
 -- table via the service-role key (createServerSupabase), which bypasses RLS, so
@@ -54,6 +58,7 @@ AS $$
     COUNT(*)::bigint AS count
   FROM public.feed_posts f
   WHERE f.action = 2
+    AND f.deleted_at IS NULL
     AND f.parent_txid = ANY (post_txids)
   GROUP BY f.parent_txid;
 $$;

@@ -112,7 +112,12 @@ export const FEED_CSS = `
 .pow-feed .replybtn{background:none;border:none;color:var(--dim);font:inherit;font-size:13px;cursor:pointer;padding:2px 0;
   transition:color .15s;}
 .pow-feed .replybtn:hover{color:var(--cyan);}
+.pow-feed .delbtn{background:none;border:none;color:var(--dim);font:inherit;font-size:13px;cursor:pointer;padding:2px 0;
+  transition:color .15s;}
+.pow-feed .delbtn:hover{color:var(--no);}
+.pow-feed .delbtn:disabled{opacity:.5;cursor:default;}
 .pow-feed .inlinereply{margin-top:12px;}
+.pow-feed .tombstone{color:var(--dim);font-style:italic;}
 
 /* ---- states ---- */
 .pow-feed .error{border:1px solid var(--no);border-radius:10px;background:rgba(255,92,108,.08);color:var(--no);

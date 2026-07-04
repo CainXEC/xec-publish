@@ -11,19 +11,30 @@ export default function FeedClient({
   initialHasNextPage = false,
   initialPage = 1,
   initialLoadError = null,
+  viewerAccountId: initialViewerAccountId = null,
 }) {
   const [posts, setPosts] = useState(initialPosts)
   const [hasNextPage, setHasNextPage] = useState(initialHasNextPage)
   const [page, setPage] = useState(initialPage)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState(initialLoadError)
+  // Paying to post mints a session; if we didn't have one at SSR time, the post
+  // we just made proves who we are — adopt its account so delete shows at once.
+  const [viewerAccountId, setViewerAccountId] = useState(initialViewerAccountId)
 
   const prependPost = useCallback((post) => {
     if (!post?.txid) return
+    if (post.author_account_id) {
+      setViewerAccountId((cur) => cur ?? post.author_account_id)
+    }
     setPosts((prev) => {
       if (prev.some((p) => p.txid === post.txid)) return prev
       return [post, ...prev]
     })
+  }, [])
+
+  const removePost = useCallback((txid) => {
+    setPosts((prev) => prev.filter((p) => p.txid !== txid))
   }, [])
 
   const loadMore = useCallback(async () => {
@@ -65,7 +76,7 @@ export default function FeedClient({
       <div className="head">
         <p className="eyebrow">proofofwriting // feed</p>
         <h1 className="title">Feed</h1>
-        <p className="sub">Pay to post. Every word is on-chain. Replies pay the author.</p>
+        <p className="sub">Pay to post. Replies pay the author.</p>
       </div>
 
       <main className="wrap">
@@ -78,7 +89,12 @@ export default function FeedClient({
         ) : (
           <ul className="panel posts">
             {posts.map((post) => (
-              <FeedPost key={post.txid} post={post} />
+              <FeedPost
+                key={post.txid}
+                post={post}
+                viewerAccountId={viewerAccountId}
+                onDeleted={removePost}
+              />
             ))}
           </ul>
         )}

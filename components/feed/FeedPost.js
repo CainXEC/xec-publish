@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import ComposeBox from '@/components/feed/ComposeBox'
 
 function timeAgo(iso) {
@@ -47,9 +48,16 @@ function Byline({ identity }) {
   )
 }
 
-export default function FeedPost({ post, onReplied }) {
+export default function FeedPost({ post, onReplied, viewerAccountId = null, onDeleted }) {
+  const router = useRouter()
   const [showReply, setShowReply] = useState(false)
   const [replyCount, setReplyCount] = useState(post.replyCount ?? 0)
+  const [deleting, setDeleting] = useState(false)
+
+  const isOwn =
+    !post.deleted &&
+    !!viewerAccountId &&
+    post.author_account_id === viewerAccountId
 
   const handleReplied = (reply) => {
     setShowReply(false)
@@ -57,8 +65,33 @@ export default function FeedPost({ post, onReplied }) {
     onReplied?.(reply)
   }
 
+  const handleDelete = async () => {
+    if (deleting) return
+    if (!window.confirm('Delete this post? The on-chain record stays, but it will be removed from the feed.')) {
+      return
+    }
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/feed/${post.txid}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to delete')
+      onDeleted?.(post.txid)
+    } catch (e) {
+      window.alert(e?.message || 'Failed to delete')
+      setDeleting(false)
+    }
+  }
+
+  // Clicking anywhere on the post opens its thread, except on nested
+  // interactive elements (the byline/timestamp links, the reply button, or the
+  // inline reply composer).
+  const openThread = (e) => {
+    if (e.target.closest('a, button, input, textarea, .inlinereply')) return
+    router.push(`/feed/${post.txid}`)
+  }
+
   return (
-    <li className="post">
+    <li className="post" onClick={openThread} style={{ cursor: 'pointer' }}>
       <div className="postmeta">
         <Byline identity={post.author_identity} />
         <span aria-hidden className="dot">
@@ -75,6 +108,11 @@ export default function FeedPost({ post, onReplied }) {
         <button type="button" onClick={() => setShowReply((s) => !s)} className="replybtn">
           💬 {replyCount > 0 ? replyCount : ''} Reply
         </button>
+        {isOwn ? (
+          <button type="button" onClick={handleDelete} disabled={deleting} className="delbtn">
+            {deleting ? 'Deleting…' : 'Delete'}
+          </button>
+        ) : null}
       </div>
 
       {showReply ? (

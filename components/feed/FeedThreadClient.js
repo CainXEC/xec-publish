@@ -28,18 +28,53 @@ function ThreadByline({ identity }) {
   )
 }
 
-export default function FeedThreadClient({ initialPost, initialReplies = [] }) {
+export default function FeedThreadClient({
+  initialPost,
+  initialReplies = [],
+  viewerAccountId: initialViewerAccountId = null,
+}) {
   const [replies, setReplies] = useState(initialReplies)
+  const [viewerAccountId, setViewerAccountId] = useState(initialViewerAccountId)
+  const [rootDeleted, setRootDeleted] = useState(Boolean(initialPost?.deleted))
+  const [deletingRoot, setDeletingRoot] = useState(false)
 
   const addReply = useCallback((reply) => {
     if (!reply?.txid) return
+    if (reply.author_account_id) {
+      setViewerAccountId((cur) => cur ?? reply.author_account_id)
+    }
     setReplies((prev) => {
       if (prev.some((r) => r.txid === reply.txid)) return prev
       return [...prev, reply]
     })
   }, [])
 
+  const removeReply = useCallback((txid) => {
+    setReplies((prev) => prev.filter((r) => r.txid !== txid))
+  }, [])
+
   const post = initialPost
+
+  const isOwnRoot =
+    !rootDeleted && !!viewerAccountId && post?.author_account_id === viewerAccountId
+
+  const handleDeleteRoot = async () => {
+    if (deletingRoot) return
+    if (!window.confirm('Delete this post? The on-chain record stays, but it will be removed from the feed.')) {
+      return
+    }
+    setDeletingRoot(true)
+    try {
+      const res = await fetch(`/api/feed/${post.txid}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to delete')
+      setRootDeleted(true)
+    } catch (e) {
+      window.alert(e?.message || 'Failed to delete')
+      setDeletingRoot(false)
+    }
+  }
+
   const createdAt = post?.created_at
     ? new Date(post.created_at).toLocaleString(undefined, {
         year: 'numeric',
@@ -70,7 +105,11 @@ export default function FeedThreadClient({ initialPost, initialReplies = [] }) {
 
         <article className="panel rootpost">
           <ThreadByline identity={post.author_identity} />
-          <p className="rootbody">{post.content}</p>
+          {rootDeleted ? (
+            <p className="rootbody tombstone">This post was deleted.</p>
+          ) : (
+            <p className="rootbody">{post.content}</p>
+          )}
           <p className="rootmeta">
             {createdAt}
             {' · '}
@@ -82,6 +121,19 @@ export default function FeedThreadClient({ initialPost, initialReplies = [] }) {
             >
               on-chain
             </a>
+            {isOwnRoot ? (
+              <>
+                {' · '}
+                <button
+                  type="button"
+                  onClick={handleDeleteRoot}
+                  disabled={deletingRoot}
+                  className="delbtn"
+                >
+                  {deletingRoot ? 'Deleting…' : 'Delete'}
+                </button>
+              </>
+            ) : null}
           </p>
         </article>
 
@@ -103,7 +155,12 @@ export default function FeedThreadClient({ initialPost, initialReplies = [] }) {
         ) : (
           <ul className="panel posts">
             {replies.map((reply) => (
-              <FeedPost key={reply.txid} post={reply} />
+              <FeedPost
+                key={reply.txid}
+                post={reply}
+                viewerAccountId={viewerAccountId}
+                onDeleted={removeReply}
+              />
             ))}
           </ul>
         )}

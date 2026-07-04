@@ -1,5 +1,6 @@
 import FeedClient from '@/components/feed/FeedClient'
 import { getFeedPage } from '@/lib/getFeed'
+import { getAuthedAccount } from '@/lib/authHelpers'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,12 +17,15 @@ export default async function FeedPage() {
     loadError = err?.message || 'Failed to load feed'
   }
 
+  const acct = await getAuthedAccount()
+
   return (
     <FeedClient
       initialPosts={posts}
       initialHasNextPage={hasNextPage}
       initialPage={1}
       initialLoadError={loadError}
+      viewerAccountId={acct?.accountId ?? null}
     />
   )
 }

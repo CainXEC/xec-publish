@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import FeedThreadClient from '@/components/feed/FeedThreadClient'
 import { getFeedThread } from '@/lib/getFeed'
+import { getAuthedAccount } from '@/lib/authHelpers'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,5 +17,13 @@ export default async function FeedThreadPage({ params }) {
     notFound()
   }
 
-  return <FeedThreadClient initialPost={thread.post} initialReplies={thread.replies} />
+  const acct = await getAuthedAccount()
+
+  return (
+    <FeedThreadClient
+      initialPost={thread.post}
+      initialReplies={thread.replies}
+      viewerAccountId={acct?.accountId ?? null}
+    />
+  )
 }
