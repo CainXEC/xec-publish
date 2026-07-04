@@ -52,6 +52,11 @@ function truncateTeaserPreview(text, maxLen = TEASER_CARD_MAX) {
 function HomePostCard({ post, sortMode, pinnedBadge = false }) {
   const author = authorFromPost(post)
   const username = author?.username?.trim() || 'Unknown'
+  const displayHandle = post.display_handle?.trim() || ''
+  const bylineName = displayHandle || username
+  const bylineHref = displayHandle
+    ? `/@${encodeURIComponent(displayHandle)}`
+    : `/u/${encodeURIComponent(username)}`
   const postHref = `/posts/${encodeURIComponent(post.slug)}`
   const priceLabel = formatXec(post.price_xec)
   const unlocksN = post.unlockCount ?? 0
@@ -98,8 +103,8 @@ function HomePostCard({ post, sortMode, pinnedBadge = false }) {
         </Link>
       </h3>
       <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
-        <Link href={`/u/${encodeURIComponent(username)}`} className="relative z-10 font-medium text-emerald-700 hover:text-emerald-800 underline-offset-2 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300">
-          @{username}
+        <Link href={bylineHref} className="relative z-10 font-medium text-emerald-700 hover:text-emerald-800 underline-offset-2 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300">
+          @{bylineName}
         </Link>
         <span aria-hidden className="text-zinc-300 dark:text-zinc-600">
           ·
@@ -454,9 +459,13 @@ export default function HomeClient({
                 {displayPosts.map((post) => {
                   const author = authorFromPost(post)
                   const authorUsername = author?.username?.trim()
-                  const authorProfileHref = authorUsername
-                    ? `/u/${encodeURIComponent(authorUsername)}`
-                    : '#'
+                  const authorHandle = post.display_handle?.trim() || ''
+                  const authorBylineName = authorHandle || authorUsername
+                  const authorProfileHref = authorHandle
+                    ? `/@${encodeURIComponent(authorHandle)}`
+                    : authorUsername
+                      ? `/u/${encodeURIComponent(authorUsername)}`
+                      : '#'
                   const isLegacy = Boolean(post.legacy)
                   const slug = isLegacy
                     ? `/${encodeURIComponent(post.slug)}`
@@ -491,7 +500,7 @@ export default function HomeClient({
                             href={authorProfileHref}
                             className="transition-colors hover:text-zinc-900 dark:hover:text-zinc-100"
                           >
-                            @{author?.username}
+                            @{authorBylineName}
                           </Link>
                           {post.reading_time_minutes ? (
                             <>

@@ -734,13 +734,17 @@ export default function PostPageClient({
           </h1>
           <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
             <span>By</span>
-            {author?.username?.trim() ? (
+            {author?.display_handle?.trim() || author?.username?.trim() ? (
               <>
                 <Link
-                  href={`/u/${encodeURIComponent(author.username.trim())}`}
+                  href={
+                    author?.display_handle?.trim()
+                      ? `/@${encodeURIComponent(author.display_handle.trim())}`
+                      : `/u/${encodeURIComponent(author.username.trim())}`
+                  }
                   className="font-medium text-zinc-700 transition-colors hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
                 >
-                  @{author.username.trim()}
+                  @{(author.display_handle?.trim() || author.username.trim())}
                 </Link>
                 {readerWalletAddress.trim() && post.author_id && !isAuthorSession ? (
                   <button
