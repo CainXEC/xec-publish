@@ -1,48 +1,29 @@
+export const runtime = 'nodejs'
+
 import { NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { getAuthedAccount } from '@/lib/authHelpers'
 
-export async function POST(request) {
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError) {
-    return NextResponse.json({ error: userError.message }, { status: 500 })
+export async function GET() {
+  const acct = await getAuthedAccount()
+  if (!acct?.authorId) {
+    return NextResponse.json({ count: 0 })
   }
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const admin = createSupabaseAdminClient()
+  if (!admin) {
+    return NextResponse.json({ count: 0 })
   }
 
-  const body = await request.json().catch(() => ({}))
-  const postId =
-    typeof body?.post_id === 'string' && body.post_id.trim()
-      ? body.post_id.trim()
-      : null
-  const commentId =
-    typeof body?.comment_id === 'string' && body.comment_id.trim()
-      ? body.comment_id.trim()
-      : null
-
-  let query = supabase
+  const { count, error } = await admin
     .from('notifications')
-    .update({ read: true })
-    .eq('author_id', user.id)
+    .select('id', { count: 'exact', head: true })
+    .eq('author_id', acct.authorId)
     .eq('read', false)
 
-  if (commentId) {
-    query = query.eq('comment_id', commentId)
-  } else if (postId) {
-    query = query.eq('post_id', postId)
-  }
-
-  const { error } = await query
-
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ count: 0 })
   }
 
-  return NextResponse.json({ success: true })
+  return NextResponse.json({ count: count ?? 0 })
 }

@@ -1,22 +1,20 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { getAuthedAccount } from '@/lib/authHelpers'
 import ProfileSettingsForm from '@/components/dashboard/ProfileSettingsForm'
 
 export default async function AuthorProfileSettingsPage() {
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
+  const acct = await getAuthedAccount()
+  if (!acct?.authorId) {
     redirect('/login')
   }
 
+  const supabase = createSupabaseAdminClient()
   const { data: author, error: authorError } = await supabase
     .from('authors')
     .select('username, bio, xec_address')
-    .eq('id', user.id)
+    .eq('id', acct.authorId)
     .maybeSingle()
 
   if (authorError || !author) {

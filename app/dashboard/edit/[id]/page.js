@@ -2,7 +2,8 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import Nav from '@/components/Nav'
 import NewPostForm from '@/components/dashboard/NewPostForm'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { getAuthedAccount } from '@/lib/authHelpers'
 
 export default async function EditPostPage({ params }) {
   const resolved = await params
@@ -24,22 +25,19 @@ export default async function EditPostPage({ params }) {
     )
   }
 
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
+  const acct = await getAuthedAccount()
+  if (!acct?.authorId) {
     redirect('/login')
   }
 
+  const supabase = createSupabaseAdminClient()
   const { data: post, error: postError } = await supabase
     .from('posts')
     .select(
       'id, title, slug, teaser, body, price_xec, published, published_at, author_id, publish_paid',
     )
     .eq('id', postId)
-    .eq('author_id', user.id)
+    .eq('author_id', acct.authorId)
     .maybeSingle()
 
   if (postError) {

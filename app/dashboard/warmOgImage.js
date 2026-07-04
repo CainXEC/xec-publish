@@ -1,7 +1,8 @@
 'use server'
 
 import { warmOgImageCache } from '@/lib/articleOgMetadata'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { getAuthedAccount } from '@/lib/authHelpers'
 
 /**
  * After a post is published, fetch its OG image URL so the CDN caches it
@@ -11,18 +12,15 @@ export async function warmOgImageForPost(postId) {
   const id = typeof postId === 'string' ? postId.trim() : ''
   if (!id) return
 
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const acct = await getAuthedAccount()
+  if (!acct?.authorId) return
 
-  if (!user) return
-
+  const supabase = createSupabaseAdminClient()
   const { data: row, error } = await supabase
     .from('posts')
     .select('title, reading_time_minutes, price_xec, authors(username)')
     .eq('id', id)
-    .eq('author_id', user.id)
+    .eq('author_id', acct.authorId)
     .maybeSingle()
 
   if (error || !row) return

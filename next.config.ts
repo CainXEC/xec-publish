@@ -4,6 +4,15 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     '/api/**': ['./assets/fonts/**'],
   },
+  async rewrites() {
+    return [
+      // Pretty profile URLs: the address bar shows /@simon (or /@qq703j…),
+      // internally served by app/profile/[identifier]/page.js. Handles have no
+      // slashes and never start with a char that collides with legacy post
+      // slugs, so this is unambiguous.
+      { source: '/@:identifier', destination: '/profile/:identifier' },
+    ]
+  },
   async redirects() {
     return [
       {

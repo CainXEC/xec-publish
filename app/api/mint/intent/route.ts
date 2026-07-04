@@ -1,13 +1,15 @@
 // =============================================================================
 //  app/api/mint/intent/route.ts
 //  POST { handle }  ->  reserves the name and returns a payment request.
-//  Creates the pending_mints lock (unique-amount) and a BIP21 to the mint addr.
+//  Tags the payment with mintId via op_return_raw (same convention as the
+//  paywall) and matches on that — flat per-tier price, no unique-amount jitter.
 // =============================================================================
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { validateHandleSyntax, skeleton, displayHandle } from "@/lib/handleSkeleton";
 import { priceForHandle } from "@/lib/handlePricing";
+import { encodePostIdOpReturnRaw } from "@/lib/opReturnEncode";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,8 +38,8 @@ export async function POST(req: NextRequest) {
   if (taken) return NextResponse.json({ ok: false, status: "taken" });
   if (reserved) return NextResponse.json({ ok: false, status: "reserved", reason: reserved.reason });
 
-  // unique amount so auto-detection is unambiguous (price + 0..99 sats)
-  const expectedSats = priceSats + Math.floor(Math.random() * 100);
+  // flat per-tier price — disambiguation is now the op_return_raw (mintId), not amount.
+  const expectedSats = priceSats;
   const expiresAt = new Date(Date.now() + LOCK_MINUTES * 60_000).toISOString();
 
   // create the lock. The partial unique index on skeleton rejects a double-lock.
@@ -52,8 +54,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, status: "pending", reason: "name is being minted right now" });
   }
 
+  // tag the payment with mintId (UUID) — identical convention to the paywall.
+  // encodePostIdOpReturnRaw requires a 36-char UUID; pending_mints.id must be uuid.
+  let opReturnRaw: string;
+  try {
+    opReturnRaw = encodePostIdOpReturnRaw(row.id);
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "pending_mints.id must be a uuid for op_return tagging" },
+      { status: 500 },
+    );
+  }
+
   const amountXec = (expectedSats / 100).toFixed(2);
-  const bip21 = `${MINT_ADDRESS}?amount=${amountXec}`;
+  // Raw, UN-encoded BIP21. The client wraps this ONCE in encodeURIComponent for the
+  // Cashtab deep link: https://cashtab.com/#/send?bip21=<encoded>
+  const bip21 = `${MINT_ADDRESS}?amount=${amountXec}&op_return_raw=${opReturnRaw}`;
+
   return NextResponse.json({
     ok: true,
     mintId: row.id,
@@ -63,6 +80,7 @@ export async function POST(req: NextRequest) {
     expectedSats,
     address: MINT_ADDRESS,
     bip21Url: bip21,
+    opReturnRaw,
     expiresAt,
   });
 }

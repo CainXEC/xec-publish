@@ -2,19 +2,11 @@ export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { getAuthedAccount } from '@/lib/authHelpers'
 
 async function requireAdminUser() {
-  const supabaseAuth = await createSupabaseServerClient()
-  const {
-    data: { user },
-    error: userError,
-  } = await supabaseAuth.auth.getUser()
-
-  if (userError) {
-    return { error: NextResponse.json({ error: userError.message }, { status: 500 }) }
-  }
-  if (!user?.id) {
+  const acct = await getAuthedAccount()
+  if (!acct?.authorId) {
     return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   }
 
@@ -31,7 +23,7 @@ async function requireAdminUser() {
   const { data: authorRow, error: authorError } = await admin
     .from('authors')
     .select('is_admin')
-    .eq('id', user.id)
+    .eq('id', acct.authorId)
     .maybeSingle()
 
   if (authorError) {
