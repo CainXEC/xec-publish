@@ -16,6 +16,13 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        // The feed is now the homepage; keep the old /feed URL working.
+        // Matches /feed exactly — thread pages at /feed/:txid are untouched.
+        source: '/feed',
+        destination: '/',
+        permanent: true,
+      },
+      {
         source: '/0',
         destination: '/00',
         permanent: true,
