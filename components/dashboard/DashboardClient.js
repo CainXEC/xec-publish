@@ -13,6 +13,7 @@ import {
   sumAmountRowsByPostId,
 } from '@/lib/supabaseUnlockEarnings'
 import { deletePostAudio } from '@/app/dashboard/deletePostAudio'
+import { deletePost } from '@/app/dashboard/deletePost'
 
 const PAGE_SIZE = 25
 
@@ -279,7 +280,6 @@ function DashboardPostCard({
 }
 
 export default function DashboardClient({
-  email,
   username,
   bio,
   xecAddress,
@@ -524,30 +524,11 @@ export default function DashboardClient({
     setDeletingId(postId)
 
     try {
-      const { data: userData, error: userError } = await supabase.auth.getUser()
-      if (userError || !userData.user) {
-        setDeleteError(userError?.message || 'You must be signed in to delete a post.')
+      const result = await deletePost(postId)
+      if (!result.ok) {
+        setDeleteError(result.error || 'Could not delete this post.')
         return
       }
-
-      const userId = userData.user.id
-
-      const { error: deleteErrorResult, count } = await supabase
-        .from('posts')
-        .delete({ count: 'exact' })
-        .eq('id', postId)
-        .eq('author_id', userId)
-
-      if (deleteErrorResult) {
-        setDeleteError(deleteErrorResult.message)
-        return
-      }
-
-      if (typeof count === 'number' && count === 0) {
-        setDeleteError('Could not delete this post. It may have already been removed.')
-        return
-      }
-
       setPosts((prev) => prev.filter((p) => p.id !== postId))
     } catch (err) {
       setDeleteError(
