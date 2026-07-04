@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import ComposeBox from '@/components/feed/ComposeBox'
 import FeedPost from '@/components/feed/FeedPost'
 import { FEED_CSS } from '@/components/feed/feedTheme'
@@ -10,6 +11,21 @@ function truncateAddress(addr) {
   const t = String(addr ?? '').trim()
   if (t.length <= 16) return t
   return `${t.slice(0, 10)}…${t.slice(-4)}`
+}
+
+function timeAgo(iso) {
+  if (!iso) return ''
+  const then = new Date(iso).getTime()
+  if (Number.isNaN(then)) return ''
+  const secs = Math.max(0, Math.floor((Date.now() - then) / 1000))
+  if (secs < 60) return `${secs}s`
+  const mins = Math.floor(secs / 60)
+  if (mins < 60) return `${mins}m`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h`
+  const days = Math.floor(hrs / 24)
+  if (days < 7) return `${days}d`
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 function ThreadByline({ identity }) {
@@ -28,8 +44,41 @@ function ThreadByline({ identity }) {
   )
 }
 
+/**
+ * One post in the ancestor chain above the focused post. Twitter-style: a left
+ * rail with a node dot and a connecting line down to the next post. The whole
+ * card navigates to that post's own thread.
+ */
+function AncestorNode({ post }) {
+  const router = useRouter()
+  const go = (e) => {
+    if (e.target.closest('a, button')) return
+    router.push(`/feed/${post.txid}`)
+  }
+  return (
+    <div className="tnode lineup linedown" onClick={go} role="link" tabIndex={0} style={{ cursor: 'pointer' }}>
+      <div className="trail">
+        <span className="tdot" />
+      </div>
+      <div className="tbody">
+        <div className="tmeta">
+          <ThreadByline identity={post.author_identity} />
+          <span aria-hidden className="dot">
+            ·
+          </span>
+          <span className="time">{timeAgo(post.created_at)}</span>
+        </div>
+        <p className="ttext">
+          {post.deleted ? <span className="tombstone">This post was deleted.</span> : post.content}
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function FeedThreadClient({
   initialPost,
+  initialAncestors = [],
   initialReplies = [],
   viewerAccountId: initialViewerAccountId = null,
 }) {
@@ -37,12 +86,14 @@ export default function FeedThreadClient({
   const [viewerAccountId, setViewerAccountId] = useState(initialViewerAccountId)
   const [rootDeleted, setRootDeleted] = useState(Boolean(initialPost?.deleted))
   const [deletingRoot, setDeletingRoot] = useState(false)
+  const [showReply, setShowReply] = useState(false)
 
   const addReply = useCallback((reply) => {
     if (!reply?.txid) return
     if (reply.author_account_id) {
       setViewerAccountId((cur) => cur ?? reply.author_account_id)
     }
+    setShowReply(false)
     setReplies((prev) => {
       if (prev.some((r) => r.txid === reply.txid)) return prev
       return [...prev, reply]
@@ -54,6 +105,8 @@ export default function FeedThreadClient({
   }, [])
 
   const post = initialPost
+  const ancestors = initialAncestors
+  const hasAncestors = ancestors.length > 0
 
   const isOwnRoot =
     !rootDeleted && !!viewerAccountId && post?.author_account_id === viewerAccountId
@@ -108,47 +161,67 @@ export default function FeedThreadClient({
           ← Back to feed
         </Link>
 
-        <article className="panel rootpost">
-          <ThreadByline identity={post.author_identity} />
-          {rootDeleted ? (
-            <p className="rootbody tombstone">This post was deleted.</p>
-          ) : (
-            <p className="rootbody">{post.content}</p>
-          )}
-          <p className="rootmeta">
-            {createdAt}
-            {' · '}
-            <a
-              href={`https://explorer.e.cash/tx/${post.txid}`}
-              target="_blank"
-              rel="noreferrer"
-              className="onchain"
-            >
-              on-chain
-            </a>
-            {isOwnRoot ? (
-              <>
-                {' · '}
-                <button
-                  type="button"
-                  onClick={handleDeleteRoot}
-                  disabled={deletingRoot}
-                  className="delbtn"
-                >
-                  {deletingRoot ? 'Deleting…' : 'Delete'}
-                </button>
-              </>
-            ) : null}
-          </p>
-        </article>
+        <div className="thread">
+          {ancestors.map((a) => (
+            <AncestorNode key={a.txid} post={a} />
+          ))}
 
-        <div style={{ marginTop: '16px' }}>
-          <ComposeBox
-            action="reply"
-            parentTxid={post.txid}
-            placeholder="Post your reply…"
-            onPosted={addReply}
-          />
+          {/* Focused post: emphasized, and joined to the chain above by a line. */}
+          <article className={`tnode focused${hasAncestors ? ' lineup' : ''}`}>
+            <div className="trail">
+              <span className="tdot" />
+            </div>
+            <div className="tbody">
+              <div className="tmeta">
+                <ThreadByline identity={post.author_identity} />
+              </div>
+              {rootDeleted ? (
+                <p className="focusbody tombstone">This post was deleted.</p>
+              ) : (
+                <p className="focusbody">{post.content}</p>
+              )}
+              <p className="focusmeta">
+                {createdAt}
+                {' · '}
+                <a
+                  href={`https://explorer.e.cash/tx/${post.txid}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="onchain"
+                >
+                  on-chain
+                </a>
+              </p>
+              <div className="actions">
+                <button type="button" onClick={() => setShowReply((s) => !s)} className="replybtn">
+                  💬 {replies.length > 0 ? replies.length : ''} Reply
+                </button>
+                {isOwnRoot ? (
+                  <button
+                    type="button"
+                    onClick={handleDeleteRoot}
+                    disabled={deletingRoot}
+                    className="delbtn"
+                  >
+                    {deletingRoot ? 'Deleting…' : 'Delete'}
+                  </button>
+                ) : null}
+              </div>
+              {showReply ? (
+                <div className="inlinereply">
+                  <ComposeBox
+                    action="reply"
+                    parentTxid={post.txid}
+                    autoFocus
+                    compact
+                    placeholder="Post your reply…"
+                    onPosted={addReply}
+                    onCancel={() => setShowReply(false)}
+                  />
+                </div>
+              ) : null}
+            </div>
+          </article>
         </div>
 
         <h2 className="replieshead">

@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { QRCodeSVG } from 'qrcode.react'
 import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
 
 /**
@@ -160,25 +159,23 @@ export default function ComposeBox({
     return (
       <div className="panel pay">
         <p className="payhead">
-          Send <strong>{intent.amountXec} XEC</strong> to {isReply ? 'post your reply' : 'publish your post'}.
+          Cashtab opened for <strong>{intent.amountXec} XEC</strong>. Confirm the{' '}
+          {isReply ? 'reply' : 'post'} there.
         </p>
-        <div className="qr">
-          <QRCodeSVG value={intent.bip21Url} size={168} bgColor="#dffff2" fgColor="#05130d" />
-        </div>
-        <div>
-          <a href={intent.cashtabUrl} target="_blank" rel="noreferrer" className="btn">
-            Open in Cashtab
-          </a>
-        </div>
         <p className="poll">{statusMsg}</p>
 
         <details className="manual">
-          <summary>Already paid? Enter the transaction ID</summary>
+          <summary>Cashtab didn&apos;t open, or already paid?</summary>
+          <div style={{ textAlign: 'center', margin: '12px 0 0' }}>
+            <a href={intent.cashtabUrl} target="_blank" rel="noreferrer" className="ghost">
+              Open in Cashtab
+            </a>
+          </div>
           <div className="manualrow">
             <input
               value={txidInput}
               onChange={(e) => setTxidInput(e.target.value)}
-              placeholder="txid"
+              placeholder="Paste the transaction ID"
               spellCheck={false}
             />
             <button type="button" onClick={() => void verifyManual()} className="btn">

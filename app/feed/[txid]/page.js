@@ -22,6 +22,7 @@ export default async function FeedThreadPage({ params }) {
   return (
     <FeedThreadClient
       initialPost={thread.post}
+      initialAncestors={thread.ancestors}
       initialReplies={thread.replies}
       viewerAccountId={acct?.accountId ?? null}
     />

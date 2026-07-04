@@ -142,9 +142,25 @@ export const FEED_CSS = `
 .pow-feed .back{display:inline-block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);
   margin:0 0 16px;transition:text-shadow .15s;}
 .pow-feed .back:hover{text-shadow:0 0 12px rgba(61,240,255,.5);}
-.pow-feed .rootpost{padding:20px;}
-.pow-feed .rootbody{margin:10px 0 0;white-space:pre-wrap;word-break:break-word;font-size:17px;line-height:1.6;color:var(--text);}
-.pow-feed .rootmeta{margin:14px 0 0;font-size:12px;color:var(--dim);}
+/* X-style connected thread: an ancestor chain joined by a rail line down to the
+   focused post. Each .tnode is [rail | body]; .lineup/.linedown draw the segment
+   above/below the node's dot so adjacent nodes form one continuous line. */
+.pow-feed .thread{margin:0;}
+.pow-feed .tnode{position:relative;display:flex;gap:12px;padding:16px 4px;}
+.pow-feed .trail{width:22px;flex:none;}
+.pow-feed .tdot{position:absolute;top:20px;left:9px;width:12px;height:12px;border-radius:50%;background:var(--neon);
+  box-shadow:0 0 8px rgba(0,255,156,.55);z-index:1;}
+.pow-feed .tnode.lineup::before{content:"";position:absolute;left:14px;top:0;height:20px;width:2px;background:var(--line);}
+.pow-feed .tnode.linedown::after{content:"";position:absolute;left:14px;top:32px;bottom:0;width:2px;background:var(--line);}
+.pow-feed .tnode:hover .ttext{color:var(--text);}
+.pow-feed .tbody{min-width:0;flex:1;}
+.pow-feed .tmeta{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+.pow-feed .ttext{margin:6px 0 0;white-space:pre-wrap;word-break:break-word;font-size:15px;line-height:1.55;color:#c8efe1;
+  display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden;transition:color .15s;}
+.pow-feed .tnode.focused .tdot{background:var(--cyan);box-shadow:0 0 10px rgba(61,240,255,.6);}
+.pow-feed .focusbody{margin:8px 0 0;white-space:pre-wrap;word-break:break-word;font-size:18px;line-height:1.6;color:var(--text);}
+.pow-feed .focusmeta{margin:14px 0 0;font-size:12px;color:var(--dim);
+  border-top:1px solid var(--line);padding-top:12px;}
 .pow-feed .onchain{color:var(--cyan);}
 .pow-feed .onchain:hover{text-shadow:0 0 10px rgba(61,240,255,.5);}
 .pow-feed .replieshead{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:24px 0 10px;}
