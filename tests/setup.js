@@ -17,3 +17,8 @@ process.env.NEXT_PUBLIC_SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co'
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'test-anon-key'
+// Service-role client is built at module scope in several server modules
+// (walletAuth, authHelpers, api/me, …). A dummy key lets those modules import
+// under test without a real key; the client is mocked or unused in the tests.
+process.env.SUPABASE_SERVICE_ROLE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY || 'test-service-role-key'
