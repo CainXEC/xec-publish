@@ -6,7 +6,7 @@ import { getOutputScriptFromAddress } from 'ecashaddrjs'
 import { decodeOpReturnToPostId } from '@/lib/opReturnEncode'
 import { rateLimit } from '@/lib/rateLimit'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { getAuthedAccount } from '@/lib/authHelpers'
 
 const chronik = new ChronikClient([
   'https://chronik.e.cash',
@@ -59,18 +59,11 @@ export async function POST(request) {
       )
     }
 
-    const supabaseAuth = await createSupabaseServerClient()
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseAuth.auth.getUser()
-
-    if (userError) {
-      return NextResponse.json({ error: userError.message }, { status: 500 })
-    }
-    if (!user) {
+    const acct = await getAuthedAccount()
+    if (!acct?.authorId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    const authorId = acct.authorId
 
     const admin = createSupabaseAdminClient()
     if (!admin) {
@@ -93,7 +86,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 })
     }
 
-    if (post.author_id !== user.id) {
+    if (post.author_id !== authorId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -216,7 +209,7 @@ export async function POST(request) {
       .from('publishes')
       .insert({
         post_id: postId,
-        author_id: user.id,
+        author_id: authorId,
         txid,
         amount_sats: PUBLISH_FEE_SATS,
       })

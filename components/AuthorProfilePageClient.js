@@ -12,6 +12,8 @@ import CopyableAddress from '@/components/CopyableAddress'
  *   totalUnlocks: number
  *   totalEarnings: number
  *   postsErrorMessage: string | null
+ *   displayName?: string        // live byline: "@handle" or a raw address. Falls back to @username.
+ *   isAddressIdentity?: boolean  // true when displayName is a raw address (style + de-dupe address line)
  * }} props
  */
 export default function AuthorProfilePageClient({
@@ -20,6 +22,8 @@ export default function AuthorProfilePageClient({
   totalUnlocks = 0,
   totalEarnings = 0,
   postsErrorMessage,
+  displayName,
+  isAddressIdentity = false,
 }) {
   const [readerWalletAddress, setReaderWalletAddress] = useState('')
   const [isFollowing, setIsFollowing] = useState(false)
@@ -86,6 +90,13 @@ export default function AuthorProfilePageClient({
       ? String(author.bio).trim()
       : ''
 
+  // Live identity byline. Defaults to the legacy "@username" when no displayName
+  // is supplied (so the /u/ path and any other caller behave exactly as before).
+  const headingText =
+    displayName != null && String(displayName).trim() !== ''
+      ? String(displayName)
+      : `@${author.username}`
+
   return (
     <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
       <Nav
@@ -98,8 +109,14 @@ export default function AuthorProfilePageClient({
             Author
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2 sm:gap-3">
-            <h1 className="min-w-0 text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-5xl">
-              @{author.username}
+            <h1
+              className={
+                isAddressIdentity
+                  ? 'min-w-0 break-all font-mono text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-2xl'
+                  : 'min-w-0 text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-5xl'
+              }
+            >
+              {headingText}
             </h1>
             {readerWalletAddress ? (
               <button
@@ -130,7 +147,9 @@ export default function AuthorProfilePageClient({
               </button>
             ) : null}
           </div>
-          {author.xec_address ? <CopyableAddress address={author.xec_address} /> : null}
+          {author.xec_address && !isAddressIdentity ? (
+            <CopyableAddress address={author.xec_address} />
+          ) : null}
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
               {followerCount} {followerCount === 1 ? 'follower' : 'followers'}

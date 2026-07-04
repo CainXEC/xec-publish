@@ -3,7 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { warmOgImageForPost } from '@/app/dashboard/warmOgImage'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { getAuthedAccount } from '@/lib/authHelpers'
 
 export async function publishDraftPost(formData) {
   const rawId = formData.get('postId')
@@ -12,20 +13,17 @@ export async function publishDraftPost(formData) {
     redirect('/dashboard')
   }
 
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
+  const acct = await getAuthedAccount()
+  if (!acct?.authorId) {
     redirect('/login')
   }
 
+  const supabase = createSupabaseAdminClient()
   const { data, error } = await supabase
     .from('posts')
     .update({ published: true })
     .eq('id', postId)
-    .eq('author_id', user.id)
+    .eq('author_id', acct.authorId)
     .select('id')
     .maybeSingle()
 

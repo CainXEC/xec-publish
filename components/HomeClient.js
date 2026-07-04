@@ -2,12 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import FilterDropdown from '@/components/FilterDropdown'
 import HeroHeadline from '@/components/HeroHeadline'
 import Nav from '@/components/Nav'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
-import { supabase } from '@/lib/supabase-browser'
 
 const PAGE_SIZE = 25
 
@@ -170,48 +169,50 @@ export default function HomeClient({
   const [hasNextPage, setHasNextPage] = useState(Boolean(initialHasNextPage))
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState(initialLoadError)
-  const [readerWalletAddress, setReaderWalletAddress] = useState('')
+  // Session identity from /api/me (the pow_session cookie), replacing the old
+  // Supabase session + localStorage reader-wallet bridge.
+  const [me, setMe] = useState(null)
   const [followingOnly, setFollowingOnly] = useState(false)
   const [refetchTrigger, setRefetchTrigger] = useState(0)
   const [openMenu, setOpenMenu] = useState(/** @type {string | null} */ (null))
   const pathname = usePathname()
-  const [authorLoggedIn, setAuthorLoggedIn] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
   /** Skip first effect run(s) so SSR data is used without a client fetch. In dev, React Strict Mode runs the effect twice on mount with identical deps — skip both so the second pass does not set loading and refetch. */
   const clientFetchSkipsRemaining = useRef(
     process.env.NODE_ENV !== 'production' ? 2 : 1,
   )
 
-  const applyReaderWallet = useCallback(async (walletAddress) => {
-    setReaderWalletAddress(walletAddress)
-    localStorage.setItem('readerWalletAddress', walletAddress)
+  const authorLoggedIn = Boolean(me?.authorId)
+  const readerWalletAddress = me?.address ? String(me.address).trim() : ''
+
+  // Identity comes from /api/me; refetch on mount and whenever a session change
+  // is broadcast (Nav logout, pay-to-unlock login elsewhere).
+  useEffect(() => {
+    let cancelled = false
+    const refetchMe = async () => {
+      try {
+        const res = await fetch('/api/me', { cache: 'no-store' })
+        const data = await res.json().catch(() => ({}))
+        if (!cancelled) setMe(data && data.authenticated ? data : null)
+      } catch {
+        /* ignore */
+      }
+    }
+    void refetchMe()
+    const onChange = () => void refetchMe()
+    window.addEventListener('sessionChanged', onChange)
+    return () => {
+      cancelled = true
+      window.removeEventListener('sessionChanged', onChange)
+    }
   }, [])
 
-  const handleReaderLogoutExtra = useCallback(() => {
-    setReaderWalletAddress('')
-    setFollowingOnly(false)
-  }, [])
-
-  /** Only the "Following" feed uses readerWalletAddress in /api/posts; omit from fetch deps when off so Nav/localStorage sync does not retrigger a redundant client fetch. */
+  /** Only the "Following" feed uses readerWalletAddress in /api/posts; omit from fetch deps when off so a session refetch does not retrigger a redundant client fetch. */
   const readerWalletForFollowingFetch = followingOnly ? readerWalletAddress : ''
 
   useEffect(() => {
     if (!readerWalletAddress) setFollowingOnly(false)
   }, [readerWalletAddress])
-
-  useEffect(() => {
-    let cancelled = false
-    void supabase.auth.getSession().then(({ data }) => {
-      if (!cancelled) setAuthorLoggedIn(!!data.session)
-    })
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthorLoggedIn(!!session)
-    })
-    return () => {
-      cancelled = true
-      sub.subscription.unsubscribe()
-    }
-  }, [])
 
   useEffect(() => {
     if (!authorLoggedIn) return
@@ -334,11 +335,7 @@ export default function HomeClient({
 
   return (
     <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
-      <Nav
-        showPostSearch={showPostSearch}
-        onReaderWalletSynced={applyReaderWallet}
-        onReaderLogoutExtra={handleReaderLogoutExtra}
-      />
+      <Nav showPostSearch={showPostSearch} />
 
       <main className="mx-auto max-w-5xl px-4 pt-8 pb-10 sm:px-6">
         <section className="mb-10 mx-auto w-full text-left" aria-labelledby="home-hero-heading">

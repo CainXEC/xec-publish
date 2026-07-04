@@ -5,7 +5,8 @@
 //
 //  The browser polls this every ~2s (like your unlock check-unlock). It:
 //   1. reads the pending mint
-//   2. if still awaiting payment, looks for it on-chain (auto or by txid)
+//   2. if still awaiting payment, looks for it on-chain (auto or by txid),
+//      matching on the op_return_raw (mintId) tag instead of a unique amount
 //   3. once paid, records payer + flips to 'paid', then runs the serialized
 //      processor (mint -> record -> image -> or auto-refund on failure)
 // =============================================================================
@@ -40,12 +41,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, status: "expired" });
   }
 
-  // awaiting payment -> look for it
+  // awaiting payment -> look for it (matched by the mintId OP_RETURN tag)
   if (m.status === "pending") {
     const since = Math.floor(new Date(m.created_at).getTime() / 1000);
     const found = txid
-      ? await verifyMintTxid(txid, MINT_ADDRESS, Number(m.expected_sats))
-      : await findMintPayment(MINT_ADDRESS, Number(m.expected_sats), since);
+      ? await verifyMintTxid(txid, MINT_ADDRESS, Number(m.expected_sats), mintId)
+      : await findMintPayment(MINT_ADDRESS, mintId, Number(m.expected_sats), since);
 
     if (!found) return NextResponse.json({ ok: true, status: "awaiting_payment" });
 

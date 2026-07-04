@@ -2,15 +2,11 @@ export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { getAuthedAccount } from '@/lib/authHelpers'
 
 export async function GET() {
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
+  const acct = await getAuthedAccount()
+  if (!acct?.authorId) {
     return NextResponse.json({ count: 0 })
   }
 
@@ -22,7 +18,7 @@ export async function GET() {
   const { count, error } = await admin
     .from('notifications')
     .select('id', { count: 'exact', head: true })
-    .eq('author_id', user.id)
+    .eq('author_id', acct.authorId)
     .eq('read', false)
 
   if (error) {

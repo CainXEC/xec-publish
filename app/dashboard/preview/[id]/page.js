@@ -1,9 +1,8 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import ArticleAudioPlayer from '@/components/ArticleAudioPlayer'
 import Nav from '@/components/Nav'
-import { isAudioStale } from '@/lib/audioConfig'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { getAuthedAccount } from '@/lib/authHelpers'
 import { publishDraftPost } from './actions'
 
 function authorFromPost(post) {
@@ -19,22 +18,19 @@ export default async function DraftPreviewPage({ params }) {
     notFound()
   }
 
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
+  const acct = await getAuthedAccount()
+  if (!acct?.authorId) {
     redirect('/login')
   }
 
+  const supabase = createSupabaseAdminClient()
   const { data: post, error } = await supabase
     .from('posts')
     .select(
-      'id, title, slug, teaser, body, created_at, author_id, audio_url, audio_source_hash, authors(username)',
+      'id, title, slug, teaser, body, created_at, author_id, published, authors(username)',
     )
     .eq('id', id)
-    .eq('author_id', user.id)
+    .eq('author_id', acct.authorId)
     .maybeSingle()
 
   if (error || !post) {
@@ -48,8 +44,6 @@ export default async function DraftPreviewPage({ params }) {
   const author = authorFromPost(post)
   const username = author?.username?.trim()
   const bodyHtml = typeof post.body === 'string' ? post.body : ''
-  const audioUrl = typeof post.audio_url === 'string' ? post.audio_url.trim() : ''
-  const audioIsStale = isAudioStale(post.body, post.audio_source_hash)
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
@@ -83,15 +77,6 @@ export default async function DraftPreviewPage({ params }) {
         <article className="overflow-hidden rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <h1 className="font-article-title text-3xl font-semibold leading-tight text-zinc-900 dark:text-zinc-50">
             {post.title}
-            {audioUrl ? (
-              <span
-                className="whitespace-nowrap align-middle text-2xl"
-                title="Audio narration available"
-                aria-label="Audio narration available"
-              >
-                &nbsp;🎧
-              </span>
-            ) : null}
           </h1>
           <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
             By{' '}
@@ -106,12 +91,6 @@ export default async function DraftPreviewPage({ params }) {
               'Unknown author'
             )}
           </p>
-
-          {audioUrl ? (
-            <div className="mt-4 mb-4">
-              <ArticleAudioPlayer postId={post.id} isStale={audioIsStale} />
-            </div>
-          ) : null}
 
           <section className="mt-8">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
