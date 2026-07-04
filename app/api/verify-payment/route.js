@@ -6,6 +6,13 @@ import { signCookieValue } from '@/lib/cookieSigner'
 import { rateLimit } from '@/lib/rateLimit'
 import { supabase } from '@/lib/supabase'
 import { verifyAndRecordUnlock } from '@/lib/verifyPaymentUnlock'
+import { resolveOrCreateAccount } from '@/lib/walletAuth'
+import {
+  verifySession,
+  signSession,
+  SESSION_COOKIE,
+  SESSION_MAX_AGE_DAYS,
+} from '@/lib/session'
 
 const chronik = new ChronikClient([
   'https://chronik.e.cash',
@@ -109,6 +116,53 @@ export async function POST(request) {
       sameSite: 'lax',
       httpOnly: true,
     })
+
+    // -----------------------------------------------------------------------
+    //  Pay doubles as login. Mint a session for the payer address on the SAME
+    //  response. This is a 'pay'-scope session — weaker than the nonce-proven
+    //  'challenge' flow (the unlock txid is public in the mempool), so payout /
+    //  author-mutation routes MUST require getChallengeSession(). Two guards:
+    //    - never fail the unlock if minting throws;
+    //    - never DOWNGRADE an existing challenge session for the same account
+    //      (e.g. an author who is already logged in and then buys a post).
+    //  The unlock cookie above is untouched.
+    // -----------------------------------------------------------------------
+    try {
+      if (result.payerAddress) {
+        const resolved = await resolveOrCreateAccount(result.payerAddress)
+        const existing = verifySession(
+          request.cookies.get(SESSION_COOKIE)?.value,
+        )
+        const keepStronger =
+          existing &&
+          existing.via === 'challenge' &&
+          existing.accountId === resolved.accountId
+
+        if (!keepStronger) {
+          const sessionValue = signSession({
+            accountId: resolved.accountId,
+            address: result.payerAddress,
+            iat: Date.now(),
+            via: 'pay',
+          })
+          response.cookies.set({
+            name: SESSION_COOKIE,
+            value: sessionValue,
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: SESSION_MAX_AGE_DAYS * 24 * 60 * 60,
+          })
+        }
+      }
+    } catch (mintErr) {
+      console.error(
+        '[verify-payment] session mint failed (unlock still ok)',
+        mintErr,
+      )
+    }
+
     return response
   } catch (err) {
     console.log('[verify-payment] caught error', {

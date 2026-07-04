@@ -2,14 +2,8 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import ThemeToggle from '@/components/ThemeToggle'
-import {
-  getSharedAudioContext,
-  playSuccessChime,
-  primeAudioContextOnUserGesture,
-} from '@/lib/webAudioUnlock'
-import { supabase } from '@/lib/supabase-browser'
 
 function truncateAddress(address) {
   if (address == null || address === '') return ''
@@ -23,54 +17,72 @@ const searchInputClassName =
   'w-full rounded-md border border-zinc-300 bg-white py-1.5 pl-2 pr-7 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:ring-zinc-500'
 
 /**
+ * One identity, read from GET /api/me (the pow_session cookie):
+ *   not authenticated        -> "Log in"        (-> /login)
+ *   authenticated reader      -> identity + Logout
+ *   authenticated author/admin-> Dashboard + identity + Logout
+ * Handles show in full; raw ecash addresses are truncated.
+ *
  * @param {{
  *   authorCtaOverride?: 'logout'
  *   showPostSearch?: boolean
- *   onReaderWalletSynced?: (
- *     walletAddress: string,
- *     unlockedPostIds?: string[],
- *   ) => void | Promise<void>
- *   onReaderLogoutExtra?: () => void
  * }} props
  */
-export default function Nav({
-  authorCtaOverride,
-  showPostSearch = false,
-  onReaderWalletSynced,
-  onReaderLogoutExtra,
-}) {
+export default function Nav({ authorCtaOverride, showPostSearch = false }) {
   const router = useRouter()
   const pathname = usePathname()
-  const [authorLoggedIn, setAuthorLoggedIn] = useState(false)
+  // Session identity: the authed /api/me object, or null when logged out.
+  const [me, setMe] = useState(null)
   const [unreadCount, setUnreadCount] = useState(0)
-  const [readerWalletAddress, setReaderWalletAddress] = useState('')
-  const [readerLoginBusy, setReaderLoginBusy] = useState(false)
-  const [readerLoginError, setReaderLoginError] = useState('')
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [desktopSearchOpen, setDesktopSearchOpen] = useState(false)
   const [searchInputValue, setSearchInputValue] = useState('')
   const mobileNavRef = useRef(null)
   const desktopSearchRef = useRef(null)
   const desktopSearchInputRef = useRef(null)
-  const latestTxPollRef = useRef(null)
-  const baselineTxidRef = useRef('')
-  const lastHandledTxidRef = useRef('')
-  const onReaderWalletSyncedRef = useRef(onReaderWalletSynced)
-  const onReaderLogoutExtraRef = useRef(onReaderLogoutExtra)
+
+  const isAuthor = Boolean(me?.authorId)
+  const identityLabel = me?.handle
+    ? `@${me.handle}`
+    : truncateAddress(me?.address ?? '')
+
+  const refetchMe = useCallback(async () => {
+    try {
+      const res = await fetch('/api/me', { cache: 'no-store' })
+      const data = await res.json().catch(() => ({}))
+      setMe(data && data.authenticated ? data : null)
+    } catch {
+      setMe(null)
+    }
+  }, [])
 
   useEffect(() => {
-    onReaderWalletSyncedRef.current = onReaderWalletSynced
-    onReaderLogoutExtraRef.current = onReaderLogoutExtra
-  }, [onReaderWalletSynced, onReaderLogoutExtra])
+    void refetchMe()
+  }, [refetchMe])
 
-  const platformAddress = useMemo(
-    () => process.env.NEXT_PUBLIC_PLATFORM_XEC_ADDRESS?.trim() ?? '',
-    [],
-  )
-  const platformAddressForLatestTx = useMemo(
-    () => platformAddress.replace(/^ecash:/, ''),
-    [platformAddress],
-  )
+  // Cross-component session sync: PostPageClient fires 'sessionChanged' after a
+  // pay-to-unlock login; logout below fires it too. Both nav + post page react
+  // by re-reading /api/me. Replaces the old readerLoggedIn/readerLoggedOut pair.
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    const onChange = () => void refetchMe()
+    window.addEventListener('sessionChanged', onChange)
+    return () => window.removeEventListener('sessionChanged', onChange)
+  }, [refetchMe])
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', cache: 'no-store' })
+    } catch {
+      /* ignore */
+    }
+    setMe(null)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sessionChanged'))
+    }
+    router.refresh()
+  }, [router])
+
   const handleSearchSubmit = useCallback(
     (e) => {
       e.preventDefault()
@@ -83,176 +95,7 @@ export default function Nav({
     [searchInputValue, router],
   )
 
-  const stopReaderTxPolling = useCallback(() => {
-    if (latestTxPollRef.current) {
-      clearInterval(latestTxPollRef.current)
-      latestTxPollRef.current = null
-    }
-  }, [])
-
-  const syncWalletToParent = useCallback((walletAddress, unlockedPostIds) => {
-    void Promise.resolve(
-      onReaderWalletSyncedRef.current?.(walletAddress, unlockedPostIds),
-    )
-  }, [])
-
-  const persistReaderWallet = useCallback(
-    (walletAddress, unlockedPostIds) => {
-      const trimmed = walletAddress.trim()
-      if (!trimmed) return
-      try {
-        localStorage.setItem('readerWalletAddress', trimmed)
-      } catch {
-        /* ignore */
-      }
-      setReaderWalletAddress(trimmed)
-      syncWalletToParent(trimmed, unlockedPostIds)
-    },
-    [syncWalletToParent],
-  )
-
-  const startReaderLoginPolling = useCallback(async () => {
-    if (!platformAddressForLatestTx) return
-    stopReaderTxPolling()
-    setReaderLoginBusy(true)
-    setReaderLoginError('')
-    try {
-      const baselineRes = await fetch(
-        `/api/latest-tx/${encodeURIComponent(platformAddressForLatestTx)}`,
-        { cache: 'no-store' },
-      )
-      const baselineData = await baselineRes.json().catch(() => ({}))
-      baselineTxidRef.current =
-        baselineRes.ok && baselineData?.txid ? baselineData.txid : ''
-    } catch {
-      baselineTxidRef.current = ''
-    }
-
-    const checkLatest = async () => {
-      try {
-        const latestRes = await fetch(
-          `/api/latest-tx/${encodeURIComponent(platformAddressForLatestTx)}`,
-          { cache: 'no-store' },
-        )
-        const latestData = await latestRes.json().catch(() => ({}))
-        const txid = latestRes.ok ? latestData?.txid : ''
-        if (!txid) return
-        if (txid === baselineTxidRef.current) return
-        if (txid === lastHandledTxidRef.current) return
-        lastHandledTxidRef.current = txid
-
-        const verifyRes = await fetch('/api/verify-wallet-auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ txid }),
-        })
-        const verifyData = await verifyRes.json().catch(() => ({}))
-        if (!verifyRes.ok || !verifyData?.walletAddress) {
-          setReaderLoginError(
-            verifyData?.error || 'Wallet verification failed. Try again.',
-          )
-          return
-        }
-        const ids = Array.isArray(verifyData.unlockedPostIds)
-          ? verifyData.unlockedPostIds
-          : undefined
-        persistReaderWallet(verifyData.walletAddress, ids)
-        playSuccessChime(getSharedAudioContext())
-        stopReaderTxPolling()
-        setReaderLoginBusy(false)
-      } catch {
-        /* ignore transient polling errors */
-      }
-    }
-
-    void checkLatest()
-    latestTxPollRef.current = setInterval(() => {
-      void checkLatest()
-    }, 3000)
-  }, [
-    persistReaderWallet,
-    platformAddressForLatestTx,
-    stopReaderTxPolling,
-  ])
-
-  const handleReaderLogin = useCallback(() => {
-    if (!platformAddressForLatestTx) {
-      setReaderLoginError('Platform payment address is not configured.')
-      return
-    }
-    if (typeof window !== 'undefined') {
-      const ctx = getSharedAudioContext()
-      void primeAudioContextOnUserGesture(ctx)
-    }
-    const cashtabUrl = `https://cashtab.com/#/send?bip21=ecash:${platformAddressForLatestTx}?amount=5.5`
-    window.open(cashtabUrl, '_blank', 'noopener,noreferrer')
-    void startReaderLoginPolling()
-  }, [platformAddressForLatestTx, startReaderLoginPolling])
-
-  const handleReaderLogout = useCallback(async () => {
-    stopReaderTxPolling()
-    try {
-      localStorage.removeItem('readerWalletAddress')
-    } catch {
-      /* ignore */
-    }
-    setReaderWalletAddress('')
-    setReaderLoginBusy(false)
-    setReaderLoginError('')
-    baselineTxidRef.current = ''
-    lastHandledTxidRef.current = ''
-    try {
-      await fetch('/api/reader-logout', {
-        method: 'POST',
-        cache: 'no-store',
-      })
-    } catch {
-      /* ignore */
-    }
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('readerLoggedOut'))
-    }
-    onReaderLogoutExtraRef.current?.()
-  }, [stopReaderTxPolling])
-
-  const handleAuthorLogout = useCallback(async () => {
-    await supabase.auth.signOut()
-    router.refresh()
-    router.push('/')
-  }, [router])
-
-  useEffect(() => {
-    let cancelled = false
-
-    void (async () => {
-      const { data: sessionData } = await supabase.auth.getSession()
-      if (!cancelled) setAuthorLoggedIn(!!sessionData.session)
-    })()
-
-    try {
-      const stored = (localStorage.getItem('readerWalletAddress') || '').trim()
-      if (stored) {
-        // After mount only: avoids SSR/hydration mismatch vs reading localStorage in useState init.
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional client-only sync
-        setReaderWalletAddress(stored)
-        void Promise.resolve(onReaderWalletSyncedRef.current?.(stored))
-      }
-    } catch {
-      /* ignore */
-    }
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthorLoggedIn(!!session)
-    })
-
-    return () => {
-      cancelled = true
-      sub.subscription.unsubscribe()
-      stopReaderTxPolling()
-    }
-  }, [stopReaderTxPolling])
-
-  const showDashboardButton = authorLoggedIn && authorCtaOverride !== 'logout'
+  const showDashboardButton = isAuthor && authorCtaOverride !== 'logout'
 
   useEffect(() => {
     if (!showDashboardButton) return
@@ -279,28 +122,6 @@ export default function Nav({
       setUnreadCount(0)
     }
   }, [pathname])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    function onReaderLoggedIn(event) {
-      const w = event.detail?.walletAddress
-      const trimmed = typeof w === 'string' ? w.trim() : ''
-      if (!trimmed) return
-      try {
-        localStorage.setItem('readerWalletAddress', trimmed)
-      } catch {
-        /* ignore */
-      }
-      setReaderWalletAddress(trimmed)
-      void Promise.resolve(onReaderWalletSyncedRef.current?.(trimmed))
-    }
-
-    window.addEventListener('readerLoggedIn', onReaderLoggedIn)
-    return () => {
-      window.removeEventListener('readerLoggedIn', onReaderLoggedIn)
-    }
-  }, [])
 
   const closeMobileNav = useCallback(() => setMobileNavOpen(false), [])
 
@@ -464,21 +285,18 @@ export default function Nav({
       </div>
     ) : null
 
-  const readerWalletConnectedBar = readerWalletAddress ? (
+  const identityChipDesktop = me ? (
     <div className="flex h-9 flex-nowrap items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-xs font-medium whitespace-nowrap text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
-      <span
-        className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
-        aria-hidden
-      />
+      <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
       <span
         className="min-w-0 flex-1 truncate text-center font-mono"
-        title={readerWalletAddress}
+        title={me.address}
       >
-        {truncateAddress(readerWalletAddress)}
+        {identityLabel}
       </span>
       <button
         type="button"
-        onClick={() => void handleReaderLogout()}
+        onClick={() => void handleLogout()}
         className="shrink-0 rounded px-1.5 py-0.5 text-zinc-700 transition hover:bg-emerald-100 hover:text-zinc-900 dark:text-emerald-100 dark:hover:bg-emerald-900"
       >
         Logout
@@ -486,48 +304,45 @@ export default function Nav({
     </div>
   ) : null
 
-  /** Cashtab reader control for marketing desktop — same logic as default nav; outlined when disconnected. */
-  const readerBlockMarketingDesktop = readerWalletAddress ? (
-    readerWalletConnectedBar
-  ) : (
-    <button
-      type="button"
-      onClick={handleReaderLogin}
-      disabled={readerLoginBusy}
-      className="inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 bg-transparent px-4 text-sm font-semibold text-zinc-700 transition hover:border-zinc-400 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-600 dark:text-zinc-200 dark:hover:border-zinc-500 dark:hover:bg-zinc-900"
+  const dashboardButtonDesktop = (
+    <Link
+      href="/dashboard"
+      className="relative inline-flex h-9 items-center justify-center rounded-md bg-black px-4 text-sm font-medium whitespace-nowrap text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
     >
-      {readerLoginBusy ? 'Waiting for payment...' : 'Reader Login'}
-    </button>
+      Dashboard
+      {unreadCount > 0 ? (
+        <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold leading-none text-white">
+          {unreadCount > 9 ? '9+' : unreadCount}
+        </span>
+      ) : null}
+    </Link>
   )
 
-  const authorCtaMarketingSolid =
+  const loginButtonDesktop = (
+    <Link
+      href="/login"
+      className="inline-flex h-9 items-center justify-center rounded-md bg-black px-4 text-sm font-medium whitespace-nowrap text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+    >
+      Log in
+    </Link>
+  )
+
+  const authClusterDesktop =
     authorCtaOverride === 'logout' ? (
       <button
         type="button"
-        onClick={() => void handleAuthorLogout()}
+        onClick={() => void handleLogout()}
         className="inline-flex h-9 items-center justify-center rounded-md bg-black px-4 text-sm font-medium whitespace-nowrap text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
       >
-        Logout
+        Log out
       </button>
-    ) : authorLoggedIn ? (
-      <Link
-        href="/dashboard"
-        className="relative inline-flex h-9 items-center justify-center rounded-md bg-black px-4 text-sm font-medium whitespace-nowrap text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
-      >
-        Dashboard
-        {unreadCount > 0 ? (
-          <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold leading-none text-white">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        ) : null}
-      </Link>
+    ) : me ? (
+      <div className="flex items-center gap-2">
+        {isAuthor ? dashboardButtonDesktop : null}
+        {identityChipDesktop}
+      </div>
     ) : (
-      <Link
-        href="/login"
-        className="inline-flex h-9 items-center justify-center rounded-md bg-black px-4 text-sm font-medium whitespace-nowrap text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
-      >
-        Start writing
-      </Link>
+      loginButtonDesktop
     )
 
   return (
@@ -559,8 +374,7 @@ export default function Nav({
 
           <div className="hidden min-h-14 grid-cols-[1fr_auto_1fr] items-center gap-4 sm:grid">
             <div className="flex min-w-0 items-center justify-start gap-2">
-              <div className="shrink-0">{authorCtaMarketingSolid}</div>
-              <div className="shrink-0">{readerBlockMarketingDesktop}</div>
+              <div className="shrink-0">{authClusterDesktop}</div>
             </div>
             <div className="flex min-w-0 items-center justify-center">
               {navLogo}
@@ -571,12 +385,6 @@ export default function Nav({
             </div>
           </div>
         </div>
-
-        {readerLoginError ? (
-          <div className="mx-auto max-w-5xl px-4 pb-2 sm:px-6">
-            <p className="text-xs text-red-600 dark:text-red-400">{readerLoginError}</p>
-          </div>
-        ) : null}
 
         <div
           id="mobile-nav-menu"
@@ -615,73 +423,56 @@ export default function Nav({
               </form>
             ) : null}
 
-            {readerLoginError ? (
-              <p className="text-sm text-red-600 dark:text-red-400">{readerLoginError}</p>
-            ) : null}
-
-            {readerWalletAddress ? (
-              <button
-                type="button"
-                onClick={() => {
-                  void handleReaderLogout()
-                  closeMobileNav()
-                }}
-                title={readerWalletAddress}
-                className="flex h-11 w-full flex-nowrap items-center justify-between gap-2 whitespace-nowrap rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-left text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/50"
-              >
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"
-                  aria-hidden
-                />
-                <span className="min-w-0 flex-1 truncate text-center font-mono">
-                  {truncateAddress(readerWalletAddress)}
-                </span>
-                <span className="shrink-0 text-zinc-700 dark:text-emerald-100">Logout</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  handleReaderLogin()
-                }}
-                disabled={readerLoginBusy}
-                className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-emerald-300 bg-emerald-50 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-950"
-              >
-                {readerLoginBusy ? 'Waiting for payment...' : 'Connect reader wallet'}
-              </button>
-            )}
-
             {authorCtaOverride === 'logout' ? (
               <button
                 type="button"
                 onClick={() => {
-                  void handleAuthorLogout()
+                  void handleLogout()
                   closeMobileNav()
                 }}
                 className="inline-flex h-11 w-full items-center justify-center rounded-md bg-black text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
               >
-                Logout
+                Log out
               </button>
-            ) : authorLoggedIn ? (
-              <Link
-                href="/dashboard"
-                onClick={closeMobileNav}
-                className="relative inline-flex h-11 w-full items-center justify-center rounded-md bg-black text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
-              >
-                Dashboard
-                {unreadCount > 0 ? (
-                  <span className="absolute top-1.5 right-3 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold leading-none text-white">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
+            ) : me ? (
+              <>
+                {isAuthor ? (
+                  <Link
+                    href="/dashboard"
+                    onClick={closeMobileNav}
+                    className="relative inline-flex h-11 w-full items-center justify-center rounded-md bg-black text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
+                  >
+                    Dashboard
+                    {unreadCount > 0 ? (
+                      <span className="absolute top-1.5 right-3 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold leading-none text-white">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    ) : null}
+                  </Link>
                 ) : null}
-              </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleLogout()
+                    closeMobileNav()
+                  }}
+                  title={me.address}
+                  className="flex h-11 w-full flex-nowrap items-center justify-between gap-2 whitespace-nowrap rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-left text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/50"
+                >
+                  <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+                  <span className="min-w-0 flex-1 truncate text-center font-mono">
+                    {identityLabel}
+                  </span>
+                  <span className="shrink-0 text-zinc-700 dark:text-emerald-100">Logout</span>
+                </button>
+              </>
             ) : (
               <Link
                 href="/login"
                 onClick={closeMobileNav}
                 className="inline-flex h-11 w-full items-center justify-center rounded-md bg-black text-center text-sm font-medium text-white dark:bg-white dark:text-zinc-950"
               >
-                Start writing
+                Log in
               </Link>
             )}
           </nav>
