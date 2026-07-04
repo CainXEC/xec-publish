@@ -112,6 +112,12 @@ export const FEED_CSS = `
 .pow-feed .dot{color:var(--line);}
 .pow-feed .time{font-size:12px;color:var(--dim);}
 .pow-feed .time:hover{color:var(--cyan);}
+.pow-feed .followbtn{margin-left:auto;align-self:center;background:none;border:1px solid var(--neon);color:var(--neon);
+  font:inherit;font-size:12px;font-weight:600;line-height:1;padding:5px 12px;border-radius:999px;cursor:pointer;
+  transition:background .15s,color .15s,box-shadow .15s;}
+.pow-feed .followbtn:hover{box-shadow:0 0 10px rgba(0,255,156,.4);}
+.pow-feed .followbtn.on{background:var(--neon);color:#04120c;border-color:var(--neon);}
+.pow-feed .followbtn:disabled{opacity:.6;cursor:default;}
 .pow-feed .body{margin:8px 0 0;white-space:pre-wrap;word-break:break-word;font-size:15px;line-height:1.6;color:var(--text);}
 .pow-feed .showmore{display:inline;background:none;border:none;color:var(--cyan);font:inherit;font-size:14px;cursor:pointer;
   padding:0;margin-left:6px;transition:text-shadow .15s;}

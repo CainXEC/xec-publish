@@ -14,7 +14,10 @@ export default async function FeedThreadPage({ params }) {
 
   const acct = await getAuthedAccount()
 
-  const thread = await getFeedThread(txid, { viewerAddress: acct?.address })
+  const thread = await getFeedThread(txid, {
+    viewerAddress: acct?.address,
+    viewerAccountId: acct?.accountId ?? null,
+  })
   if (!thread) {
     notFound()
   }

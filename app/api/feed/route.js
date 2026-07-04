@@ -19,10 +19,15 @@ export async function GET(request) {
       const { posts, hasNextPage } = await getFollowingFeedPage({
         page,
         viewerAddress: acct.address,
+        viewerAccountId: acct.accountId,
       })
       return NextResponse.json({ posts, hasNextPage })
     }
-    const { posts, hasNextPage } = await getFeedPage({ page, viewerAddress: acct?.address })
+    const { posts, hasNextPage } = await getFeedPage({
+      page,
+      viewerAddress: acct?.address,
+      viewerAccountId: acct?.accountId ?? null,
+    })
     return NextResponse.json({ posts, hasNextPage })
   } catch (e) {
     return NextResponse.json({ error: e?.message || 'Failed to load feed' }, { status: 500 })

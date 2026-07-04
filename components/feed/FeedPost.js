@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ComposeBox from '@/components/feed/ComposeBox'
@@ -55,6 +55,52 @@ function Byline({ identity }) {
   )
 }
 
+/**
+ * Session-authorized follow toggle for a post's author. Optimistic: flips state
+ * on click and reverts if POST /api/feed/follow fails. Only rendered when a
+ * signed-in viewer is looking at someone else's post.
+ */
+function FollowButton({ followeeAccountId, initialFollowing }) {
+  const [following, setFollowing] = useState(Boolean(initialFollowing))
+  const [busy, setBusy] = useState(false)
+
+  const toggle = useCallback(async () => {
+    if (busy) return
+    const next = !following
+    setBusy(true)
+    setFollowing(next) // optimistic
+    try {
+      const res = await fetch('/api/feed/follow', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ followeeAccountId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) {
+        setFollowing(!next) // revert
+      } else if (typeof data.following === 'boolean') {
+        setFollowing(data.following)
+      }
+    } catch {
+      setFollowing(!next) // revert
+    } finally {
+      setBusy(false)
+    }
+  }, [busy, following, followeeAccountId])
+
+  return (
+    <button
+      type="button"
+      className={`followbtn${following ? ' on' : ''}`}
+      onClick={toggle}
+      disabled={busy}
+      aria-pressed={following}
+    >
+      {following ? 'Following' : 'Follow'}
+    </button>
+  )
+}
+
 export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = null, onDeleted }) {
   const router = useRouter()
   const [showReply, setShowReply] = useState(false)
@@ -71,6 +117,10 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
     !post.deleted &&
     !!viewerAccountId &&
     post.author_account_id === viewerAccountId
+
+  // Show Follow only to a signed-in viewer looking at someone else's live post.
+  const canFollow =
+    !post.deleted && !!viewerAccountId && !isOwn && !!post.author_account_id
 
   const handleReplied = (reply) => {
     setShowReply(false)
@@ -120,6 +170,12 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
         <Link href={`/feed/${post.txid}`} className="time">
           {timeAgo(post.created_at)}
         </Link>
+        {canFollow ? (
+          <FollowButton
+            followeeAccountId={post.author_account_id}
+            initialFollowing={Boolean(post.followedByViewer)}
+          />
+        ) : null}
       </div>
 
       <p className="body">

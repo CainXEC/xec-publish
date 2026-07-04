@@ -12,7 +12,11 @@ export default async function HomePage() {
   const acct = await getAuthedAccount()
 
   try {
-    const result = await getFeedPage({ page: 1, viewerAddress: acct?.address })
+    const result = await getFeedPage({
+      page: 1,
+      viewerAddress: acct?.address,
+      viewerAccountId: acct?.accountId ?? null,
+    })
     posts = result.posts
     hasNextPage = result.hasNextPage
   } catch (err) {
