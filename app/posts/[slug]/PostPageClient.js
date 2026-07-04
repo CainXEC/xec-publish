@@ -15,7 +15,6 @@ import {
   primeAudioContextOnUserGesture,
 } from '@/lib/webAudioUnlock'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
-import { supabase } from '@/lib/supabase-browser'
 
 const COMMENT_MAX_LEN = 500
 const COMMENT_WARN_WITHIN = 50
@@ -90,15 +89,24 @@ export default function PostPageClient({
   const [deletingCommentId, setDeletingCommentId] = useState(null)
   const [copiedCommentIds, setCopiedCommentIds] = useState({})
   const [copiedShareLink, setCopiedShareLink] = useState(false)
-  const [isAuthorSession, setIsAuthorSession] = useState(false)
-  const [authorAccessToken, setAuthorAccessToken] = useState('')
   const [readerWalletAddress, setReaderWalletAddress] = useState('')
+  // Session identity from GET /api/me (the HttpOnly pow_session cookie).
+  // { authenticated, accountId, authorId, isAdmin, address, handle, identity, unlockedPostIds } | null
+  const [me, setMe] = useState(null)
   const [isFollowingAuthor, setIsFollowingAuthor] = useState(false)
   const [followAuthorBusy, setFollowAuthorBusy] = useState(false)
-  const [isAdminSession, setIsAdminSession] = useState(false)
   const [pinBusy, setPinBusy] = useState(false)
   const commentCopyTimeoutsRef = useRef({})
   const shareCopyTimeoutRef = useRef(null)
+
+  // Author / admin identity now comes from the wallet session (/api/me), not
+  // Supabase. Derived each render so it tracks the session automatically once
+  // /api/me resolves. canViewFullPost keys off these, so author/admin bypass
+  // the paywall on their own posts with no separate auto-unlock needed.
+  const isAuthorSession = Boolean(
+    me?.authorId && post?.author_id && me.authorId === post.author_id,
+  )
+  const isAdminSession = me?.isAdmin === true
 
   useEffect(() => {
     setBodyHtml(initialBodyHtml ?? '')
@@ -111,39 +119,27 @@ export default function PostPageClient({
     }
   }, [initialUnlocked])
 
-  const syncReaderWalletFromStorage = useCallback(() => {
-    if (typeof window === 'undefined') return
+  // Reader/author identity comes solely from the wallet session via /api/me.
+  // readerWalletAddress mirrors me.address so existing consumers (follows, the
+  // byline follow button) are unchanged. On logout /api/me returns null and we
+  // clear the mirror.
+  const refetchMe = useCallback(async () => {
     try {
-      const w = (localStorage.getItem('readerWalletAddress') || '').trim()
-      setReaderWalletAddress(w)
+      const res = await fetch('/api/me', { cache: 'no-store' })
+      const data = await res.json().catch(() => ({}))
+      const authed = data && data.authenticated ? data : null
+      setMe(authed)
+      setReaderWalletAddress(authed?.address ? String(authed.address).trim() : '')
+      if (!authed) setIsFollowingAuthor(false)
+      return authed
     } catch {
-      setReaderWalletAddress('')
+      return null
     }
   }, [])
 
   useEffect(() => {
-    syncReaderWalletFromStorage()
-    if (typeof window === 'undefined') return undefined
-    function onStorage(e) {
-      if (e.key === 'readerWalletAddress' || e.key === null) {
-        syncReaderWalletFromStorage()
-      }
-    }
-    window.addEventListener('storage', onStorage)
-    return () => {
-      window.removeEventListener('storage', onStorage)
-    }
-  }, [syncReaderWalletFromStorage])
-
-  const handleReaderWalletSynced = useCallback((walletAddress) => {
-    const trimmed = typeof walletAddress === 'string' ? walletAddress.trim() : ''
-    setReaderWalletAddress(trimmed)
-  }, [])
-
-  const handleReaderLogoutExtra = useCallback(() => {
-    setReaderWalletAddress('')
-    setIsFollowingAuthor(false)
-  }, [])
+    void refetchMe()
+  }, [refetchMe])
 
   useEffect(() => {
     const wallet = readerWalletAddress.trim()
@@ -336,16 +332,8 @@ export default function PostPageClient({
 
     async function initialUnlock() {
       setUnlockCheckPending(true)
-
-      let ok = await checkUnlock(post.id)
-      if (!ok && typeof window !== 'undefined') {
-        const storedWallet = (
-          localStorage.getItem('readerWalletAddress') || ''
-        ).trim()
-        if (storedWallet) {
-          ok = await checkUnlock(post.id, storedWallet)
-        }
-      }
+      // cookie fast-path; address-based unlock now comes from /api/me below.
+      await checkUnlock(post.id)
       if (!cancelled) setUnlockCheckPending(false)
     }
 
@@ -356,59 +344,30 @@ export default function PostPageClient({
     }
   }, [post?.id, checkUnlock, initialUnlocked])
 
+  // Cross-device unlock paint: if this account's proven address has unlocked
+  // this post (per /api/me), reveal it without needing the per-device cookie.
+  useEffect(() => {
+    if (!post?.id || unlocked) return
+    if (Array.isArray(me?.unlockedPostIds) && me.unlockedPostIds.includes(post.id)) {
+      setUnlocked(true)
+      setUnlockCheckPending(false)
+    }
+  }, [me, post?.id, unlocked])
+
+  // Session changed elsewhere (Nav logout, or our own pay-to-unlock login).
+  // Re-read identity and re-run SSR entitlement so locked content re-locks on
+  // logout (server decides based on session + unlock cookie).
   useEffect(() => {
     if (typeof window === 'undefined') return
-    function onReaderLoggedOut() {
-      setUnlocked(false)
+    function onSessionChanged() {
+      void refetchMe()
       router.refresh()
     }
-    window.addEventListener('readerLoggedOut', onReaderLoggedOut)
+    window.addEventListener('sessionChanged', onSessionChanged)
     return () => {
-      window.removeEventListener('readerLoggedOut', onReaderLoggedOut)
+      window.removeEventListener('sessionChanged', onSessionChanged)
     }
-  }, [router])
-
-  useEffect(() => {
-    if (!post?.author_id) return
-    let cancelled = false
-    async function loadAuthorSessionState() {
-      const { data: sessionData } = await supabase.auth.getSession()
-      if (cancelled) return
-      const session = sessionData?.session
-      const userId = session?.user?.id
-      const authorSession = Boolean(userId && userId === post.author_id)
-      setIsAuthorSession(authorSession)
-      setAuthorAccessToken(session?.access_token ?? '')
-      if (userId) {
-        const { data: authorData } = await supabase
-          .from('authors')
-          .select('is_admin')
-          .eq('id', userId)
-          .maybeSingle()
-        if (!cancelled) {
-          const adminSession = authorData?.is_admin === true
-          setIsAdminSession(adminSession)
-          if (adminSession) {
-            setUnlocked(true)
-            setUnlockCheckPending(false)
-            router.refresh()
-          }
-        }
-      } else if (!cancelled) {
-        setIsAdminSession(false)
-      }
-      if (authorSession) {
-        // Author never needs unlock checks/paywall for own post.
-        setUnlocked(true)
-        setUnlockCheckPending(false)
-        router.refresh()
-      }
-    }
-    void loadAuthorSessionState()
-    return () => {
-      cancelled = true
-    }
-  }, [post?.author_id, router])
+  }, [refetchMe, router])
 
   useEffect(() => {
     if (!isAuthorSession || !post?.id) return
@@ -437,11 +396,8 @@ export default function PostPageClient({
     if (!pollingActive || !post?.id || unlocked || isAuthorSession) return
 
     pollRef.current = setInterval(() => {
-      const storedWallet =
-        typeof window !== 'undefined'
-          ? (localStorage.getItem('readerWalletAddress') || '').trim()
-          : ''
-      void checkUnlock(post.id, storedWallet || undefined)
+      const wallet = readerWalletAddress.trim()
+      void checkUnlock(post.id, wallet || undefined)
     }, 3000)
 
     return () => {
@@ -450,18 +406,15 @@ export default function PostPageClient({
         pollRef.current = null
       }
     }
-  }, [pollingActive, post?.id, unlocked, isAuthorSession, checkUnlock])
+  }, [pollingActive, post?.id, unlocked, isAuthorSession, checkUnlock, readerWalletAddress])
 
   useEffect(() => {
     if (!post?.id || unlocked || isAuthorSession) return
 
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
-      const storedWallet =
-        typeof window !== 'undefined'
-          ? (localStorage.getItem('readerWalletAddress') || '').trim()
-          : ''
-      void checkUnlock(post.id, storedWallet || undefined)
+      const wallet = readerWalletAddress.trim()
+      void checkUnlock(post.id, wallet || undefined)
       setPollingActive(true)
     }
 
@@ -469,7 +422,7 @@ export default function PostPageClient({
     return () => {
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [post?.id, unlocked, isAuthorSession, checkUnlock])
+  }, [post?.id, unlocked, isAuthorSession, checkUnlock, readerWalletAddress])
 
   useEffect(() => {
     const onVisible = () => {
@@ -550,69 +503,15 @@ export default function PostPageClient({
     setPayBusy(false)
   }
 
-  const persistReaderAfterPaywallUnlock = useCallback(
-    async (confirmedTxid) => {
-      if (
-        typeof window === 'undefined' ||
-        !authorAddressForLatestTx ||
-        !confirmedTxid
-      ) {
-        return
-      }
-
-      let txidForWallet = confirmedTxid
-      try {
-        const latestRes = await fetch(
-          `/api/latest-tx/${encodeURIComponent(authorAddressForLatestTx)}`,
-        )
-        const latestData = await latestRes.json().catch(() => ({}))
-        if (latestRes.ok && latestData.txid) {
-          txidForWallet = latestData.txid
-        }
-      } catch {
-        /* keep confirmedTxid */
-      }
-
-      const tryVerifyWallet = async (txid) => {
-        const verifyWalletRes = await fetch('/api/verify-wallet-auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ txid }),
-        })
-        const verifyWalletData = await verifyWalletRes.json().catch(() => ({}))
-        return { verifyWalletRes, verifyWalletData }
-      }
-
-      let { verifyWalletRes, verifyWalletData } = await tryVerifyWallet(
-        txidForWallet,
-      )
-      if (
-        (!verifyWalletRes.ok || !verifyWalletData.walletAddress) &&
-        txidForWallet !== confirmedTxid
-      ) {
-        ;({ verifyWalletRes, verifyWalletData } =
-          await tryVerifyWallet(confirmedTxid))
-      }
-
-      const walletAddress = verifyWalletData.walletAddress?.trim?.() || ''
-      if (!verifyWalletRes.ok || !walletAddress) {
-        return
-      }
-
-      try {
-        localStorage.setItem('readerWalletAddress', walletAddress)
-      } catch {
-        /* ignore quota / private mode */
-      }
-
-      window.dispatchEvent(
-        new CustomEvent('readerLoggedIn', {
-          detail: { walletAddress },
-        }),
-      )
-    },
-    [authorAddressForLatestTx],
-  )
+  // Pay doubles as login: verify-payment has ALREADY minted the pow_session
+  // server-side (pay-scope) as part of the unlock. Pull the fresh identity here,
+  // and notify Nav (and any other listener) so it re-reads /api/me.
+  const persistReaderAfterPaywallUnlock = useCallback(async () => {
+    await refetchMe()
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sessionChanged'))
+    }
+  }, [refetchMe])
 
   const startPayTxAutoVerify = useCallback(async () => {
     if (!post?.id || !authorAddressForLatestTx) return
@@ -661,7 +560,7 @@ export default function PostPageClient({
             clearInterval(payTxPollRef.current)
             payTxPollRef.current = null
           }
-          void persistReaderAfterPaywallUnlock(latestTxid)
+          void persistReaderAfterPaywallUnlock()
           void fetchUnlockCount(post.id)
           return
         }
@@ -684,7 +583,7 @@ export default function PostPageClient({
               clearInterval(payTxPollRef.current)
               payTxPollRef.current = null
             }
-            void persistReaderAfterPaywallUnlock(latestTxid)
+            void persistReaderAfterPaywallUnlock()
             void fetchUnlockCount(post.id)
           }
         }
@@ -716,22 +615,12 @@ export default function PostPageClient({
     setCommentSubmitting(true)
     setCommentActionError(null)
     try {
-      const payerAddress =
-        typeof window !== 'undefined'
-          ? (localStorage.getItem('readerWalletAddress') || '').trim()
-          : ''
-
-      const headers = { 'Content-Type': 'application/json' }
-      if (authorAccessToken) {
-        headers.Authorization = `Bearer ${authorAccessToken}`
-      }
+      // Identity + authorization come from the session cookie (sent
+      // automatically same-origin); the route ignores any body-supplied address.
       const res = await fetch(`/api/comments/${encodeURIComponent(post.id)}`, {
         method: 'POST',
-        headers,
-        body: JSON.stringify({
-          content,
-          payer_address: payerAddress || undefined,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -745,7 +634,6 @@ export default function PostPageClient({
       setCommentSubmitting(false)
     }
   }, [
-    authorAccessToken,
     commentText,
     fetchCommentCount,
     fetchComments,
@@ -760,22 +648,12 @@ export default function PostPageClient({
     setDeletingCommentId(commentId)
     setCommentActionError(null)
     try {
-      const payerAddress =
-        typeof window !== 'undefined'
-          ? (localStorage.getItem('readerWalletAddress') || '').trim()
-          : ''
-      const headers = { 'Content-Type': 'application/json' }
-      if (authorAccessToken) {
-        headers.Authorization = `Bearer ${authorAccessToken}`
-      }
+      // Authorization (author/admin/own-comment) is decided server-side from
+      // the session cookie; the route ignores any body-supplied identity.
       const res = await fetch(`/api/comments/${encodeURIComponent(post.id)}`, {
         method: 'DELETE',
-        headers,
-        body: JSON.stringify({
-          commentId,
-          payer_address: payerAddress || undefined,
-          isAuthor: isAuthorSession,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commentId }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -788,10 +666,8 @@ export default function PostPageClient({
       setDeletingCommentId(null)
     }
   }, [
-    authorAccessToken,
     fetchCommentCount,
     fetchComments,
-    isAuthorSession,
     post?.id,
   ])
 
@@ -829,10 +705,7 @@ export default function PostPageClient({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-white dark:bg-zinc-950">
-      <Nav
-        onReaderWalletSynced={handleReaderWalletSynced}
-        onReaderLogoutExtra={handleReaderLogoutExtra}
-      />
+      <Nav />
       <main className="mx-auto w-full max-w-3xl px-4 pt-8 pb-6 sm:pt-10">
         <article className="px-0 pb-4">
           {isAdminSession ? (
@@ -1116,15 +989,22 @@ export default function PostPageClient({
                         typeof comment.payer_address === 'string'
                           ? comment.payer_address.trim()
                           : ''
-                      const localWallet =
-                        typeof window !== 'undefined'
-                          ? (localStorage.getItem('readerWalletAddress') || '').trim()
-                          : ''
+                      // Own comment if it matches this session's display identity
+                      // (@handle) or either stored form of its address. Server
+                      // enforces the real authorization on delete regardless.
+                      const myAddr = (me?.address || '').trim()
+                      const ownedIds = me
+                        ? [
+                            me.identity,
+                            myAddr,
+                            myAddr.startsWith('ecash:')
+                              ? myAddr.slice('ecash:'.length)
+                              : `ecash:${myAddr}`,
+                          ].filter(Boolean)
+                        : []
                       const canDelete =
                         isAuthorSession ||
-                        (localWallet &&
-                          fullWalletAddress &&
-                          localWallet === fullWalletAddress)
+                        (fullWalletAddress && ownedIds.includes(fullWalletAddress))
                       return (
                         <li
                           key={comment.id}

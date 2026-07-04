@@ -4,11 +4,28 @@ import { NextResponse } from 'next/server'
 import { verifyCookieValue } from '@/lib/cookieSigner'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { supabase } from '@/lib/supabase'
+import { getAuthedAccount } from '@/lib/authHelpers'
 
-function truncateWallet(address) {
-  if (!address || typeof address !== 'string') return null
-  const trimmed = address.trim()
-  return trimmed || null
+/** All stored forms of an ecash address, prefix-agnostic (matches /api/me). */
+function addressForms(address) {
+  const a = typeof address === 'string' ? address.trim() : ''
+  if (!a) return []
+  return a.startsWith('ecash:') ? [a, a.slice('ecash:'.length)] : [a, `ecash:${a}`]
+}
+
+/** Is this session the author of the post, or an admin? */
+async function isAuthorOrAdmin(acct, postId, supabaseService) {
+  if (!acct) return false
+  if (acct.isAdmin) return true
+  if (!acct.authorId) return false
+  const { data: ownedPost } = await supabaseService
+    .from('posts')
+    .select('id')
+    .eq('id', postId)
+    .eq('author_id', acct.authorId)
+    .limit(1)
+    .maybeSingle()
+  return Boolean(ownedPost)
 }
 
 export async function GET(_request, { params }) {
@@ -45,65 +62,67 @@ export async function POST(request, { params }) {
     )
   }
   const content = rawContent.trim()
-  let payerAddress = truncateWallet(body?.payer_address)
-
   if (!content) {
     return NextResponse.json({ error: 'Comment content is required' }, { status: 400 })
   }
 
-  let verified = false
+  const supabaseService = createServerSupabase()
 
-  const authHeader = request.headers.get('authorization') || ''
-  const match = authHeader.match(/^Bearer\s+(.+)$/i)
-  const accessToken = match?.[1]
-  if (accessToken) {
-    const { data: userData, error: userError } = await supabase.auth.getUser(accessToken)
-    if (!userError && userData?.user?.id) {
-      const supabaseService = createServerSupabase()
-      const { data: ownedPost, error: postError } = await supabaseService
-        .from('posts')
-        .select('id')
-        .eq('id', postId)
-        .eq('author_id', userData.user.id)
-        .limit(1)
-        .maybeSingle()
-      if (!postError && ownedPost) {
-        verified = true
-        if (!payerAddress) {
-          const { data: authorRow } = await supabaseService
-            .from('authors')
-            .select('username')
-            .eq('id', userData.user.id)
-            .maybeSingle()
-          const username = String(authorRow?.username ?? '').trim()
-          if (username) {
-            payerAddress = `@${username}`
-          }
+  // Identity is decided SERVER-SIDE and stamped from proven auth only — the
+  // request body's payer_address is never trusted.
+  let verified = false
+  let payerAddress = null
+
+  const acct = await getAuthedAccount()
+
+  if (acct) {
+    if (await isAuthorOrAdmin(acct, postId, supabaseService)) {
+      // author of this post / admin — stamp their display identity
+      verified = true
+      payerAddress = acct.identity
+    } else {
+      // logged-in reader — allowed only if this account's address unlocked it
+      const forms = addressForms(acct.address)
+      if (forms.length) {
+        const { data: unlockRow } = await supabase
+          .from('unlocks')
+          .select('id')
+          .eq('post_id', postId)
+          .in('payer_address', forms)
+          .limit(1)
+          .maybeSingle()
+        if (unlockRow) {
+          verified = true
+          payerAddress = acct.identity
         }
       }
     }
   }
 
-  const rawCookie = request.cookies.get(`unlock_${postId}`)?.value
-  if (!verified && rawCookie) {
-    const { valid } = verifyCookieValue(postId, rawCookie)
-    if (valid) verified = true
-  }
-
-  if (!verified && payerAddress) {
-    const { data: unlockRow, error: unlockError } = await supabase
-      .from('unlocks')
-      .select('id')
-      .eq('post_id', postId)
-      .eq('payer_address', payerAddress)
-      .limit(1)
-      .maybeSingle()
-
-    if (unlockError) {
-      return NextResponse.json({ error: unlockError.message }, { status: 500 })
+  // Fallback for a paid reader who isn't logged in as a session (same device):
+  // the signed unlock cookie -> stamp the PROVEN address from its unlock row.
+  if (!verified) {
+    const rawCookie = request.cookies.get(`unlock_${postId}`)?.value
+    const { valid, txid } = verifyCookieValue(postId, rawCookie)
+    if (valid && String(txid).trim()) {
+      const { data: unlockRow, error: unlockError } = await supabaseService
+        .from('unlocks')
+        .select('payer_address')
+        .eq('post_id', postId)
+        .eq('txid', String(txid).trim())
+        .maybeSingle()
+      if (unlockError) {
+        return NextResponse.json({ error: unlockError.message }, { status: 500 })
+      }
+      const proven =
+        typeof unlockRow?.payer_address === 'string'
+          ? unlockRow.payer_address.trim()
+          : ''
+      if (proven) {
+        verified = true
+        payerAddress = proven
+      }
     }
-
-    verified = Boolean(unlockRow)
   }
 
   if (!verified) {
@@ -138,7 +157,6 @@ export async function DELETE(request, { params }) {
 
   const body = await request.json().catch(() => ({}))
   const commentId = body?.commentId
-
   if (!commentId) {
     return NextResponse.json({ error: 'Missing commentId' }, { status: 400 })
   }
@@ -159,27 +177,30 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ error: 'Comment not found' }, { status: 404 })
   }
 
+  const commentPayer =
+    typeof comment.payer_address === 'string' ? comment.payer_address.trim() : ''
+
   let canDelete = false
 
-  const authHeader = request.headers.get('authorization') || ''
-  const match = authHeader.match(/^Bearer\s+(.+)$/i)
-  const accessToken = match?.[1]
-  if (accessToken) {
-    const { data: userData, error: userError } = await supabase.auth.getUser(accessToken)
-    if (!userError && userData?.user?.id) {
-      const { data: ownedPost, error: postError } = await supabaseService
-        .from('posts')
-        .select('id')
-        .eq('id', postId)
-        .eq('author_id', userData.user.id)
-        .limit(1)
-        .maybeSingle()
-      if (!postError && ownedPost) {
-        canDelete = true
-      }
+  const acct = await getAuthedAccount()
+
+  if (acct) {
+    if (await isAuthorOrAdmin(acct, postId, supabaseService)) {
+      // author of this post / admin — moderate any comment
+      canDelete = true
+    } else {
+      // logged-in reader — delete only their own comment. Match against the
+      // display identity AND both address forms (older comments were stamped
+      // with the raw address before handles/identity existed).
+      const owned = new Set(
+        [acct.identity, ...addressForms(acct.address)].filter(Boolean),
+      )
+      if (commentPayer && owned.has(commentPayer)) canDelete = true
     }
   }
 
+  // Fallback for a logged-out paid reader (same device): unlock cookie -> the
+  // proven address on its unlock row must match the comment's stamped address.
   if (!canDelete) {
     const rawCookie = request.cookies.get(`unlock_${postId}`)?.value
     const { valid, txid } = verifyCookieValue(postId, rawCookie)
@@ -187,12 +208,11 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const txidTrim = String(txid).trim()
     const { data: unlockRow, error: unlockError } = await supabaseService
       .from('unlocks')
       .select('payer_address')
       .eq('post_id', postId)
-      .eq('txid', txidTrim)
+      .eq('txid', String(txid).trim())
       .maybeSingle()
 
     if (unlockError) {
@@ -204,10 +224,7 @@ export async function DELETE(request, { params }) {
 
     const verifiedPayer =
       typeof unlockRow.payer_address === 'string' ? unlockRow.payer_address.trim() : ''
-    const commentPayer =
-      typeof comment.payer_address === 'string' ? comment.payer_address.trim() : ''
-
-    if (commentPayer !== verifiedPayer) {
+    if (!verifiedPayer || commentPayer !== verifiedPayer) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
