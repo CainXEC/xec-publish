@@ -2,7 +2,7 @@
 
 import { removePostAudioStorageFiles } from '@/lib/audioConfig'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { getAuthedAccount } from '@/lib/authHelpers'
 
 export async function deletePostAudio(postId) {
   const id = typeof postId === 'string' ? postId.trim() : ''
@@ -10,20 +10,20 @@ export async function deletePostAudio(postId) {
     return { ok: false, error: 'Post ID is required.' }
   }
 
-  const supabase = await createSupabaseServerClient()
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError) {
-    return { ok: false, error: userError.message }
-  }
-  if (!user) {
+  const acct = await getAuthedAccount()
+  if (!acct?.authorId) {
     return { ok: false, error: 'You must be signed in to delete audio.' }
   }
 
-  const { data: post, error: postError } = await supabase
+  const admin = createSupabaseAdminClient()
+  if (!admin) {
+    return {
+      ok: false,
+      error: 'Server configuration error: missing Supabase admin credentials.',
+    }
+  }
+
+  const { data: post, error: postError } = await admin
     .from('posts')
     .select('id, author_id')
     .eq('id', id)
@@ -35,24 +35,16 @@ export async function deletePostAudio(postId) {
   if (!post) {
     return { ok: false, error: 'Post not found.' }
   }
-  if (post.author_id !== user.id) {
+  if (post.author_id !== acct.authorId) {
     return { ok: false, error: 'You can only delete audio on your own posts.' }
   }
 
-  const supabaseAdmin = createSupabaseAdminClient()
-  if (!supabaseAdmin) {
-    return {
-      ok: false,
-      error: 'Server configuration error: missing Supabase admin credentials.',
-    }
-  }
-
-  const cleanupResult = await removePostAudioStorageFiles(supabaseAdmin, id)
+  const cleanupResult = await removePostAudioStorageFiles(admin, id)
   if (!cleanupResult.ok) {
     return { ok: false, error: cleanupResult.error }
   }
 
-  const { error: updateError } = await supabaseAdmin
+  const { error: updateError } = await admin
     .from('posts')
     .update({
       audio_url: null,
@@ -62,7 +54,7 @@ export async function deletePostAudio(postId) {
       audio_voice: null,
     })
     .eq('id', id)
-    .eq('author_id', user.id)
+    .eq('author_id', acct.authorId)
 
   if (updateError) {
     return { ok: false, error: updateError.message }
