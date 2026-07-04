@@ -79,7 +79,12 @@ export default function SearchResultsClient({
           <ul className="flex flex-col gap-1.5 md:gap-2">
             {posts.map((post) => {
               const author = authorFromPost(post)
+              const displayHandle = post.display_handle?.trim() || ''
               const username = author?.username?.trim() || 'Unknown'
+              const bylineName = displayHandle || username
+              const bylineHref = displayHandle
+                ? `/@${displayHandle}`
+                : `/u/${encodeURIComponent(username)}`
               const postHref = `/posts/${encodeURIComponent(post.slug)}`
               const priceLabel = formatXec(post.price_xec)
               const unlocksN = post.unlockCount ?? 0
@@ -113,10 +118,10 @@ export default function SearchResultsClient({
                     </h2>
                     <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
                       <Link
-                        href={`/u/${encodeURIComponent(username)}`}
+                        href={bylineHref}
                         className="relative z-10 font-medium text-emerald-700 hover:text-emerald-800 underline-offset-2 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
                       >
-                        @{username}
+                        @{bylineName}
                       </Link>
                       <span aria-hidden className="text-zinc-300 dark:text-zinc-600">
                         ·
