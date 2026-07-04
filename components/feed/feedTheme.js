@@ -37,10 +37,6 @@ export const FEED_CSS = `
 
 /* ---- header ---- */
 .pow-feed .head{max-width:640px;margin:0 auto;padding:28px 20px 18px;text-align:center;}
-.pow-feed .eyebrow{font-size:12px;letter-spacing:.34em;text-transform:uppercase;color:var(--cyan);margin:0 0 12px;
-  text-shadow:0 0 10px rgba(61,240,255,.35);}
-.pow-feed .title{font-size:40px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--neon);margin:0 0 10px;
-  text-shadow:0 0 8px rgba(0,255,156,.55),0 0 26px rgba(0,255,156,.28);}
 .pow-feed .sub{color:#a6d8c9;font-size:14px;line-height:1.55;margin:0;}
 
 /* ---- shared column ---- */
@@ -194,5 +190,5 @@ export const FEED_CSS = `
 .pow-feed .replieshead{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:24px 0 10px;}
 
 @media (prefers-reduced-motion:reduce){.pow-feed *{transition:none!important;animation:none!important;}}
-@media (max-width:480px){.pow-feed .title{font-size:30px;}.pow-feed .head{padding-top:20px;}}
+@media (max-width:480px){.pow-feed .head{padding-top:20px;}}
 `

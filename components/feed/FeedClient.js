@@ -154,9 +154,7 @@ export default function FeedClient({
       </div>
 
       <div className="head">
-        <p className="eyebrow">proofofwriting // feed</p>
-        <h1 className="title">Feed</h1>
-        <p className="sub">Pay to post. Replies pay the author.</p>
+        <p className="sub">Pay to post. Get paid for attention.</p>
       </div>
 
       <main className="wrap">

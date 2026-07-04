@@ -1,8 +1,13 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 export default function Footer() {
+  // Hidden on the home feed so the feed itself fills the viewport.
+  const pathname = usePathname()
+  if (pathname === '/') return null
+
   return (
     <footer className="border-t-[0.5px] border-zinc-200 dark:border-zinc-800">
       <div className="mx-auto flex max-w-5xl items-center justify-center gap-4 px-4 py-6 sm:gap-6 sm:px-6">
