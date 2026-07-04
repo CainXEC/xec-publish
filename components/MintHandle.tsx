@@ -73,6 +73,12 @@ export default function MintHandle() {
   // ---- start a mint (lock + payment request) ----
   const startMint = useCallback(async () => {
     setNotice("");
+    // Open the Cashtab tab synchronously inside the click gesture so popup
+    // blockers don't eat it, then redirect it once the intent (and its bip21)
+    // lands. Opening with a handle (no noopener) is what lets us set its URL
+    // later; we null the opener before navigating to a trusted external site.
+    const cashtabWindow =
+      typeof window !== "undefined" ? window.open("about:blank", "_blank") : null;
     try {
       const r = await fetch("/api/mint/intent", {
         method: "POST",
@@ -80,10 +86,22 @@ export default function MintHandle() {
         body: JSON.stringify({ handle: display }),
       });
       const j = await r.json();
-      if (!j.ok) { setNotice(STATUS_COPY[j.status] ?? j.reason ?? "Couldn't start the mint. Try again."); return; }
+      if (!j.ok) {
+        cashtabWindow?.close();
+        setNotice(STATUS_COPY[j.status] ?? j.reason ?? j.error ?? "Couldn't start the mint. Try again.");
+        return;
+      }
       setIntent(j);
       setPhase("pay");
-    } catch { setNotice("Network hiccup — try again."); }
+      const url = `https://cashtab.com/#/send?bip21=${j.bip21Url}`;
+      if (cashtabWindow) {
+        cashtabWindow.opener = null;
+        cashtabWindow.location.href = url;
+      }
+    } catch {
+      cashtabWindow?.close();
+      setNotice("Network hiccup — try again.");
+    }
   }, [display]);
 
   // ---- poll status while paying ----

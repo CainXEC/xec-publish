@@ -19,6 +19,16 @@ const MINT_ADDRESS = process.env.MINT_PAYMENT_ADDRESS!; // the mint wallet's eca
 const LOCK_MINUTES = 15;
 
 export async function POST(req: NextRequest) {
+  // Fail loudly if the mint wallet address isn't configured — otherwise the
+  // BIP21 below is built with a literal "undefined" address and Cashtab can't
+  // parse the deep link.
+  if (!MINT_ADDRESS) {
+    return NextResponse.json(
+      { ok: false, error: "Minting is temporarily unavailable." },
+      { status: 503 },
+    );
+  }
+
   const { handle } = await req.json().catch(() => ({}));
   if (!handle) return NextResponse.json({ ok: false, error: "missing handle" }, { status: 400 });
 
