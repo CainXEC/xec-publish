@@ -49,14 +49,20 @@ function ThreadByline({ identity }) {
  * rail with a node dot and a connecting line down to the next post. The whole
  * card navigates to that post's own thread.
  */
-function AncestorNode({ post }) {
+function AncestorNode({ post, top = false }) {
   const router = useRouter()
   const go = (e) => {
     if (e.target.closest('a, button')) return
     router.push(`/feed/${post.txid}`)
   }
   return (
-    <div className="tnode lineup linedown" onClick={go} role="link" tabIndex={0} style={{ cursor: 'pointer' }}>
+    <div
+      className={`tnode linedown${top ? '' : ' lineup'}`}
+      onClick={go}
+      role="link"
+      tabIndex={0}
+      style={{ cursor: 'pointer' }}
+    >
       <div className="trail">
         <span className="tdot" />
       </div>
@@ -162,8 +168,8 @@ export default function FeedThreadClient({
         </Link>
 
         <div className="thread">
-          {ancestors.map((a) => (
-            <AncestorNode key={a.txid} post={a} />
+          {ancestors.map((a, i) => (
+            <AncestorNode key={a.txid} post={a} top={i === 0} />
           ))}
 
           {/* Focused post: emphasized, and joined to the chain above by a line. */}
