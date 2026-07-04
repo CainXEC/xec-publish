@@ -5,8 +5,7 @@ import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import PublishPaywallModal from '@/components/dashboard/PublishPaywallModal'
 import { warmOgImageForPost } from '@/app/dashboard/warmOgImage'
-import { supabase } from '@/lib/supabase-browser'
-import { calculateReadingTimeMinutes } from '@/lib/calculateReadingTimeMinutes'
+import { savePost } from '@/app/dashboard/savePost'
 import { charCounterClassName } from '@/lib/charCounterClassName'
 import { generateSlug, isUrlSafeSlug } from '@/lib/generateSlug'
 import { countPlainTextCharsFromHtml } from '@/lib/plainTextCharCount'
@@ -23,20 +22,6 @@ const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), {
 
 const DEFAULT_NEW_POST_BODY =
   '<p></p><div data-paywall-break="true"></div><p></p>'
-const PAYWALL_MARKER = '<div data-paywall-break="true"></div>'
-
-function extractTeaserFromBody(html) {
-  const src = String(html ?? '')
-  const markerIdx = src.indexOf(PAYWALL_MARKER)
-  const preview = markerIdx === -1 ? src : src.slice(0, markerIdx)
-  const plain = preview
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/\u00a0/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-  return plain.slice(0, 300)
-}
 
 /** @param {{ existingPost?: object | null }} [props] Optional server-loaded post to edit (must include `id`). */
 export default function NewPostForm({ existingPost = null }) {
@@ -46,7 +31,6 @@ export default function NewPostForm({ existingPost = null }) {
   const isEditMode = Boolean(editingPostId)
   const autosaveTimerRef = useRef(null)
   const autosaveIdRef = useRef(editingPostId)
-  const userIdRef = useRef(null)
 
   const [title, setTitle] = useState(() =>
     existingPost
@@ -96,94 +80,50 @@ export default function NewPostForm({ existingPost = null }) {
     return null
   }, [slug])
 
-  const getCurrentUserId = useCallback(async () => {
-    if (userIdRef.current) return userIdRef.current
-    const { data: userData, error: userError } = await supabase.auth.getUser()
-    if (userError) {
-      throw new Error(userError.message)
-    }
-    const userId = userData?.user?.id
-    if (!userId) {
-      throw new Error('No authenticated user')
-    }
-    userIdRef.current = userId
-    return userId
-  }, [])
-
-  const persistDraft = useCallback(async ({
-    forceId = null,
-    nextPublished = false,
-  } = {}) => {
-    const userId = await getCurrentUserId()
-    let finalSlug = slug.trim().slice(0, POST_SLUG_MAX)
-    if (!finalSlug || !isUrlSafeSlug(finalSlug)) {
-      finalSlug = generateSlug(title.trim()).slice(0, POST_SLUG_MAX)
-    }
-
-    const price = Number(priceXec)
-    const safePrice = Number.isFinite(price) ? price : 100
-    const bodyTrimmed = body.trim()
-    const targetId = forceId ?? autosaveIdRef.current
-    // New drafts: autosave keeps published false until explicit publish. Edits: preserve checkbox.
-    const publishedForPayload = nextPublished ? true : isEditMode ? published : false
-    const payload = {
-      author_id: userId,
-      title: title.trim(),
-      slug: finalSlug,
-      teaser: extractTeaserFromBody(bodyTrimmed),
-      body: bodyTrimmed,
-      reading_time_minutes: calculateReadingTimeMinutes(bodyTrimmed),
-      price_xec: safePrice,
-      published: publishedForPayload,
-    }
-
-    if (nextPublished) {
-      if (targetId) {
-        const { data: existing } = await supabase
-          .from('posts')
-          .select('published_at')
-          .eq('id', targetId)
-          .maybeSingle()
-        if (!existing?.published_at) {
-          payload.published_at = new Date().toISOString()
-        }
-      } else {
-        payload.published_at = new Date().toISOString()
+  // Every post write goes through the savePost server action, which authorizes
+  // via the wallet session and stamps author_id server-side. Returns a result
+  // object ({ ok, id, needsPayment, unauthorized, error }); never throws for
+  // auth/permission. On unauthorized we bounce to /login.
+  const persistDraft = useCallback(
+    async ({ forceId = null, nextPublished = false } = {}) => {
+      const targetId = forceId ?? autosaveIdRef.current
+      const result = await savePost({
+        forceId: targetId,
+        nextPublished,
+        isEditMode,
+        published,
+        title,
+        slug,
+        body,
+        priceXec,
+      })
+      if (result?.unauthorized) {
+        router.replace('/login')
+        return result
       }
-    }
-
-    if (targetId) {
-      const { data: updatedRow, error: upsertError } = await supabase
-        .from('posts')
-        .upsert({ ...payload, id: targetId })
-        .select('id')
-        .single()
-      if (upsertError) throw upsertError
-      if (updatedRow?.id) autosaveIdRef.current = updatedRow.id
-      return { id: updatedRow?.id ?? targetId, finalSlug }
-    }
-
-    const { data: insertedRow, error: insertError } = await supabase
-      .from('posts')
-      .insert(payload)
-      .select('id')
-      .single()
-    if (insertError) throw insertError
-    if (insertedRow?.id) autosaveIdRef.current = insertedRow.id
-    return { id: insertedRow?.id ?? null, finalSlug }
-  }, [body, getCurrentUserId, isEditMode, priceXec, published, slug, title])
+      if (result?.ok && result.id) {
+        autosaveIdRef.current = result.id
+      }
+      return result
+    },
+    [body, isEditMode, priceXec, published, router, slug, title],
+  )
 
   const handlePublishPaymentConfirmed = useCallback(async () => {
     setPublishPaid(true)
     setShowPublishPaywall(false)
     setSubmitting(true)
     try {
-      const { id: publishedId } = await persistDraft({
+      const result = await persistDraft({
         forceId: autosaveIdRef.current,
         nextPublished: true,
       })
-      if (publishedId) {
-        await warmOgImageForPost(publishedId)
+      if (!result?.ok) {
+        setSubmitError(result?.error || 'Could not publish post.')
+        return
+      }
+      if (result.id) {
+        await warmOgImageForPost(result.id)
       }
       router.push('/dashboard')
       router.refresh()
@@ -216,14 +156,14 @@ export default function NewPostForm({ existingPost = null }) {
 
     autosaveTimerRef.current = setTimeout(async () => {
       setAutosaveStatus('Saving...')
-      try {
-        await persistDraft({ nextPublished: false })
+      const result = await persistDraft({ nextPublished: false })
+      if (result?.ok) {
         const ts = new Date().toLocaleTimeString([], {
           hour: '2-digit',
           minute: '2-digit',
         })
         setAutosaveStatus(`Draft saved ${ts}`)
-      } catch {
+      } else if (!result?.unauthorized) {
         setAutosaveStatus('Save failed')
       }
     }, 3000)
@@ -245,22 +185,6 @@ export default function NewPostForm({ existingPost = null }) {
     }
 
     try {
-      try {
-        await getCurrentUserId()
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : 'No authenticated user'
-        setSubmitError(msg)
-        if (msg === 'No authenticated user') {
-          router.replace('/login')
-        }
-        return
-      }
-
-      if (!userIdRef.current) {
-        router.replace('/login')
-        return
-      }
-
       const price = Number(priceXec)
       if (Number.isNaN(price) || price < 100) {
         setSubmitError('Minimum price is 100 XEC')
@@ -290,29 +214,28 @@ export default function NewPostForm({ existingPost = null }) {
       }
       setSlug(finalSlug)
 
+      // Draft (or unpublish): published box unchecked.
       if (!published) {
-        try {
-          await persistDraft({
-            forceId: autosaveIdRef.current,
-            nextPublished: false,
-          })
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : 'Could not save post.'
-          setSubmitError(msg)
+        const result = await persistDraft({
+          forceId: autosaveIdRef.current,
+          nextPublished: false,
+        })
+        if (result?.unauthorized) return
+        if (!result?.ok) {
+          setSubmitError(result?.error || 'Could not save post.')
           return
         }
-
         router.push('/dashboard')
         router.refresh()
         return
       }
 
+      // Publishing: make sure a draft row exists first.
       if (!autosaveIdRef.current) {
-        try {
-          await persistDraft({ nextPublished: false })
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : 'Could not save post.'
-          setSubmitError(msg)
+        const draftRes = await persistDraft({ nextPublished: false })
+        if (draftRes?.unauthorized) return
+        if (!draftRes?.ok) {
+          setSubmitError(draftRes?.error || 'Could not save post.')
           return
         }
       }
@@ -323,38 +246,24 @@ export default function NewPostForm({ existingPost = null }) {
         return
       }
 
-      const { data: paidRow, error: paidError } = await supabase
-        .from('posts')
-        .select('publish_paid')
-        .eq('id', draftId)
-        .maybeSingle()
-
-      if (paidError) {
-        setSubmitError(paidError.message)
-        return
-      }
-
-      const okToPublish = paidRow?.publish_paid === true || publishPaid
-
-      if (!okToPublish) {
+      // Attempt to go live — savePost enforces the publish-payment gate.
+      const pubResult = await persistDraft({
+        forceId: draftId,
+        nextPublished: true,
+      })
+      if (pubResult?.unauthorized) return
+      if (pubResult?.needsPayment) {
         setPublishPaywallPostId(draftId)
         setPublishPaymentWaiting(false)
         setShowPublishPaywall(true)
         return
       }
-
-      try {
-        const { id: publishedId } = await persistDraft({
-          forceId: autosaveIdRef.current,
-          nextPublished: true,
-        })
-        if (publishedId) {
-          await warmOgImageForPost(publishedId)
-        }
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Could not save post.'
-        setSubmitError(msg)
+      if (!pubResult?.ok) {
+        setSubmitError(pubResult?.error || 'Could not save post.')
         return
+      }
+      if (pubResult.id) {
+        await warmOgImageForPost(pubResult.id)
       }
 
       router.push('/dashboard')
