@@ -7,14 +7,19 @@ import CopyableAddress from '@/components/CopyableAddress'
 
 /**
  * @param {{
- *   author: { id: string, username: string, xec_address?: string | null, bio?: string | null }
+ *   author: { id: string, username: string, xec_address?: string | null, bio?: string | null } | null
  *   initialPosts: unknown[]
  *   totalUnlocks: number
  *   totalEarnings: number
  *   postsErrorMessage: string | null
  *   displayName?: string        // live byline: "@handle" or a raw address. Falls back to @username.
  *   isAddressIdentity?: boolean  // true when displayName is a raw address (style + de-dupe address line)
+ *   holderAddress?: string | null  // on-chain holder — shown when there's no author record
+ *   cardImageUrl?: string | null   // handle NFT card — shown on handle-only profiles
  * }} props
+ *
+ * `author` is null for a handle held by someone with no articles / no account:
+ * a handle-only profile that shows just the handle, its card, and holder address.
  */
 export default function AuthorProfilePageClient({
   author,
@@ -24,6 +29,8 @@ export default function AuthorProfilePageClient({
   postsErrorMessage,
   displayName,
   isAddressIdentity = false,
+  holderAddress = null,
+  cardImageUrl = null,
 }) {
   const [readerWalletAddress, setReaderWalletAddress] = useState('')
   const [isFollowing, setIsFollowing] = useState(false)
@@ -86,7 +93,7 @@ export default function AuthorProfilePageClient({
   }
 
   const bioText =
-    author.bio != null && String(author.bio).trim() !== ''
+    author?.bio != null && String(author.bio).trim() !== ''
       ? String(author.bio).trim()
       : ''
 
@@ -95,7 +102,9 @@ export default function AuthorProfilePageClient({
   const headingText =
     displayName != null && String(displayName).trim() !== ''
       ? String(displayName)
-      : `@${author.username}`
+      : author?.username
+        ? `@${author.username}`
+        : ''
 
   return (
     <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
@@ -106,7 +115,7 @@ export default function AuthorProfilePageClient({
       <main className="mx-auto max-w-5xl px-4 pt-4 pb-6 sm:px-6 sm:pt-6 sm:pb-6">
         <header className="border-b border-zinc-200 pb-4 dark:border-zinc-800">
           <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Author
+            {author ? 'Author' : 'Handle'}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2 sm:gap-3">
             <h1
@@ -147,38 +156,59 @@ export default function AuthorProfilePageClient({
               </button>
             ) : null}
           </div>
-          {author.xec_address && !isAddressIdentity ? (
+          {author?.xec_address && !isAddressIdentity ? (
             <CopyableAddress address={author.xec_address} />
+          ) : !author && holderAddress ? (
+            <CopyableAddress address={holderAddress} />
           ) : null}
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              {followerCount} {followerCount === 1 ? 'follower' : 'followers'}
-            </p>
-          </div>
-          <div className="mt-4 flex gap-6 text-sm text-zinc-600 dark:text-zinc-400">
-            <span>
-              🔓{' '}
-              <strong className="text-zinc-900 dark:text-zinc-50">
-                {Number(totalUnlocks).toLocaleString('en-US')}
-              </strong>{' '}
-              unlocks
-            </span>
-            <span>
-              💰{' '}
-              <strong className="text-zinc-900 dark:text-zinc-50">
-                {Math.round(Number(totalEarnings) / 100).toLocaleString('en-US')}
-              </strong>{' '}
-              XEC earned
-            </span>
-          </div>
+          {author ? (
+            <>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  {followerCount} {followerCount === 1 ? 'follower' : 'followers'}
+                </p>
+              </div>
+              <div className="mt-4 flex gap-6 text-sm text-zinc-600 dark:text-zinc-400">
+                <span>
+                  🔓{' '}
+                  <strong className="text-zinc-900 dark:text-zinc-50">
+                    {Number(totalUnlocks).toLocaleString('en-US')}
+                  </strong>{' '}
+                  unlocks
+                </span>
+                <span>
+                  💰{' '}
+                  <strong className="text-zinc-900 dark:text-zinc-50">
+                    {Math.round(Number(totalEarnings) / 100).toLocaleString('en-US')}
+                  </strong>{' '}
+                  XEC earned
+                </span>
+              </div>
+            </>
+          ) : null}
           {bioText ? (
             <p className="mt-6 max-w-2xl whitespace-pre-wrap text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
               {bioText}
             </p>
           ) : null}
+          {!author && cardImageUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={cardImageUrl}
+              alt={`${headingText} handle card`}
+              className="mt-6 w-full max-w-xs rounded-xl border border-zinc-200 dark:border-zinc-800"
+            />
+          ) : null}
+          {!author ? (
+            <p className="mt-6 max-w-2xl text-base leading-relaxed text-zinc-500 dark:text-zinc-400">
+              This handle hasn’t published any articles or posts yet.
+            </p>
+          ) : null}
         </header>
 
-        <AuthorProfilePosts initialPosts={initialPosts} postsErrorMessage={postsErrorMessage} />
+        {author ? (
+          <AuthorProfilePosts initialPosts={initialPosts} postsErrorMessage={postsErrorMessage} />
+        ) : null}
       </main>
     </div>
   )

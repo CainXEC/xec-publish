@@ -30,9 +30,11 @@ export default async function ProfilePage({ params }) {
     notFound()
   }
 
-  const { error, posts, totalUnlocks, totalEarnings } = await hydrateAuthorProfile(
-    resolved.author,
-  )
+  // A minted handle can be held by someone with no articles — or no account at
+  // all. It still resolves; we just have no posts to hydrate in that case.
+  const { error, posts, totalUnlocks, totalEarnings } = resolved.author
+    ? await hydrateAuthorProfile(resolved.author)
+    : { error: null, posts: [], totalUnlocks: 0, totalEarnings: 0 }
 
   // Byline = the account's LIVE identity: "@handle" if held, else the raw address.
   const isAddressIdentity = !resolved.identity.startsWith('@')
@@ -42,6 +44,8 @@ export default async function ProfilePage({ params }) {
       author={resolved.author}
       displayName={resolved.identity}
       isAddressIdentity={isAddressIdentity}
+      holderAddress={resolved.holderAddress}
+      cardImageUrl={resolved.cardImageUrl}
       initialPosts={posts}
       totalUnlocks={totalUnlocks}
       totalEarnings={totalEarnings}
