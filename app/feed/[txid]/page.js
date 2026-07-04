@@ -12,12 +12,12 @@ export default async function FeedThreadPage({ params }) {
     notFound()
   }
 
-  const thread = await getFeedThread(txid)
+  const acct = await getAuthedAccount()
+
+  const thread = await getFeedThread(txid, { viewerAddress: acct?.address })
   if (!thread) {
     notFound()
   }
-
-  const acct = await getAuthedAccount()
 
   return (
     <FeedThreadClient

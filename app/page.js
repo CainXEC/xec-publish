@@ -9,15 +9,15 @@ export default async function HomePage() {
   let hasNextPage = false
   let loadError = null
 
+  const acct = await getAuthedAccount()
+
   try {
-    const result = await getFeedPage({ page: 1 })
+    const result = await getFeedPage({ page: 1, viewerAddress: acct?.address })
     posts = result.posts
     hasNextPage = result.hasNextPage
   } catch (err) {
     loadError = err?.message || 'Failed to load feed'
   }
-
-  const acct = await getAuthedAccount()
 
   return (
     <FeedClient

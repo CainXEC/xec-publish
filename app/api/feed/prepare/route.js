@@ -9,6 +9,7 @@ import { contentHashHex, encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedPr
 
 function normalizeAction(action) {
   if (action === 2 || action === 'reply') return FEED_ACTION.REPLY
+  if (action === 3 || action === 'quote') return FEED_ACTION.QUOTE
   if (action === 1 || action === 'post' || action == null) return FEED_ACTION.POST
   return null
 }
@@ -48,18 +49,22 @@ export async function POST(request) {
   const { chars, costXec } = priced
   const contentHash = contentHashHex(body.content)
 
-  let parentTxid = null
+  // Reply commits to (and pays) its immediate parent; quote commits to the
+  // quoted post but is your own content, so it's priced/paid like a post
+  // (100% platform). `targetTxid` is the referenced post for both.
+  let targetTxid = null
+  let quotedTxid = null
   let payoutAddress = null
   if (action === FEED_ACTION.REPLY) {
-    parentTxid = typeof body?.parentTxid === 'string' ? body.parentTxid.trim().toLowerCase() : ''
-    if (!/^[0-9a-f]{64}$/.test(parentTxid)) {
+    targetTxid = typeof body?.parentTxid === 'string' ? body.parentTxid.trim().toLowerCase() : ''
+    if (!/^[0-9a-f]{64}$/.test(targetTxid)) {
       return NextResponse.json({ error: 'Invalid parent post' }, { status: 400 })
     }
     const supabase = createServerSupabase()
     const { data: parent, error } = await supabase
       .from('feed_posts')
       .select('payout_address')
-      .eq('txid', parentTxid)
+      .eq('txid', targetTxid)
       .maybeSingle()
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
@@ -68,19 +73,37 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Parent post not found' }, { status: 404 })
     }
     payoutAddress = parent.payout_address
+  } else if (action === FEED_ACTION.QUOTE) {
+    targetTxid = typeof body?.quotedTxid === 'string' ? body.quotedTxid.trim().toLowerCase() : ''
+    if (!/^[0-9a-f]{64}$/.test(targetTxid)) {
+      return NextResponse.json({ error: 'Invalid quoted post' }, { status: 400 })
+    }
+    const supabase = createServerSupabase()
+    const { data: quoted, error } = await supabase
+      .from('feed_posts')
+      .select('txid, deleted_at')
+      .eq('txid', targetTxid)
+      .maybeSingle()
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    if (!quoted || quoted.deleted_at) {
+      return NextResponse.json({ error: 'Quoted post not found' }, { status: 404 })
+    }
+    quotedTxid = targetTxid
   }
 
   let opReturnRaw
   try {
-    opReturnRaw = encodeFeedOpReturnRaw({ action, parentTxid, contentHash })
+    opReturnRaw = encodeFeedOpReturnRaw({ action, targetTxid, contentHash })
   } catch (e) {
     return NextResponse.json({ error: e?.message || 'Failed to build commitment' }, { status: 500 })
   }
 
+  // Post and quote are your own content → 100% platform fee. Reply splits 94/6
+  // to the parent's author.
   let bip21Url
-  if (action === FEED_ACTION.POST) {
-    bip21Url = buildPublishFeeBip21(platformAddress, costXec, opReturnRaw)
-  } else {
+  if (action === FEED_ACTION.REPLY) {
     const split = computePaymentSplit(costXec)
     if (!split) {
       return NextResponse.json({ error: 'Invalid price' }, { status: 500 })
@@ -92,12 +115,15 @@ export async function POST(request) {
       split.platformAmount,
       opReturnRaw,
     )
+  } else {
+    bip21Url = buildPublishFeeBip21(platformAddress, costXec, opReturnRaw)
   }
 
   return NextResponse.json({
     ok: true,
     action,
-    parentTxid,
+    parentTxid: action === FEED_ACTION.REPLY ? targetTxid : null,
+    quotedTxid,
     chars,
     costXec,
     amountXec: costXec,

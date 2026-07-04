@@ -11,8 +11,8 @@ export async function GET(request) {
   const page = Number(searchParams.get('page')) || 1
   const scope = searchParams.get('scope') === 'following' ? 'following' : 'foryou'
   try {
+    const acct = await getAuthedAccount()
     if (scope === 'following') {
-      const acct = await getAuthedAccount()
       if (!acct) {
         return NextResponse.json({ error: 'Sign in to see who you follow' }, { status: 401 })
       }
@@ -22,7 +22,7 @@ export async function GET(request) {
       })
       return NextResponse.json({ posts, hasNextPage })
     }
-    const { posts, hasNextPage } = await getFeedPage({ page })
+    const { posts, hasNextPage } = await getFeedPage({ page, viewerAddress: acct?.address })
     return NextResponse.json({ posts, hasNextPage })
   } catch (e) {
     return NextResponse.json({ error: e?.message || 'Failed to load feed' }, { status: 500 })

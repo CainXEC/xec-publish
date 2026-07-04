@@ -4,6 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ComposeBox from '@/components/feed/ComposeBox'
+import EngagementBar from '@/components/feed/EngagementBar'
+import QuotedEmbed from '@/components/feed/QuotedEmbed'
 
 function timeAgo(iso) {
   if (!iso) return ''
@@ -53,9 +55,10 @@ function Byline({ identity }) {
   )
 }
 
-export default function FeedPost({ post, onReplied, viewerAccountId = null, onDeleted }) {
+export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = null, onDeleted }) {
   const router = useRouter()
   const [showReply, setShowReply] = useState(false)
+  const [showQuote, setShowQuote] = useState(false)
   const [replyCount, setReplyCount] = useState(post.replyCount ?? 0)
   const [deleting, setDeleting] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -73,6 +76,11 @@ export default function FeedPost({ post, onReplied, viewerAccountId = null, onDe
     setShowReply(false)
     setReplyCount((c) => c + 1)
     onReplied?.(reply)
+  }
+
+  const handleQuoted = (quote) => {
+    setShowQuote(false)
+    onQuoted?.(quote)
   }
 
   const handleDelete = async () => {
@@ -96,7 +104,9 @@ export default function FeedPost({ post, onReplied, viewerAccountId = null, onDe
   // interactive elements (the byline/timestamp links, the reply button, or the
   // inline reply composer).
   const openThread = (e) => {
-    if (e.target.closest('a, button, input, textarea, .inlinereply')) return
+    if (e.target.closest('a, button, input, textarea, .inlinereply, .inlinequote, .quoted, .engage')) {
+      return
+    }
     router.push(`/feed/${post.txid}`)
   }
 
@@ -125,10 +135,22 @@ export default function FeedPost({ post, onReplied, viewerAccountId = null, onDe
         ) : null}
       </p>
 
+      {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
+
       <div className="actions">
         <button type="button" onClick={() => setShowReply((s) => !s)} className="replybtn">
           💬 {replyCount > 0 ? replyCount : ''} Reply
         </button>
+        {!post.deleted ? (
+          <EngagementBar
+            targetTxid={post.txid}
+            likeCount={post.likeCount ?? 0}
+            repostCount={post.repostCount ?? 0}
+            likedByViewer={Boolean(post.likedByViewer)}
+            repostedByViewer={Boolean(post.repostedByViewer)}
+            onQuote={() => setShowQuote((s) => !s)}
+          />
+        ) : null}
         {isOwn ? (
           <button type="button" onClick={handleDelete} disabled={deleting} className="delbtn">
             {deleting ? 'Deleting…' : 'Delete'}
@@ -145,6 +167,20 @@ export default function FeedPost({ post, onReplied, viewerAccountId = null, onDe
             compact
             onPosted={handleReplied}
             onCancel={() => setShowReply(false)}
+          />
+        </div>
+      ) : null}
+
+      {showQuote ? (
+        <div className="inlinequote">
+          <ComposeBox
+            action="quote"
+            quotedTxid={post.txid}
+            quotedPost={post}
+            autoFocus
+            compact
+            onPosted={handleQuoted}
+            onCancel={() => setShowQuote(false)}
           />
         </div>
       ) : null}
