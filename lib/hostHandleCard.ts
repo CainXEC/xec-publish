@@ -17,20 +17,29 @@
 //    SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY   (required)
 //    HANDLE_CARD_BUCKET    default "nft"        (must be a PUBLIC bucket)
 //    HANDLE_CARD_PREFIX    default "handle-cards"
-//    HANDLE_CARD_FONT_PATH default "assets/fonts/CourierPrime-Bold.ttf" (repo-relative)
+//    HANDLE_CARD_FONT_PATH optional ABSOLUTE path override (default: bundled font)
 //    HANDLE_CARD_SIZE      default 1024
+//
+//  The default font is referenced via `new URL(..., import.meta.url)` so the
+//  bundler traces exactly this one asset into the function (and ships it to
+//  Vercel) instead of conservatively tracing the whole project.
 // =============================================================================
 
 import { renderHandleCard } from "./renderHandleCard";
 import { createClient } from "@supabase/supabase-js";
 import { Resvg } from "@resvg/resvg-js";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const SIZE = Number(process.env.HANDLE_CARD_SIZE ?? 1024);
 const BUCKET = process.env.HANDLE_CARD_BUCKET ?? "nft";
 const PREFIX = process.env.HANDLE_CARD_PREFIX ?? "handle-cards";
-const FONT_PATH = process.env.HANDLE_CARD_FONT_PATH ?? "assets/fonts/CourierPrime-Bold.ttf";
+
+// Static asset reference: the bundler resolves and traces exactly this file.
+const DEFAULT_FONT_URL = new URL(
+  "../assets/fonts/CourierPrime-Bold.ttf",
+  import.meta.url,
+);
 
 const supabase = createClient(
   (process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!,
@@ -39,13 +48,16 @@ const supabase = createClient(
 );
 
 // Resolve the font file path once. resvg loads it explicitly, so the card renders
-// the same on any machine regardless of installed system fonts.
+// the same on any machine regardless of installed system fonts. An optional
+// HANDLE_CARD_FONT_PATH env var (absolute path) overrides the bundled default.
 let _fontPath: string | null | undefined;
 function fontPath(): string | null {
   if (_fontPath !== undefined) return _fontPath;
-  const p = join(process.cwd(), FONT_PATH);
+  const p = process.env.HANDLE_CARD_FONT_PATH?.trim()
+    ? process.env.HANDLE_CARD_FONT_PATH.trim()
+    : fileURLToPath(DEFAULT_FONT_URL);
   _fontPath = existsSync(p) ? p : null;
-  if (!_fontPath) console.warn(`[hostHandleCard] font not found at ${FONT_PATH} — falling back to system monospace`);
+  if (!_fontPath) console.warn(`[hostHandleCard] font not found at ${p} — falling back to system monospace`);
   return _fontPath;
 }
 
