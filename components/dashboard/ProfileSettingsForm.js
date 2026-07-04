@@ -4,8 +4,9 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { saveProfile } from '@/app/dashboard/saveProfile'
+import DisplayHandlePicker from '@/components/dashboard/DisplayHandlePicker'
 
-export default function ProfileSettingsForm({ initialUsername, initialBio }) {
+export default function ProfileSettingsForm({ initialUsername, initialBio, hasAuthor = true }) {
   const router = useRouter()
   const [username, setUsername] = useState(initialUsername ?? '')
   const [bio, setBio] = useState(initialBio ?? '')
@@ -89,13 +90,19 @@ export default function ProfileSettingsForm({ initialUsername, initialBio }) {
         <div className="mt-6 mb-6">
           <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Profile settings</h1>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            Update how readers see you on your public author page.
+            {hasAuthor
+              ? 'Update how readers see you on your public author page.'
+              : 'Choose which of your handles is shown as your identity.'}
           </p>
         </div>
 
+        <DisplayHandlePicker />
+
+        {hasAuthor ? (
+        <>
         <form
           onSubmit={handleSubmit}
-          className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+          className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
         >
           <div className="flex flex-col gap-5">
             <div>
@@ -179,6 +186,8 @@ export default function ProfileSettingsForm({ initialUsername, initialBio }) {
             {deleting ? 'Deleting…' : 'Delete account'}
           </button>
         </section>
+        </>
+        ) : null}
       </main>
     </div>
   )
