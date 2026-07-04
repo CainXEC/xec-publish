@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ComposeBox from '@/components/feed/ComposeBox'
 import FeedPost from '@/components/feed/FeedPost'
+import EngagementBar from '@/components/feed/EngagementBar'
+import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 
 function truncateAddress(addr) {
@@ -77,6 +79,7 @@ function AncestorNode({ post, top = false }) {
         <p className="ttext">
           {post.deleted ? <span className="tombstone">This post was deleted.</span> : post.content}
         </p>
+        {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
       </div>
     </div>
   )
@@ -88,11 +91,13 @@ export default function FeedThreadClient({
   initialReplies = [],
   viewerAccountId: initialViewerAccountId = null,
 }) {
+  const router = useRouter()
   const [replies, setReplies] = useState(initialReplies)
   const [viewerAccountId, setViewerAccountId] = useState(initialViewerAccountId)
   const [rootDeleted, setRootDeleted] = useState(Boolean(initialPost?.deleted))
   const [deletingRoot, setDeletingRoot] = useState(false)
   const [showReply, setShowReply] = useState(false)
+  const [showQuote, setShowQuote] = useState(false)
 
   const addReply = useCallback((reply) => {
     if (!reply?.txid) return
@@ -109,6 +114,15 @@ export default function FeedThreadClient({
   const removeReply = useCallback((txid) => {
     setReplies((prev) => prev.filter((r) => r.txid !== txid))
   }, [])
+
+  // A quote is a new top-level post; jump to its thread once it's recorded.
+  const handleQuoted = useCallback(
+    (quote) => {
+      setShowQuote(false)
+      if (quote?.txid) router.push(`/feed/${quote.txid}`)
+    },
+    [router],
+  )
 
   const post = initialPost
   const ancestors = initialAncestors
@@ -186,6 +200,7 @@ export default function FeedThreadClient({
               ) : (
                 <p className="focusbody">{post.content}</p>
               )}
+              {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
               <p className="focusmeta">
                 {createdAt}
                 {' · '}
@@ -202,6 +217,16 @@ export default function FeedThreadClient({
                 <button type="button" onClick={() => setShowReply((s) => !s)} className="replybtn">
                   💬 {replies.length > 0 ? replies.length : ''} Reply
                 </button>
+                {!rootDeleted ? (
+                  <EngagementBar
+                    targetTxid={post.txid}
+                    likeCount={post.likeCount ?? 0}
+                    repostCount={post.repostCount ?? 0}
+                    likedByViewer={Boolean(post.likedByViewer)}
+                    repostedByViewer={Boolean(post.repostedByViewer)}
+                    onQuote={() => setShowQuote((s) => !s)}
+                  />
+                ) : null}
                 {isOwnRoot ? (
                   <button
                     type="button"
@@ -226,6 +251,19 @@ export default function FeedThreadClient({
                   />
                 </div>
               ) : null}
+              {showQuote ? (
+                <div className="inlinequote">
+                  <ComposeBox
+                    action="quote"
+                    quotedTxid={post.txid}
+                    quotedPost={post}
+                    autoFocus
+                    compact
+                    onPosted={handleQuoted}
+                    onCancel={() => setShowQuote(false)}
+                  />
+                </div>
+              ) : null}
             </div>
           </article>
         </div>
@@ -244,6 +282,7 @@ export default function FeedThreadClient({
                 post={reply}
                 viewerAccountId={viewerAccountId}
                 onDeleted={removeReply}
+                onQuoted={handleQuoted}
               />
             ))}
           </ul>

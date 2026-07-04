@@ -15,10 +15,11 @@ import {
 } from '@/lib/session'
 
 const FEED_POST_COLUMNS =
-  'id, txid, action, parent_txid, content, content_hash, author_account_id, author_identity, payer_address, payout_address, amount_sats, created_at'
+  'id, txid, action, parent_txid, quoted_txid, content, content_hash, author_account_id, author_identity, payer_address, payout_address, amount_sats, created_at'
 
 function normalizeAction(action) {
   if (action === 2 || action === 'reply') return FEED_ACTION.REPLY
+  if (action === 3 || action === 'quote') return FEED_ACTION.QUOTE
   if (action === 1 || action === 'post' || action == null) return FEED_ACTION.POST
   return null
 }
@@ -67,26 +68,35 @@ export async function POST(request) {
 
   const supabase = createServerSupabase()
 
-  let parentTxid = null
+  // `targetTxid` is the referenced post (reply→parent, quote→quoted). It rides
+  // in the OP_RETURN and, for a reply, determines who gets paid.
+  let targetTxid = null
+  let quotedTxid = null
   let payoutAddress = null
   if (action === FEED_ACTION.REPLY) {
-    parentTxid = typeof body?.parentTxid === 'string' ? body.parentTxid.trim().toLowerCase() : ''
-    if (!/^[0-9a-f]{64}$/.test(parentTxid)) {
+    targetTxid = typeof body?.parentTxid === 'string' ? body.parentTxid.trim().toLowerCase() : ''
+    if (!/^[0-9a-f]{64}$/.test(targetTxid)) {
       return NextResponse.json({ error: 'Invalid parent post' }, { status: 400 })
     }
     const { data: parent, error } = await supabase
       .from('feed_posts')
       .select('payout_address')
-      .eq('txid', parentTxid)
+      .eq('txid', targetTxid)
       .maybeSingle()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     if (!parent?.payout_address) {
       return NextResponse.json({ error: 'Parent post not found' }, { status: 404 })
     }
     payoutAddress = parent.payout_address
+  } else if (action === FEED_ACTION.QUOTE) {
+    targetTxid = typeof body?.quotedTxid === 'string' ? body.quotedTxid.trim().toLowerCase() : ''
+    if (!/^[0-9a-f]{64}$/.test(targetTxid)) {
+      return NextResponse.json({ error: 'Invalid quoted post' }, { status: 400 })
+    }
+    quotedTxid = targetTxid
   }
 
-  const expected = { action, parentTxid, contentHash, platformAddress, payoutAddress, costXec }
+  const expected = { action, parentTxid: targetTxid, contentHash, platformAddress, payoutAddress, costXec }
 
   // Skip txs already recorded for this exact content (avoids re-attributing an
   // identical post from another wallet).
@@ -126,7 +136,8 @@ export async function POST(request) {
   const row = {
     txid: match.txid,
     action,
-    parent_txid: parentTxid,
+    parent_txid: action === FEED_ACTION.REPLY ? targetTxid : null,
+    quoted_txid: quotedTxid,
     content,
     content_hash: contentHash,
     author_account_id: resolved.accountId,

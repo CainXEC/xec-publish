@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
+import QuotedEmbed from '@/components/feed/QuotedEmbed'
 
 /**
- * Compose + pay flow for a feed post or reply. Shared by the top-of-feed
- * composer (action="post") and inline reply composers (action="reply").
+ * Compose + pay flow for a feed post, reply, or quote. Shared by the top-of-feed
+ * composer (action="post"), inline reply composers (action="reply"), and the
+ * quote composer (action="quote", with quotedTxid + quotedPost for the preview).
  *
  * Flow: type → POST /api/feed/prepare (returns BIP21 + Cashtab link) → user pays
  * in Cashtab → we poll POST /api/feed/confirm until the on-chain payment is
@@ -14,6 +16,8 @@ import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
 export default function ComposeBox({
   action = 'post',
   parentTxid = null,
+  quotedTxid = null,
+  quotedPost = null,
   onPosted,
   onCancel,
   compact = false,
@@ -62,7 +66,7 @@ export default function ComposeBox({
       const res = await fetch('/api/feed/prepare', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ content, action, parentTxid }),
+        body: JSON.stringify({ content, action, parentTxid, quotedTxid }),
       })
       const data = await res.json()
       if (!res.ok || !data.ok) {
@@ -81,7 +85,7 @@ export default function ComposeBox({
     } finally {
       setSubmitting(false)
     }
-  }, [content, action, parentTxid, priced.ok])
+  }, [content, action, parentTxid, quotedTxid, priced.ok])
 
   // Poll for the on-chain payment while paying.
   useEffect(() => {
@@ -96,6 +100,7 @@ export default function ComposeBox({
             content,
             action,
             parentTxid,
+            quotedTxid,
             since: intent.preparedAt,
             ...(manualTxid ? { txid: manualTxid } : {}),
           }),
@@ -123,7 +128,7 @@ export default function ComposeBox({
       stopped = true
       clearInterval(id)
     }
-  }, [phase, intent, content, action, parentTxid, onPosted, resetToCompose])
+  }, [phase, intent, content, action, parentTxid, quotedTxid, onPosted, resetToCompose])
 
   const verifyManual = useCallback(async () => {
     const t = txidInput.trim()
@@ -136,7 +141,7 @@ export default function ComposeBox({
       const res = await fetch('/api/feed/confirm', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ content, action, parentTxid, txid: t }),
+        body: JSON.stringify({ content, action, parentTxid, quotedTxid, txid: t }),
       })
       const data = await res.json()
       if (data.status === 'posted' && data.post) {
@@ -151,16 +156,18 @@ export default function ComposeBox({
     } catch {
       setNotice('Network hiccup — try again.')
     }
-  }, [txidInput, content, action, parentTxid, onPosted, resetToCompose])
+  }, [txidInput, content, action, parentTxid, quotedTxid, onPosted, resetToCompose])
 
   const isReply = action === 'reply'
+  const isQuote = action === 'quote'
+  const noun = isReply ? 'reply' : isQuote ? 'quote' : 'post'
+  const verb = isReply ? 'Reply' : isQuote ? 'Quote' : 'Post'
 
   if (phase === 'paying' && intent) {
     return (
       <div className="panel pay">
         <p className="payhead">
-          Cashtab opened for <strong>{intent.amountXec} XEC</strong>. Confirm the{' '}
-          {isReply ? 'reply' : 'post'} there.
+          Cashtab opened for <strong>{intent.amountXec} XEC</strong>. Confirm the {noun} there.
         </p>
         <p className="poll">{statusMsg}</p>
 
@@ -202,21 +209,25 @@ export default function ComposeBox({
         value={content}
         onChange={(e) => setContent(e.target.value)}
         rows={isReply ? 2 : 3}
-        placeholder={placeholder || (isReply ? 'Post your reply…' : "What's happening?")}
+        placeholder={
+          placeholder ||
+          (isReply ? 'Post your reply…' : isQuote ? 'Add a comment…' : "What's happening?")
+        }
       />
+      {isQuote ? <QuotedEmbed post={quotedPost} interactive={false} /> : null}
       <div className="composebar">
         <span className={`count${overCap ? ' over' : ''}`}>
           {chars}/{FEED_MAX_CHARS}
           {priced.ok ? <span className="cost">{priced.costXec} XEC</span> : null}
         </span>
         <div className="barbtns">
-          {isReply && onCancel ? (
+          {(isReply || isQuote) && onCancel ? (
             <button type="button" onClick={onCancel} className="ghost">
               Cancel
             </button>
           ) : null}
           <button type="button" disabled={!canSubmit} onClick={() => void startPayment()} className="btn">
-            {isReply ? 'Reply' : 'Post'}
+            {verb}
             {priced.ok ? ` · ${priced.costXec} XEC` : ''}
           </button>
         </div>

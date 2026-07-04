@@ -9,9 +9,10 @@
 
 CREATE TABLE IF NOT EXISTS public.feed_posts (
   id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  txid              text NOT NULL UNIQUE,           -- the on-chain post/reply tx
-  action            smallint NOT NULL,              -- 1 = post, 2 = reply
+  txid              text NOT NULL UNIQUE,           -- the on-chain post/reply/quote tx
+  action            smallint NOT NULL,              -- 1 = post, 2 = reply, 3 = quote
   parent_txid       text,                           -- reply → immediate parent's txid
+  quoted_txid       text,                           -- quote → the post being quoted
   content           text NOT NULL,
   content_hash      text NOT NULL,                  -- sha256(content) hex; == on-chain OP_RETURN
   author_account_id uuid REFERENCES public.accounts(id),
@@ -26,6 +27,9 @@ CREATE TABLE IF NOT EXISTS public.feed_posts (
 -- Soft-delete column (safe to re-run on an existing table).
 ALTER TABLE public.feed_posts ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
 
+-- Quote target (safe to re-run on an existing table).
+ALTER TABLE public.feed_posts ADD COLUMN IF NOT EXISTS quoted_txid text;
+
 -- Deny-by-default for anon/authenticated keys. The app only ever touches this
 -- table via the service-role key (createServerSupabase), which bypasses RLS, so
 -- enabling RLS with NO policies locks out direct client access — nobody can
@@ -33,10 +37,13 @@ ALTER TABLE public.feed_posts ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
 -- reads or writes. Safe to re-run.
 ALTER TABLE public.feed_posts ENABLE ROW LEVEL SECURITY;
 
--- Newest-first feed of top-level posts.
+-- Newest-first feed of top-level entries: original posts (1) and quotes (3),
+-- both of which surface in the main timeline. Replies (2) are excluded.
+-- Recreated to widen the predicate from `action = 1`; safe to re-run.
+DROP INDEX IF EXISTS public.feed_posts_toplevel_created_idx;
 CREATE INDEX IF NOT EXISTS feed_posts_toplevel_created_idx
   ON public.feed_posts (created_at DESC)
-  WHERE action = 1;
+  WHERE action IN (1, 3);
 
 -- Thread lookups: all replies to a given parent.
 CREATE INDEX IF NOT EXISTS feed_posts_parent_idx

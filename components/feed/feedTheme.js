@@ -120,7 +120,7 @@ export const FEED_CSS = `
 .pow-feed .showmore{display:inline;background:none;border:none;color:var(--cyan);font:inherit;font-size:14px;cursor:pointer;
   padding:0;margin-left:6px;transition:text-shadow .15s;}
 .pow-feed .showmore:hover{text-shadow:0 0 10px rgba(61,240,255,.5);}
-.pow-feed .actions{display:flex;align-items:center;gap:16px;margin-top:12px;}
+.pow-feed .actions{display:flex;align-items:center;gap:16px;margin-top:12px;flex-wrap:wrap;}
 .pow-feed .replybtn{background:none;border:none;color:var(--dim);font:inherit;font-size:13px;cursor:pointer;padding:2px 0;
   transition:color .15s;}
 .pow-feed .replybtn:hover{color:var(--cyan);}
@@ -128,8 +128,36 @@ export const FEED_CSS = `
   transition:color .15s;}
 .pow-feed .delbtn:hover{color:var(--no);}
 .pow-feed .delbtn:disabled{opacity:.5;cursor:default;}
-.pow-feed .inlinereply{margin-top:12px;}
+.pow-feed .inlinereply,.pow-feed .inlinequote{margin-top:12px;flex-basis:100%;}
 .pow-feed .tombstone{color:var(--dim);font-style:italic;}
+
+/* ---- engagement (like / repost / quote) ---- */
+/* .engage is display:contents so its buttons flow into the .actions flex row,
+   while .reactpay / .notice take a full-width line of their own via flex-basis. */
+.pow-feed .engage{display:contents;}
+.pow-feed .engagebar{display:inline-flex;align-items:center;gap:16px;}
+.pow-feed .likebtn,.pow-feed .repostbtn,.pow-feed .quotebtn{background:none;border:none;color:var(--dim);font:inherit;
+  font-size:13px;cursor:pointer;padding:2px 0;font-variant-numeric:tabular-nums;transition:color .15s,text-shadow .15s;}
+.pow-feed .likebtn:hover{color:var(--no);}
+.pow-feed .likebtn.on{color:var(--no);text-shadow:0 0 10px rgba(255,92,108,.5);}
+.pow-feed .repostbtn:hover,.pow-feed .quotebtn:hover{color:var(--neon);}
+.pow-feed .repostbtn.on{color:var(--neon);text-shadow:0 0 10px rgba(0,255,156,.5);}
+.pow-feed .likebtn:disabled,.pow-feed .repostbtn:disabled{cursor:default;opacity:.7;}
+.pow-feed .reactpay{flex-basis:100%;width:100%;margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:12px;
+  background:var(--panel2);}
+.pow-feed .reactpay .poll{margin:0;}
+.pow-feed .reactpay .manual{margin-top:14px;}
+.pow-feed .engage .notice{flex-basis:100%;width:100%;}
+
+/* ---- quoted embed ---- */
+.pow-feed .quoted{margin:12px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);
+  transition:border-color .15s,box-shadow .15s;}
+.pow-feed .quoted[role="link"]:hover{border-color:var(--cyan);box-shadow:0 0 16px rgba(61,240,255,.12);}
+.pow-feed .quoted .qmeta{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+.pow-feed .qbyline{font-weight:700;color:var(--neon);font-size:13px;text-shadow:0 0 8px rgba(0,255,156,.3);}
+.pow-feed .qaddr{font-size:12px;color:var(--cyan);}
+.pow-feed .qbody{margin:6px 0 0;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.5;color:#b9e6d8;}
+.pow-feed .quoted-gone{color:var(--dim);font-style:italic;font-size:13px;}
 
 /* ---- states ---- */
 .pow-feed .error{border:1px solid var(--no);border-radius:10px;background:rgba(255,92,108,.08);color:var(--no);

@@ -203,6 +203,7 @@ export default function FeedClient({
                 post={post}
                 viewerAccountId={viewerAccountId}
                 onDeleted={removePost}
+                onQuoted={prependPost}
               />
             ))}
           </ul>
