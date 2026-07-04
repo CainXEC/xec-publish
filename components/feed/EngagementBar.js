@@ -193,7 +193,7 @@ export default function EngagementBar({
             onClick={() => onQuote?.()}
             title="Quote this post"
           >
-            ❝ Quote
+            Quote
           </button>
         ) : null}
       </div>

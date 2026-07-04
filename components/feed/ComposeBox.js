@@ -109,7 +109,14 @@ export default function ComposeBox({
         if (stopped) return
         if (data.status === 'posted' && data.post) {
           stopped = true
-          onPosted?.(data.post)
+          // The confirm route returns the bare inserted row with no `quoted`
+          // preview, so attach the one we already have to avoid a transient
+          // "Quoted post unavailable." until the next server render.
+          onPosted?.(
+            action === 'quote' && quotedPost
+              ? { ...data.post, quoted: quotedPost }
+              : data.post,
+          )
           setContent('')
           resetToCompose()
           if (typeof window !== 'undefined') {
@@ -128,7 +135,7 @@ export default function ComposeBox({
       stopped = true
       clearInterval(id)
     }
-  }, [phase, intent, content, action, parentTxid, quotedTxid, onPosted, resetToCompose])
+  }, [phase, intent, content, action, parentTxid, quotedTxid, quotedPost, onPosted, resetToCompose])
 
   const verifyManual = useCallback(async () => {
     const t = txidInput.trim()
@@ -145,7 +152,11 @@ export default function ComposeBox({
       })
       const data = await res.json()
       if (data.status === 'posted' && data.post) {
-        onPosted?.(data.post)
+        onPosted?.(
+          action === 'quote' && quotedPost
+            ? { ...data.post, quoted: quotedPost }
+            : data.post,
+        )
         setContent('')
         resetToCompose()
       } else if (data.status === 'awaiting_payment') {
@@ -156,7 +167,7 @@ export default function ComposeBox({
     } catch {
       setNotice('Network hiccup — try again.')
     }
-  }, [txidInput, content, action, parentTxid, quotedTxid, onPosted, resetToCompose])
+  }, [txidInput, content, action, parentTxid, quotedTxid, quotedPost, onPosted, resetToCompose])
 
   const isReply = action === 'reply'
   const isQuote = action === 'quote'
