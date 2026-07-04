@@ -46,6 +46,10 @@ export default defineConfig({
           NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
           NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
           SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+          // Lift the maintenance gate (proxy.ts) for the test server only, or
+          // every route returns 503 and Playwright's webServer readiness check
+          // (waits for HTTP < 400 on the URL) times out. Never affects production.
+          SITE_LIVE: 'true',
         },
       },
 })
