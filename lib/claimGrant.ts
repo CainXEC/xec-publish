@@ -16,6 +16,10 @@
 //  Authorization to claim = the one-time code (bearer secret you send privately).
 //  Delivery address        = whatever wallet the author sends the proof from.
 //
+//  The grant's legacy_author_ref carries the legacy authors.id this handle
+//  belongs to; on a successful claim we bind the new account to that author
+//  (accounts.author_id) so the /@handle profile resolves to their posts.
+//
 //  Serialized by the SAME global mint_lock as paid mints (group-UTXO race). This
 //  is the ONE place a reserved name is allowed to mint.
 //
@@ -71,9 +75,18 @@ async function assignProofSats(): Promise<number> {
 
 async function loadGrant(sk: string) {
   const { data } = await supabase.from("claim_grants")
-    .select("handle, code_hash, status, proof_sats, proof_started_unix, proof_expires_at, claimed_token_id")
+    .select("handle, code_hash, status, proof_sats, proof_started_unix, proof_expires_at, claimed_token_id, legacy_author_ref")
     .eq("handle_skeleton", sk).maybeSingle();
   return data as any;
+}
+
+/** The grant's legacy_author_ref IS the authors.id (set by the seeder). Verify it
+ *  points at a real author; return null if unset/unknown so binding still works. */
+async function resolveGrantAuthorId(grant: any): Promise<string | null> {
+  const ref = grant?.legacy_author_ref;
+  if (!ref || typeof ref !== "string") return null;
+  const { data } = await supabase.from("authors").select("id").eq("id", ref).maybeSingle();
+  return (data?.id as string) ?? null;
 }
 
 // ---------------------------------------------------------------- step 1
@@ -130,18 +143,18 @@ export async function pollClaim(input: { handle: string; txid?: string }): Promi
   // detect the proof tx and read the SENDER address (proof of key control)
   const det = input.txid
     ? await verifyMintTxid(input.txid, PROOF_ADDRESS, grant.proof_sats)
-    : await findMintPayment(PROOF_ADDRESS, grant.proof_sats, grant.proof_started_unix);
+    : await findMintPayment(PROOF_ADDRESS, null, grant.proof_sats, grant.proof_started_unix);
   if (!det?.payerAddress) return { ok: true, status: "awaiting_proof" };
 
   const verifiedAddress = det.payerAddress; // author demonstrably holds these keys
 
-  const minted = await mintToVerified(sk, grant.handle, verifiedAddress);
+  const minted = await mintToVerified(sk, grant.handle, verifiedAddress, grant);
   if (!minted.ok) return { ok: false, status: "error", error: minted.error };
   return { ok: true, status: "claimed", handle: grant.handle, childTokenId: minted.childTokenId, imageUrl: minted.imageUrl, address: verifiedAddress };
 }
 
 // ---------------------------------------------------------------- mint core
-async function mintToVerified(sk: string, grantHandle: string, address: string): Promise<{ ok: true; childTokenId: string; imageUrl: string | null } | { ok: false; error: string }> {
+async function mintToVerified(sk: string, grantHandle: string, address: string, grant: any): Promise<{ ok: true; childTokenId: string; imageUrl: string | null } | { ok: false; error: string }> {
   const holder = LOCK_HOLDER();
   if (!(await claimMintLock(holder))) return { ok: false, error: "A mint is in progress — try again in a moment." };
   try {
@@ -153,11 +166,14 @@ async function mintToVerified(sk: string, grantHandle: string, address: string):
     if (taken2) return { ok: false, error: "This handle has already been minted." };
     if (!grant2 || grant2.status === "claimed") return { ok: false, error: "This handle has already been claimed." };
 
+    // which legacy author does this grant belong to? (contract: legacy_author_ref = authors.id)
+    const authorId = await resolveGrantAuthorId(grant2 ?? grant);
+
     const wallet = loadMintWallet(CHRONIK_URLS, { mnemonic: process.env.MINT_WALLET_MNEMONIC, skHex: process.env.MINT_WALLET_SK });
     const res: any = await mintHandleChild(wallet, { handle: grantHandle, buyerAddress: address, groupTokenId: process.env.GROUP_TOKEN_ID! });
     const childTokenId: string = res.childTokenId;
 
-    const accountId = await bindAuthorAccount(address, childTokenId, grantHandle);
+    const accountId = await bindAuthorAccount(address, childTokenId, grantHandle, authorId);
     const { tier } = priceForHandle(grantHandle);
     await supabase.from("handles").insert({
       token_id: childTokenId, handle: grantHandle, handle_skeleton: sk,
@@ -181,15 +197,20 @@ async function mintToVerified(sk: string, grantHandle: string, address: string):
 }
 
 /** Bind the proven address to an account (upgrading a reader account if the wallet
- *  already existed), set the claimed handle as its active display identity. */
-async function bindAuthorAccount(address: string, tokenId: string, handle: string): Promise<string> {
+ *  already existed), set the claimed handle as its active display identity, and —
+ *  when known — link it to the legacy author so the profile resolves to their posts. */
+async function bindAuthorAccount(address: string, tokenId: string, handle: string, authorId: string | null): Promise<string> {
   const now = new Date().toISOString();
   const { data: link } = await supabase.from("account_addresses").select("account_id").eq("address", address).maybeSingle();
   if (link?.account_id) {
-    await supabase.from("accounts").update({ kind: "author", active_handle_token_id: tokenId, display_handle: handle, display_handle_checked_at: now, updated_at: now }).eq("id", link.account_id);
+    const patch: any = { kind: "author", active_handle_token_id: tokenId, display_handle: handle, display_handle_checked_at: now, updated_at: now };
+    if (authorId) patch.author_id = authorId;
+    await supabase.from("accounts").update(patch).eq("id", link.account_id);
     return link.account_id as string;
   }
-  const { data: acct } = await supabase.from("accounts").insert({ kind: "author", active_handle_token_id: tokenId, display_handle: handle, display_handle_checked_at: now }).select("id").single();
+  const insert: any = { kind: "author", active_handle_token_id: tokenId, display_handle: handle, display_handle_checked_at: now };
+  if (authorId) insert.author_id = authorId;
+  const { data: acct } = await supabase.from("accounts").insert(insert).select("id").single();
   const accountId = acct!.id as string;
   await supabase.from("account_addresses").insert({ account_id: accountId, address, is_primary: true, verified_at: now });
   return accountId;
