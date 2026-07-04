@@ -54,8 +54,11 @@ export default function ComposeBox({
     // Open the tab synchronously inside the click gesture, then point it at
     // Cashtab once /prepare returns. Opening after the await would be swallowed
     // by popup blockers, so we grab the handle now and set its URL later.
+    // NOTE: no 'noopener' feature here — with it, window.open returns null and
+    // we'd lose the handle. We sever the opener link manually once it's open.
     const payWindow =
-      typeof window !== 'undefined' ? window.open('', '_blank', 'noopener') : null
+      typeof window !== 'undefined' ? window.open('about:blank', '_blank') : null
+    if (payWindow) payWindow.opener = null
     try {
       const res = await fetch('/api/feed/prepare', {
         method: 'POST',
