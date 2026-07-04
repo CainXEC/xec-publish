@@ -7,13 +7,16 @@
 //    • a handle   ("simon")                 -> resolve via the NFT + account
 //    • an eCash address ("qq703j…")         -> resolve via account or author
 //
-//  Resolution chain (handle):
+//  Resolution chain (handle) — driven by ON-CHAIN OWNERSHIP, not by any login:
 //    handles.handle_skeleton
-//      -> handles.token_id
-//      -> accounts.active_handle_token_id  (the account currently displaying it)
-//      -> accounts.author_id               (** the author whose posts show **)
-//      -> authors row
-//  with the display byline = that handle.
+//      -> handles.token_id (+ handle, image_url)
+//      -> current on-chain holder of that NFT   (Chronik)
+//      -> that holder's author, if any          (account.author_id, else
+//         authors.xec_address)                  -> their posts
+//  A handle ALWAYS resolves once minted: a holder with no articles — or no
+//  proofofwriting account at all, e.g. a fresh paid mint that never logged in —
+//  still gets a profile showing just the handle and its card. The display byline
+//  is the handle from the URL.
 //
 //  Resolution chain (address):
 //    account_addresses.address -> accounts.author_id -> authors row
@@ -21,16 +24,10 @@
 //  with the display byline = the account's current display_handle if it has one,
 //  else the raw address.
 //
-//  DESIGN NOTE / KNOWN GAP: this relies on accounts.author_id being populated.
-//  As of now, claimGrant.ts -> bindAuthorAccount() does NOT set author_id, so
-//  the handle path will resolve to nothing until that link is written. The
-//  address path still works via the authors.xec_address fallback. See the
-//  message accompanying this file.
-//
-//  Chronik holder verification is LAZY + BEST-EFFORT: the DB cache
-//  (accounts.active_handle_token_id / display_handle) is authoritative for the
-//  render; we only consult Chronik to detect that a handle has moved wallets
-//  since we last checked, and we degrade to the cache if Chronik is unavailable.
+//  Chronik holder lookup is authoritative for the handle path but BEST-EFFORT:
+//  if Chronik is unavailable we fall back to the account currently bound to the
+//  token (accounts.active_handle_token_id) so profiles still resolve during an
+//  outage.
 // =============================================================================
 
 import { createServerSupabase } from "@/lib/supabase-server";
@@ -54,12 +51,19 @@ export type Author = {
 
 export type ResolvedProfile = {
   kind: "handle" | "address";
-  author: Author;
+  /** The author whose posts to show, or null for a handle held by someone with
+   *  no articles / no proofofwriting account (a handle-only profile). */
+  author: Author | null;
   /** The current handle to show as the byline, or null if the account holds none. */
   displayHandle: string | null;
   /** What to render as the identity: "@handle" if held, else the raw address. */
   identity: string;
   tokenId: string | null;
+  /** Current on-chain holder (handle path) or the address itself (address path).
+   *  Shown on handle-only profiles that have no author record. */
+  holderAddress: string | null;
+  /** Public URL of the handle's NFT card, when known (handle path). */
+  cardImageUrl: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -105,6 +109,43 @@ async function authorById(id: string): Promise<Author | null> {
     .eq("id", id)
     .maybeSingle();
   return (data as Author) ?? null;
+}
+
+/** The author to attribute to a wallet address: a linked account's author, or a
+ *  legacy author whose xec_address is this wallet. Null if neither — a wallet can
+ *  hold a handle without ever having written a post or created an account. */
+async function authorForAddress(addressRaw: string): Promise<Author | null> {
+  const bare = normalizeAddress(addressRaw);
+  if (!bare) return null;
+  const supabase = createServerSupabase();
+  const forms = addressForms(bare);
+
+  // 1) via a linked account -> its author
+  const { data: links } = await supabase
+    .from("account_addresses")
+    .select("account_id")
+    .in("address", forms)
+    .limit(1);
+  const accountId = links?.[0]?.account_id;
+  if (accountId) {
+    const { data: account } = await supabase
+      .from("accounts")
+      .select("author_id")
+      .eq("id", accountId)
+      .maybeSingle();
+    if (account?.author_id) {
+      const a = await authorById(account.author_id);
+      if (a) return a;
+    }
+  }
+
+  // 2) fallback: legacy author whose wallet this is
+  const { data: authors } = await supabase
+    .from("authors")
+    .select("id, username, bio, xec_address")
+    .in("xec_address", forms)
+    .limit(1);
+  return (authors?.[0] as Author) ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -202,29 +243,37 @@ async function resolveHandle(handleRaw: string): Promise<ResolvedProfile | null>
 
   const { data: h } = await supabase
     .from("handles")
-    .select("token_id, handle")
+    .select("token_id, handle, image_url")
     .eq("handle_skeleton", sk)
     .maybeSingle();
   if (!h?.token_id) return null;
 
-  const { data: account } = await supabase
-    .from("accounts")
-    .select("id, author_id, display_handle, active_handle_token_id, display_handle_checked_at")
-    .eq("active_handle_token_id", h.token_id)
-    .maybeSingle();
-  if (!account?.author_id) return null; // see KNOWN GAP note at top of file
+  // Current on-chain holder is the source of truth, independent of any login.
+  const holder = await currentTokenHolder(h.token_id); // "ecash:q…" | null (Chronik down)
 
-  const author = await authorById(account.author_id);
-  if (!author) return null;
+  // Attribute the handle to an author (for their posts) via the holder address.
+  // A holder with no author -> handle-only profile (author stays null).
+  let author = holder ? await authorForAddress(holder) : null;
 
-  const displayHandle = await freshDisplayHandle(account as any);
+  // Resilience: if Chronik was unavailable, fall back to whatever account is
+  // currently bound to this token so the profile still resolves during an outage.
+  if (!holder) {
+    const { data: bound } = await supabase
+      .from("accounts")
+      .select("author_id")
+      .eq("active_handle_token_id", h.token_id)
+      .maybeSingle();
+    if (bound?.author_id) author = await authorById(bound.author_id);
+  }
 
   return {
     kind: "handle",
     author,
-    displayHandle: displayHandle ?? h.handle,
-    identity: `@${displayHandle ?? h.handle}`,
+    displayHandle: h.handle,
+    identity: `@${h.handle}`,
     tokenId: h.token_id,
+    holderAddress: holder ? normalizeAddress(holder) : null,
+    cardImageUrl: (h as { image_url?: string | null }).image_url ?? null,
   };
 }
 
@@ -260,6 +309,8 @@ async function resolveAddress(addressRaw: string): Promise<ResolvedProfile | nul
           displayHandle,
           identity: displayHandle ? `@${displayHandle}` : address,
           tokenId: account.active_handle_token_id ?? null,
+          holderAddress: address,
+          cardImageUrl: null,
         };
       }
     }
@@ -274,7 +325,15 @@ async function resolveAddress(addressRaw: string): Promise<ResolvedProfile | nul
   const author = authors?.[0];
 
   if (author) {
-    return { kind: "address", author: author as Author, displayHandle: null, identity: address, tokenId: null };
+    return {
+      kind: "address",
+      author: author as Author,
+      displayHandle: null,
+      identity: address,
+      tokenId: null,
+      holderAddress: address,
+      cardImageUrl: null,
+    };
   }
 
   return null;
