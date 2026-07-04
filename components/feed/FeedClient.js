@@ -13,52 +13,127 @@ export default function FeedClient({
   initialLoadError = null,
   viewerAccountId: initialViewerAccountId = null,
 }) {
-  const [posts, setPosts] = useState(initialPosts)
-  const [hasNextPage, setHasNextPage] = useState(initialHasNextPage)
-  const [page, setPage] = useState(initialPage)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [error, setError] = useState(initialLoadError)
+  const [scope, setScope] = useState('foryou') // 'foryou' | 'following'
   // Paying to post mints a session; if we didn't have one at SSR time, the post
   // we just made proves who we are — adopt its account so delete shows at once.
   const [viewerAccountId, setViewerAccountId] = useState(initialViewerAccountId)
+  const signedIn = viewerAccountId != null
 
-  const prependPost = useCallback((post) => {
-    if (!post?.txid) return
-    if (post.author_account_id) {
-      setViewerAccountId((cur) => cur ?? post.author_account_id)
-    }
-    setPosts((prev) => {
-      if (prev.some((p) => p.txid === post.txid)) return prev
-      return [post, ...prev]
-    })
+  // Each tab keeps its own posts/pagination so switching back doesn't refetch.
+  const [tabs, setTabs] = useState({
+    foryou: {
+      posts: initialPosts,
+      hasNextPage: initialHasNextPage,
+      page: initialPage,
+      error: initialLoadError,
+      loaded: true,
+    },
+    following: {
+      posts: [],
+      hasNextPage: false,
+      page: 1,
+      error: null,
+      loaded: false,
+    },
+  })
+  const [loading, setLoading] = useState(false)
+
+  const active = tabs[scope]
+
+  const patchTab = useCallback((key, patch) => {
+    setTabs((prev) => ({
+      ...prev,
+      [key]: typeof patch === 'function' ? patch(prev[key]) : { ...prev[key], ...patch },
+    }))
   }, [])
 
-  const removePost = useCallback((txid) => {
-    setPosts((prev) => prev.filter((p) => p.txid !== txid))
-  }, [])
+  const fetchScope = useCallback(
+    async (key, page) => {
+      const qs = new URLSearchParams({ page: String(page) })
+      if (key === 'following') qs.set('scope', 'following')
+      const res = await fetch(`/api/feed?${qs.toString()}`, { cache: 'no-store' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to load feed')
+      return data
+    },
+    [],
+  )
+
+  const selectScope = useCallback(
+    async (key) => {
+      setScope(key)
+      if (key === 'following' && !signedIn) return
+      if (tabs[key].loaded || loading) return
+      setLoading(true)
+      try {
+        const data = await fetchScope(key, 1)
+        patchTab(key, {
+          posts: data.posts ?? [],
+          hasNextPage: Boolean(data.hasNextPage),
+          page: 1,
+          error: null,
+          loaded: true,
+        })
+      } catch (e) {
+        patchTab(key, { error: e?.message || 'Failed to load feed', loaded: true })
+      } finally {
+        setLoading(false)
+      }
+    },
+    [signedIn, tabs, loading, fetchScope, patchTab],
+  )
+
+  const prependPost = useCallback(
+    (post) => {
+      if (!post?.txid) return
+      if (post.author_account_id) {
+        setViewerAccountId((cur) => cur ?? post.author_account_id)
+      }
+      // A new top-level post belongs to For You; also show it under Following
+      // if it's already loaded (you follow yourself implicitly at the UI level).
+      patchTab('foryou', (t) =>
+        t.posts.some((p) => p.txid === post.txid) ? t : { ...t, posts: [post, ...t.posts] },
+      )
+    },
+    [patchTab],
+  )
+
+  const removePost = useCallback(
+    (txid) => {
+      setTabs((prev) => {
+        const next = {}
+        for (const key of Object.keys(prev)) {
+          next[key] = { ...prev[key], posts: prev[key].posts.filter((p) => p.txid !== txid) }
+        }
+        return next
+      })
+    },
+    [],
+  )
 
   const loadMore = useCallback(async () => {
-    if (loadingMore || !hasNextPage) return
-    setLoadingMore(true)
-    setError(null)
+    if (loading || !active.hasNextPage) return
+    setLoading(true)
+    patchTab(scope, { error: null })
     try {
-      const nextPage = page + 1
-      const res = await fetch(`/api/feed?page=${nextPage}`, { cache: 'no-store' })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to load more')
-      setPosts((prev) => {
-        const seen = new Set(prev.map((p) => p.txid))
+      const nextPage = active.page + 1
+      const data = await fetchScope(scope, nextPage)
+      patchTab(scope, (t) => {
+        const seen = new Set(t.posts.map((p) => p.txid))
         const fresh = (data.posts ?? []).filter((p) => p?.txid && !seen.has(p.txid))
-        return [...prev, ...fresh]
+        return {
+          ...t,
+          posts: [...t.posts, ...fresh],
+          hasNextPage: Boolean(data.hasNextPage),
+          page: nextPage,
+        }
       })
-      setHasNextPage(Boolean(data.hasNextPage))
-      setPage(nextPage)
     } catch (e) {
-      setError(e?.message || 'Failed to load more')
+      patchTab(scope, { error: e?.message || 'Failed to load more' })
     } finally {
-      setLoadingMore(false)
+      setLoading(false)
     }
-  }, [loadingMore, hasNextPage, page])
+  }, [loading, active, scope, fetchScope, patchTab])
 
   return (
     <div className="pow-feed">
@@ -87,13 +162,42 @@ export default function FeedClient({
       <main className="wrap">
         <ComposeBox action="post" onPosted={prependPost} />
 
-        {error ? <div className="error">{error}</div> : null}
+        <div className="tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={scope === 'foryou'}
+            className={`tab${scope === 'foryou' ? ' on' : ''}`}
+            onClick={() => void selectScope('foryou')}
+          >
+            For you
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={scope === 'following'}
+            className={`tab${scope === 'following' ? ' on' : ''}`}
+            onClick={() => void selectScope('following')}
+          >
+            Following
+          </button>
+        </div>
 
-        {posts.length === 0 ? (
-          <div className="empty">No posts yet. Be the first to post.</div>
+        {active.error ? <div className="error">{active.error}</div> : null}
+
+        {scope === 'following' && !signedIn ? (
+          <div className="empty">Post once to sign in, then follow writers to fill this tab.</div>
+        ) : loading && !active.loaded ? (
+          <div className="empty">Loading…</div>
+        ) : active.posts.length === 0 ? (
+          <div className="empty">
+            {scope === 'following'
+              ? 'No posts yet from people you follow.'
+              : 'No posts yet. Be the first to post.'}
+          </div>
         ) : (
           <ul className="panel posts">
-            {posts.map((post) => (
+            {active.posts.map((post) => (
               <FeedPost
                 key={post.txid}
                 post={post}
@@ -104,10 +208,10 @@ export default function FeedClient({
           </ul>
         )}
 
-        {hasNextPage ? (
+        {active.hasNextPage ? (
           <div className="loadmore">
-            <button type="button" onClick={() => void loadMore()} disabled={loadingMore} className="ghost">
-              {loadingMore ? 'Loading…' : 'Load more'}
+            <button type="button" onClick={() => void loadMore()} disabled={loading} className="ghost">
+              {loading ? 'Loading…' : 'Load more'}
             </button>
           </div>
         ) : null}

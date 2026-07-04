@@ -97,6 +97,14 @@ export const FEED_CSS = `
 .pow-feed .manualrow input:focus{border-color:var(--cyan);}
 .pow-feed .notice{color:var(--no);font-size:13px;margin:14px 0 0;}
 
+/* ---- tabs ---- */
+.pow-feed .tabs{display:flex;gap:0;margin-top:20px;border-bottom:1px solid var(--line);}
+.pow-feed .tab{flex:1;background:none;border:none;border-bottom:2px solid transparent;color:var(--dim);
+  font:inherit;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+  padding:12px 0;transition:color .15s,border-color .15s;}
+.pow-feed .tab:hover{color:var(--cyan);}
+.pow-feed .tab.on{color:var(--neon);border-bottom-color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.4);}
+
 /* ---- feed list ---- */
 .pow-feed .posts{margin-top:16px;overflow:hidden;}
 .pow-feed .post{padding:16px;border-bottom:1px solid var(--line);}
@@ -109,6 +117,9 @@ export const FEED_CSS = `
 .pow-feed .time{font-size:12px;color:var(--dim);}
 .pow-feed .time:hover{color:var(--cyan);}
 .pow-feed .body{margin:8px 0 0;white-space:pre-wrap;word-break:break-word;font-size:15px;line-height:1.6;color:var(--text);}
+.pow-feed .showmore{display:inline;background:none;border:none;color:var(--cyan);font:inherit;font-size:14px;cursor:pointer;
+  padding:0;margin-left:6px;transition:text-shadow .15s;}
+.pow-feed .showmore:hover{text-shadow:0 0 10px rgba(61,240,255,.5);}
 .pow-feed .actions{display:flex;align-items:center;gap:16px;margin-top:12px;}
 .pow-feed .replybtn{background:none;border:none;color:var(--dim);font:inherit;font-size:13px;cursor:pointer;padding:2px 0;
   transition:color .15s;}

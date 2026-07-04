@@ -51,6 +51,11 @@ export default function ComposeBox({
     if (!priced.ok) return
     setSubmitting(true)
     setNotice('')
+    // Open the tab synchronously inside the click gesture, then point it at
+    // Cashtab once /prepare returns. Opening after the await would be swallowed
+    // by popup blockers, so we grab the handle now and set its URL later.
+    const payWindow =
+      typeof window !== 'undefined' ? window.open('', '_blank', 'noopener') : null
     try {
       const res = await fetch('/api/feed/prepare', {
         method: 'POST',
@@ -59,12 +64,17 @@ export default function ComposeBox({
       })
       const data = await res.json()
       if (!res.ok || !data.ok) {
+        payWindow?.close()
         setNotice(data.error || 'Could not start the payment. Try again.')
         return
+      }
+      if (payWindow) {
+        payWindow.location.href = data.cashtabUrl
       }
       setIntent(data)
       setPhase('paying')
     } catch {
+      payWindow?.close()
       setNotice('Network hiccup — try again.')
     } finally {
       setSubmitting(false)

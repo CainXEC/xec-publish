@@ -26,6 +26,11 @@ function truncateAddress(addr) {
   return `${t.slice(0, 10)}…${t.slice(-4)}`
 }
 
+// Long posts are clamped in the feed so one wall of text can't dominate the
+// column. Clamp when the body runs past this many characters; the full text is
+// always one tap away via "Show more" (or by opening the thread).
+const FEED_CLAMP_CHARS = 280
+
 /**
  * One feed post. The byline uses the identity stamped at write time
  * (author_identity): "@handle" links to the profile; a raw address is shown as
@@ -53,6 +58,11 @@ export default function FeedPost({ post, onReplied, viewerAccountId = null, onDe
   const [showReply, setShowReply] = useState(false)
   const [replyCount, setReplyCount] = useState(post.replyCount ?? 0)
   const [deleting, setDeleting] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+
+  const body = typeof post.content === 'string' ? post.content : ''
+  const isLong = body.length > FEED_CLAMP_CHARS
+  const shownBody = !isLong || expanded ? body : `${body.slice(0, FEED_CLAMP_CHARS).trimEnd()}…`
 
   const isOwn =
     !post.deleted &&
@@ -102,7 +112,18 @@ export default function FeedPost({ post, onReplied, viewerAccountId = null, onDe
         </Link>
       </div>
 
-      <p className="body">{post.content}</p>
+      <p className="body">
+        {shownBody}
+        {isLong ? (
+          <button
+            type="button"
+            className="showmore"
+            onClick={() => setExpanded((s) => !s)}
+          >
+            {expanded ? 'Show less' : 'Show more'}
+          </button>
+        ) : null}
+      </p>
 
       <div className="actions">
         <button type="button" onClick={() => setShowReply((s) => !s)} className="replybtn">
