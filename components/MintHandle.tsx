@@ -33,6 +33,10 @@ export default function MintHandle() {
   const [phase, setPhase] = useState<"choose" | "pay" | "done">("choose");
   const [intent, setIntent] = useState<Intent | null>(null);
   const [statusMsg, setStatusMsg] = useState("Waiting for payment");
+  // True once the payment lands on-chain (finalizing or minting). Flips the pay
+  // screen from the QR/send prompt to a clear "payment received" indicator, so
+  // the user knows the site saw their payment during the ~2-3s finality wait.
+  const [paymentSeen, setPaymentSeen] = useState(false);
   const [result, setResult] = useState<{ childTokenId?: string; imageUrl?: string } | null>(null);
   const [txidInput, setTxidInput] = useState("");
   const [notice, setNotice] = useState("");
@@ -75,6 +79,7 @@ export default function MintHandle() {
   // ---- start a mint (lock + payment request) ----
   const startMint = useCallback(async () => {
     setNotice("");
+    setPaymentSeen(false);
     // Open the Cashtab tab synchronously inside the click gesture so popup
     // blockers don't eat it, then redirect it once the intent (and its bip21)
     // lands. Opening with a handle (no noopener) is what lets us set its URL
@@ -112,12 +117,12 @@ export default function MintHandle() {
     let stopped = false;
     const apply = (j: any) => {
       if (j.status === "minted") { setResult(j); setPhase("done"); }
-      else if (j.status === "refunded") setNotice("Refunded — the name wasn't available when payment landed. Your XEC is on its way back. Pick another name.");
-      else if (j.status === "failed") setNotice("The mint failed. If you paid, a refund is on its way.");
-      else if (j.status === "expired") { setNotice("The 15-minute hold expired. Start again to re-lock the name."); setPhase("choose"); setIntent(null); }
-      else if (j.status === "processing") setStatusMsg("Payment received — minting your handle");
-      else if (j.status === "finalizing") setStatusMsg("Finalizing payment…");
-      else setStatusMsg("Waiting for payment");
+      else if (j.status === "refunded") { setPaymentSeen(false); setNotice("Refunded — the name wasn't available when payment landed. Your XEC is on its way back. Pick another name."); }
+      else if (j.status === "failed") { setPaymentSeen(false); setNotice("The mint failed. If you paid, a refund is on its way."); }
+      else if (j.status === "expired") { setPaymentSeen(false); setNotice("The 15-minute hold expired. Start again to re-lock the name."); setPhase("choose"); setIntent(null); }
+      else if (j.status === "processing") { setPaymentSeen(true); setStatusMsg("Payment received — minting your handle"); }
+      else if (j.status === "finalizing") { setPaymentSeen(true); setStatusMsg("Finalizing payment…"); }
+      else { setPaymentSeen(false); setStatusMsg("Waiting for payment"); }
     };
     const poll = async (txid?: string) => {
       try {
@@ -198,27 +203,38 @@ export default function MintHandle() {
 
       {phase === "pay" && intent && (
         <div className="pay">
-          <p className="payhead">Send <strong>{intent.amountXec} XEC</strong> to mint <strong>@{intent.handle}</strong></p>
-          <div className="qr"><QRCodeSVG value={intent.bip21Url} size={188} bgColor="#dffff2" fgColor="#05130d" /></div>
-          <a className="cta" href={cashtabUrl} target="_blank" rel="noreferrer">Open in Cashtab</a>
-          <p className="addr" title={intent.address}>{intent.address}</p>
-          <button className="copybtn" onClick={copyAddr}>{copied ? "copied \u2713" : "copy address"}</button>
-          <p className="poll">{statusMsg}{secondsLeft != null && secondsLeft > 0 && <span className="timer"> · hold expires in {mm}:{ss}</span>}</p>
-
-          <details className="manual">
-            <summary>Already paid? Enter the transaction ID</summary>
-            <div className="manualrow">
-              <input value={txidInput} onChange={(e) => setTxidInput(e.target.value)} placeholder="txid" aria-label="Transaction ID" spellCheck={false} />
-              <button onClick={async () => {
-                if (!intent || !txidInput.trim()) return;
-                const r = await fetch(`/api/mint/status?mintId=${intent.mintId}&txid=${encodeURIComponent(txidInput.trim())}`);
-                const j = await r.json();
-                if (j.status === "minted") { setResult(j); setPhase("done"); }
-                else if (j.status === "awaiting_payment") setNotice("That transaction doesn't match yet — check the txid and amount.");
-                else setNotice(j.error ?? "Couldn't verify that transaction.");
-              }}>Verify</button>
+          {paymentSeen ? (
+            <div className="settling" role="status" aria-live="polite">
+              <div className="spinner" aria-hidden="true" />
+              <p className="settlehead">{statusMsg}</p>
+              <p className="settlesub">Payment received — waiting for the network to finalize it. Keep this tab open; your card reveals in a few seconds.</p>
             </div>
-          </details>
+          ) : (
+            <>
+              <p className="payhead">Send <strong>{intent.amountXec} XEC</strong> to mint <strong>@{intent.handle}</strong></p>
+              <div className="qr"><QRCodeSVG value={intent.bip21Url} size={188} bgColor="#dffff2" fgColor="#05130d" /></div>
+              <a className="cta" href={cashtabUrl} target="_blank" rel="noreferrer">Open in Cashtab</a>
+              <p className="addr" title={intent.address}>{intent.address}</p>
+              <button className="copybtn" onClick={copyAddr}>{copied ? "copied \u2713" : "copy address"}</button>
+              <p className="poll">{statusMsg}{secondsLeft != null && secondsLeft > 0 && <span className="timer"> · hold expires in {mm}:{ss}</span>}</p>
+
+              <details className="manual">
+                <summary>Already paid? Enter the transaction ID</summary>
+                <div className="manualrow">
+                  <input value={txidInput} onChange={(e) => setTxidInput(e.target.value)} placeholder="txid" aria-label="Transaction ID" spellCheck={false} />
+                  <button onClick={async () => {
+                    if (!intent || !txidInput.trim()) return;
+                    const r = await fetch(`/api/mint/status?mintId=${intent.mintId}&txid=${encodeURIComponent(txidInput.trim())}`);
+                    const j = await r.json();
+                    if (j.status === "minted") { setResult(j); setPhase("done"); }
+                    else if (j.status === "finalizing") { setPaymentSeen(true); setStatusMsg("Finalizing payment…"); }
+                    else if (j.status === "awaiting_payment") setNotice("That transaction doesn't match yet — check the txid and amount.");
+                    else setNotice(j.error ?? "Couldn't verify that transaction.");
+                  }}>Verify</button>
+                </div>
+              </details>
+            </>
+          )}
           {notice && <p className="notice">{notice}</p>}
         </div>
       )}
@@ -236,7 +252,7 @@ export default function MintHandle() {
             <a href={`https://explorer.e.cash/tx/${result.childTokenId}`} target="_blank" rel="noreferrer">View on explorer</a>
             <a href={`/@${display}`}>Go to your profile</a>
           </div>
-          <button className="ghost" onClick={() => { setPhase("choose"); setHandle(""); setAvail(null); setIntent(null); setResult(null); setNotice(""); }}>
+          <button className="ghost" onClick={() => { setPhase("choose"); setHandle(""); setAvail(null); setIntent(null); setResult(null); setNotice(""); setPaymentSeen(false); }}>
             Mint another
           </button>
         </div>
@@ -313,6 +329,15 @@ const CSS = `
 .pow-mint .poll::after{content:"\\2588";margin-left:3px;color:var(--neon);animation:pow-blink 1s steps(1) infinite;}
 .pow-mint .timer{color:var(--cyan);}
 @keyframes pow-blink{50%{opacity:0;}}
+
+/* payment-seen -> finalizing indicator (replaces the QR/send prompt) */
+.pow-mint .settling{display:flex;flex-direction:column;align-items:center;gap:16px;padding:22px 0 6px;}
+.pow-mint .spinner{width:46px;height:46px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--neon);
+  animation:pow-spin .8s linear infinite;box-shadow:0 0 20px rgba(0,255,156,.28);}
+@keyframes pow-spin{to{transform:rotate(360deg);}}
+.pow-mint .settlehead{font-size:18px;font-weight:700;color:var(--neon);letter-spacing:.03em;margin:0;
+  text-shadow:0 0 12px rgba(0,255,156,.45);}
+.pow-mint .settlesub{font-size:13px;color:var(--dim);line-height:1.55;margin:0;max-width:380px;}
 
 .pow-mint .manual{margin:24px 0 0;text-align:left;}
 .pow-mint .manual summary{color:var(--dim);font-size:13px;cursor:pointer;text-align:center;}
