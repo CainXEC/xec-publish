@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import Nav from '@/components/Nav'
+import ThemeToggle from '@/components/ThemeToggle'
+import { ARTICLE_CSS } from './articleTheme'
 import { charCounterClassName } from '@/lib/charCounterClassName'
 import { encodePostIdOpReturnRaw } from '@/lib/opReturnEncode'
 import { buildPaywallBip21, computePaymentSplit } from '@/lib/paymentSplit'
@@ -207,12 +208,12 @@ export default function PostPageClient({
     window.open(url, '_blank', 'noopener,noreferrer')
   }, [getCurrentPageUrl, post?.title])
 
-  const handleShareFacebook = useCallback(() => {
+  const handleSharePow = useCallback(() => {
     const pageUrl = getCurrentPageUrl()
     if (!pageUrl) return
-    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}`
-    window.open(url, '_blank', 'noopener,noreferrer')
-  }, [getCurrentPageUrl])
+    const text = `${post?.title ?? ''}\n\n${pageUrl}`.trim()
+    window.location.href = `/?share=${encodeURIComponent(text)}`
+  }, [getCurrentPageUrl, post?.title])
 
   const handleCopyArticleLink = useCallback(async () => {
     const pageUrl = getCurrentPageUrl()
@@ -711,26 +712,40 @@ export default function PostPageClient({
   const showPaywall = !canViewFullPost && !unlockCheckPending
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-white dark:bg-zinc-950">
-      <Nav />
-      <main className="mx-auto w-full max-w-3xl px-4 pt-8 pb-6 sm:pt-10">
-        <article className="px-0 pb-4">
-          {isAdminSession ? (
-            <p className="mb-2">
-              <button
-                type="button"
-                onClick={() => void handlePinHomepage()}
-                disabled={pinBusy}
-                className="text-xs font-medium text-amber-800 underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50 dark:text-amber-300 dark:hover:text-amber-200"
-              >
-                {pinBusy ? '…' : post.pinned === true ? '📌 Unpin' : '📌 Pin to homepage'}
-              </button>
-            </p>
+    <div className="pow-article">
+      <style>{ARTICLE_CSS}</style>
+
+      <div className="topbar">
+        <Link href="/" className="wordmark">
+          proofofwriting
+        </Link>
+        <div className="toplinks">
+          {me?.authorId ? (
+            <Link href="/dashboard" className="toplink">
+              dashboard
+            </Link>
           ) : null}
-          <h1 className="font-article-title text-3xl sm:text-4xl font-medium leading-tight text-zinc-900 dark:text-zinc-50">
-            {post.title}
-          </h1>
-          <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+          <Link href="/mint" className="toplink">
+            mint a handle
+          </Link>
+          <ThemeToggle variant="feed" />
+        </div>
+      </div>
+
+      <main className="wrap">
+        <article className="article">
+          {isAdminSession ? (
+            <button
+              type="button"
+              onClick={() => void handlePinHomepage()}
+              disabled={pinBusy}
+              className="pinbtn"
+            >
+              {pinBusy ? '…' : post.pinned === true ? '📌 Unpin' : '📌 Pin to homepage'}
+            </button>
+          ) : null}
+          <h1 className="arttitle">{post.title}</h1>
+          <p className="artbyline">
             <span>By</span>
             {author?.display_handle?.trim() || author?.username?.trim() ? (
               <>
@@ -740,7 +755,7 @@ export default function PostPageClient({
                       ? `/@${encodeURIComponent(author.display_handle.trim())}`
                       : `/u/${encodeURIComponent(author.username.trim())}`
                   }
-                  className="font-medium text-zinc-700 transition-colors hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
+                  className="bylink"
                 >
                   {author.display_handle?.trim() || author.username.trim()}
                 </Link>
@@ -751,13 +766,7 @@ export default function PostPageClient({
                     aria-label={isFollowingAuthor ? 'Following author' : 'Follow author'}
                     onClick={() => void handleFollowAuthor()}
                     disabled={followAuthorBusy}
-                    className={
-                      followAuthorBusy
-                        ? 'cursor-not-allowed rounded-full border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-500'
-                        : isFollowingAuthor
-                          ? 'inline-flex shrink-0 items-center gap-0.5 rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400'
-                          : 'shrink-0 rounded-full border border-zinc-300 bg-white px-2 py-0.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800'
-                    }
+                    className={`followbtn${isFollowingAuthor ? ' on' : ''}`}
                   >
                     {followAuthorBusy ? (
                       '…'
@@ -776,43 +785,51 @@ export default function PostPageClient({
             )}
           </p>
           {articleDateIso ? (
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            <p className="artdate">
               <time dateTime={articleDateIso}>{formatArticlePublishedDate(articleDateIso)}</time>
             </p>
           ) : null}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="share">
             <button
               type="button"
-              onClick={handleShareX}
-              className="rounded-full border border-zinc-300 bg-white px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              onClick={handleSharePow}
+              className="sharebtn sharebtn-pow"
+              aria-label="Share to Proof of Writing"
+              title="Share to Proof of Writing"
             >
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M9.5 8v9" />
+                <path d="M9.5 8h3a2.5 2.5 0 0 1 0 5h-3" />
+                <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94" />
+              </svg>
+            </button>
+            <button type="button" onClick={handleShareX} className="sharebtn">
               𝕏
             </button>
             <button
               type="button"
-              onClick={handleShareFacebook}
-              className="rounded-full border border-zinc-300 bg-white px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-            >
-              Facebook
-            </button>
-            <button
-              type="button"
               onClick={() => void handleCopyArticleLink()}
-              className="rounded-full border border-zinc-300 bg-white px-3 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              className="sharebtn"
             >
               Copy Link
             </button>
-            {copiedShareLink ? (
-              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                Copied!
-              </span>
-            ) : null}
+            {copiedShareLink ? <span className="copied">Copied!</span> : null}
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-zinc-500 dark:text-zinc-500">
+          <div className="artmeta">
             {post.reading_time_minutes ? (
-              <span>{post.reading_time_minutes} min read</span>
+              <span className="metaitem">{post.reading_time_minutes} min read</span>
             ) : null}
-            <span className="flex items-center gap-1">
+            <span className="metaitem">
               🔓 <span>{unlockCount}</span>
             </span>
 
@@ -821,111 +838,87 @@ export default function PostPageClient({
               onClick={() =>
                 document.getElementById('comments')?.scrollIntoView({ behavior: 'smooth' })
               }
-              className="flex items-center gap-1 border-0 bg-transparent p-0 font-inherit text-inherit transition-colors hover:text-zinc-900 dark:hover:text-zinc-100"
+              className="metaitem"
             >
               💬 <span>{commentCount}</span>
             </button>
 
             {earningsXec > 0 ? (
-              <span className="flex items-center gap-1">
+              <span className="metaitem">
                 💰 <span>{earningsXec.toLocaleString()}</span>
               </span>
             ) : null}
           </div>
 
           {unlockCheckPending && !canViewFullPost ? (
-            <p className="mt-10 text-sm text-zinc-600 dark:text-zinc-400">Checking access...</p>
+            <p className="checking">Checking access...</p>
           ) : null}
 
           {showPaywall && hasPaywallMarker ? (
-            <section className="mt-6 border-t border-zinc-100 pt-6 dark:border-zinc-800">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            <section className="section">
+              <h2 className="preview-head">
                 Preview
                 {previewReadTimeLabel ? (
-                  <span className="font-normal normal-case text-zinc-500 dark:text-zinc-400">
-                    {' '}
-                    ({previewReadTimeLabel})
-                  </span>
+                  <span className="preview-time"> ({previewReadTimeLabel})</span>
                 ) : null}
               </h2>
-              <div className="mt-3">
-                <div
-                  className="prose prose-zinc dark:prose-invert max-w-none text-base"
-                  dangerouslySetInnerHTML={{ __html: bodyHtml }}
-                />
+              <div
+                className="prose"
+                dangerouslySetInnerHTML={{ __html: bodyHtml }}
+              />
 
-                <div className="pt-6 pb-6 text-center">
-                  {bip21Url ? (
-                    <>
-                      <button
-                        type="button"
-                        disabled={payBusy}
-                        onClick={handlePayToUnlock}
-                        className="inline-flex w-full items-center justify-center rounded-lg px-4 py-3.5 text-sm font-semibold text-white transition-all duration-200 hover:scale-[1.01] hover:opacity-90 active:scale-[0.99] disabled:opacity-60 disabled:hover:scale-100"
-                        style={{
-                          background: 'linear-gradient(135deg, #059669 0%, #0d9488 100%)',
-                          animation: 'glow-pulse 2.2s ease-in-out infinite',
-                        }}
-                      >
-                        {payBusy
-                          ? 'Opening wallet…'
-                          : `Pay ${unlockPriceLabel} XEC to unlock`}
-                      </button>
-                      <p className="mt-1 text-center text-xs text-zinc-500 dark:text-zinc-500">
-                        (6% of all unlock payments go to support the platform)
-                      </p>
-                      {pollingActive && paymentInitiated ? (
-                        <div className="mt-4 rounded-lg border border-zinc-200 bg-white/70 px-4 py-3 text-left dark:border-zinc-700 dark:bg-zinc-900/60">
-                          <div className="flex items-center gap-3">
-                            <span
-                              aria-hidden
-                              className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-emerald-500 dark:border-zinc-600 dark:border-t-emerald-400"
-                            />
-                            <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                              Waiting for payment confirmation...
-                            </p>
-                          </div>
-                          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                            This usually takes a few seconds
-                          </p>
-                        </div>
-                      ) : null}
-                    </>
-                  ) : (
-                    <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
-                      Payment details are not configured for this post yet.
+              <div className="paywrap">
+                {bip21Url ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={payBusy}
+                      onClick={handlePayToUnlock}
+                      className="unlockbtn"
+                    >
+                      {payBusy
+                        ? 'Opening wallet…'
+                        : `Pay ${unlockPriceLabel} XEC to unlock`}
+                    </button>
+                    <p className="unlocknote">
+                      (6% of all unlock payments go to support the platform)
                     </p>
-                  )}
-                </div>
+                    {pollingActive && paymentInitiated ? (
+                      <div className="pollcard">
+                        <div className="pollrow">
+                          <span aria-hidden className="spinner" />
+                          <p className="pollmsg">Waiting for payment confirmation...</p>
+                        </div>
+                        <p className="pollsub">This usually takes a few seconds</p>
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <p className="paymissing">
+                    Payment details are not configured for this post yet.
+                  </p>
+                )}
               </div>
             </section>
           ) : null}
 
           {canViewFullPost ? (
-            <section className="mt-6 border-t border-zinc-100 pt-6 dark:border-zinc-800">
+            <section className="section">
               <div
-                className="prose prose-zinc dark:prose-invert max-w-none text-base"
+                className="prose"
                 dangerouslySetInnerHTML={{
                   __html: bodyHtml,
                 }}
               />
 
-              <section
-                id="comments"
-                className="mt-10 border-t border-zinc-100 pt-8 dark:border-zinc-800"
-              >
-                <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                  Comments
-                </h3>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              <section id="comments" className="comments">
+                <h3 className="comments-title">Comments</h3>
+                <p className="comments-count">
                   {commentCount} {commentCount === 1 ? 'comment' : 'comments'}
                 </p>
 
-                <div className="mt-5">
-                  <label
-                    htmlFor="new-comment"
-                    className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-                  >
+                <div className="commentform">
+                  <label htmlFor="new-comment" className="commentlabel">
                     Add a comment
                   </label>
                   <textarea
@@ -936,11 +929,11 @@ export default function PostPageClient({
                     onChange={(e) =>
                       setCommentText(e.target.value.slice(0, COMMENT_MAX_LEN))
                     }
-                    className="mt-2 w-full resize-y rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-500"
+                    className="commentarea"
                     placeholder="Share your thoughts..."
                   />
                   <p
-                    className={`mt-1 text-right text-xs tabular-nums ${charCounterClassName(commentText.length, COMMENT_MAX_LEN, COMMENT_WARN_WITHIN)}`}
+                    className={`charcount ${charCounterClassName(commentText.length, COMMENT_MAX_LEN, COMMENT_WARN_WITHIN)}`}
                   >
                     {commentText.length}/{COMMENT_MAX_LEN}
                   </p>
@@ -948,34 +941,30 @@ export default function PostPageClient({
                     type="button"
                     onClick={() => void handlePostComment()}
                     disabled={commentSubmitting}
-                    className="mt-3 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+                    className="postcomment-btn"
                   >
                     {commentSubmitting ? 'Posting…' : 'Post Comment'}
                   </button>
                 </div>
 
                 {commentActionError ? (
-                  <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
+                  <p className="commenterr" role="alert">
                     {commentActionError}
                   </p>
                 ) : null}
 
                 {commentsError ? (
-                  <p className="mt-4 text-sm text-red-600 dark:text-red-400" role="alert">
+                  <p className="commenterr" role="alert">
                     {commentsError}
                   </p>
                 ) : null}
 
                 {commentsLoading ? (
-                  <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
-                    Loading comments...
-                  </p>
+                  <p className="commentmuted">Loading comments...</p>
                 ) : comments.length === 0 ? (
-                  <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
-                    No comments yet.
-                  </p>
+                  <p className="commentmuted">No comments yet.</p>
                 ) : (
-                  <ul className="mt-6 space-y-3">
+                  <ul className="commentlist">
                     {comments.map((comment) => {
                       const fullWalletAddress =
                         typeof comment.payer_address === 'string'
@@ -998,14 +987,11 @@ export default function PostPageClient({
                         isAuthorSession ||
                         (fullWalletAddress && ownedIds.includes(fullWalletAddress))
                       return (
-                        <li
-                          key={comment.id}
-                          className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-950"
-                        >
-                          <div className="flex items-start justify-between gap-3">
+                        <li key={comment.id} className="commentitem">
+                          <div className="commenthead">
                             <div>
                               <p
-                                className="cursor-pointer break-all text-sm font-medium text-zinc-800 dark:text-zinc-200"
+                                className="commentaddr"
                                 title={fullWalletAddress ? 'Click to copy' : undefined}
                                 onClick={() => {
                                   if (!fullWalletAddress) return
@@ -1015,11 +1001,9 @@ export default function PostPageClient({
                                 {fullWalletAddress || 'Anonymous'}
                               </p>
                               {copiedCommentIds[comment.id] ? (
-                                <p className="mt-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                                  Copied!
-                                </p>
+                                <p className="commentcopied">Copied!</p>
                               ) : null}
-                              <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                              <p className="commentdate">
                                 {formatCommentDate(comment.created_at)}
                               </p>
                             </div>
@@ -1028,15 +1012,13 @@ export default function PostPageClient({
                                 type="button"
                                 onClick={() => void handleDeleteComment(comment.id)}
                                 disabled={deletingCommentId === comment.id}
-                                className="rounded-md border border-red-300 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 transition hover:bg-red-100 disabled:opacity-50 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300 dark:hover:bg-red-950"
+                                className="delbtn"
                               >
                                 {deletingCommentId === comment.id ? 'Deleting…' : 'Delete'}
                               </button>
                             ) : null}
                           </div>
-                          <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
-                            {comment.content}
-                          </p>
+                          <p className="commentbody">{comment.content}</p>
                         </li>
                       )
                     })}
@@ -1047,51 +1029,44 @@ export default function PostPageClient({
           ) : null}
 
           {showPaywall && !hasPaywallMarker ? (
-            <section className="mt-6 border-t border-zinc-100 pt-6 dark:border-zinc-800">
+            <section className="section">
               {bodyHtml ? (
                 <div
-                  className="prose prose-zinc dark:prose-invert max-w-none text-base"
+                  className="prose"
                   dangerouslySetInnerHTML={{ __html: bodyHtml }}
                 />
               ) : null}
-              <div className="mt-2 px-0 py-4">
-              {bip21Url ? (
-                <>
-                  <button
-                    type="button"
-                    disabled={payBusy}
-                    onClick={handlePayToUnlock}
-                    className="inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60 dark:bg-emerald-400 dark:text-emerald-950"
-                  >
-                    {payBusy
-                      ? 'Opening wallet…'
-                      : `Pay ${unlockPriceLabel} XEC to unlock`}
-                  </button>
-                  <p className="mt-1 text-center text-xs text-zinc-500 dark:text-zinc-500">
-                    (6% of all unlock payments go to support the platform)
-                  </p>
-                  {pollingActive && paymentInitiated ? (
-                    <div className="mt-4 rounded-lg border border-zinc-200 bg-white/70 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-900/60">
-                      <div className="flex items-center gap-3">
-                        <span
-                          aria-hidden
-                          className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-emerald-500 dark:border-zinc-600 dark:border-t-emerald-400"
-                        />
-                        <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                          Waiting for payment confirmation...
-                        </p>
+              <div className="paywrap">
+                {bip21Url ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={payBusy}
+                      onClick={handlePayToUnlock}
+                      className="unlockbtn"
+                    >
+                      {payBusy
+                        ? 'Opening wallet…'
+                        : `Pay ${unlockPriceLabel} XEC to unlock`}
+                    </button>
+                    <p className="unlocknote">
+                      (6% of all unlock payments go to support the platform)
+                    </p>
+                    {pollingActive && paymentInitiated ? (
+                      <div className="pollcard">
+                        <div className="pollrow">
+                          <span aria-hidden className="spinner" />
+                          <p className="pollmsg">Waiting for payment confirmation...</p>
+                        </div>
+                        <p className="pollsub">This usually takes a few seconds</p>
                       </div>
-                      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                        This usually takes a few seconds
-                      </p>
-                    </div>
-                  ) : null}
-                </>
-              ) : (
-                <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
-                  Payment details are not configured for this post yet.
-                </p>
-              )}
+                    ) : null}
+                  </>
+                ) : (
+                  <p className="paymissing">
+                    Payment details are not configured for this post yet.
+                  </p>
+                )}
               </div>
             </section>
           ) : null}
