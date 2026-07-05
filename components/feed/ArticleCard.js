@@ -10,8 +10,8 @@ const TEASER_CLAMP_CHARS = 160
 
 function priceLabel(priceXec) {
   const n = Number(priceXec)
-  if (!Number.isFinite(n) || n <= 0) return 'Free to read'
-  return `${n.toLocaleString()} XEC to unlock`
+  if (!Number.isFinite(n) || n <= 0) return 'Free'
+  return `${n.toLocaleString()} XEC`
 }
 
 /**
@@ -48,7 +48,7 @@ export default function ArticleCard({ card = null, content = '' }) {
   if (!resolved) return null
 
   const readingLabel = formatReadingTimeLabel(resolved.readingTimeMinutes)
-  const metaParts = [
+  const infoParts = [
     resolved.author ? `@${resolved.author}` : null,
     readingLabel,
   ].filter(Boolean)
@@ -64,10 +64,10 @@ export default function ArticleCard({ card = null, content = '' }) {
             : resolved.teaser}
         </span>
       ) : null}
-      {metaParts.length > 0 ? (
-        <span className="artcard-meta">{metaParts.join(' · ')}</span>
-      ) : null}
-      <span className="artcard-cta">{priceLabel(resolved.priceXec)} →</span>
+      <span className="artcard-meta">
+        {infoParts.length > 0 ? `${infoParts.join(' · ')} · ` : ''}
+        <span className="artcard-price">{priceLabel(resolved.priceXec)}</span>
+      </span>
     </Link>
   )
 }
