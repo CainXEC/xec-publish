@@ -26,16 +26,6 @@ function formatXec(amount) {
 const DELETE_CONFIRM =
   'Are you sure you want to delete this post? This cannot be undone.'
 
-function getSinceTimestamp(timeFilter) {
-  if (timeFilter === 'all') return null
-  const now = new Date()
-  if (timeFilter === '24h') now.setHours(now.getHours() - 24)
-  if (timeFilter === '7d') now.setDate(now.getDate() - 7)
-  if (timeFilter === '30d') now.setDate(now.getDate() - 30)
-  if (timeFilter === '1y') now.setFullYear(now.getFullYear() - 1)
-  return now.toISOString()
-}
-
 const DASHBOARD_SORT_OPTIONS = [
   { value: 'earned', label: 'Most earned' },
   { value: 'unlocks', label: 'Most unlocked' },
@@ -43,18 +33,8 @@ const DASHBOARD_SORT_OPTIONS = [
   { value: 'drafts', label: 'Drafts' },
 ]
 
-const DASHBOARD_TIME_OPTIONS = [
-  { value: '24h', label: '24h' },
-  { value: '7d', label: '7d' },
-  { value: '30d', label: '30d' },
-  { value: '1y', label: '1y' },
-  { value: 'all', label: 'All time' },
-]
-
 const MENU_SORT = 'dashboard-posts-sort'
-const MENU_TIME = 'dashboard-posts-time'
 const SORT_PILL_MIN_WIDTH = '15ch'
-const TIME_PILL_MIN_WIDTH = '10ch'
 
 function unlockCountFromPost(post) {
   const u = post.unlocks
@@ -105,10 +85,15 @@ function sortPostsByUnlocksThenNewest(rows) {
 function sortPostsByNewest(rows) {
   const byCreatedDesc = (a, b) =>
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  // Published posts are ordered by when they went live (published_at), not when
+  // the draft was first created — so the most recently published sits on top.
+  const publishedTime = (p) =>
+    new Date(p.published_at ?? p.created_at).getTime()
+  const byPublishedDesc = (a, b) => publishedTime(b) - publishedTime(a)
   const drafts = rows.filter((p) => !p.published)
   const published = rows.filter((p) => p.published)
   drafts.sort(byCreatedDesc)
-  published.sort(byCreatedDesc)
+  published.sort(byPublishedDesc)
   return [...drafts, ...published]
 }
 
@@ -222,7 +207,6 @@ export default function DashboardClient({
 }) {
   const [posts, setPosts] = useState(initialPosts)
   const [sortMode, setSortMode] = useState('newest')
-  const [timeFilter, setTimeFilter] = useState('24h')
   const [unlockCountMap, setUnlockCountMap] = useState({})
   const [earningsMap, setEarningsMap] = useState({})
   const [deleteError, setDeleteError] = useState(null)
@@ -281,7 +265,7 @@ export default function DashboardClient({
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [sortMode, timeFilter])
+  }, [sortMode])
 
   const nonLegacyPosts = useMemo(
     () => posts.filter((p) => p.legacy !== true),
@@ -313,14 +297,10 @@ export default function DashboardClient({
       const sourceLegacy = legacyPosts
       const postIds = sourceLegacy.map((p) => p.id).filter(Boolean)
       if (postIds.length === 0) return
-      const metricSince =
-        sortMode === 'unlocks' || sortMode === 'earned'
-          ? getSinceTimestamp(timeFilter)
-          : null
-      const unlockPromise = fetchAllUnlockCountRows(supabase, postIds, metricSince)
+      const unlockPromise = fetchAllUnlockCountRows(supabase, postIds, null)
       const earningsPromise =
         sortMode === 'earned'
-          ? fetchAllUnlockEarningsRows(supabase, postIds, metricSince)
+          ? fetchAllUnlockEarningsRows(supabase, postIds, null)
           : Promise.resolve({ error: null, rows: [] })
       const [{ error, rows }, earningsRes] = await Promise.all([
         unlockPromise,
@@ -340,7 +320,7 @@ export default function DashboardClient({
     return () => {
       cancelled = true
     }
-  }, [legacySectionOpen, legacyPosts, sortMode, timeFilter])
+  }, [legacySectionOpen, legacyPosts, sortMode])
 
   useEffect(() => {
     let cancelled = false
@@ -358,15 +338,10 @@ export default function DashboardClient({
         return
       }
 
-      const metricSince =
-        sortMode === 'unlocks' || sortMode === 'earned'
-          ? getSinceTimestamp(timeFilter)
-          : null
-
-      const unlockPromise = fetchAllUnlockCountRows(supabase, postIds, metricSince)
+      const unlockPromise = fetchAllUnlockCountRows(supabase, postIds, null)
       const earningsPromise =
         sortMode === 'earned'
-          ? fetchAllUnlockEarningsRows(supabase, postIds, metricSince)
+          ? fetchAllUnlockEarningsRows(supabase, postIds, null)
           : Promise.resolve({ error: null, rows: [] })
 
       const [{ error, rows }, earningsRes] = await Promise.all([
@@ -395,7 +370,7 @@ export default function DashboardClient({
     return () => {
       cancelled = true
     }
-  }, [nonLegacyPosts, sortMode, timeFilter])
+  }, [nonLegacyPosts, sortMode])
 
   const sortedPosts = useMemo(() => {
     if (sortMode === 'drafts') return sortPostsByNewest(draftPosts)
@@ -635,7 +610,21 @@ export default function DashboardClient({
         </div>
 
         <section className="dashpanel">
-          <h2 className="dashsection-title">Your Posts</h2>
+          <div className="dashsection-head">
+            <h2 className="dashsection-title">Your Posts</h2>
+            {nonLegacyPosts.length > 0 ? (
+              <FilterDropdown
+                menuId={MENU_SORT}
+                openMenu={openMenu}
+                setOpenMenu={setOpenMenu}
+                value={sortMode}
+                options={DASHBOARD_SORT_OPTIONS}
+                ariaLabel="Sort posts"
+                onChange={(v) => setSortMode(v)}
+                minWidth={SORT_PILL_MIN_WIDTH}
+              />
+            ) : null}
+          </div>
 
           {deleteError ? (
             <div className="error" role="alert">
@@ -654,31 +643,6 @@ export default function DashboardClient({
             </div>
           ) : (
             <>
-              <div className="dashfilters">
-                <FilterDropdown
-                  menuId={MENU_SORT}
-                  openMenu={openMenu}
-                  setOpenMenu={setOpenMenu}
-                  value={sortMode}
-                  options={DASHBOARD_SORT_OPTIONS}
-                  ariaLabel="Sort posts"
-                  onChange={(v) => setSortMode(v)}
-                  minWidth={SORT_PILL_MIN_WIDTH}
-                />
-                <FilterDropdown
-                  menuId={MENU_TIME}
-                  openMenu={openMenu}
-                  setOpenMenu={setOpenMenu}
-                  value={timeFilter}
-                  options={DASHBOARD_TIME_OPTIONS}
-                  ariaLabel="Time range for unlocks and earnings"
-                  disabled={sortMode === 'newest' || sortMode === 'drafts'}
-                  disabledHint="Time range does not apply when sorting by Newest or Drafts."
-                  onChange={(v) => setTimeFilter(v)}
-                  minWidth={TIME_PILL_MIN_WIDTH}
-                />
-              </div>
-
               {sortedPosts.length === 0 ? (
                 <div className="empty">
                   {sortMode === 'drafts' ? 'No drafts yet.' : 'No posts found.'}

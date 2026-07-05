@@ -272,7 +272,7 @@ export const FEED_CSS = `
 .pow-feed .dashbtn.sec:hover{background:transparent;color:var(--cyan);border-color:var(--cyan);box-shadow:0 0 14px rgba(61,240,255,.18);}
 .pow-feed .dashsection-title{margin:0;font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);
   text-shadow:0 0 8px rgba(0,255,156,.3);}
-.pow-feed .dashfilters{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:16px 0 12px;}
+.pow-feed .dashsection-head{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .pow-feed .dashlist{list-style:none;margin:16px 0 0;padding:0;display:flex;flex-direction:column;gap:10px;}
 .pow-feed .dashpost{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;}
 .pow-feed .dashpost-row{display:flex;flex-direction:column;gap:12px;}
