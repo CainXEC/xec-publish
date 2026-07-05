@@ -31,7 +31,7 @@ async function main() {
   writeFileSync("card-preview.png", png);
   console.log(`Rendered ${png.length} bytes -> ./card-preview.png (open it to eyeball the card)`);
 
-  // 2) upload via the real pipeline path
+  // 2) upload via the real pipeline path (this ALSO registers the Cashtab icon)
   const url = await hostHandleCard(handle, token);
   if (url) {
     console.log("\nHOSTED:");
@@ -40,6 +40,26 @@ async function main() {
   } else {
     console.error("\nhostHandleCard returned null — check the [hostHandleCard] warning above (bucket name, font path, or keys).");
     process.exit(1);
+  }
+
+  // 3) confirm the Cashtab icon is live. hostHandleCard already submitted it to
+  //    the token server; rather than POST again (icons are immutable), we just
+  //    fetch the served icon to prove it's registered and being rendered.
+  const iconUrl = `https://icons.etokens.cash/128/${token}.png`;
+  console.log("\nCASHTAB ICON:");
+  try {
+    const res = await fetch(iconUrl);
+    const type = res.headers.get("content-type") ?? "";
+    if (res.ok && type.startsWith("image/")) {
+      console.log("  live ✓ served from the token server");
+      console.log("  " + iconUrl);
+      console.log("\nOpen that URL — that's the icon Cashtab will render for the NFT.");
+    } else {
+      console.log(`  not served yet (HTTP ${res.status}, ${type || "no content-type"})`);
+      console.log("  Check the [submitTokenIcon] warning above if this persists.");
+    }
+  } catch (e) {
+    console.log("  could not reach token server — " + (e instanceof Error ? e.message : e));
   }
 }
 

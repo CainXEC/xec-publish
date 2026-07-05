@@ -26,6 +26,7 @@
 // =============================================================================
 
 import { renderHandleCard } from "./renderHandleCard";
+import { submitTokenIcon } from "./submitTokenIcon";
 import { createClient } from "@supabase/supabase-js";
 import { Resvg } from "@resvg/resvg-js";
 import { existsSync } from "node:fs";
@@ -93,6 +94,15 @@ export async function hostHandleCard(handle: string, tokenId: string): Promise<s
     // Persist on the handle row — source of truth for the gallery, OG images, wallets.
     // Best-effort: a miss here just means the backfill script picks it up later.
     await supabase.from("handles").update({ image_url: url }).eq("token_id", tokenId);
+
+    // Register the SAME PNG as the Cashtab token icon (best-effort). Uses the
+    // exact bytes we just stored so the on-chain-wallet icon matches the site.
+    // Never blocks the mint; the backfill script re-tries any that miss here.
+    await submitTokenIcon(png, tokenId, {
+      name: handle,
+      ticker: handle,
+      url: `https://proofofwriting.com/@${handle}`,
+    });
 
     return url;
   } catch (e: any) {
