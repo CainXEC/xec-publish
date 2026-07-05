@@ -139,18 +139,20 @@ export default function MarketplaceClient() {
 
       <div className="mkbar">
         <ThemeToggle variant="bare" />
-        <label className="sortlabel" htmlFor="mk-sort">Sort</label>
-        <select
-          id="mk-sort"
-          className="sortsel"
-          value={sort}
-          onChange={(e) => setSort(e.target.value as Sort)}
-        >
-          <option value="price-asc">Price: low to high</option>
-          <option value="price-desc">Price: high to low</option>
-          <option value="new">Newest minted</option>
-          <option value="old">Oldest minted</option>
-        </select>
+        <div className="sortgroup">
+          <label className="sortlabel" htmlFor="mk-sort">Sort</label>
+          <select
+            id="mk-sort"
+            className="sortsel"
+            value={sort}
+            onChange={(e) => setSort(e.target.value as Sort)}
+          >
+            <option value="price-asc">Price: low to high</option>
+            <option value="price-desc">Price: high to low</option>
+            <option value="new">Newest minted</option>
+            <option value="old">Oldest minted</option>
+          </select>
+        </div>
       </div>
 
       {loading ? (
@@ -193,12 +195,13 @@ const CSS = `
 .pow-market .inlink,.pow-market .sublist .inlink{color:var(--cyan);text-decoration:none;border-bottom:1px solid transparent;transition:border-color .15s;}
 .pow-market .inlink:hover{border-color:var(--cyan);}
 
-.pow-market .mkbar{max-width:1080px;margin:0 auto 22px;display:flex;justify-content:flex-end;align-items:center;gap:10px;}
-.pow-market .pow-toggle{margin-right:auto;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;
+.pow-market .mkbar{max-width:1080px;margin:0 auto 22px;display:flex;justify-content:flex-end;align-items:center;gap:14px;}
+.pow-market .pow-toggle{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;
   padding:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;color:var(--neon);cursor:pointer;
   transition:border-color .15s,box-shadow .15s;}
 .pow-market .pow-toggle:hover{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
 .pow-market .pow-toggle svg{width:15px;height:15px;}
+.pow-market .sortgroup{display:inline-flex;align-items:center;gap:10px;}
 .pow-market .sortlabel{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);}
 .pow-market .sortsel{background:var(--panel);border:1px solid var(--line);color:var(--text);
   font:inherit;font-size:13px;padding:8px 12px;border-radius:8px;outline:none;cursor:pointer;}
