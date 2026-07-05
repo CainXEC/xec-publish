@@ -201,26 +201,32 @@ describe('POST /api/feed/confirm', () => {
     expect(mocks.resolveOrCreateAccount).not.toHaveBeenCalled()
   })
 
-  it('holds a not-yet-final post as finalizing (202)', async () => {
+  it('publishes a not-yet-final post at 0-conf as provisional (finalized_at null)', async () => {
     mocks.verifyFeedTxid.mockResolvedValue({
       txid: PAY_TXID,
       payerAddress: 'ecash:qpayer',
       sats: 10000,
       isFinal: false,
     })
+    let insertedRow = null
     useSupabase((state, term) => {
-      if (state.op === 'insert') throw new Error('should not insert before finality')
+      if (state.op === 'insert') {
+        insertedRow = state.insertRow
+        return { data: { id: 'post-1', txid: PAY_TXID, action: 1, content: 'Hello world' }, error: null }
+      }
       if (term === 'list') return { data: [], error: null }
       return { data: null, error: null }
     })
     const { POST } = await import('@/app/api/feed/confirm/route')
     const res = await POST(makeReq({ action: 'post', content: 'Hello world', txid: PAY_TXID }))
-    expect(res.status).toBe(202)
-    expect(await res.json()).toEqual({ ok: true, status: 'finalizing' })
-    expect(mocks.resolveOrCreateAccount).not.toHaveBeenCalled()
+    expect(res.status).toBe(200)
+    expect((await res.json()).status).toBe('posted')
+    // The 0-conf row is recorded provisionally; the reconcile sweep finalizes it.
+    expect(insertedRow.finalized_at).toBeNull()
+    expect(mocks.resolveOrCreateAccount).toHaveBeenCalledWith('ecash:qpayer')
   })
 
-  it('records a paid post and mints a pay session', async () => {
+  it('records a final paid post (finalized_at stamped) and mints a pay session', async () => {
     mocks.verifyFeedTxid.mockResolvedValue({
       txid: PAY_TXID,
       payerAddress: 'ecash:qpayer',
@@ -236,8 +242,12 @@ describe('POST /api/feed/confirm', () => {
       content: 'Hello world',
       payer_address: 'ecash:qpayer',
     }
+    let captured = null
     useSupabase((state, term) => {
-      if (state.op === 'insert') return { data: insertedRow, error: null }
+      if (state.op === 'insert') {
+        captured = state.insertRow
+        return { data: insertedRow, error: null }
+      }
       if (term === 'list') return { data: [], error: null } // exclude-by-content-hash
       return { data: null, error: null } // idempotent lookup: not yet recorded
     })
@@ -248,6 +258,8 @@ describe('POST /api/feed/confirm', () => {
     expect(json.status).toBe('posted')
     expect(json.post.txid).toBe(PAY_TXID)
     expect(json.post.replyCount).toBe(0)
+    // Already final at detection → born final, so the sweep never touches it.
+    expect(captured.finalized_at).not.toBeNull()
     expect(mocks.resolveOrCreateAccount).toHaveBeenCalledWith('ecash:qpayer')
     expect(res.cookies.get('pow_session')?.value).toBe('signed.session')
   })
@@ -331,27 +343,36 @@ describe('POST /api/feed/react/confirm', () => {
     expect(mocks.resolveOrCreateAccount).not.toHaveBeenCalled()
   })
 
-  it('holds a not-yet-final reaction as finalizing (202)', async () => {
+  it('publishes a not-yet-final reaction at 0-conf as provisional (finalized_at null)', async () => {
     mocks.verifyFeedTxid.mockResolvedValue({
       txid: PAY_TXID,
       payerAddress: 'ecash:qfan',
       sats: 10000,
       isFinal: false,
     })
+    let insertedRow = null
     useSupabase((state, term) => {
-      if (state.op === 'insert') throw new Error('should not insert before finality')
+      if (state.op === 'insert') {
+        insertedRow = state.insertRow
+        return {
+          data: { id: 'evt-1', txid: PAY_TXID, action: 5, target_txid: TXID_A },
+          error: null,
+        }
+      }
       if (state.table === 'feed_posts') return { data: liveTarget, error: null }
       if (state.table === 'feed_events' && term === 'list') return { data: [], error: null }
       return { data: null, error: null }
     })
     const { POST } = await import('@/app/api/feed/react/confirm/route')
     const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A, txid: PAY_TXID }))
-    expect(res.status).toBe(202)
-    expect(await res.json()).toEqual({ ok: true, status: 'finalizing' })
-    expect(mocks.resolveOrCreateAccount).not.toHaveBeenCalled()
+    expect(res.status).toBe(200)
+    expect((await res.json()).status).toBe('reacted')
+    // The 0-conf reaction is recorded provisionally; the reconcile sweep finalizes it.
+    expect(insertedRow.finalized_at).toBeNull()
+    expect(mocks.resolveOrCreateAccount).toHaveBeenCalledWith('ecash:qfan')
   })
 
-  it('records a paid reaction', async () => {
+  it('records a final paid reaction (finalized_at stamped)', async () => {
     mocks.verifyFeedTxid.mockResolvedValue({
       txid: PAY_TXID,
       payerAddress: 'ecash:qfan',
@@ -365,8 +386,12 @@ describe('POST /api/feed/react/confirm', () => {
       target_txid: TXID_A,
       payer_address: 'ecash:qfan',
     }
+    let captured = null
     useSupabase((state, term) => {
-      if (state.op === 'insert') return { data: event, error: null }
+      if (state.op === 'insert') {
+        captured = state.insertRow
+        return { data: event, error: null }
+      }
       if (state.table === 'feed_posts') return { data: liveTarget, error: null }
       if (state.table === 'feed_events' && term === 'list') return { data: [], error: null }
       return { data: null, error: null } // idempotent lookup: not yet recorded
@@ -377,6 +402,8 @@ describe('POST /api/feed/react/confirm', () => {
     const json = await res.json()
     expect(json.status).toBe('reacted')
     expect(json.event.txid).toBe(PAY_TXID)
+    // Already final at detection → born final, so the sweep never touches it.
+    expect(captured.finalized_at).not.toBeNull()
     expect(mocks.resolveOrCreateAccount).toHaveBeenCalledWith('ecash:qfan')
   })
 

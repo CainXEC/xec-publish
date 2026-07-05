@@ -120,13 +120,13 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, status: 'awaiting_payment' })
   }
 
-  // Payment seen, but don't publish the post until Avalanche finalizes the tx.
-  // A 0-conf tx can still be replaced by a conflicting double-spend, so
-  // recording the post now would let an attacker post for free and then claw
-  // the payment back. `finalizing` (202) tells the client to keep polling.
-  if (!match.isFinal) {
-    return NextResponse.json({ ok: true, status: 'finalizing' }, { status: 202 })
-  }
+  // Publish at 0-conf the moment the payment is SEEN, so the feed feels instant.
+  // Finality is no longer a gate here — instead the row is recorded as
+  // provisional (finalized_at NULL) and the reconcile sweep either stamps it
+  // final or deletes it if the tx never finalizes (a double-spend that lost).
+  // Low-stakes by design: a feed payment is peer-to-peer on-chain, so a reversed
+  // tx just means the coins never arrived — no custodied funds are ever at risk.
+  const finalizedAt = match.isFinal ? new Date().toISOString() : null
 
   // If this txid is already recorded, return it (idempotent).
   const { data: already } = await supabase
@@ -153,6 +153,7 @@ export async function POST(request) {
     payer_address: match.payerAddress,
     payout_address: match.payerAddress, // snapshot: replies to this post pay the poster
     amount_sats: match.sats,
+    finalized_at: finalizedAt,
   }
 
   const { data: inserted, error: insertError } = await supabase

@@ -122,8 +122,6 @@ export default function ComposeBox({
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('sessionChanged'))
           }
-        } else if (data.status === 'finalizing') {
-          setStatusMsg('Finalizing payment…')
         } else if (!res.ok) {
           setNotice(data.error || 'Verification failed.')
         }
@@ -161,8 +159,6 @@ export default function ComposeBox({
         )
         setContent('')
         resetToCompose()
-      } else if (data.status === 'finalizing') {
-        setNotice('Payment seen — finalizing. This clears in a few seconds.')
       } else if (data.status === 'awaiting_payment') {
         setNotice("That transaction doesn't match this post yet.")
       } else {

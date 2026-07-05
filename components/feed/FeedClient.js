@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import ComposeBox from '@/components/feed/ComposeBox'
 import FeedPost from '@/components/feed/FeedPost'
@@ -39,6 +39,14 @@ export default function FeedClient({
     },
   })
   const [loading, setLoading] = useState(false)
+
+  // Opportunistically nudge the reconcile sweep on load: it promotes provisional
+  // (0-conf) posts/reactions once their tx finalizes and removes any that never
+  // did. Fire-and-forget and rate-limited server-side; a Vercel Cron also runs
+  // it, so this just keeps things tidy promptly regardless of cron cadence.
+  useEffect(() => {
+    fetch('/api/feed/reconcile', { cache: 'no-store' }).catch(() => {})
+  }, [])
 
   const active = tabs[scope]
 

@@ -26,6 +26,20 @@ CREATE TABLE IF NOT EXISTS public.feed_events (
   UNIQUE (action, target_txid, payer_address)
 );
 
+-- Avalanche-finality state (mirrors feed_posts). A like/repost is recorded at
+-- 0-conf the moment its payment is SEEN, so the count bumps instantly;
+-- finalized_at stays NULL until the tx is Avalanche-final. The reconcile sweep
+-- (/api/feed/reconcile) stamps finalized_at once final, or hard-deletes the row
+-- if it never finalizes within the grace window (double-spent, so never really
+-- paid). Counts are computed live from the rows, so a deletion self-corrects the
+-- count on the next read. Safe to re-run.
+ALTER TABLE public.feed_events ADD COLUMN IF NOT EXISTS finalized_at timestamptz;
+
+-- Sweep lookup: the provisional (not-yet-final) rows the reconcile job re-checks.
+CREATE INDEX IF NOT EXISTS feed_events_provisional_idx
+  ON public.feed_events (created_at)
+  WHERE finalized_at IS NULL;
+
 -- Deny-by-default: app only touches this via the service-role key (bypasses
 -- RLS). Enabling RLS with NO policies locks out direct anon/authenticated
 -- access without affecting server writes. Safe to re-run.

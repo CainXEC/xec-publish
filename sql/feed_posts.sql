@@ -30,6 +30,19 @@ ALTER TABLE public.feed_posts ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
 -- Quote target (safe to re-run on an existing table).
 ALTER TABLE public.feed_posts ADD COLUMN IF NOT EXISTS quoted_txid text;
 
+-- Avalanche-finality state. A post is published at 0-conf the moment its payment
+-- is SEEN, so the feed feels instant; finalized_at stays NULL until the tx is
+-- Avalanche-final. The reconcile sweep (/api/feed/reconcile) re-checks each NULL
+-- row: it stamps finalized_at once the tx finalizes, or hard-deletes the row if
+-- the tx never finalizes within the grace window (a double-spend that lost, so
+-- the post was never really paid for). Safe to re-run.
+ALTER TABLE public.feed_posts ADD COLUMN IF NOT EXISTS finalized_at timestamptz;
+
+-- Sweep lookup: the provisional (not-yet-final) rows the reconcile job re-checks.
+CREATE INDEX IF NOT EXISTS feed_posts_provisional_idx
+  ON public.feed_posts (created_at)
+  WHERE finalized_at IS NULL;
+
 -- Deny-by-default for anon/authenticated keys. The app only ever touches this
 -- table via the service-role key (createServerSupabase), which bypasses RLS, so
 -- enabling RLS with NO policies locks out direct client access — nobody can

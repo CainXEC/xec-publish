@@ -55,3 +55,36 @@ export async function isTxFinal(txid: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Finer-grained finality state, for the reconcile sweep that must decide whether
+ * to DELETE a provisional row. `isTxFinal` collapses "not final" and "couldn't
+ * reach Chronik" into one `false`, which is unsafe for deletion — a Chronik
+ * outage would look like a wave of non-final txs and wipe legitimately-final
+ * rows. This distinguishes:
+ *
+ *   - `final`   — Avalanche-final; promote the row.
+ *   - `pending` — seen on-chain but not yet final; if old enough it's stuck /
+ *                 lost its double-spend race → safe to delete.
+ *   - `missing` — Chronik has no such tx (evicted/replaced by a double-spend
+ *                 that won) → safe to delete once past grace.
+ *   - `error`   — transport/unknown failure; the caller must NOT act (leave the
+ *                 row and retry next sweep) so an outage never deletes good data.
+ */
+export type TxFinalityState = "final" | "pending" | "missing" | "error";
+
+export async function txFinalityState(txid: string): Promise<TxFinalityState> {
+  try {
+    const tx = await chronik().tx(txid);
+    return tx?.isFinal === true ? "final" : "pending";
+  } catch (e) {
+    // chronik throws for BOTH "tx not found" and transport errors. Only a
+    // definitive not-found means the tx is truly gone; treat everything else as
+    // `error` (conservative — never delete on an ambiguous failure).
+    const msg = String((e as { message?: string })?.message ?? e).toLowerCase();
+    if (msg.includes("not found") || msg.includes("no such") || msg.includes("404")) {
+      return "missing";
+    }
+    return "error";
+  }
+}

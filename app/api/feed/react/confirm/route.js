@@ -106,13 +106,13 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, status: 'awaiting_payment' })
   }
 
-  // Payment seen, but hold the reaction until Avalanche finalizes the tx. A
-  // 0-conf tx can still be replaced by a conflicting double-spend, so recording
-  // the like/repost now would let an attacker react for free and claw the
-  // payment back. `finalizing` (202) tells the client to keep polling.
-  if (!match.isFinal) {
-    return NextResponse.json({ ok: true, status: 'finalizing' }, { status: 202 })
-  }
+  // Record the reaction at 0-conf the moment the payment is SEEN, so the count
+  // bumps instantly. Finality is no longer a gate — the row is recorded as
+  // provisional (finalized_at NULL) and the reconcile sweep either stamps it
+  // final or deletes it if the tx never finalizes (a double-spend that lost, so
+  // the like was never really paid for). Counts are computed live, so a deletion
+  // self-corrects the count on the next read.
+  const finalizedAt = match.isFinal ? new Date().toISOString() : null
 
   // Idempotent on txid.
   const { data: already } = await supabase
@@ -136,6 +136,7 @@ export async function POST(request) {
     payer_address: match.payerAddress,
     payout_address: target.payout_address,
     amount_sats: match.sats,
+    finalized_at: finalizedAt,
   }
 
   const { data: inserted, error: insertError } = await supabase
