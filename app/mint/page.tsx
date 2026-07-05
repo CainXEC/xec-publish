@@ -9,10 +9,11 @@ import MintHandle from "@/components/MintHandle";
 export const metadata: Metadata = {
   title: "Mint a handle — proofofwriting",
   description:
-    "Claim a one-of-one @handle on eCash. Each handle is a unique voxel monument, revealed only at mint.",
+    "Claim a one-of-one @handle on eCash — a unique voxel monument, revealed only at mint — or browse handles listed for sale on Agora at live on-chain prices.",
   openGraph: {
     title: "Mint a handle — proofofwriting",
-    description: "Claim a one-of-one @handle on eCash.",
+    description:
+      "Claim a one-of-one @handle on eCash, or buy one listed for sale on Agora.",
     url: "https://www.proofofwriting.com/mint",
     type: "website",
   },

@@ -78,7 +78,7 @@ function Card({ listing }: { listing: Listing }) {
   );
 }
 
-export default function MarketplaceClient() {
+export default function MarketplaceClient({ embedded = false }: { embedded?: boolean }) {
   const [items, setItems] = useState<Listing[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -108,14 +108,16 @@ export default function MarketplaceClient() {
   }, [sort]);
 
   return (
-    <div className="pow-market">
+    <div className={`pow-market${embedded ? " embed" : ""}`} id="marketplace">
       <style>{CSS}</style>
 
       <header className="mkhead">
-        <p className="eyebrow">
-          <Link href="/" className="brandlink">proofofwriting</Link>
-          {" // marketplace"}
-        </p>
+        {embedded ? null : (
+          <p className="eyebrow">
+            <Link href="/" className="brandlink">proofofwriting</Link>
+            {" // marketplace"}
+          </p>
+        )}
         <h1 className="title">Handles for sale</h1>
         <p className="sub">
           One-of-one <span className="mono">@handles</span>, listed by their holders on
@@ -138,7 +140,7 @@ export default function MarketplaceClient() {
       </header>
 
       <div className="mkbar">
-        <ThemeToggle variant="bare" />
+        {embedded ? null : <ThemeToggle variant="bare" />}
         <div className="sortgroup">
           <label className="sortlabel" htmlFor="mk-sort">Sort</label>
           <select
@@ -184,6 +186,13 @@ const CSS = `
   padding:56px 20px 80px; box-sizing:border-box;
 }
 .pow-market .mono{font-family:inherit;}
+
+/* Embedded under the mint page: drop the full-viewport chrome so the grid flows
+   as a section below the mint flow. The mint page owns the page background,
+   min-height, and theme toggle; here we keep only the header + bar + grid. */
+.pow-market.embed{min-height:0;background:none;padding:0;}
+html:not(.dark) .pow-market.embed{background:none;}
+.pow-market.embed .mkhead{margin-top:0;}
 .pow-market .mkhead{max-width:760px;margin:0 auto 34px;text-align:center;}
 .pow-market .eyebrow{font-size:12px;letter-spacing:.34em;text-transform:uppercase;color:var(--cyan);margin:0 0 16px;}
 .pow-market .brandlink{color:inherit;text-decoration:none;transition:text-shadow .15s,color .15s;}

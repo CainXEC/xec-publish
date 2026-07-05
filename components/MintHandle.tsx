@@ -14,6 +14,7 @@ import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { renderHandleCard, renderMysteryCard } from "@/lib/renderHandleCard";
 import ThemeToggle from "@/components/ThemeToggle";
+import MarketplaceClient from "@/components/MarketplaceClient";
 
 type Availability = { available?: boolean; status: string; priceXec?: number; tier?: string; auctionOnly?: boolean; reason?: string };
 type Intent = { mintId: string; handle: string; amountXec: string; address: string; bip21Url: string; expiresAt: string };
@@ -153,13 +154,14 @@ export default function MintHandle() {
     <div className="pow-mint">
       <style>{CSS}</style>
 
-      <div className="mint-toolbar">
-        <ThemeToggle variant="bare" />
+      <div className="topbar">
+        <Link href="/" className="wordmark">proofofwriting</Link>
+        <div className="toplinks">
+          <Link href="/" className="toplink">feed</Link>
+          <ThemeToggle variant="feed" />
+        </div>
       </div>
 
-      <p className="eyebrow">
-        <Link href="/" className="brandlink">proofofwriting</Link> // handles
-      </p>
       <h1 className="title">Mint a handle</h1>
       <p className="sub">A one-of-one name on Proof of Writing. The card is revealed only after you mint.</p>
 
@@ -257,6 +259,8 @@ export default function MintHandle() {
           </button>
         </div>
       )}
+
+      <MarketplaceClient embedded />
     </div>
   );
 }
@@ -275,20 +279,28 @@ const CSS = `
   color:var(--text);
   font-family:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   display:flex; flex-direction:column; align-items:center; text-align:center;
-  padding:64px 20px 110px;
-  position:relative;
+  padding:26px 20px 110px;
 }
 .pow-mint > *{max-width:560px;width:100%;}
-.pow-mint .mint-toolbar{position:absolute;top:18px;right:18px;width:auto;max-width:none;z-index:2;}
-.pow-mint .pow-toggle{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;
-  padding:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;color:var(--neon);cursor:pointer;
-  transition:border-color .15s,box-shadow .15s;}
-.pow-mint .pow-toggle:hover{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
-.pow-mint .pow-toggle svg{width:15px;height:15px;}
-.pow-mint .eyebrow{font-size:12px;letter-spacing:.34em;text-transform:uppercase;color:var(--cyan);margin:0 0 16px;
-  text-shadow:0 0 10px rgba(61,240,255,.35);}
-.pow-mint .brandlink{color:inherit;text-decoration:none;transition:text-shadow .15s,color .15s;}
-.pow-mint .brandlink:hover{color:var(--neon);text-shadow:0 0 12px rgba(0,255,156,.5);}
+/* The embedded marketplace grid wants to be wider than the mint column, and
+   sits below the mint flow behind a hairline separator. */
+.pow-mint > .pow-market.embed{max-width:1120px;margin-top:64px;padding-top:52px;border-top:1px solid var(--line);}
+/* Header bar mirrors the feed's .topbar so the theme toggle lives in a proper
+   row (brand left, links + toggle right) instead of pinned to the viewport
+   corner. Widened to the marketplace grid so it frames the whole page. */
+.pow-mint .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;
+  width:100%;max-width:1120px;margin:0 auto 36px;}
+.pow-mint .wordmark{font-size:15px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--neon);
+  text-decoration:none;text-shadow:0 0 8px rgba(0,255,156,.5);transition:text-shadow .15s;}
+.pow-mint .wordmark:hover{text-shadow:0 0 14px rgba(0,255,156,.7);}
+.pow-mint .toplinks{display:flex;align-items:center;gap:10px;}
+.pow-mint .toplink{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);border:1px solid var(--line);
+  border-radius:8px;padding:8px 14px;text-decoration:none;transition:border-color .15s,box-shadow .15s;}
+.pow-mint .toplink:hover{border-color:var(--cyan);box-shadow:0 0 16px rgba(61,240,255,.22);}
+.pow-mint .toplink-toggle{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;
+  padding:0;color:var(--neon);cursor:pointer;background:transparent;}
+.pow-mint .toplink-toggle:hover{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
+.pow-mint .toplink-toggle svg{width:15px;height:15px;}
 .pow-mint .title{font-size:42px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--neon);margin:0 0 12px;
   text-shadow:0 0 8px rgba(0,255,156,.55),0 0 26px rgba(0,255,156,.28);}
 .pow-mint .sub{color:#a6d8c9;font-size:14.5px;line-height:1.55;margin:0 0 30px;}

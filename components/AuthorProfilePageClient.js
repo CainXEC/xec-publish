@@ -126,7 +126,7 @@ export default function AuthorProfilePageClient({
               dashboard
             </Link>
           ) : null}
-          <Link href="/marketplace" className="toplink">
+          <Link href="/mint#marketplace" className="toplink">
             marketplace
           </Link>
           <Link href="/mint" className="toplink">

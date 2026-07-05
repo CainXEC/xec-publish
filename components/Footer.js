@@ -20,7 +20,7 @@ export default function Footer() {
     <footer className="border-t-[0.5px] border-zinc-200 dark:border-zinc-800">
       <div className="mx-auto flex max-w-5xl items-center justify-center gap-4 px-4 py-6 sm:gap-6 sm:px-6">
         <Link
-          href="/marketplace"
+          href="/mint#marketplace"
           className="text-[13px] text-zinc-500 transition hover:underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
         >
           Marketplace
