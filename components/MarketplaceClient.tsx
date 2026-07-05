@@ -16,6 +16,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { renderHandleCard } from "@/lib/renderHandleCard";
+import ThemeToggle from "@/components/ThemeToggle";
 
 type Listing = {
   tokenId: string;
@@ -137,6 +138,7 @@ export default function MarketplaceClient() {
       </header>
 
       <div className="mkbar">
+        <ThemeToggle variant="bare" />
         <label className="sortlabel" htmlFor="mk-sort">Sort</label>
         <select
           id="mk-sort"
@@ -192,6 +194,11 @@ const CSS = `
 .pow-market .inlink:hover{border-color:var(--cyan);}
 
 .pow-market .mkbar{max-width:1080px;margin:0 auto 22px;display:flex;justify-content:flex-end;align-items:center;gap:10px;}
+.pow-market .pow-toggle{margin-right:auto;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;
+  padding:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;color:var(--neon);cursor:pointer;
+  transition:border-color .15s,box-shadow .15s;}
+.pow-market .pow-toggle:hover{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
+.pow-market .pow-toggle svg{width:15px;height:15px;}
 .pow-market .sortlabel{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);}
 .pow-market .sortsel{background:var(--panel);border:1px solid var(--line);color:var(--text);
   font:inherit;font-size:13px;padding:8px 12px;border-radius:8px;outline:none;cursor:pointer;}
@@ -217,4 +224,18 @@ const CSS = `
 
 @media (prefers-reduced-motion:reduce){.pow-market *{transition:none!important;}}
 @media (max-width:520px){.pow-market .title{font-size:30px;}.pow-market .mkgrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}}
+
+/* Daylight neon: keep the electric palette on a bright ground — the terminal
+   glowing under fluorescent light. Grounds flip light, neon deepens just enough
+   to stay legible on white; the rgba glow halos stay bright so text still lights. */
+html:not(.dark) .pow-market{
+  --bg:#e9faf2; --panel:#ffffff; --panel2:#f0f9f4; --line:#bfe6d5; --text:#07271d;
+  --dim:#5c8578; --neon:#00b06e; --cyan:#0898b4; --no:#e23b4d;
+  background:var(--bg);
+  background-image:
+    radial-gradient(1200px 480px at 50% -8%, rgba(0,255,156,.28), transparent 62%),
+    repeating-linear-gradient(0deg, rgba(0,180,110,.055) 0 1px, transparent 1px 3px);
+}
+html:not(.dark) .pow-market .sub{color:#3f6b5d;}
+html:not(.dark) .pow-market .mkart{background:#eef7f2;}
 `;

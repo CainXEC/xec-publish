@@ -13,6 +13,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { renderHandleCard, renderMysteryCard } from "@/lib/renderHandleCard";
+import ThemeToggle from "@/components/ThemeToggle";
 
 type Availability = { available?: boolean; status: string; priceXec?: number; tier?: string; auctionOnly?: boolean; reason?: string };
 type Intent = { mintId: string; handle: string; amountXec: string; address: string; bip21Url: string; expiresAt: string };
@@ -147,6 +148,10 @@ export default function MintHandle() {
     <div className="pow-mint">
       <style>{CSS}</style>
 
+      <div className="mint-toolbar">
+        <ThemeToggle variant="bare" />
+      </div>
+
       <p className="eyebrow">
         <Link href="/" className="brandlink">proofofwriting</Link> // handles
       </p>
@@ -255,8 +260,15 @@ const CSS = `
   font-family:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   display:flex; flex-direction:column; align-items:center; text-align:center;
   padding:64px 20px 110px;
+  position:relative;
 }
 .pow-mint > *{max-width:560px;width:100%;}
+.pow-mint .mint-toolbar{position:absolute;top:18px;right:18px;width:auto;max-width:none;z-index:2;}
+.pow-mint .pow-toggle{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;
+  padding:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;color:var(--neon);cursor:pointer;
+  transition:border-color .15s,box-shadow .15s;}
+.pow-mint .pow-toggle:hover{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
+.pow-mint .pow-toggle svg{width:15px;height:15px;}
 .pow-mint .eyebrow{font-size:12px;letter-spacing:.34em;text-transform:uppercase;color:var(--cyan);margin:0 0 16px;
   text-shadow:0 0 10px rgba(61,240,255,.35);}
 .pow-mint .brandlink{color:inherit;text-decoration:none;transition:text-shadow .15s,color .15s;}
@@ -324,4 +336,17 @@ const CSS = `
 
 @media (prefers-reduced-motion:reduce){.pow-mint *{transition:none!important;animation:none!important;}}
 @media (max-width:480px){.pow-mint .title{font-size:32px;}.pow-mint .card{width:230px;height:230px;}.pow-mint .card.won{width:260px;height:260px;}}
+
+/* Daylight neon: keep the electric palette on a bright ground — the terminal
+   glowing under fluorescent light. Grounds flip light, neon deepens just enough
+   to stay legible on white; the rgba glow halos stay bright so text still lights. */
+html:not(.dark) .pow-mint{
+  --bg:#e9faf2; --panel:#ffffff; --panel2:#f0f9f4; --line:#bfe6d5; --text:#07271d;
+  --dim:#5c8578; --neon:#00b06e; --cyan:#0898b4; --no:#e23b4d;
+  background-color:var(--bg);
+  background-image:
+    radial-gradient(1200px 480px at 50% -8%, rgba(0,255,156,.28), transparent 62%),
+    repeating-linear-gradient(0deg, rgba(0,180,110,.055) 0 1px, transparent 1px 3px);
+}
+html:not(.dark) .pow-mint .sub{color:#3f6b5d;}
 `;
