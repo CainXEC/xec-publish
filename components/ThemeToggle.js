@@ -2,7 +2,10 @@
 
 import { useCallback, useLayoutEffect, useState } from 'react'
 
-export default function ThemeToggle() {
+// `feed` renders the toggle as a neon .toplink so it sits inside the feed
+// family's self-contained .pow-feed topbar; the default variant is the
+// zinc/white chrome used by the article-page Nav.
+export default function ThemeToggle({ variant = 'default' }) {
   const [isDark, setIsDark] = useState(false)
 
   useLayoutEffect(() => {
@@ -21,11 +24,16 @@ export default function ThemeToggle() {
     setIsDark(next)
   }, [])
 
+  const className =
+    variant === 'feed'
+      ? 'toplink toplink-toggle'
+      : 'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white text-base leading-none transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:hover:bg-zinc-800'
+
   return (
     <button
       type="button"
       onClick={toggle}
-      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-300 bg-white text-base leading-none transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+      className={className}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
       {isDark ? (

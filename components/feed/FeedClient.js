@@ -5,6 +5,7 @@ import Link from 'next/link'
 import ComposeBox from '@/components/feed/ComposeBox'
 import FeedPost from '@/components/feed/FeedPost'
 import { FEED_CSS } from '@/components/feed/feedTheme'
+import ThemeToggle from '@/components/ThemeToggle'
 
 export default function FeedClient({
   initialPosts = [],
@@ -153,6 +154,7 @@ export default function FeedClient({
           <Link href="/mint" className="toplink">
             mint a handle
           </Link>
+          <ThemeToggle variant="feed" />
         </div>
       </div>
 

@@ -5,6 +5,7 @@ import { hydrateAuthorProfile } from '@/lib/loadAuthorProfile'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { FEED_CSS } from '@/components/feed/feedTheme'
+import ThemeToggle from '@/components/ThemeToggle'
 
 // Reached via the next.config rewrite:  /@<identifier>/articles
 // The full list of an author's published articles, in the neon feed theme. A
@@ -116,6 +117,7 @@ export default async function AuthorArticlesPage({ params }) {
           <Link href="/mint" className="toplink">
             mint a handle
           </Link>
+          <ThemeToggle variant="feed" />
         </div>
       </div>
 

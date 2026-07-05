@@ -9,6 +9,7 @@ import EngagementBar from '@/components/feed/EngagementBar'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import ArticleCard from '@/components/feed/ArticleCard'
 import { FEED_CSS } from '@/components/feed/feedTheme'
+import ThemeToggle from '@/components/ThemeToggle'
 
 function truncateAddress(addr) {
   const t = String(addr ?? '').trim()
@@ -171,6 +172,7 @@ export default function FeedThreadClient({
           <Link href="/mint" className="toplink">
             mint a handle
           </Link>
+          <ThemeToggle variant="feed" />
         </div>
       </div>
 

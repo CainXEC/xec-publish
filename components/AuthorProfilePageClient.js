@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import FeedPost from '@/components/feed/FeedPost'
 import { FEED_CSS } from '@/components/feed/feedTheme'
+import ThemeToggle from '@/components/ThemeToggle'
 
 function truncateAddress(addr) {
   const t = String(addr ?? '').trim()
@@ -131,6 +132,7 @@ export default function AuthorProfilePageClient({
           <Link href="/mint" className="toplink">
             mint a handle
           </Link>
+          <ThemeToggle variant="feed" />
         </div>
       </div>
 

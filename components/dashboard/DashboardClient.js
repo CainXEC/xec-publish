@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import FilterDropdown from '@/components/FilterDropdown'
 import { FEED_CSS } from '@/components/feed/feedTheme'
+import ThemeToggle from '@/components/ThemeToggle'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { supabase } from '@/lib/supabase-browser'
 import { fetchAllUnlockCountRows } from '@/lib/supabaseUnlockCounts'
@@ -479,6 +480,7 @@ export default function DashboardClient({
             <button type="button" onClick={() => void handleLogout()} className="toplink">
               log out
             </button>
+            <ThemeToggle variant="feed" />
           </div>
         </div>
         <main className="wrap" style={{ paddingTop: '28px' }}>
@@ -508,6 +510,7 @@ export default function DashboardClient({
           <button type="button" onClick={() => void handleLogout()} className="toplink">
             log out
           </button>
+          <ThemeToggle variant="feed" />
         </div>
       </div>
 

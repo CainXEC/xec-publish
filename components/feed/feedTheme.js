@@ -34,6 +34,10 @@ export const FEED_CSS = `
   border-radius:8px;padding:8px 14px;transition:border-color .15s,box-shadow .15s;}
 .pow-feed .toplink:hover{border-color:var(--cyan);box-shadow:0 0 16px rgba(61,240,255,.22);}
 .pow-feed .toplinks{display:flex;align-items:center;gap:10px;}
+.pow-feed .toplink-toggle{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;
+  padding:0;color:var(--neon);cursor:pointer;}
+.pow-feed .toplink-toggle:hover{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
+.pow-feed .toplink-toggle svg{width:15px;height:15px;}
 
 /* ---- header ---- */
 .pow-feed .head{max-width:640px;margin:0 auto;padding:28px 20px 18px;text-align:center;}
@@ -337,4 +341,32 @@ export const FEED_CSS = `
 
 @media (prefers-reduced-motion:reduce){.pow-feed *{transition:none!important;animation:none!important;}}
 @media (max-width:480px){.pow-feed .head{padding-top:20px;}}
+
+/* =========================================================================
+   DAYLIGHT NEON (light mode) — the same neon sign, seen in daylight.
+   The whole feed is driven by the ~9 vars at the top of .pow-feed, so light
+   mode just flips the GROUNDS bright and keeps the NEON electric. Glyphs use a
+   deeper neon ink so they stay legible on white, while every glow/halo is a
+   hardcoded rgba(0,255,156|61,240,255,…) that is untouched here — so neon text
+   reads like a lit tube photographed at noon. Applies whenever <html> is NOT
+   .dark; the dark block above is the default and still wins under .dark.
+   Voxel handle art (.handleimg) is intentionally left dark.
+   ======================================================================== */
+html:not(.dark) .pow-feed{
+  --bg:#e9faf2; --panel:#ffffff; --panel2:#f0f9f4; --line:#bfe6d5; --text:#07271d;
+  --dim:#5c8578; --neon:#00b06e; --cyan:#0898b4; --no:#e23b4d;
+  background-color:var(--bg);
+  background-image:
+    radial-gradient(1200px 480px at 50% -8%, rgba(0,255,156,.28), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(0,180,110,.055) 0 1px, transparent 1px 3px);
+}
+/* hardcoded light-teal body/secondary copy -> dark ink so it survives on white */
+html:not(.dark) .pow-feed .sub{color:#3f6b5d;}
+html:not(.dark) .pow-feed .qbody,
+html:not(.dark) .pow-feed .artcard-teaser,
+html:not(.dark) .pow-feed .artrow-teaser,
+html:not(.dark) .pow-feed .profbio,
+html:not(.dark) .pow-feed .dashbio{color:#2f5b4e;}
+html:not(.dark) .pow-feed .ttext{color:#26564a;}
+html:not(.dark) .pow-feed .compose textarea::placeholder{color:#8fb8ab;}
 `
