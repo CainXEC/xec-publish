@@ -201,11 +201,31 @@ describe('POST /api/feed/confirm', () => {
     expect(mocks.resolveOrCreateAccount).not.toHaveBeenCalled()
   })
 
+  it('holds a not-yet-final post as finalizing (202)', async () => {
+    mocks.verifyFeedTxid.mockResolvedValue({
+      txid: PAY_TXID,
+      payerAddress: 'ecash:qpayer',
+      sats: 10000,
+      isFinal: false,
+    })
+    useSupabase((state, term) => {
+      if (state.op === 'insert') throw new Error('should not insert before finality')
+      if (term === 'list') return { data: [], error: null }
+      return { data: null, error: null }
+    })
+    const { POST } = await import('@/app/api/feed/confirm/route')
+    const res = await POST(makeReq({ action: 'post', content: 'Hello world', txid: PAY_TXID }))
+    expect(res.status).toBe(202)
+    expect(await res.json()).toEqual({ ok: true, status: 'finalizing' })
+    expect(mocks.resolveOrCreateAccount).not.toHaveBeenCalled()
+  })
+
   it('records a paid post and mints a pay session', async () => {
     mocks.verifyFeedTxid.mockResolvedValue({
       txid: PAY_TXID,
       payerAddress: 'ecash:qpayer',
       sats: 10000,
+      isFinal: true,
     })
     const insertedRow = {
       id: 'post-1',
@@ -237,6 +257,7 @@ describe('POST /api/feed/confirm', () => {
       txid: PAY_TXID,
       payerAddress: 'ecash:qpayer',
       sats: 10000,
+      isFinal: true,
     })
     const existing = { id: 'post-1', txid: PAY_TXID, action: 1, content: 'Hello world' }
     useSupabase((state, term) => {
@@ -310,11 +331,32 @@ describe('POST /api/feed/react/confirm', () => {
     expect(mocks.resolveOrCreateAccount).not.toHaveBeenCalled()
   })
 
+  it('holds a not-yet-final reaction as finalizing (202)', async () => {
+    mocks.verifyFeedTxid.mockResolvedValue({
+      txid: PAY_TXID,
+      payerAddress: 'ecash:qfan',
+      sats: 10000,
+      isFinal: false,
+    })
+    useSupabase((state, term) => {
+      if (state.op === 'insert') throw new Error('should not insert before finality')
+      if (state.table === 'feed_posts') return { data: liveTarget, error: null }
+      if (state.table === 'feed_events' && term === 'list') return { data: [], error: null }
+      return { data: null, error: null }
+    })
+    const { POST } = await import('@/app/api/feed/react/confirm/route')
+    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A, txid: PAY_TXID }))
+    expect(res.status).toBe(202)
+    expect(await res.json()).toEqual({ ok: true, status: 'finalizing' })
+    expect(mocks.resolveOrCreateAccount).not.toHaveBeenCalled()
+  })
+
   it('records a paid reaction', async () => {
     mocks.verifyFeedTxid.mockResolvedValue({
       txid: PAY_TXID,
       payerAddress: 'ecash:qfan',
       sats: 10000,
+      isFinal: true,
     })
     const event = {
       id: 'evt-1',
@@ -343,6 +385,7 @@ describe('POST /api/feed/react/confirm', () => {
       txid: PAY_TXID,
       payerAddress: 'ecash:qfan',
       sats: 10000,
+      isFinal: true,
     })
     const existing = { id: 'evt-1', txid: PAY_TXID, action: 5, target_txid: TXID_A }
     useSupabase((state, term) => {

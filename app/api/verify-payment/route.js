@@ -78,6 +78,13 @@ export async function POST(request) {
       options: { logPrefix: '[verify-payment]', verbose: true },
     })
 
+    // Payment is real but not yet Avalanche-final — tell the client to keep
+    // polling (202) instead of surfacing an error. No cookie, no unlock record
+    // is created until the tx finalizes, which is what blocks the double-spend.
+    if (!result.ok && result.reason === 'finalizing') {
+      return NextResponse.json({ finalizing: true }, { status: 202 })
+    }
+
     if (!result.ok) {
       const e = result.error || ''
       const clientError =

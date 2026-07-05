@@ -50,6 +50,14 @@ export async function GET(req: NextRequest) {
 
     if (!found) return NextResponse.json({ ok: true, status: "awaiting_payment" });
 
+    // Payment seen, but hold the mint until Avalanche finalizes it. A 0-conf tx
+    // can still be replaced by a conflicting double-spend; minting the NFT now
+    // would let an attacker claw the payment back. Don't flip to paid — the
+    // client keeps polling and we re-check finality each time (~2-3s to final).
+    if (!found.isFinal) {
+      return NextResponse.json({ ok: true, status: "finalizing" }, { status: 202 });
+    }
+
     // record payer (delivery address) + flip to paid (guard against double-flip)
     await supabase
       .from("pending_mints")

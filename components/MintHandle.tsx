@@ -10,6 +10,7 @@
 // =============================================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { renderHandleCard, renderMysteryCard } from "@/lib/renderHandleCard";
 
@@ -114,6 +115,7 @@ export default function MintHandle() {
       else if (j.status === "failed") setNotice("The mint failed. If you paid, a refund is on its way.");
       else if (j.status === "expired") { setNotice("The 15-minute hold expired. Start again to re-lock the name."); setPhase("choose"); setIntent(null); }
       else if (j.status === "processing") setStatusMsg("Payment received — minting your handle");
+      else if (j.status === "finalizing") setStatusMsg("Finalizing payment…");
       else setStatusMsg("Waiting for payment");
     };
     const poll = async (txid?: string) => {
@@ -145,7 +147,9 @@ export default function MintHandle() {
     <div className="pow-mint">
       <style>{CSS}</style>
 
-      <p className="eyebrow">proofofwriting // handles</p>
+      <p className="eyebrow">
+        <Link href="/" className="brandlink">proofofwriting</Link> // handles
+      </p>
       <h1 className="title">Mint a handle</h1>
       <p className="sub">A one-of-one name on Proof of Writing. The card is revealed only after you mint.</p>
 
@@ -255,6 +259,8 @@ const CSS = `
 .pow-mint > *{max-width:560px;width:100%;}
 .pow-mint .eyebrow{font-size:12px;letter-spacing:.34em;text-transform:uppercase;color:var(--cyan);margin:0 0 16px;
   text-shadow:0 0 10px rgba(61,240,255,.35);}
+.pow-mint .brandlink{color:inherit;text-decoration:none;transition:text-shadow .15s,color .15s;}
+.pow-mint .brandlink:hover{color:var(--neon);text-shadow:0 0 12px rgba(0,255,156,.5);}
 .pow-mint .title{font-size:42px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--neon);margin:0 0 12px;
   text-shadow:0 0 8px rgba(0,255,156,.55),0 0 26px rgba(0,255,156,.28);}
 .pow-mint .sub{color:#a6d8c9;font-size:14.5px;line-height:1.55;margin:0 0 30px;}

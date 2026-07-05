@@ -9,6 +9,7 @@
 import { ChronikClient } from "chronik-client";
 import { encodeCashAddress } from "ecashaddrjs"; // same lib your unlock flow uses
 import { decodeOpReturnToPostId } from "@/lib/opReturnEncode";
+import { txIsFinal } from "@/lib/ecash/finality";
 
 const CHRONIK_URLS = ["https://chronik.e.cash", "https://chronik-native.fabien.cash"];
 let _chronik: ChronikClient | null = null;
@@ -18,6 +19,7 @@ export interface DetectedPayment {
   txid: string;
   payerAddress: string; // where the NFT will be delivered
   sats: number;         // total paid to the mint address
+  isFinal: boolean;     // Avalanche-final? gate the mint on this to block double-spends
 }
 
 // P2PKH: 76a914<20>88ac  |  P2SH: a914<20>87  -> ecash address
@@ -73,7 +75,7 @@ export async function verifyMintTxid(
     if (sats < minSats) return null;
     const payerAddress = payerOf(tx);
     if (!payerAddress) return null;
-    return { txid, payerAddress, sats };
+    return { txid, payerAddress, sats, isFinal: txIsFinal(tx) };
   } catch {
     return null;
   }
@@ -96,7 +98,7 @@ export async function findMintPayment(
       const sats = satsToAddress(tx, mintAddress);
       if (sats < expectedSats) continue;              // amount is a floor now, not exact
       const payerAddress = payerOf(tx);
-      if (payerAddress) return { txid: tx.txid, payerAddress, sats };
+      if (payerAddress) return { txid: tx.txid, payerAddress, sats, isFinal: txIsFinal(tx) };
     }
     return null;
   } catch {

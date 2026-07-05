@@ -146,6 +146,12 @@ export async function pollClaim(input: { handle: string; txid?: string }): Promi
     : await findMintPayment(PROOF_ADDRESS, null, grant.proof_sats, grant.proof_started_unix);
   if (!det?.payerAddress) return { ok: true, status: "awaiting_proof" };
 
+  // Hold the mint until the proof tx is Avalanche-final. Until then it could be
+  // replaced by a conflicting double-spend, so keep the client polling (a real
+  // but not-yet-final proof is indistinguishable, to the user, from one still
+  // propagating — "awaiting_proof" is the keep-waiting signal).
+  if (!det.isFinal) return { ok: true, status: "awaiting_proof" };
+
   const verifiedAddress = det.payerAddress; // author demonstrably holds these keys
 
   const minted = await mintToVerified(sk, grant.handle, verifiedAddress, grant);

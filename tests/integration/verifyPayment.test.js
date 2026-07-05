@@ -66,4 +66,33 @@ describe('/api/verify-payment', () => {
     expect(verifyAndRecordUnlock).toHaveBeenCalled()
     expect(signCookieValue).toHaveBeenCalledWith('p1', 'abc123')
   })
+
+  it('returns 202 finalizing while the payment is not yet Avalanche-final', async () => {
+    maybeSingle.mockResolvedValueOnce({
+      data: {
+        id: 'p1',
+        price_xec: 100,
+        author_id: 'a1',
+        authors: { xec_address: 'ecash:qauthor' },
+      },
+      error: null,
+    })
+    verifyAndRecordUnlock.mockResolvedValueOnce({
+      ok: false,
+      reason: 'finalizing',
+      error: 'Payment is finalizing',
+    })
+
+    const { POST } = await import('@/app/api/verify-payment/route')
+    const req = {
+      headers: { get: vi.fn(() => null) },
+      json: vi.fn(async () => ({ txid: 'abc123', postId: 'p1' })),
+    }
+    const res = await POST(req)
+
+    expect(res.status).toBe(202)
+    await expect(res.json()).resolves.toEqual({ finalizing: true })
+    // No unlock cookie is set until the tx finalizes.
+    expect(signCookieValue).not.toHaveBeenCalled()
+  })
 })

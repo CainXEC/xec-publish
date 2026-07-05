@@ -550,6 +550,14 @@ export default function PostPageClient({
         })
         const verifyData = await verifyRes.json().catch(() => ({}))
 
+        // Payment seen but not yet Avalanche-final (202). Clear the handled ref
+        // so the next poll retries this same txid — the unlock row is written
+        // only once finality lands, so we must keep asking until then.
+        if (verifyRes.status === 202 || verifyData.finalizing) {
+          payLastHandledTxidRef.current = ''
+          return
+        }
+
         if (verifyRes.ok && verifyData.unlocked) {
           triggerPaywallUnlockEffect()
           setUnlocked(true)

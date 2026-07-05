@@ -113,6 +113,8 @@ export default function EngagementBar({
         if (data.status === 'reacted') {
           stopped = true
           applyReacted(pending)
+        } else if (data.status === 'finalizing') {
+          setNotice('Finalizing payment…')
         } else if (!res.ok) {
           setNotice(data.error || 'Verification failed.')
         }
@@ -144,6 +146,8 @@ export default function EngagementBar({
       const data = await res.json()
       if (data.status === 'reacted') {
         applyReacted(pending)
+      } else if (data.status === 'finalizing') {
+        setNotice('Payment seen — finalizing. This clears in a few seconds.')
       } else if (data.status === 'awaiting_payment') {
         setNotice("That transaction doesn't match this reaction yet.")
       } else {

@@ -106,6 +106,14 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, status: 'awaiting_payment' })
   }
 
+  // Payment seen, but hold the reaction until Avalanche finalizes the tx. A
+  // 0-conf tx can still be replaced by a conflicting double-spend, so recording
+  // the like/repost now would let an attacker react for free and claw the
+  // payment back. `finalizing` (202) tells the client to keep polling.
+  if (!match.isFinal) {
+    return NextResponse.json({ ok: true, status: 'finalizing' }, { status: 202 })
+  }
+
   // Idempotent on txid.
   const { data: already } = await supabase
     .from('feed_events')
