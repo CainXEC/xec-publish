@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import FilterDropdown from '@/components/FilterDropdown'
+import DashboardHandleCarousel from '@/components/dashboard/DashboardHandleCarousel'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import ThemeToggle from '@/components/ThemeToggle'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
@@ -547,6 +548,8 @@ export default function DashboardClient({
               {copiedAddress ? <p className="dashcopied">Copied!</p> : null}
             </>
           ) : null}
+
+          <DashboardHandleCarousel />
 
           {notificationsOpen ? (
             <div className="dashnotifs">
