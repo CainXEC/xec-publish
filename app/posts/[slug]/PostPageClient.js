@@ -95,7 +95,6 @@ export default function PostPageClient({
   const [me, setMe] = useState(null)
   const [isFollowingAuthor, setIsFollowingAuthor] = useState(false)
   const [followAuthorBusy, setFollowAuthorBusy] = useState(false)
-  const [pinBusy, setPinBusy] = useState(false)
   const commentCopyTimeoutsRef = useRef({})
   const shareCopyTimeoutRef = useRef(null)
 
@@ -679,26 +678,6 @@ export default function PostPageClient({
     post?.id,
   ])
 
-  const handlePinHomepage = useCallback(async () => {
-    if (!post?.id || pinBusy) return
-    setPinBusy(true)
-    try {
-      const method = post.pinned === true ? 'DELETE' : 'POST'
-      const res = await fetch(`/api/posts/${encodeURIComponent(post.id)}/pin`, {
-        method,
-        credentials: 'include',
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        window.alert(data?.error || 'Could not update pin.')
-        return
-      }
-      router.refresh()
-    } finally {
-      setPinBusy(false)
-    }
-  }, [pinBusy, post.id, post.pinned, router])
-
   if (!post) {
     return null
   }
@@ -734,16 +713,6 @@ export default function PostPageClient({
 
       <main className="wrap">
         <article className="article">
-          {isAdminSession ? (
-            <button
-              type="button"
-              onClick={() => void handlePinHomepage()}
-              disabled={pinBusy}
-              className="pinbtn"
-            >
-              {pinBusy ? '…' : post.pinned === true ? '📌 Unpin' : '📌 Pin to homepage'}
-            </button>
-          ) : null}
           <h1 className="arttitle">{post.title}</h1>
           <p className="artbyline">
             <span>By</span>

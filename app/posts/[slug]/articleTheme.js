@@ -46,10 +46,6 @@ export const ARTICLE_CSS = `
 .pow-article .article{margin:0;}
 
 /* ---- article header ---- */
-.pow-article .pinbtn{background:none;border:none;color:#f0c04b;font:inherit;font-size:12px;cursor:pointer;padding:0;
-  margin:0 0 10px;transition:text-shadow .15s;}
-.pow-article .pinbtn:hover:not(:disabled){text-shadow:0 0 10px rgba(240,192,75,.5);}
-.pow-article .pinbtn:disabled{opacity:.5;cursor:default;}
 .pow-article .arttitle{font-size:34px;line-height:1.2;font-weight:800;letter-spacing:.01em;color:var(--neon);
   text-shadow:0 0 22px rgba(0,255,156,.3);margin:0;word-break:break-word;}
 .pow-article .artbyline{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:16px 0 0;font-size:13px;color:var(--dim);}

@@ -8,7 +8,6 @@ import {
   JetBrains_Mono,
   Newsreader,
 } from "next/font/google";
-import Footer from "@/components/Footer";
 import ScrollToTopOnRouteChange from "@/components/ScrollToTopOnRouteChange";
 import "./globals.css";
 
@@ -109,7 +108,6 @@ export default async function RootLayout({
       <body className="min-h-[100dvh]">
         <ScrollToTopOnRouteChange />
         {children}
-        <Footer />
         <Analytics />
       </body>
     </html>

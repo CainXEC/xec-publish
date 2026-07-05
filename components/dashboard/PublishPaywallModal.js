@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import Link from 'next/link'
 import { encodePostIdOpReturnRaw } from '@/lib/opReturnEncode'
 import { triggerPaymentSuccessEffect } from '@/lib/paymentSuccessEffect'
 import { buildPublishFeeBip21 } from '@/lib/paymentSplit'
@@ -311,15 +310,6 @@ export default function PublishPaywallModal({
                 {payError}
               </p>
             ) : null}
-            <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-500">
-              Don&apos;t have 100 XEC?{' '}
-              <Link
-                href="/how-it-works"
-                className="font-medium text-emerald-700 underline hover:text-emerald-800 dark:text-emerald-400"
-              >
-                Get eCash
-              </Link>
-            </p>
           </>
         )}
         <div className="mt-6 flex flex-row items-center gap-2 whitespace-nowrap">
