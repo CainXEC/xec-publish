@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { extractArticleSlug } from '@/lib/articleLinks'
+import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 
 // Longer teasers are clamped inside the card; the full article is one tap away.
 const TEASER_CLAMP_CHARS = 160
@@ -46,6 +47,12 @@ export default function ArticleCard({ card = null, content = '' }) {
   const resolved = card ?? fetched
   if (!resolved) return null
 
+  const readingLabel = formatReadingTimeLabel(resolved.readingTimeMinutes)
+  const metaParts = [
+    resolved.author ? `@${resolved.author}` : null,
+    readingLabel,
+  ].filter(Boolean)
+
   return (
     <Link href={`/posts/${resolved.slug}`} className="artcard">
       <span className="artcard-tag">Article</span>
@@ -56,6 +63,9 @@ export default function ArticleCard({ card = null, content = '' }) {
             ? `${resolved.teaser.slice(0, TEASER_CLAMP_CHARS).trimEnd()}…`
             : resolved.teaser}
         </span>
+      ) : null}
+      {metaParts.length > 0 ? (
+        <span className="artcard-meta">{metaParts.join(' · ')}</span>
       ) : null}
       <span className="artcard-cta">{priceLabel(resolved.priceXec)} →</span>
     </Link>

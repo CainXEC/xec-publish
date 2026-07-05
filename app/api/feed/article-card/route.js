@@ -18,7 +18,7 @@ export async function GET(request) {
   const supabase = createServerSupabase()
   const { data: row } = await supabase
     .from('posts')
-    .select('slug, title, teaser, price_xec')
+    .select('slug, title, teaser, price_xec, reading_time_minutes, authors(username)')
     .eq('slug', slug)
     .eq('published', true)
     .eq('legacy', false)
@@ -28,6 +28,8 @@ export async function GET(request) {
     return NextResponse.json({ ok: false, error: 'Article not found.' }, { status: 404 })
   }
 
+  const author = Array.isArray(row.authors) ? row.authors[0] : row.authors
+
   return NextResponse.json({
     ok: true,
     card: {
@@ -35,6 +37,8 @@ export async function GET(request) {
       title: row.title ?? '',
       teaser: row.teaser ?? '',
       priceXec: row.price_xec ?? null,
+      readingTimeMinutes: row.reading_time_minutes ?? null,
+      author: author?.username ?? null,
     },
   })
 }

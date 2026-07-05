@@ -174,6 +174,7 @@ export const FEED_CSS = `
   text-shadow:0 0 8px rgba(0,255,156,.4);}
 .pow-feed .artcard-title{font-size:16px;font-weight:700;line-height:1.35;color:var(--text);}
 .pow-feed .artcard-teaser{font-size:13px;line-height:1.5;color:#b9e6d8;}
+.pow-feed .artcard-meta{font-size:12px;letter-spacing:.02em;color:var(--dim);}
 .pow-feed .artcard-cta{margin-top:2px;font-size:12px;letter-spacing:.04em;color:var(--cyan);}
 
 /* ---- profile header ---- */

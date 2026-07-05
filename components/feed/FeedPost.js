@@ -7,6 +7,7 @@ import ComposeBox from '@/components/feed/ComposeBox'
 import EngagementBar from '@/components/feed/EngagementBar'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import ArticleCard from '@/components/feed/ArticleCard'
+import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 
 function timeAgo(iso) {
   if (!iso) return ''
@@ -112,8 +113,12 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   const [expanded, setExpanded] = useState(false)
 
   const body = typeof post.content === 'string' ? post.content : ''
-  const isLong = body.length > FEED_CLAMP_CHARS
-  const shownBody = !isLong || expanded ? body : `${body.slice(0, FEED_CLAMP_CHARS).trimEnd()}…`
+  // The article preview card is itself the link, so strip the raw article URL
+  // from the displayed text. Keep `body` intact for the card's slug detection.
+  const displayBody = extractArticleSlug(body) ? stripArticleLink(body) : body
+  const isLong = displayBody.length > FEED_CLAMP_CHARS
+  const shownBody =
+    !isLong || expanded ? displayBody : `${displayBody.slice(0, FEED_CLAMP_CHARS).trimEnd()}…`
 
   const isOwn =
     !post.deleted &&
@@ -180,18 +185,20 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
         ) : null}
       </div>
 
-      <p className="body">
-        {shownBody}
-        {isLong ? (
-          <button
-            type="button"
-            className="showmore"
-            onClick={() => setExpanded((s) => !s)}
-          >
-            {expanded ? 'Show less' : 'Show more'}
-          </button>
-        ) : null}
-      </p>
+      {shownBody ? (
+        <p className="body">
+          {shownBody}
+          {isLong ? (
+            <button
+              type="button"
+              className="showmore"
+              onClick={() => setExpanded((s) => !s)}
+            >
+              {expanded ? 'Show less' : 'Show more'}
+            </button>
+          ) : null}
+        </p>
+      ) : null}
 
       {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
 

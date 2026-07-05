@@ -8,6 +8,7 @@ import FeedPost from '@/components/feed/FeedPost'
 import EngagementBar from '@/components/feed/EngagementBar'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import ArticleCard from '@/components/feed/ArticleCard'
+import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import ThemeToggle from '@/components/ThemeToggle'
 
@@ -197,9 +198,12 @@ export default function FeedThreadClient({
               </div>
               {rootDeleted ? (
                 <p className="focusbody tombstone">This post was deleted.</p>
-              ) : (
-                <p className="focusbody">{post.content}</p>
-              )}
+              ) : (() => {
+                const focusText = extractArticleSlug(post.content)
+                  ? stripArticleLink(post.content)
+                  : post.content
+                return focusText ? <p className="focusbody">{focusText}</p> : null
+              })()}
               {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
               {!rootDeleted ? (
                 <ArticleCard card={post.articleCard ?? null} content={post.content} />
