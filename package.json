@@ -31,6 +31,7 @@
     "cashtab-connect": "^1.1.0",
     "chronik-client": "^4.3.0",
     "dompurify": "^3.3.3",
+    "ecash-agora": "^4.2.1",
     "ecash-lib": "^4.13.0",
     "ecash-wallet": "^5.5.1",
     "ecashaddrjs": "^2.0.0",
