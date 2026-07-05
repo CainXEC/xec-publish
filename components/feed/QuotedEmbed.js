@@ -61,7 +61,7 @@ export default function QuotedEmbed({ post, interactive = true }) {
       style={interactive ? { cursor: 'pointer' } : undefined}
     >
       <div className="qmeta">
-        <QuotedByline identity={post.author_identity} />
+        <QuotedByline identity={post.displayIdentity ?? post.author_identity} />
       </div>
       <p className="qbody">
         {post.deleted ? (

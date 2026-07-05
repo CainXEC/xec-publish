@@ -72,7 +72,7 @@ function AncestorNode({ post, top = false }) {
       </div>
       <div className="tbody">
         <div className="tmeta">
-          <ThreadByline identity={post.author_identity} />
+          <ThreadByline identity={post.displayIdentity ?? post.author_identity} />
           <span aria-hidden className="dot">
             ·
           </span>
@@ -193,7 +193,7 @@ export default function FeedThreadClient({
             </div>
             <div className="tbody">
               <div className="tmeta">
-                <ThreadByline identity={post.author_identity} />
+                <ThreadByline identity={post.displayIdentity ?? post.author_identity} />
               </div>
               {rootDeleted ? (
                 <p className="focusbody tombstone">This post was deleted.</p>

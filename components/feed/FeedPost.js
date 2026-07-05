@@ -35,9 +35,10 @@ function truncateAddress(addr) {
 const FEED_CLAMP_CHARS = 280
 
 /**
- * One feed post. The byline uses the identity stamped at write time
- * (author_identity): "@handle" links to the profile; a raw address is shown as
- * truncated monospace text.
+ * One feed post. The byline uses the poster's live identity (displayIdentity,
+ * resolved from the account's current handle at load time; falls back to the
+ * frozen author_identity for optimistic posts): "@handle" links to the profile;
+ * a raw address is shown as truncated monospace text.
  */
 function Byline({ identity }) {
   const id = typeof identity === 'string' ? identity.trim() : ''
@@ -164,7 +165,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   return (
     <li className="post" onClick={openThread} style={{ cursor: 'pointer' }}>
       <div className="postmeta">
-        <Byline identity={post.author_identity} />
+        <Byline identity={post.displayIdentity ?? post.author_identity} />
         <span aria-hidden className="dot">
           ·
         </span>
