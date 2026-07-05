@@ -69,9 +69,10 @@ export const ARTICLE_CSS = `
 .pow-article .sharebtn{background:transparent;border:1px solid var(--line);color:var(--cyan);font:inherit;font-size:12px;
   padding:5px 14px;border-radius:999px;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
 .pow-article .sharebtn:hover{border-color:var(--cyan);box-shadow:0 0 14px rgba(61,240,255,.2);}
-.pow-article .sharebtn-pow{display:inline-flex;align-items:center;justify-content:center;color:var(--neon);padding:5px 12px;}
+.pow-article .sharebtn-pow{display:inline-flex;align-items:center;justify-content:center;color:var(--neon);}
 .pow-article .sharebtn-pow:hover{border-color:var(--neon);box-shadow:0 0 14px rgba(0,255,156,.25);}
 .pow-article .sharebtn-pow svg{display:block;}
+.pow-article .sharebtn-pmark{font-weight:800;text-transform:uppercase;}
 .pow-article .copied{font-size:12px;font-weight:600;color:var(--neon);}
 
 /* ---- meta stats ---- */

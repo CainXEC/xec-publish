@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import PublishPaywallModal from '@/components/dashboard/PublishPaywallModal'
+import ThemeToggle from '@/components/ThemeToggle'
+import { FEED_CSS } from '@/components/feed/feedTheme'
 import { warmOgImageForPost } from '@/app/dashboard/warmOgImage'
 import { savePost } from '@/app/dashboard/savePost'
 import { charCounterClassName } from '@/lib/charCounterClassName'
@@ -274,13 +277,29 @@ export default function NewPostForm({ existingPost = null }) {
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-zinc-50 px-4 py-10 dark:bg-zinc-950">
-      <main className="mx-auto w-full max-w-5xl">
-        <form onSubmit={handleSubmit} className="w-full py-6">
-          <div className="mx-auto w-full sm:max-w-2xl">
-            <div className="flex flex-col gap-5">
-            <div>
-              <label htmlFor="title" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+    <div className="pow-feed">
+      <style>{FEED_CSS}</style>
+      <style>{FORM_CSS}</style>
+
+      <div className="topbar">
+        <Link href="/" className="wordmark">
+          proofofwriting
+        </Link>
+        <div className="toplinks">
+          <Link href="/dashboard" className="toplink">
+            dashboard
+          </Link>
+          <ThemeToggle variant="feed" />
+        </div>
+      </div>
+
+      <main className="wrap" style={{ paddingTop: '28px' }}>
+        <section className="dashpanel">
+          <h1 className="dashwelcome">{isEditMode ? 'Edit post' : 'New post'}</h1>
+
+          <form onSubmit={handleSubmit} className="pf-form">
+            <div className="pf-field">
+              <label htmlFor="title" className="pf-label">
                 Title
               </label>
               <input
@@ -298,18 +317,18 @@ export default function NewPostForm({ existingPost = null }) {
                     setSlug(trimmed ? generateSlug(trimmed).slice(0, POST_SLUG_MAX) : '')
                   }
                 }}
-                className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-500"
+                className="pf-input"
               />
               <p
-                className={`mt-1 text-right text-xs tabular-nums ${charCounterClassName(title.length, POST_TITLE_MAX, 20)}`}
+                className={`pf-count ${charCounterClassName(title.length, POST_TITLE_MAX, 20)}`}
               >
                 {title.length}/{POST_TITLE_MAX}
               </p>
             </div>
 
-            <div>
-              <label htmlFor="slug" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Slug <span className="font-normal text-zinc-500">(URL path, e.g. my-first-post)</span>
+            <div className="pf-field">
+              <label htmlFor="slug" className="pf-label">
+                Slug <span className="pf-sub">(URL path, e.g. my-first-post)</span>
               </label>
               <input
                 id="slug"
@@ -328,38 +347,27 @@ export default function NewPostForm({ existingPost = null }) {
                 }}
                 aria-invalid={slugFieldError ? 'true' : 'false'}
                 aria-describedby={slugFieldError ? 'slug-field-error' : undefined}
-                className={`mt-1 w-full rounded-lg border bg-white px-3 py-2 font-mono text-sm text-zinc-900 outline-none focus:ring-2 dark:bg-zinc-950 dark:text-zinc-50 ${
-                  slugFieldError
-                    ? 'border-red-500 focus:border-red-500 focus:ring-red-400 dark:border-red-500 dark:focus:ring-red-500'
-                    : 'border-zinc-300 focus:border-zinc-400 focus:ring-zinc-400 dark:border-zinc-600 dark:focus:ring-zinc-500'
-                }`}
+                className={`pf-input${slugFieldError ? ' err' : ''}`}
               />
               {slugFieldError ? (
-                <p id="slug-field-error" className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
+                <p id="slug-field-error" className="pf-error" role="alert">
                   {slugFieldError}
                 </p>
               ) : null}
             </div>
 
-            <div>
-              <span
-                id={bodyLabelId}
-                className="flex flex-row items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-300"
-              >
+            <div className="pf-field">
+              <span id={bodyLabelId} className="pf-label pf-label-row">
                 <span>Body</span>
                 <span
-                  className={`font-normal ${
-                    autosaveStatus === 'Save failed'
-                      ? 'text-red-500'
-                      : 'text-zinc-500 dark:text-zinc-400'
-                  }`}
+                  className={`pf-status${autosaveStatus === 'Save failed' ? ' err' : ''}`}
                 >
                   ({autosaveStatus})
                 </span>
               </span>
               <RichTextEditor
                 key={editingPostId ?? 'new'}
-                className="mt-1"
+                className="pf-editor"
                 content={body}
                 onChange={setBody}
                 id="post-body"
@@ -367,8 +375,8 @@ export default function NewPostForm({ existingPost = null }) {
               />
             </div>
 
-            <div>
-              <label htmlFor="price_xec" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <div className="pf-field">
+              <label htmlFor="price_xec" className="pf-label">
                 Price in XEC
               </label>
               <input
@@ -381,61 +389,48 @@ export default function NewPostForm({ existingPost = null }) {
                 step="any"
                 value={priceXec}
                 onChange={(e) => setPriceXec(e.target.value)}
-                className="mt-1 w-full max-w-xs rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-500"
+                className="pf-input narrow"
               />
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
+              <p className="pf-hint">
                 Minimum 100 XEC · Maximum 1,000,000 XEC (6% platform fee)
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="pf-check">
               <input
                 id="published"
                 name="published"
                 type="checkbox"
                 checked={published}
                 onChange={(e) => setPublished(e.target.checked)}
-                className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950"
               />
-              <label htmlFor="published" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              <label htmlFor="published">
                 Published{' '}
-                <span className="font-normal text-zinc-500">(live when checked; draft when unchecked)</span>
+                <span className="pf-sub">(live when checked; draft when unchecked)</span>
               </label>
             </div>
 
             {submitError ? (
-              <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+              <p className="pf-error" role="alert">
                 {submitError}
               </p>
             ) : null}
 
             {publishPaymentWaiting ? (
-              <div className="rounded-lg border border-zinc-200 bg-white/70 px-4 py-3 text-left dark:border-zinc-700 dark:bg-zinc-900/60">
-                <div className="flex items-center gap-3">
-                  <span
-                    aria-hidden
-                    className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-zinc-300 border-t-emerald-500 dark:border-zinc-600 dark:border-t-emerald-400"
-                  />
-                  <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                    Waiting for payment...
-                  </p>
+              <div className="pf-waiting">
+                <div className="pf-waiting-row">
+                  <span aria-hidden className="pf-spinner" />
+                  <p className="pf-waiting-title">Waiting for payment...</p>
                 </div>
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                  This usually takes a few seconds
-                </p>
+                <p className="pf-waiting-sub">This usually takes a few seconds</p>
               </div>
             ) : (
-              <button
-                type="submit"
-                disabled={submitting}
-                className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-              >
+              <button type="submit" disabled={submitting} className="btn pf-submit">
                 {submitting ? 'Saving…' : isEditMode ? 'Save changes' : 'Create post'}
               </button>
             )}
-            </div>
-          </div>
-        </form>
+          </form>
+        </section>
       </main>
 
       <PublishPaywallModal
@@ -452,3 +447,45 @@ export default function NewPostForm({ existingPost = null }) {
     </div>
   )
 }
+
+// Neon form chrome for the post editor. Layers on top of FEED_CSS (topbar, panel,
+// .btn, .back, .dashwelcome). The tiptap RichTextEditor keeps its own widget
+// styling; we only reframe its border/toolbar so it sits inside the neon panel.
+const FORM_CSS = `
+.pow-feed .pf-form{margin-top:22px;}
+.pow-feed .pf-field{margin-top:22px;}
+.pow-feed .pf-field:first-child{margin-top:0;}
+.pow-feed .pf-label{display:block;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);
+  text-shadow:0 0 8px rgba(0,255,156,.3);}
+.pow-feed .pf-label-row{display:flex;align-items:center;gap:8px;}
+.pow-feed .pf-sub{font-size:11px;letter-spacing:0;text-transform:none;color:var(--dim);text-shadow:none;}
+.pow-feed .pf-status{font-size:11px;letter-spacing:.06em;text-transform:none;color:var(--dim);text-shadow:none;}
+.pow-feed .pf-status.err{color:var(--no);}
+.pow-feed .pf-input{margin-top:8px;width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:9px;
+  padding:11px 13px;color:var(--text);font:inherit;font-size:14px;outline:none;
+  transition:border-color .15s,box-shadow .15s;}
+.pow-feed .pf-input:focus{border-color:var(--cyan);box-shadow:0 0 14px rgba(61,240,255,.15);}
+.pow-feed .pf-input.err{border-color:var(--no);}
+.pow-feed .pf-input.err:focus{box-shadow:0 0 14px rgba(255,92,108,.2);}
+.pow-feed .pf-input.narrow{max-width:220px;}
+.pow-feed .pf-count{margin-top:6px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums;}
+.pow-feed .pf-hint{margin:8px 0 0;font-size:12px;color:var(--dim);}
+.pow-feed .pf-error{margin:8px 0 0;font-size:13px;color:var(--no);}
+.pow-feed .pf-check{display:flex;align-items:center;gap:10px;margin-top:22px;}
+.pow-feed .pf-check input{width:16px;height:16px;accent-color:var(--neon);cursor:pointer;}
+.pow-feed .pf-check label{font-size:13px;color:var(--text);}
+.pow-feed .pf-submit{margin-top:24px;}
+.pow-feed .pf-waiting{margin-top:24px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);
+  padding:14px 16px;}
+.pow-feed .pf-waiting-row{display:flex;align-items:center;gap:12px;}
+.pow-feed .pf-spinner{width:16px;height:16px;flex:none;border-radius:50%;border:2px solid var(--line);
+  border-top-color:var(--neon);animation:pf-spin .7s linear infinite;}
+@keyframes pf-spin{to{transform:rotate(360deg);}}
+.pow-feed .pf-waiting-title{margin:0;font-size:13px;font-weight:700;color:var(--text);}
+.pow-feed .pf-waiting-sub{margin:6px 0 0;font-size:12px;color:var(--dim);}
+/* reframe the tiptap widget so it reads as part of the neon panel */
+.pow-feed .pf-editor{margin-top:8px;}
+.pow-feed .pf-editor .rich-text-editor{border-color:var(--line)!important;background:var(--panel2)!important;}
+.pow-feed .pf-editor [role="toolbar"]{background:var(--panel)!important;border-color:var(--line)!important;}
+@media (prefers-reduced-motion:reduce){.pow-feed .pf-spinner{animation:none!important;}}
+`

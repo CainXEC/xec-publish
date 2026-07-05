@@ -797,21 +797,9 @@ export default function PostPageClient({
               aria-label="Share to Proof of Writing"
               title="Share to Proof of Writing"
             >
-              <svg
-                viewBox="0 0 24 24"
-                width="16"
-                height="16"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M9.5 8v9" />
-                <path d="M9.5 8h3a2.5 2.5 0 0 1 0 5h-3" />
-                <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94" />
-              </svg>
+              <span className="sharebtn-pmark" aria-hidden="true">
+                P
+              </span>
             </button>
             <button type="button" onClick={handleShareX} className="sharebtn">
               𝕏

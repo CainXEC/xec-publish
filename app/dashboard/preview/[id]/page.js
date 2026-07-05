@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import Nav from '@/components/Nav'
+import ThemeToggle from '@/components/ThemeToggle'
+import { ARTICLE_CSS } from '@/app/posts/[slug]/articleTheme'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { publishDraftPost } from './actions'
@@ -46,64 +47,60 @@ export default async function DraftPreviewPage({ params }) {
   const bodyHtml = typeof post.body === 'string' ? post.body : ''
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
-      <Nav />
-      <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/50">
-        <div className="mx-auto flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-            Preview — this post is not yet published
-          </p>
-          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-            <Link
-              href="/dashboard"
-              className="text-sm font-medium text-amber-900 underline-offset-2 hover:underline dark:text-amber-100"
-            >
-              ← Back to dashboard
-            </Link>
-            <form action={publishDraftPost}>
-              <input type="hidden" name="postId" value={post.id} />
-              <button
-                type="submit"
-                className="rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-500 dark:bg-amber-500 dark:text-amber-950 dark:hover:bg-amber-400"
-              >
-                Publish
-              </button>
-            </form>
-          </div>
+    <div className="pow-article">
+      <style>{ARTICLE_CSS}</style>
+      <style>{PREVIEW_CSS}</style>
+
+      <div className="topbar">
+        <Link href="/" className="wordmark">
+          proofofwriting
+        </Link>
+        <div className="toplinks">
+          <Link href="/dashboard" className="toplink">
+            dashboard
+          </Link>
+          <ThemeToggle variant="feed" />
         </div>
       </div>
 
-      <main className="mx-auto w-full max-w-3xl px-4 py-10">
-        <article className="overflow-hidden rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <h1 className="font-article-title text-3xl font-semibold leading-tight text-zinc-900 dark:text-zinc-50">
-            {post.title}
-          </h1>
-          <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
-            By{' '}
+      <div className="previewbar">
+        <span className="previewbar-label">
+          <span aria-hidden>●</span> Preview — not yet published
+        </span>
+        <form action={publishDraftPost}>
+          <input type="hidden" name="postId" value={post.id} />
+          <button type="submit" className="publishbtn">
+            Publish
+          </button>
+        </form>
+      </div>
+
+      <main className="wrap">
+        <article className="article">
+          <h1 className="arttitle">{post.title}</h1>
+          <div className="artbyline">
+            <span>By</span>
             {username ? (
-              <Link
-                href={`/u/${encodeURIComponent(username)}`}
-                className="font-medium text-emerald-700 hover:text-emerald-800 underline-offset-2 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
-              >
+              <Link href={`/u/${encodeURIComponent(username)}`} className="bylink">
                 {username}
               </Link>
             ) : (
-              'Unknown author'
+              <span>Unknown author</span>
             )}
-          </p>
+          </div>
 
-          <section className="mt-8">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Preview
-            </h2>
-            <p className="mt-2 break-words whitespace-pre-wrap text-base leading-7 text-zinc-800 dark:text-zinc-200">
-              {post.teaser}
-            </p>
-          </section>
+          {post.teaser ? (
+            <section className="section">
+              <p className="preview-head">Preview</p>
+              <div className="prose">
+                <p style={{ whiteSpace: 'pre-wrap' }}>{post.teaser}</p>
+              </div>
+            </section>
+          ) : null}
 
-          <section className="mt-10 border-t border-zinc-200 pt-8 dark:border-zinc-700">
+          <section className="section">
             <div
-              className="prose prose-zinc dark:prose-invert max-w-none text-base"
+              className="prose"
               dangerouslySetInnerHTML={{ __html: bodyHtml }}
             />
           </section>
@@ -112,3 +109,18 @@ export default async function DraftPreviewPage({ params }) {
     </div>
   )
 }
+
+// Draft-preview banner, layered on ARTICLE_CSS. Amber warning tone for the
+// "not yet published" strip; the Publish button reuses the neon action style.
+const PREVIEW_CSS = `
+.pow-article .previewbar{max-width:760px;margin:18px auto 0;display:flex;flex-wrap:wrap;align-items:center;
+  justify-content:space-between;gap:12px;border:1px solid #7a5a12;background:rgba(240,192,75,.08);
+  border-radius:12px;padding:12px 16px;}
+.pow-article .previewbar-label{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.14em;
+  text-transform:uppercase;color:#f0c04b;}
+.pow-article .publishbtn{background:transparent;color:var(--neon);border:1px solid var(--neon);border-radius:9px;
+  padding:9px 18px;font:inherit;font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;
+  box-shadow:0 0 16px rgba(0,255,156,.14),inset 0 0 12px rgba(0,255,156,.05);
+  transition:background .15s,color .15s,box-shadow .15s;}
+.pow-article .publishbtn:hover{background:var(--neon);color:#04120c;box-shadow:0 0 26px rgba(0,255,156,.5);}
+`
