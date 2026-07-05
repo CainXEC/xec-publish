@@ -14,6 +14,7 @@ export default function FeedClient({
   initialLoadError = null,
   viewerAccountId: initialViewerAccountId = null,
   isAuthor = false,
+  initialCompose = '',
 }) {
   const [scope, setScope] = useState('foryou') // 'foryou' | 'following'
   // Paying to post mints a session; if we didn't have one at SSR time, the post
@@ -167,7 +168,12 @@ export default function FeedClient({
       </div>
 
       <main className="wrap" style={{ paddingTop: '28px' }}>
-        <ComposeBox action="post" onPosted={prependPost} />
+        <ComposeBox
+          action="post"
+          onPosted={prependPost}
+          initialContent={initialCompose}
+          autoFocus={Boolean(initialCompose)}
+        />
 
         <div className="tabs" role="tablist">
           <button

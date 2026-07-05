@@ -23,8 +23,9 @@ export default function ComposeBox({
   compact = false,
   autoFocus = false,
   placeholder,
+  initialContent = '',
 }) {
-  const [content, setContent] = useState('')
+  const [content, setContent] = useState(initialContent)
   const [phase, setPhase] = useState('compose') // 'compose' | 'paying'
   const [intent, setIntent] = useState(null)
   const [statusMsg, setStatusMsg] = useState('Waiting for payment…')

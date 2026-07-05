@@ -4,10 +4,14 @@ import { getAuthedAccount } from '@/lib/authHelpers'
 
 export const dynamic = 'force-dynamic'
 
-export default async function HomePage() {
+export default async function HomePage({ searchParams }) {
   let posts = []
   let hasNextPage = false
   let loadError = null
+
+  const params = await searchParams
+  const initialCompose =
+    typeof params?.share === 'string' ? params.share.slice(0, 280) : ''
 
   const acct = await getAuthedAccount()
 
@@ -31,6 +35,7 @@ export default async function HomePage() {
       initialLoadError={loadError}
       viewerAccountId={acct?.accountId ?? null}
       isAuthor={acct?.authorId != null}
+      initialCompose={initialCompose}
     />
   )
 }
