@@ -63,12 +63,24 @@ export default async function LegacyAuthorProfilePage({ params }) {
     notFound()
   }
 
+  const articleCount = (posts ?? []).filter((p) => !p.legacy).length
+
   return (
     <AuthorProfilePageClient
-      author={a}
-      initialPosts={posts}
+      identity={`@${a.username}`}
+      isAddressIdentity={false}
+      bio={a.bio ?? null}
+      holderAddress={null}
+      handleCards={[]}
+      followerCount={0}
       totalUnlocks={totalUnlocks}
       totalEarnings={totalEarnings}
+      profileAccountId={null}
+      viewerAccountId={null}
+      initialFollowing={false}
+      initialPosts={[]}
+      identifier={a.username}
+      articleCount={articleCount}
       postsErrorMessage={error || null}
     />
   )

@@ -3,35 +3,115 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* -----------------------------------------------------------------------------
+   Neon theme (site-wide). Unifies the whole site with the feed/mint aesthetic.
+   Strategy: the brand accent was already `emerald`, so the emerald ramp is
+   remapped to neon green; the `zinc` neutral ramp is tinted teal so its dark
+   steps become the feed's teal-black surfaces and its light steps become
+   cyan-tinted — the same ramp reads correctly in BOTH modes (dark steps serve
+   as dark-mode backgrounds / light-mode text, and vice-versa). Article body
+   copy stays on a readable serif; only the UI chrome goes monospace neon.
+   Feed palette reference: bg #070b0a, panel #0d1513, line #173a33,
+   dim #5f8a7e, text #d6fff0, neon #00ff9c, cyan #3df0ff.
+----------------------------------------------------------------------------- */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --color-text-primary: #18181b;
-  --color-text-secondary: #71717a;
+  --background: #f6fffb;
+  --foreground: #0d1513;
+  --color-text-primary: #0d1513;
+  --color-text-secondary: #3f5d53;
 }
 
 .dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
-  --color-text-primary: #fafafa;
-  --color-text-secondary: #a1a1aa;
+  --background: #070b0a;
+  --foreground: #d6fff0;
+  --color-text-primary: #d6fff0;
+  --color-text-secondary: #5f8a7e;
+}
+
+@theme {
+  /* Semantic neon tokens (use as bg-panel, text-neon, border-line, etc.) */
+  --color-neon: #00ff9c;
+  --color-cyan: #3df0ff;
+  --color-ink: #070b0a;
+  --color-panel: #0d1513;
+  --color-panel2: #0a110f;
+  --color-line: #173a33;
+  --color-dim: #5f8a7e;
+  --color-glow: #d6fff0;
+  --color-danger: #ff5c6c;
+
+  /* Brand accent: remap emerald -> neon green ramp */
+  --color-emerald-50: #e9fff6;
+  --color-emerald-100: #c9ffe8;
+  --color-emerald-200: #93ffd0;
+  --color-emerald-300: #57ffbb;
+  --color-emerald-400: #22f5a3;
+  --color-emerald-500: #00ff9c;
+  --color-emerald-600: #00e08a;
+  --color-emerald-700: #0aa96f;
+  --color-emerald-800: #0b6f4c;
+  --color-emerald-900: #0b3b2b;
+  --color-emerald-950: #05231a;
+
+  /* Neutral system: tint zinc teal so it matches the feed's surfaces */
+  --color-zinc-50: #ecfbf6;
+  --color-zinc-100: #d9f5ec;
+  --color-zinc-200: #b9e6d8;
+  --color-zinc-300: #8fc4b6;
+  --color-zinc-400: #6f9a8d;
+  --color-zinc-500: #567b6f;
+  --color-zinc-600: #3f5d53;
+  --color-zinc-700: #294a40;
+  --color-zinc-800: #16352e;
+  --color-zinc-900: #0d1513;
+  --color-zinc-950: #070b0a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-jetbrains-mono);
+  --font-mono: var(--font-jetbrains-mono);
+  --font-serif: var(--font-newsreader);
 }
 
 .font-article-title {
   font-family: var(--font-newsreader), Georgia, serif;
 }
 
+/* Long-form article body stays readable: opt back into a serif reading font. */
+.reading-body {
+  font-family: var(--font-newsreader), Georgia, serif;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-jetbrains-mono), ui-monospace, "SF Mono", Menlo,
+    Consolas, monospace;
+}
+
+/* Dark-mode ambient neon wash, mirroring the feed's glow + faint scanlines.
+   Fixed so it stays put behind scrolling content; page containers with their
+   own dark surface sit on top, transparent areas let it show through. */
+.dark body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(
+      1200px 480px at 50% -8%,
+      rgba(0, 255, 156, 0.12),
+      transparent 62%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 255, 156, 0.035) 0 1px,
+      transparent 1px 3px
+    );
 }
 
 @keyframes fadeOut {

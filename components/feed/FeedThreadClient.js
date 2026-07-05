@@ -7,6 +7,7 @@ import ComposeBox from '@/components/feed/ComposeBox'
 import FeedPost from '@/components/feed/FeedPost'
 import EngagementBar from '@/components/feed/EngagementBar'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
+import ArticleCard from '@/components/feed/ArticleCard'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 
 function truncateAddress(addr) {
@@ -35,7 +36,7 @@ function ThreadByline({ identity }) {
   if (id.startsWith('@')) {
     return (
       <Link href={`/@${id.slice(1)}`} className="byline">
-        {id}
+        {id.slice(1)}
       </Link>
     )
   }
@@ -167,9 +168,6 @@ export default function FeedThreadClient({
           proofofwriting
         </Link>
         <div className="toplinks">
-          <Link href="/articles" className="toplink">
-            articles
-          </Link>
           <Link href="/mint" className="toplink">
             mint a handle
           </Link>
@@ -201,6 +199,9 @@ export default function FeedThreadClient({
                 <p className="focusbody">{post.content}</p>
               )}
               {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
+              {!rootDeleted ? (
+                <ArticleCard card={post.articleCard ?? null} content={post.content} />
+              ) : null}
               <p className="focusmeta">
                 {createdAt}
                 {' · '}

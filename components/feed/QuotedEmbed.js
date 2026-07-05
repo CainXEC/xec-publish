@@ -14,7 +14,7 @@ function QuotedByline({ identity }) {
   if (id.startsWith('@')) {
     return (
       <Link href={`/@${id.slice(1)}`} className="qbyline">
-        {id}
+        {id.slice(1)}
       </Link>
     )
   }

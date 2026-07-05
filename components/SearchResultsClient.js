@@ -105,15 +105,6 @@ export default function SearchResultsClient({
                         className="rounded-sm text-inherit after:absolute after:inset-0 after:content-[''] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"
                       >
                         {post.title}
-                        {post.audio_url ? (
-                          <span
-                            className="relative z-10 whitespace-nowrap text-sm"
-                            title="Audio narration available"
-                            aria-label="Audio narration available"
-                          >
-                            &nbsp;🎧
-                          </span>
-                        ) : null}
                       </Link>
                     </h2>
                     <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
@@ -121,7 +112,7 @@ export default function SearchResultsClient({
                         href={bylineHref}
                         className="relative z-10 font-medium text-emerald-700 hover:text-emerald-800 underline-offset-2 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
                       >
-                        @{bylineName}
+                        {bylineName}
                       </Link>
                       <span aria-hidden className="text-zinc-300 dark:text-zinc-600">
                         ·

@@ -3,10 +3,18 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
+// The cypherpunk-neon pages (feed, profiles, article lists, mint) take over the
+// full viewport with their own scoped theme, so the global footer is hidden on
+// them. Everything else (dashboard, article reader, about, etc.) keeps it.
+const NEON_PREFIXES = ['/profile', '/feed', '/mint', '/dashboard']
+
 export default function Footer() {
-  // Hidden on the home feed so the feed itself fills the viewport.
   const pathname = usePathname()
   if (pathname === '/') return null
+  if (pathname.startsWith('/@')) return null // pretty profile + article-list URLs
+  if (NEON_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    return null
+  }
 
   return (
     <footer className="border-t-[0.5px] border-zinc-200 dark:border-zinc-800">

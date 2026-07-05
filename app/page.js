@@ -30,6 +30,7 @@ export default async function HomePage() {
       initialPage={1}
       initialLoadError={loadError}
       viewerAccountId={acct?.accountId ?? null}
+      isAuthor={acct?.authorId != null}
     />
   )
 }

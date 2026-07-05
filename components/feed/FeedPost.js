@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import ComposeBox from '@/components/feed/ComposeBox'
 import EngagementBar from '@/components/feed/EngagementBar'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
+import ArticleCard from '@/components/feed/ArticleCard'
 
 function timeAgo(iso) {
   if (!iso) return ''
@@ -44,7 +45,7 @@ function Byline({ identity }) {
     const handle = id.slice(1)
     return (
       <Link href={`/@${handle}`} className="byline">
-        {id}
+        {handle}
       </Link>
     )
   }
@@ -192,6 +193,10 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
       </p>
 
       {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
+
+      {!post.deleted ? (
+        <ArticleCard card={post.articleCard ?? null} content={body} />
+      ) : null}
 
       <div className="actions">
         <button type="button" onClick={() => setShowReply((s) => !s)} className="replybtn">

@@ -116,7 +116,7 @@ function sortPostsByUnlocksThenNewest(rows) {
   return sortRowsWithZeroTail(rows, unlockCountFromPost)
 }
 
-/** Primary sort key for earned: `post.earnings` when finite; else unlock count (home /api/posts gap on author SSR). */
+/** Primary sort key for earned: `post.earnings` when finite; else unlock count (author SSR may omit earnings). */
 function earnedPrimaryValue(post) {
   const e = Number(post.earnings)
   if (Number.isFinite(e)) return e
@@ -191,15 +191,6 @@ function PostCard({ post }) {
             className="transition after:absolute after:inset-0 after:content-[''] hover:text-emerald-700 dark:hover:text-emerald-400"
           >
             {post.title}
-            {post.audio_url ? (
-              <span
-                className="relative z-10 whitespace-nowrap text-sm"
-                title="Audio narration available"
-                aria-label="Audio narration available"
-              >
-                &nbsp;🎧
-              </span>
-            ) : null}
           </Link>
         </h3>
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">

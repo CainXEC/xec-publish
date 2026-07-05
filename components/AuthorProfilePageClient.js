@@ -1,214 +1,228 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import Nav from '@/components/Nav'
-import AuthorProfilePosts from '@/components/AuthorProfilePosts'
-import CopyableAddress from '@/components/CopyableAddress'
+import { useCallback, useState } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import FeedPost from '@/components/feed/FeedPost'
+import { FEED_CSS } from '@/components/feed/feedTheme'
+
+function truncateAddress(addr) {
+  const t = String(addr ?? '').trim()
+  if (t.length <= 16) return t
+  return `${t.slice(0, 10)}…${t.slice(-4)}`
+}
 
 /**
- * @param {{
- *   author: { id: string, username: string, xec_address?: string | null, bio?: string | null } | null
- *   initialPosts: unknown[]
- *   totalUnlocks: number
- *   totalEarnings: number
- *   postsErrorMessage: string | null
- *   displayName?: string        // live byline: "@handle" or a raw address. Falls back to @username.
- *   isAddressIdentity?: boolean  // true when displayName is a raw address (style + de-dupe address line)
- *   holderAddress?: string | null  // on-chain holder — shown when there's no author record
- *   cardImageUrl?: string | null   // handle NFT card — shown on handle-only profiles
- * }} props
- *
- * `author` is null for a handle held by someone with no articles / no account:
- * a handle-only profile that shows just the handle, its card, and holder address.
+ * Session-authorized follow toggle for the profile's account. Optimistic; reverts
+ * if POST /api/feed/follow fails. Only rendered for a signed-in viewer looking at
+ * someone else's account (the feed_follows graph is account-id keyed).
  */
-export default function AuthorProfilePageClient({
-  author,
-  initialPosts,
-  totalUnlocks = 0,
-  totalEarnings = 0,
-  postsErrorMessage,
-  displayName,
-  isAddressIdentity = false,
-  holderAddress = null,
-  cardImageUrl = null,
-}) {
-  const [readerWalletAddress, setReaderWalletAddress] = useState('')
-  const [isFollowing, setIsFollowing] = useState(false)
-  const [followerCount, setFollowerCount] = useState(0)
-  const [followLoading, setFollowLoading] = useState(false)
+function FollowButton({ followeeAccountId, initialFollowing, followerCount }) {
+  const [following, setFollowing] = useState(Boolean(initialFollowing))
+  const [count, setCount] = useState(Number(followerCount) || 0)
+  const [busy, setBusy] = useState(false)
 
-  const applyReaderWallet = useCallback(async (walletAddress) => {
-    setReaderWalletAddress(walletAddress)
-    localStorage.setItem('readerWalletAddress', walletAddress)
-  }, [])
-
-  const handleReaderLogoutExtra = useCallback(() => {
-    setReaderWalletAddress('')
-    setIsFollowing(false)
-  }, [])
-
-  useEffect(() => {
-    if (!author?.id) return
-    fetch(`/api/follows/count?authorId=${encodeURIComponent(author.id)}`)
-      .then((r) => r.json())
-      .then((data) => {
-        setFollowerCount(data.followerCount ?? 0)
-      })
-      .catch(() => {})
-  }, [author?.id])
-
-  useEffect(() => {
-    if (!readerWalletAddress || !author?.id) return
-    fetch(
-      `/api/follows?walletAddress=${encodeURIComponent(readerWalletAddress)}&authorId=${encodeURIComponent(author.id)}`,
-    )
-      .then((r) => r.json())
-      .then((data) => {
-        setIsFollowing(data.following ?? false)
-        setFollowerCount(data.followerCount ?? 0)
-      })
-      .catch(() => {})
-  }, [readerWalletAddress, author?.id])
-
-  const handleFollow = async () => {
-    if (!readerWalletAddress || followLoading || !author?.id) return
-    setFollowLoading(true)
+  const toggle = useCallback(async () => {
+    if (busy) return
+    const next = !following
+    setBusy(true)
+    setFollowing(next)
+    setCount((c) => Math.max(0, c + (next ? 1 : -1)))
     try {
-      const res = await fetch('/api/follows', {
+      const res = await fetch('/api/feed/follow', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          walletAddress: readerWalletAddress,
-          authorId: author.id,
-        }),
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ followeeAccountId }),
       })
-      const data = await res.json()
-      setIsFollowing(data.following ?? false)
-      setFollowerCount(data.followerCount ?? 0)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) {
+        setFollowing(!next)
+        setCount((c) => Math.max(0, c + (next ? -1 : 1)))
+      } else if (typeof data.following === 'boolean' && data.following !== next) {
+        setFollowing(data.following)
+        setCount((c) => Math.max(0, c + (data.following ? 1 : -1)))
+      }
     } catch {
-      /* ignore */
+      setFollowing(!next)
+      setCount((c) => Math.max(0, c + (next ? -1 : 1)))
     } finally {
-      setFollowLoading(false)
+      setBusy(false)
     }
-  }
-
-  const bioText =
-    author?.bio != null && String(author.bio).trim() !== ''
-      ? String(author.bio).trim()
-      : ''
-
-  // Live identity byline. Defaults to the legacy "@username" when no displayName
-  // is supplied (so the /u/ path and any other caller behave exactly as before).
-  const headingText =
-    displayName != null && String(displayName).trim() !== ''
-      ? String(displayName)
-      : author?.username
-        ? `@${author.username}`
-        : ''
+  }, [busy, following, followeeAccountId])
 
   return (
-    <div className="min-h-full flex-1 bg-zinc-50 dark:bg-zinc-950">
-      <Nav
-        onReaderWalletSynced={applyReaderWallet}
-        onReaderLogoutExtra={handleReaderLogoutExtra}
-      />
-      <main className="mx-auto max-w-5xl px-4 pt-4 pb-6 sm:px-6 sm:pt-6 sm:pb-6">
-        <header className="border-b border-zinc-200 pb-4 dark:border-zinc-800">
-          <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            {author ? 'Author' : 'Handle'}
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2 sm:gap-3">
-            <h1
-              className={
-                isAddressIdentity
-                  ? 'min-w-0 break-all font-mono text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-2xl'
-                  : 'min-w-0 text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-5xl'
-              }
+    <div className="proffollow">
+      <span className="proffollowers">
+        <strong>{count.toLocaleString()}</strong> {count === 1 ? 'follower' : 'followers'}
+      </span>
+      <button
+        type="button"
+        className={`followbtn${following ? ' on' : ''}`}
+        onClick={toggle}
+        disabled={busy}
+        aria-pressed={following}
+      >
+        {following ? 'Following' : 'Follow'}
+      </button>
+    </div>
+  )
+}
+
+/**
+ * A public profile, in the cypherpunk-neon feed theme. Centered on whoever holds
+ * the handle: the @identity, every handle NFT they own (voxel cards), a follower
+ * indicator (+ session follow), an optional link to their articles, and their
+ * feed posts below — Twitter-style. `profileAccountId` is null for a handle held
+ * by someone with no proofofwriting account (no posts, no follow).
+ */
+export default function AuthorProfilePageClient({
+  identity,
+  isAddressIdentity = false,
+  bio = null,
+  holderAddress = null,
+  handleCards = [],
+  followerCount = 0,
+  totalUnlocks = 0,
+  totalEarnings = 0,
+  profileAccountId = null,
+  viewerAccountId = null,
+  initialFollowing = false,
+  initialPosts = [],
+  identifier = '',
+  articleCount = 0,
+  viewerIsAuthor = false,
+}) {
+  const router = useRouter()
+  const [posts, setPosts] = useState(initialPosts)
+
+  const removePost = useCallback((txid) => {
+    setPosts((prev) => prev.filter((p) => p.txid !== txid))
+  }, [])
+
+  const handleQuoted = useCallback(
+    (quote) => {
+      if (quote?.txid) router.push(`/feed/${quote.txid}`)
+    },
+    [router],
+  )
+
+  const bioText = bio != null && String(bio).trim() !== '' ? String(bio).trim() : ''
+  const canFollow =
+    !!profileAccountId && !!viewerAccountId && viewerAccountId !== profileAccountId
+  const earnedXec = Math.round(Number(totalEarnings || 0) / 100)
+
+  return (
+    <div className="pow-feed">
+      <style>{FEED_CSS}</style>
+
+      <div className="topbar">
+        <Link href="/" className="wordmark">
+          proofofwriting
+        </Link>
+        <div className="toplinks">
+          {viewerIsAuthor ? (
+            <Link href="/dashboard" className="toplink">
+              dashboard
+            </Link>
+          ) : null}
+          <Link href="/mint" className="toplink">
+            mint a handle
+          </Link>
+        </div>
+      </div>
+
+      <main className="wrap" style={{ paddingTop: '28px' }}>
+        <Link href="/" className="back">
+          ← Back to feed
+        </Link>
+
+        <header className="profhead">
+          <h1 className={`profname${isAddressIdentity ? ' isaddr' : ''}`}>
+            {isAddressIdentity ? identity : String(identity ?? '').replace(/^@/, '')}
+          </h1>
+
+          {holderAddress ? (
+            <a
+              href={`https://explorer.e.cash/address/${holderAddress}`}
+              target="_blank"
+              rel="noreferrer"
+              className="profaddr"
+              title={holderAddress}
             >
-              {headingText}
-            </h1>
-            {readerWalletAddress ? (
-              <button
-                type="button"
-                title={isFollowing ? undefined : 'Follow'}
-                aria-label={isFollowing ? 'Following author' : 'Follow author'}
-                onClick={() => void handleFollow()}
-                disabled={followLoading}
-                className={
-                  followLoading
-                    ? 'shrink-0 cursor-not-allowed rounded-full border border-zinc-200 bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-500'
-                    : isFollowing
-                      ? 'inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-500 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400'
-                      : 'shrink-0 rounded-full border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800'
-                }
-              >
-                {followLoading ? (
-                  '…'
-                ) : isFollowing ? (
-                  <>
-                    <span aria-hidden>✓</span> Following
-                  </>
-                ) : (
-                  <span aria-hidden className="tabular-nums">
-                    +
-                  </span>
-                )}
-              </button>
-            ) : null}
-          </div>
-          {author?.xec_address && !isAddressIdentity ? (
-            <CopyableAddress address={author.xec_address} />
-          ) : !author && holderAddress ? (
-            <CopyableAddress address={holderAddress} />
+              {truncateAddress(holderAddress)}
+            </a>
           ) : null}
-          {author ? (
-            <>
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  {followerCount} {followerCount === 1 ? 'follower' : 'followers'}
-                </p>
-              </div>
-              <div className="mt-4 flex gap-6 text-sm text-zinc-600 dark:text-zinc-400">
-                <span>
-                  🔓{' '}
-                  <strong className="text-zinc-900 dark:text-zinc-50">
-                    {Number(totalUnlocks).toLocaleString('en-US')}
-                  </strong>{' '}
-                  unlocks
-                </span>
-                <span>
-                  💰{' '}
-                  <strong className="text-zinc-900 dark:text-zinc-50">
-                    {Math.round(Number(totalEarnings) / 100).toLocaleString('en-US')}
-                  </strong>{' '}
-                  XEC earned
-                </span>
-              </div>
-            </>
-          ) : null}
-          {bioText ? (
-            <p className="mt-6 max-w-2xl whitespace-pre-wrap text-base leading-relaxed text-zinc-600 dark:text-zinc-400">
-              {bioText}
-            </p>
-          ) : null}
-          {!author && cardImageUrl ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={cardImageUrl}
-              alt={`${headingText} handle card`}
-              className="mt-6 w-full max-w-xs rounded-xl border border-zinc-200 dark:border-zinc-800"
+
+          {canFollow ? (
+            <FollowButton
+              followeeAccountId={profileAccountId}
+              initialFollowing={initialFollowing}
+              followerCount={followerCount}
             />
+          ) : (
+            <span className="proffollowers standalone">
+              <strong>{Number(followerCount).toLocaleString()}</strong>{' '}
+              {Number(followerCount) === 1 ? 'follower' : 'followers'}
+            </span>
+          )}
+
+          {articleCount > 0 || totalUnlocks > 0 ? (
+            <div className="profstats">
+              {articleCount > 0 ? (
+                <Link href={`/@${encodeURIComponent(identifier)}/articles`} className="artlink">
+                  📄 {articleCount.toLocaleString()}{' '}
+                  {articleCount === 1 ? 'article' : 'articles'} →
+                </Link>
+              ) : null}
+              {totalUnlocks > 0 ? (
+                <span className="profstat">
+                  🔓 <strong>{Number(totalUnlocks).toLocaleString()}</strong> unlocks
+                </span>
+              ) : null}
+              {earnedXec > 0 ? (
+                <span className="profstat">
+                  💰 <strong>{earnedXec.toLocaleString()}</strong> XEC earned
+                </span>
+              ) : null}
+            </div>
           ) : null}
-          {!author ? (
-            <p className="mt-6 max-w-2xl text-base leading-relaxed text-zinc-500 dark:text-zinc-400">
-              This handle hasn’t published any articles or posts yet.
-            </p>
-          ) : null}
+
+          {bioText ? <p className="profbio">{bioText}</p> : null}
         </header>
 
-        {author ? (
-          <AuthorProfilePosts initialPosts={initialPosts} postsErrorMessage={postsErrorMessage} />
+        {handleCards.length > 0 ? (
+          <section className="handlegrid">
+            {handleCards.map((h) => (
+              <div key={h.tokenId ?? h.handle} className="handlecard">
+                {h.imageUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img src={h.imageUrl} alt={`@${h.handle} handle card`} className="handleimg" />
+                ) : (
+                  <div className="handleimg handleimg-empty" aria-hidden />
+                )}
+                <span className="handlename">{h.handle}</span>
+              </div>
+            ))}
+          </section>
         ) : null}
+
+        <h2 className="replieshead">Posts</h2>
+
+        {posts.length === 0 ? (
+          <p className="empty">No posts yet.</p>
+        ) : (
+          <ul className="panel posts">
+            {posts.map((post) => (
+              <FeedPost
+                key={post.txid}
+                post={post}
+                viewerAccountId={viewerAccountId}
+                onDeleted={removePost}
+                onQuoted={handleQuoted}
+              />
+            ))}
+          </ul>
+        )}
       </main>
     </div>
   )

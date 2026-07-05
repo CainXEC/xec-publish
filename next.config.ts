@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
       // internally served by app/profile/[identifier]/page.js. Handles have no
       // slashes and never start with a char that collides with legacy post
       // slugs, so this is unambiguous.
+      //
+      // The articles sub-page (/@simon/articles) needs its own rule — the single
+      // -segment rule above won't match a two-segment path — and must come first.
+      { source: '/@:identifier/articles', destination: '/profile/:identifier/articles' },
       { source: '/@:identifier', destination: '/profile/:identifier' },
     ]
   },
@@ -19,6 +23,14 @@ const nextConfig: NextConfig = {
         // The feed is now the homepage; keep the old /feed URL working.
         // Matches /feed exactly — thread pages at /feed/:txid are untouched.
         source: '/feed',
+        destination: '/',
+        permanent: true,
+      },
+      {
+        // The standalone articles browse page was removed; articles are now
+        // discovered via author profiles and shared into the main feed. Send
+        // old /articles bookmarks to the home feed.
+        source: '/articles',
         destination: '/',
         permanent: true,
       },

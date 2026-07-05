@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import AudioPaywallModal from '@/components/dashboard/AudioPaywallModal'
+import { useRouter } from 'next/navigation'
 import FilterDropdown from '@/components/FilterDropdown'
-import { getAudioPriceForPost, getPlainTextCharCount } from '@/lib/audioPricing'
+import { FEED_CSS } from '@/components/feed/feedTheme'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { supabase } from '@/lib/supabase-browser'
 import { fetchAllUnlockCountRows } from '@/lib/supabaseUnlockCounts'
@@ -12,7 +12,6 @@ import {
   fetchAllUnlockEarningsRows,
   sumAmountRowsByPostId,
 } from '@/lib/supabaseUnlockEarnings'
-import { deletePostAudio } from '@/app/dashboard/deletePostAudio'
 import { deletePost } from '@/app/dashboard/deletePost'
 
 const PAGE_SIZE = 25
@@ -25,9 +24,6 @@ function formatXec(amount) {
 
 const DELETE_CONFIRM =
   'Are you sure you want to delete this post? This cannot be undone.'
-
-const DELETE_AUDIO_CONFIRM =
-  "Delete the audio narration for this post? This can't be undone — you'll need to pay again to regenerate it."
 
 function getSinceTimestamp(timeFilter) {
   if (timeFilter === 'all') return null
@@ -143,19 +139,12 @@ function formatRelativeTime(iso) {
 function DashboardPostCard({
   post,
   deletingId,
-  deletingAudioId,
   onDelete,
-  onDeleteAudio,
-  onOpenAudioModal,
 }) {
   const n = unlockCountFromPost(post)
   const unlockStat = n === 1 ? '🔓 1 unlock' : `🔓 ${n} unlocks`
   const readTime = formatReadingTimeLabel(post.reading_time_minutes)
   const priceLabel = formatXec(post.price_xec)
-  const audioCharCount = getPlainTextCharCount(post.body ?? '')
-  const audioPriceXec = getAudioPriceForPost(audioCharCount)
-  const hasAudio = Boolean(post.audio_url)
-  const isAudioStale = Boolean(post.is_audio_stale)
   const publicHref =
     post.slug && post.legacy
       ? `/${encodeURIComponent(post.slug)}`
@@ -164,104 +153,44 @@ function DashboardPostCard({
         : null
 
   return (
-    <li className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-950">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
+    <li className="dashpost">
+      <div className="dashpost-row">
+        <div className="dashpost-main">
+          <div className="dashpost-titlerow">
             {publicHref ? (
               <Link
                 href={publicHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="min-w-0 text-base font-medium text-emerald-700 underline-offset-2 hover:text-emerald-600 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
+                className="dashpost-title"
               >
                 {post.title ?? 'Untitled post'}
-                {post.audio_url ? (
-                  <span
-                    className="whitespace-nowrap text-sm text-zinc-900 dark:text-zinc-50"
-                    title="Audio narration available"
-                    aria-label="Audio narration available"
-                  >
-                    &nbsp;🎧
-                  </span>
-                ) : null}
               </Link>
             ) : (
-              <p className="min-w-0 text-base font-medium text-zinc-900 dark:text-zinc-50">
+              <p className="dashpost-title">
                 {post.title ?? 'Untitled post'}
-                {post.audio_url ? (
-                  <span
-                    className="whitespace-nowrap text-sm"
-                    title="Audio narration available"
-                    aria-label="Audio narration available"
-                  >
-                    &nbsp;🎧
-                  </span>
-                ) : null}
               </p>
             )}
-            {!post.published ? (
-              <span className="inline-flex shrink-0 items-center rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
-                Draft
-              </span>
-            ) : null}
+            {!post.published ? <span className="dashdraft">Draft</span> : null}
           </div>
-          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
-            <span>{priceLabel} XEC</span>
-            <span className="font-normal text-zinc-600 dark:text-zinc-400">{unlockStat}</span>
-            {readTime ? (
-              <span className="font-normal text-zinc-600 dark:text-zinc-400">{readTime}</span>
-            ) : null}
+          <p className="dashpost-meta">
+            <span className="dashpost-price">{priceLabel} XEC</span>
+            <span>{unlockStat}</span>
+            {readTime ? <span>{readTime}</span> : null}
           </p>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {!hasAudio ? (
-            <button
-              type="button"
-              onClick={() => onOpenAudioModal(post, 'add')}
-              className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-            >
-              Add audio{' '}
-              <span className="text-zinc-500 dark:text-zinc-400">(~{audioPriceXec} XEC)</span>
-            </button>
-          ) : (
-            <>
-              {isAudioStale ? (
-                <button
-                  type="button"
-                  onClick={() => onOpenAudioModal(post, 'regenerate')}
-                  className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-900 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200 dark:hover:bg-amber-900/50"
-                >
-                  Regenerate audio{' '}
-                  <span className="text-amber-700 dark:text-amber-300">(~{audioPriceXec} XEC)</span>
-                </button>
-              ) : (
-                <span className="inline-flex items-center rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
-                  🎧 Has audio ✓
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => void onDeleteAudio()}
-                disabled={deletingAudioId !== null}
-                className="rounded-lg border border-zinc-200 bg-zinc-100 px-2.5 py-1.5 text-sm font-medium text-zinc-600 transition hover:bg-zinc-200 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
-                aria-label="Delete audio narration"
-              >
-                {deletingAudioId === post.id ? 'Deleting…' : 'Delete audio'}
-              </button>
-            </>
-          )}
+        <div className="dashpost-btns">
           {!post.published ? (
             <Link
               href={`/dashboard/preview/${encodeURIComponent(post.id)}`}
-              className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-900 transition hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200 dark:hover:bg-amber-900/50"
+              className="dashmini warn"
             >
               Preview
             </Link>
           ) : null}
           <Link
             href={`/dashboard/edit/${encodeURIComponent(post.id)}`}
-            className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="dashmini"
           >
             Edit
           </Link>
@@ -269,7 +198,7 @@ function DashboardPostCard({
             type="button"
             onClick={() => void onDelete()}
             disabled={deletingId !== null}
-            className="rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 transition hover:bg-red-100 disabled:opacity-50 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300 dark:hover:bg-red-950"
+            className="dashmini danger"
           >
             {deletingId === post.id ? 'Deleting…' : 'Delete'}
           </button>
@@ -280,7 +209,8 @@ function DashboardPostCard({
 }
 
 export default function DashboardClient({
-  username,
+  identity,
+  profileHref,
   bio,
   xecAddress,
   notifications,
@@ -296,7 +226,6 @@ export default function DashboardClient({
   const [earningsMap, setEarningsMap] = useState({})
   const [deleteError, setDeleteError] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
-  const [deletingAudioId, setDeletingAudioId] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [openMenu, setOpenMenu] = useState(/** @type {string | null} */ (null))
   const [copiedAddress, setCopiedAddress] = useState(false)
@@ -305,10 +234,20 @@ export default function DashboardClient({
     () => (notifications ?? []).map((n) => ({ ...n, read: Boolean(n.read) })),
   )
   const [legacySectionOpen, setLegacySectionOpen] = useState(false)
-  const [audioModalPost, setAudioModalPost] = useState(null)
-  const [audioModalOpen, setAudioModalOpen] = useState(false)
-  const [audioModalMode, setAudioModalMode] = useState('add')
   const copyTimeoutRef = useRef(null)
+  const router = useRouter()
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', cache: 'no-store' })
+    } catch {
+      /* ignore */
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sessionChanged'))
+    }
+    router.push('/')
+  }, [router])
 
   // Stats come from the server — no loading state needed
   const totalUnlocks = typeof initialTotalUnlocks === 'number' ? initialTotalUnlocks : 0
@@ -481,42 +420,6 @@ export default function DashboardClient({
   const hasPrevPage = effectivePage > 1 && sortedPosts.length > 0
   const hasNextPage = effectivePage < totalPages
 
-  const handleDeleteAudio = useCallback(async (postId) => {
-    if (!window.confirm(DELETE_AUDIO_CONFIRM)) return
-
-    setDeleteError(null)
-    setDeletingAudioId(postId)
-
-    try {
-      const result = await deletePostAudio(postId)
-      if (!result.ok) {
-        setDeleteError(result.error || 'Could not delete audio narration.')
-        return
-      }
-
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === postId
-            ? {
-                ...p,
-                audio_url: null,
-                audio_generated_at: null,
-                audio_char_count: null,
-                audio_source_hash: null,
-                is_audio_stale: false,
-              }
-            : p,
-        ),
-      )
-    } catch (err) {
-      setDeleteError(
-        err instanceof Error ? err.message : 'Something went wrong while deleting audio.',
-      )
-    } finally {
-      setDeletingAudioId(null)
-    }
-  }, [])
-
   const handleDeletePost = useCallback(async (postId) => {
     if (!window.confirm(DELETE_CONFIRM)) return
 
@@ -556,28 +459,6 @@ export default function DashboardClient({
     }
   }, [xecAddress])
 
-  const handleOpenAudioModal = useCallback((post, mode = 'add') => {
-    setAudioModalPost(post)
-    setAudioModalMode(mode === 'regenerate' ? 'regenerate' : 'add')
-    setAudioModalOpen(true)
-  }, [])
-
-  const handleAudioGenerated = useCallback((audioUrl) => {
-    if (!audioModalPost?.id || !audioUrl) return
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === audioModalPost.id
-          ? {
-              ...p,
-              audio_url: audioUrl,
-              audio_generated_at: new Date().toISOString(),
-              is_audio_stale: false,
-            }
-          : p,
-      ),
-    )
-  }, [audioModalPost?.id])
-
   useEffect(() => {
     return () => {
       if (copyTimeoutRef.current) {
@@ -588,109 +469,125 @@ export default function DashboardClient({
 
   if (loadError) {
     return (
-      <div className="flex min-h-full flex-1 items-center justify-center bg-zinc-50 px-4 py-16 dark:bg-zinc-950">
-        <div className="w-full max-w-xl rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>
-          <Link
-            href="/dashboard"
-            className="mt-4 inline-block text-sm font-medium text-zinc-900 underline dark:text-zinc-200"
-          >
-            Try again
+      <div className="pow-feed">
+        <style>{FEED_CSS}</style>
+        <div className="topbar">
+          <Link href="/" className="wordmark">
+            proofofwriting
           </Link>
+          <div className="toplinks">
+            <button type="button" onClick={() => void handleLogout()} className="toplink">
+              log out
+            </button>
+          </div>
         </div>
+        <main className="wrap" style={{ paddingTop: '28px' }}>
+          <div className="error">{loadError}</div>
+          <p style={{ marginTop: '16px' }}>
+            <Link href="/dashboard" className="back">
+              Try again
+            </Link>
+          </p>
+        </main>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-zinc-50 px-4 pt-10 pb-6 dark:bg-zinc-950">
-      <main className="mx-auto w-full max-w-4xl">
-        <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="flex items-center justify-between gap-3">
-            <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+    <div className="pow-feed">
+      <style>{FEED_CSS}</style>
+
+      <div className="topbar">
+        <Link href="/" className="wordmark">
+          proofofwriting
+        </Link>
+        <div className="toplinks">
+          <Link href="/mint" className="toplink">
+            mint a handle
+          </Link>
+          <button type="button" onClick={() => void handleLogout()} className="toplink">
+            log out
+          </button>
+        </div>
+      </div>
+
+      <main className="wrap" style={{ paddingTop: '28px' }}>
+        <div className="dashpanel">
+          <div className="dashtop">
+            <h1 className="dashwelcome">
               Welcome{' '}
-              <Link
-                href={`/u/${encodeURIComponent(username)}`}
-                className="font-medium hover:underline underline-offset-2"
-              >
-                @{username}
+              <Link href={profileHref}>
+                {identity?.startsWith('@')
+                  ? identity.slice(1)
+                  : identity?.length <= 16
+                    ? identity
+                    : `${identity.slice(0, 10)}…${identity.slice(-4)}`}
               </Link>
               !
             </h1>
             <button
               type="button"
               onClick={() => setNotificationsOpen((open) => !open)}
-              className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 bg-white text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              className="dashbell"
               aria-label="Toggle notifications"
               aria-expanded={notificationsOpen}
             >
               <span aria-hidden>🔔</span>
               {unreadNotificationCount > 0 ? (
-                <span className="absolute -right-1 -top-1 inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
-                  {unreadNotificationCount}
-                </span>
+                <span className="dashbadge">{unreadNotificationCount}</span>
               ) : null}
             </button>
           </div>
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-            <div className="rounded-lg border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/80">
-              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                Total Unlocks
-              </p>
-              <p className="mt-2 text-2xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
-                <span aria-hidden className="mr-1.5">🔓</span>
+
+          <div className="dashstats">
+            <div className="dashstat">
+              <p className="dashstat-label">Total Unlocks</p>
+              <p className="dashstat-value">
+                <span aria-hidden>🔓 </span>
                 {totalUnlocks}
               </p>
             </div>
-            <div className="rounded-lg border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/80">
-              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                Total Earned
-              </p>
-              <p className="mt-2 text-2xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-50">
-                <span aria-hidden className="mr-1.5">💰</span>
+            <div className="dashstat">
+              <p className="dashstat-label">Total Earned</p>
+              <p className="dashstat-value">
+                <span aria-hidden>💰 </span>
                 {Math.round(totalXecEarned).toLocaleString('en-US')} XEC
               </p>
             </div>
           </div>
-          {bio ? (
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{bio}</p>
-          ) : null}
+
+          {bio ? <p className="dashbio">{bio}</p> : null}
           {xecAddress ? (
-            <div className="mt-1">
+            <>
               <p
-                className="cursor-pointer break-all font-mono text-xs text-zinc-500 dark:text-zinc-400"
+                className="dashaddr"
                 onClick={() => void handleCopyXecAddress()}
                 title="Click to copy"
               >
                 {xecAddress}
               </p>
-              {copiedAddress ? (
-                <p className="mt-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                  Copied!
-                </p>
-              ) : null}
-            </div>
+              {copiedAddress ? <p className="dashcopied">Copied!</p> : null}
+            </>
           ) : null}
+
           {notificationsOpen ? (
-            <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-950">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                  Notifications
-                </p>
+            <div className="dashnotifs">
+              <div className="dashnotifs-head">
+                <p className="dashnotifs-title">Notifications</p>
                 {unreadNotificationCount > 0 ? (
                   <button
                     type="button"
                     onClick={() => void handleMarkAllRead()}
-                    className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                    className="linkbtn"
                   >
                     Mark all read
                   </button>
                 ) : null}
               </div>
               {unreadNotifications.length === 0 ? (
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">No new notifications</p>
+                <p className="dashnotif-msg">No new notifications</p>
               ) : (
-                <ul className="space-y-1.5">
+                <ul className="dashnotifs-list">
                   {unreadNotifications.map((n) => {
                     const postRel = Array.isArray(n.posts) ? n.posts[0] : n.posts
                     const slug = postRel?.slug ?? ''
@@ -702,29 +599,19 @@ export default function DashboardClient({
                       : '#'
                     const title = postRel?.title ?? 'Post'
                     const message = n.message || `New comment on '${title}'`
-                    const isEmerald =
+                    const highlight =
                       message.toLowerCase().includes('comment') ||
                       message.toLowerCase().includes('follow')
-                    const notificationItemClass = isEmerald
-                      ? 'block rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm transition hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60'
-                      : 'block rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-800'
-                    const notificationTextClass = isEmerald
-                      ? 'text-emerald-900 dark:text-emerald-100'
-                      : 'text-zinc-800 dark:text-zinc-200'
                     return (
                       <li key={n.id}>
                         <Link
                           href={href}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={`${notificationItemClass} ${
-                            n.read ? 'opacity-60' : ''
-                          }`}
+                          className={`dashnotif${highlight ? ' hl' : ''}${n.read ? ' read' : ''}`}
                         >
-                          <p className={notificationTextClass}>{message}</p>
-                          <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                            {formatRelativeTime(n.created_at)}
-                          </p>
+                          <p className="dashnotif-msg">{message}</p>
+                          <p className="dashnotif-time">{formatRelativeTime(n.created_at)}</p>
                         </Link>
                       </li>
                     )
@@ -734,121 +621,99 @@ export default function DashboardClient({
             </div>
           ) : null}
 
-          <div className="mt-5 flex flex-wrap gap-3">
-            <Link
-              href="/dashboard/new-post"
-              className="inline-flex rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-            >
+          <div className="dashactions">
+            <Link href="/dashboard/new-post" className="dashbtn">
               Write New Post
             </Link>
-            <Link
-              href="/dashboard/profile"
-              className="inline-flex rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-            >
+            <Link href="/dashboard/profile" className="dashbtn sec">
               Edit Profile
             </Link>
           </div>
         </div>
 
-        <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Your Posts</h2>
+        <section className="dashpanel">
+          <h2 className="dashsection-title">Your Posts</h2>
 
           {deleteError ? (
-            <p
-              className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/50 dark:text-red-200"
-              role="alert"
-            >
+            <div className="error" role="alert">
               {deleteError}
-            </p>
+            </div>
           ) : null}
 
           {nonLegacyPosts.length === 0 ? (
-            <div className="mt-4">
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                Welcome to Proof Of Writing! Create your first post to get started.
+            <div className="empty">
+              <p>Welcome to Proof Of Writing! Create your first post to get started.</p>
+              <p style={{ marginTop: '16px' }}>
+                <Link href="/dashboard/new-post" className="dashbtn">
+                  Create your first post
+                </Link>
               </p>
-              <Link
-                href="/dashboard/new-post"
-                className="mt-4 inline-flex rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-              >
-                Create your first post
-              </Link>
             </div>
           ) : (
             <>
-              <div className="mt-4 mb-3 flex items-center justify-end gap-2 sm:justify-between sm:gap-4">
-                <h2 className="hidden text-lg font-semibold tracking-tight text-zinc-900 sm:block sm:text-3xl dark:text-zinc-50">
-                  Published articles
-                </h2>
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <FilterDropdown
-                    menuId={MENU_SORT}
-                    openMenu={openMenu}
-                    setOpenMenu={setOpenMenu}
-                    value={sortMode}
-                    options={DASHBOARD_SORT_OPTIONS}
-                    ariaLabel="Sort posts"
-                    onChange={(v) => setSortMode(v)}
-                    minWidth={SORT_PILL_MIN_WIDTH}
-                  />
-                  <FilterDropdown
-                    menuId={MENU_TIME}
-                    openMenu={openMenu}
-                    setOpenMenu={setOpenMenu}
-                    value={timeFilter}
-                    options={DASHBOARD_TIME_OPTIONS}
-                    ariaLabel="Time range for unlocks and earnings"
-                    disabled={sortMode === 'newest' || sortMode === 'drafts'}
-                    disabledHint="Time range does not apply when sorting by Newest or Drafts."
-                    onChange={(v) => setTimeFilter(v)}
-                    minWidth={TIME_PILL_MIN_WIDTH}
-                  />
-                </div>
+              <div className="dashfilters">
+                <FilterDropdown
+                  menuId={MENU_SORT}
+                  openMenu={openMenu}
+                  setOpenMenu={setOpenMenu}
+                  value={sortMode}
+                  options={DASHBOARD_SORT_OPTIONS}
+                  ariaLabel="Sort posts"
+                  onChange={(v) => setSortMode(v)}
+                  minWidth={SORT_PILL_MIN_WIDTH}
+                />
+                <FilterDropdown
+                  menuId={MENU_TIME}
+                  openMenu={openMenu}
+                  setOpenMenu={setOpenMenu}
+                  value={timeFilter}
+                  options={DASHBOARD_TIME_OPTIONS}
+                  ariaLabel="Time range for unlocks and earnings"
+                  disabled={sortMode === 'newest' || sortMode === 'drafts'}
+                  disabledHint="Time range does not apply when sorting by Newest or Drafts."
+                  onChange={(v) => setTimeFilter(v)}
+                  minWidth={TIME_PILL_MIN_WIDTH}
+                />
               </div>
 
               {sortedPosts.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-8 py-12 text-center dark:border-zinc-700 dark:bg-zinc-900/40">
-                  <p className="text-sm text-zinc-700 dark:text-zinc-300">
-                    {sortMode === 'drafts' ? 'No drafts yet.' : 'No posts found.'}
-                  </p>
+                <div className="empty">
+                  {sortMode === 'drafts' ? 'No drafts yet.' : 'No posts found.'}
                 </div>
               ) : (
-                <ul className="flex flex-col gap-1.5 md:gap-2">
+                <ul className="dashlist">
                   {pagedSortedPosts.map((post) => (
                     <DashboardPostCard
                       key={post.id}
                       post={post}
                       deletingId={deletingId}
-                      deletingAudioId={deletingAudioId}
                       onDelete={() => void handleDeletePost(post.id)}
-                      onDeleteAudio={() => void handleDeleteAudio(post.id)}
-                      onOpenAudioModal={handleOpenAudioModal}
                     />
                   ))}
                 </ul>
               )}
               {sortedPosts.length > PAGE_SIZE ? (
-                <div className="mt-6 flex items-center justify-between gap-2 border-t border-zinc-200 pt-4 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-                  <div className="min-w-0 flex-1">
+                <div className="dashpager">
+                  <div className="dashpager-side">
                     {hasPrevPage ? (
                       <button
                         type="button"
                         onClick={() => setCurrentPage(effectivePage - 1)}
-                        className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                        className="ghost"
                       >
                         ← Page {effectivePage - 1}
                       </button>
                     ) : null}
                   </div>
-                  <span className="flex-shrink-0 tabular-nums">
+                  <span className="dashpager-mid">
                     Page {effectivePage} of {totalPages}
                   </span>
-                  <div className="min-w-0 flex-1 text-right">
+                  <div className="dashpager-side dashpager-end">
                     {hasNextPage ? (
                       <button
                         type="button"
                         onClick={() => setCurrentPage(effectivePage + 1)}
-                        className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                        className="ghost"
                       >
                         Page {effectivePage + 1} →
                       </button>
@@ -861,22 +726,18 @@ export default function DashboardClient({
         </section>
 
         {legacyPosts.length > 0 ? (
-          <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <section className="dashpanel">
             <button
               type="button"
               onClick={() => setLegacySectionOpen((open) => !open)}
               aria-expanded={legacySectionOpen}
-              className="flex w-full items-center justify-between gap-3 text-left"
+              className="dashlegacy-toggle"
             >
-              <h2 className="text-base font-semibold text-zinc-600 dark:text-zinc-400">
-                Legacy Posts ({legacyPosts.length})
-              </h2>
-              <span className="shrink-0 text-zinc-500 tabular-nums dark:text-zinc-500" aria-hidden>
-                {legacySectionOpen ? '▾' : '▸'}
-              </span>
+              <span>Legacy Posts ({legacyPosts.length})</span>
+              <span aria-hidden>{legacySectionOpen ? '▾' : '▸'}</span>
             </button>
             {legacySectionOpen ? (
-              <ul className="mt-4 flex flex-col gap-1.5 md:gap-2">
+              <ul className="dashlist">
                 {legacyPostsSorted.map((post) => (
                   <DashboardPostCard
                     key={post.id}
@@ -885,10 +746,7 @@ export default function DashboardClient({
                       unlocks: [{ count: unlockCountMap[post.id] ?? 0 }],
                     }}
                     deletingId={deletingId}
-                    deletingAudioId={deletingAudioId}
                     onDelete={() => void handleDeletePost(post.id)}
-                    onDeleteAudio={() => void handleDeleteAudio(post.id)}
-                    onOpenAudioModal={handleOpenAudioModal}
                   />
                 ))}
               </ul>
@@ -896,13 +754,6 @@ export default function DashboardClient({
           </section>
         ) : null}
       </main>
-      <AudioPaywallModal
-        open={audioModalOpen}
-        onClose={() => setAudioModalOpen(false)}
-        post={audioModalPost}
-        mode={audioModalMode}
-        onAudioGenerated={handleAudioGenerated}
-      />
     </div>
   )
 }

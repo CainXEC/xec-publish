@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import ArticleAudioPlayer from '@/components/ArticleAudioPlayer'
 import Nav from '@/components/Nav'
 import { charCounterClassName } from '@/lib/charCounterClassName'
 import { encodePostIdOpReturnRaw } from '@/lib/opReturnEncode'
@@ -722,15 +721,6 @@ export default function PostPageClient({
           ) : null}
           <h1 className="font-article-title text-3xl sm:text-4xl font-medium leading-tight text-zinc-900 dark:text-zinc-50">
             {post.title}
-            {post.audio_url && (
-              <span
-                className="whitespace-nowrap align-middle text-2xl"
-                title="Audio narration available"
-                aria-label="Audio narration available"
-              >
-                &nbsp;🎧
-              </span>
-            )}
           </h1>
           <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
             <span>By</span>
@@ -744,7 +734,7 @@ export default function PostPageClient({
                   }
                   className="font-medium text-zinc-700 transition-colors hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
                 >
-                  @{(author.display_handle?.trim() || author.username.trim())}
+                  {author.display_handle?.trim() || author.username.trim()}
                 </Link>
                 {readerWalletAddress.trim() && post.author_id && !isAuthorSession ? (
                   <button
@@ -834,16 +824,6 @@ export default function PostPageClient({
               </span>
             ) : null}
           </div>
-
-          {(canViewFullPost || isAdminSession) && post.audio_url ? (
-            <div className="mt-4 mb-4">
-              <ArticleAudioPlayer
-                postId={post.id}
-                isStale={Boolean(post.audio_is_stale)}
-                audioCharCount={post.audio_char_count ?? null}
-              />
-            </div>
-          ) : null}
 
           {unlockCheckPending && !canViewFullPost ? (
             <p className="mt-10 text-sm text-zinc-600 dark:text-zinc-400">Checking access...</p>

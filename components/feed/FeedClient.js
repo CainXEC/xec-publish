@@ -12,6 +12,7 @@ export default function FeedClient({
   initialPage = 1,
   initialLoadError = null,
   viewerAccountId: initialViewerAccountId = null,
+  isAuthor = false,
 }) {
   const [scope, setScope] = useState('foryou') // 'foryou' | 'following'
   // Paying to post mints a session; if we didn't have one at SSR time, the post
@@ -144,20 +145,18 @@ export default function FeedClient({
           proofofwriting
         </Link>
         <div className="toplinks">
-          <Link href="/articles" className="toplink">
-            articles
-          </Link>
+          {isAuthor ? (
+            <Link href="/dashboard" className="toplink">
+              dashboard
+            </Link>
+          ) : null}
           <Link href="/mint" className="toplink">
             mint a handle
           </Link>
         </div>
       </div>
 
-      <div className="head">
-        <p className="sub">Pay to post. Get paid for attention.</p>
-      </div>
-
-      <main className="wrap">
+      <main className="wrap" style={{ paddingTop: '28px' }}>
         <ComposeBox action="post" onPosted={prependPost} />
 
         <div className="tabs" role="tablist">

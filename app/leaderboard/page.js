@@ -210,7 +210,7 @@ export default function LeaderboardPage() {
                         href={`/u/${encodeURIComponent(row.username)}`}
                         className="min-w-0 truncate font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
                       >
-                        @{row.username}
+                        {row.username}
                       </Link>
                       <span className="text-right tabular-nums text-zinc-800 dark:text-zinc-200">
                         {row.post_count}
@@ -261,7 +261,7 @@ export default function LeaderboardPage() {
                           href={`/u/${encodeURIComponent(row.username)}`}
                           className="font-medium text-emerald-700 underline-offset-2 hover:underline dark:text-emerald-400"
                         >
-                          @{row.username}
+                          {row.username}
                         </Link>
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums text-zinc-800 dark:text-zinc-200">

@@ -2,6 +2,14 @@ import { notFound } from 'next/navigation'
 import AuthorProfilePageClient from '@/components/AuthorProfilePageClient'
 import { resolveProfileByIdentifier } from '@/lib/resolveProfile'
 import { hydrateAuthorProfile } from '@/lib/loadAuthorProfile'
+import { heldHandlesForAddress } from '@/lib/heldHandles'
+import { getAccountFeedPage } from '@/lib/getFeed'
+import { getAuthedAccount } from '@/lib/authHelpers'
+import {
+  accountIdForAddress,
+  followerCountForAccount,
+  viewerFollowsAccount,
+} from '@/lib/profileSocial'
 
 // Reached via the next.config rewrite:  /@<identifier>  ->  /profile/<identifier>
 // <identifier> is either a handle ("simon") or a bare eCash address ("qq703j…").
@@ -30,26 +38,75 @@ export default async function ProfilePage({ params }) {
     notFound()
   }
 
+  // Who's looking? Drives the follow button + own-post controls on the feed list.
+  const viewer = await getAuthedAccount()
+  const viewerAccountId = viewer?.accountId ?? null
+  const viewerAddress = viewer?.address ?? ''
+  const viewerIsAuthor = viewer?.authorId != null
+
   // A minted handle can be held by someone with no articles — or no account at
-  // all. It still resolves; we just have no posts to hydrate in that case.
-  const { error, posts, totalUnlocks, totalEarnings } = resolved.author
-    ? await hydrateAuthorProfile(resolved.author)
-    : { error: null, posts: [], totalUnlocks: 0, totalEarnings: 0 }
+  // all. It still resolves; we just have no posts / articles to hydrate then.
+  const [articleData, heldHandles, profileAccountId] = await Promise.all([
+    resolved.author
+      ? hydrateAuthorProfile(resolved.author)
+      : Promise.resolve({ error: null, posts: [], totalUnlocks: 0, totalEarnings: 0 }),
+    resolved.holderAddress
+      ? heldHandlesForAddress(resolved.holderAddress)
+      : Promise.resolve([]),
+    resolved.holderAddress
+      ? accountIdForAddress(resolved.holderAddress)
+      : Promise.resolve(null),
+  ])
+
+  const [followerCount, initialFollowing, feed] = await Promise.all([
+    followerCountForAccount(profileAccountId),
+    viewerFollowsAccount(viewerAccountId, profileAccountId),
+    profileAccountId
+      ? getAccountFeedPage({ accountId: profileAccountId, viewerAddress, viewerAccountId })
+      : Promise.resolve({ posts: [], hasNextPage: false }),
+  ])
 
   // Byline = the account's LIVE identity: "@handle" if held, else the raw address.
   const isAddressIdentity = !resolved.identity.startsWith('@')
 
+  // The card grid shows every handle this holder owns; keep the URL's handle
+  // resolvable even if Chronik couldn't enumerate it live.
+  const handleCards = (heldHandles ?? []).map((h) => ({
+    tokenId: h.tokenId,
+    handle: h.handle,
+    imageUrl: h.imageUrl,
+  }))
+  if (
+    resolved.displayHandle &&
+    !handleCards.some((h) => h.handle === resolved.displayHandle)
+  ) {
+    handleCards.unshift({
+      tokenId: resolved.tokenId,
+      handle: resolved.displayHandle,
+      imageUrl: resolved.cardImageUrl,
+    })
+  }
+
+  const articleCount = (articleData.posts ?? []).filter((p) => !p.legacy).length
+
   return (
     <AuthorProfilePageClient
-      author={resolved.author}
-      displayName={resolved.identity}
+      identity={resolved.identity}
       isAddressIdentity={isAddressIdentity}
+      bio={resolved.author?.bio ?? null}
       holderAddress={resolved.holderAddress}
-      cardImageUrl={resolved.cardImageUrl}
-      initialPosts={posts}
-      totalUnlocks={totalUnlocks}
-      totalEarnings={totalEarnings}
-      postsErrorMessage={error || null}
+      handleCards={handleCards}
+      followerCount={followerCount}
+      totalUnlocks={articleData.totalUnlocks}
+      totalEarnings={articleData.totalEarnings}
+      profileAccountId={profileAccountId}
+      viewerAccountId={viewerAccountId}
+      initialFollowing={initialFollowing}
+      initialPosts={feed.posts}
+      identifier={identifier}
+      articleCount={articleCount}
+      postsErrorMessage={articleData.error || null}
+      viewerIsAuthor={viewerIsAuthor}
     />
   )
 }
