@@ -479,8 +479,8 @@ export default function DashboardClient({
           proofofwriting
         </Link>
         <div className="toplinks">
-          <Link href="/mint" className="toplink">
-            mint a handle
+          <Link href="/mint#marketplace" className="toplink">
+            marketplace
           </Link>
           <button type="button" onClick={() => void handleLogout()} className="toplink">
             log out

@@ -160,8 +160,8 @@ export default function FeedClient({
               dashboard
             </Link>
           ) : null}
-          <Link href="/mint" className="toplink">
-            mint a handle
+          <Link href="/mint#marketplace" className="toplink">
+            marketplace
           </Link>
           <ThemeToggle variant="feed" />
         </div>

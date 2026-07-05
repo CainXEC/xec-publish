@@ -129,9 +129,6 @@ export default function AuthorProfilePageClient({
           <Link href="/mint#marketplace" className="toplink">
             marketplace
           </Link>
-          <Link href="/mint" className="toplink">
-            mint a handle
-          </Link>
           <ThemeToggle variant="feed" />
         </div>
       </div>

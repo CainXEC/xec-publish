@@ -170,8 +170,8 @@ export default function FeedThreadClient({
           proofofwriting
         </Link>
         <div className="toplinks">
-          <Link href="/mint" className="toplink">
-            mint a handle
+          <Link href="/mint#marketplace" className="toplink">
+            marketplace
           </Link>
           <ThemeToggle variant="feed" />
         </div>
