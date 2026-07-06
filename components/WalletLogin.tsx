@@ -8,9 +8,8 @@
 //  Talks to: POST /api/auth/start, GET /api/auth/status
 // =============================================================================
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import WalletWarning from "@/components/WalletWarning";
 
 type Started = {
   ok: true;
@@ -22,16 +21,22 @@ type Started = {
 };
 
 export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string }) {
-  const [phase, setPhase] = useState<"idle" | "proving" | "done">("idle");
+  const [phase, setPhase] = useState<"starting" | "proving" | "done" | "retry">("starting");
   const [started, setStarted] = useState<Started | null>(null);
-  const [statusMsg, setStatusMsg] = useState("Waiting for your login payment");
   const [notice, setNotice] = useState("");
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
-  const [starting, setStarting] = useState(false);
+  const startedOnceRef = useRef(false);
+  const cashtabOpenedRef = useRef(false);
 
   // Cashtab web deep link — RAW bip21 (no encodeURIComponent), carries the nonce.
   const cashtabUrl = started ? `https://cashtab.com/#/send?bip21=${started.bip21Url}` : "#";
+
+  const openCashtab = useCallback(() => {
+    if (!started || typeof window === "undefined") return;
+    cashtabOpenedRef.current = true;
+    window.open(cashtabUrl, "_blank", "noopener,noreferrer");
+  }, [started, cashtabUrl]);
 
   const copyAddr = async () => {
     if (!started) return;
@@ -39,18 +44,34 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
   };
 
   const startLogin = useCallback(async () => {
-    if (starting) return;
-    setStarting(true);
     setNotice("");
+    setPhase("starting");
+    cashtabOpenedRef.current = false;
     try {
       const r = await fetch("/api/auth/start", { method: "POST" });
       const j = await r.json();
-      if (!j.ok) { setNotice(j.error ?? "Couldn’t start login. Try again."); return; }
+      if (!j.ok) { setNotice(j.error ?? "Couldn’t start login. Try again."); setPhase("retry"); return; }
       setStarted(j);
       setPhase("proving");
-    } catch { setNotice("Network hiccup — try again."); }
-    finally { setStarting(false); }
-  }, [starting]);
+    } catch { setNotice("Network hiccup — try again."); setPhase("retry"); }
+  }, []);
+
+  // Kick the login off the moment the page loads — no intermediate screen. We
+  // request the nonce, then (below) hand the payment straight to Cashtab.
+  useEffect(() => {
+    if (startedOnceRef.current) return;
+    startedOnceRef.current = true;
+    void startLogin();
+  }, [startLogin]);
+
+  // As soon as the nonce is ready, pop Cashtab open with the login payment
+  // pre-filled. If the browser blocks the auto-open, the "Open Cashtab" button
+  // on the waiting screen is the manual fallback.
+  useEffect(() => {
+    if (phase === "proving" && started && !cashtabOpenedRef.current) {
+      openCashtab();
+    }
+  }, [phase, started, openCashtab]);
 
   // poll for the login payment
   useEffect(() => {
@@ -63,8 +84,6 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
         setTimeout(() => { if (typeof window !== "undefined") window.location.assign(redirectTo); }, 600);
       } else if (j.status === "error") {
         setNotice(j.error ?? "Something went wrong verifying your login.");
-      } else {
-        setStatusMsg("Waiting for your login payment");
       }
     };
     const poll = async () => {
@@ -91,7 +110,7 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
   useEffect(() => {
     if (phase === "proving" && secondsLeft === 0) {
       setNotice("This login request expired. Start again.");
-      setPhase("idle");
+      setPhase("retry");
       setStarted(null);
     }
   }, [secondsLeft, phase]);
@@ -105,26 +124,27 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
 
       <p className="eyebrow">proofofwriting // login</p>
       <h1 className="title">Log in</h1>
-      <p className="sub">No email, no password. Prove your wallet is yours — send a tiny login payment from Cashtab, and you’re in. Works for readers and authors alike.</p>
+      <p className="sub">No email, no password. Prove your wallet is yours — send a tiny login payment from Cashtab, and you’re in.</p>
 
-      {phase === "idle" && (
+      {phase === "starting" && (
+        <p className="poll">Opening Cashtab…</p>
+      )}
+
+      {phase === "retry" && (
         <>
-          <button className="cta" disabled={starting} onClick={startLogin}>
-            {starting ? "Starting…" : "Log in with Cashtab"}
-          </button>
+          <button className="cta" onClick={() => void startLogin()}>Try again</button>
           {notice && <p className="notice">{notice}</p>}
         </>
       )}
 
       {phase === "proving" && started && (
         <div className="pay">
-          <p className="payhead">Send <strong>{started.amountXec} XEC</strong> to log in</p>
-          <WalletWarning context="login" />
+          <p className="poll">Waiting for your {started.amountXec} XEC login payment{secondsLeft != null && secondsLeft > 0 && <span className="timer"> · expires in {mm}:{ss}</span>}</p>
+          <a className="cta" href={cashtabUrl} target="_blank" rel="noreferrer" onClick={() => { cashtabOpenedRef.current = true; }}>Open Cashtab</a>
+          <p className="fallback">Cashtab didn’t open? Scan the code or use the address below.</p>
           <div className="qr"><QRCodeSVG value={started.bip21Url} size={188} bgColor="#dffff2" fgColor="#05130d" /></div>
-          <a className="cta" href={cashtabUrl} target="_blank" rel="noreferrer">Open in Cashtab</a>
           <p className="addr" title={started.proofAddress}>{started.proofAddress}</p>
           <button className="copybtn" onClick={copyAddr}>{copied ? "copied \u2713" : "copy address"}</button>
-          <p className="poll">{statusMsg}{secondsLeft != null && secondsLeft > 0 && <span className="timer"> · expires in {mm}:{ss}</span>}</p>
           {notice && <p className="notice">{notice}</p>}
         </div>
       )}
@@ -176,11 +196,13 @@ const CSS = `
 .pow-mint .pay strong{color:var(--neon);}
 .pow-mint .qr{display:inline-block;padding:12px;background:#dffff2;border-radius:12px;margin:0 0 16px;
   box-shadow:0 0 0 1px var(--neon),0 0 24px rgba(0,255,156,.28);}
+.pow-mint .fallback{font-size:12.5px;color:var(--dim);margin:18px 0 12px;}
 .pow-mint .addr{font-size:12px;color:var(--dim);word-break:break-all;margin:12px 0 6px;}
 .pow-mint .copybtn{background:transparent;border:1px solid var(--line);color:var(--cyan);border-radius:8px;
   padding:6px 14px;font:inherit;font-size:12px;cursor:pointer;margin:0 0 10px;transition:border-color .15s;}
 .pow-mint .copybtn:hover{border-color:var(--cyan);}
 .pow-mint .poll{font-size:14px;color:var(--text);margin:10px 0 0;}
+.pow-mint .pay .poll{margin:0 0 16px;}
 .pow-mint .poll::after{content:"\\2588";margin-left:3px;color:var(--neon);animation:pow-blink 1s steps(1) infinite;}
 .pow-mint .timer{color:var(--cyan);}
 @keyframes pow-blink{50%{opacity:0;}}

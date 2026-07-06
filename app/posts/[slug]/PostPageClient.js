@@ -705,7 +705,11 @@ export default function PostPageClient({
             <Link href="/dashboard" className="toplink">
               dashboard
             </Link>
-          ) : null}
+          ) : (
+            <Link href="/login" className="toplink">
+              log in
+            </Link>
+          )}
           <Link href="/marketplace" className="toplink">
             marketplace
           </Link>

@@ -177,6 +177,11 @@ export default function FeedThreadClient({
           proofofwriting
         </Link>
         <div className="toplinks">
+          {viewerAccountId == null ? (
+            <Link href="/login" className="toplink">
+              log in
+            </Link>
+          ) : null}
           <Link href="/marketplace" className="toplink">
             marketplace
           </Link>

@@ -239,6 +239,11 @@ export default function AuthorProfilePageClient({
               dashboard
             </Link>
           ) : null}
+          {viewerAccountId == null ? (
+            <Link href="/login" className="toplink">
+              log in
+            </Link>
+          ) : null}
           <Link href="/marketplace" className="toplink">
             marketplace
           </Link>

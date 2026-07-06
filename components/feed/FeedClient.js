@@ -230,6 +230,11 @@ export default function FeedClient({
               dashboard
             </Link>
           ) : null}
+          {!signedIn ? (
+            <Link href="/login" className="toplink">
+              log in
+            </Link>
+          ) : null}
           <Link href="/marketplace" className="toplink">
             marketplace
           </Link>
