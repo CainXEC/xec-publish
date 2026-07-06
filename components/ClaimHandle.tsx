@@ -38,6 +38,10 @@ export default function ClaimHandle() {
   const [phase, setPhase] = useState<"enter" | "prove" | "done">("enter");
   const [started, setStarted] = useState<Started | null>(null);
   const [statusMsg, setStatusMsg] = useState("Waiting for your proof payment");
+  // True once the proof tx lands on-chain but isn't Avalanche-final yet. Swaps the
+  // QR/send prompt for a clear "payment seen — finalizing" spinner during the
+  // ~2-3s finality wait, mirroring the mint page so the user knows we saw it.
+  const [paymentSeen, setPaymentSeen] = useState(false);
   const [result, setResult] = useState<{ childTokenId?: string; imageUrl?: string } | null>(null);
   const [txidInput, setTxidInput] = useState("");
   const [notice, setNotice] = useState("");
@@ -82,9 +86,11 @@ export default function ClaimHandle() {
     let stopped = false;
     const apply = (j: any) => {
       if (j.status === "claimed") { setResult(j); setPhase("done"); }
-      else if (j.status === "expired") { setNotice("The 20-minute proof window expired. Start again to re-lock the name."); setPhase("enter"); setStarted(null); }
+      else if (j.status === "expired") { setPaymentSeen(false); setNotice("The 20-minute proof window expired. Start again to re-lock the name."); setPhase("enter"); setStarted(null); }
       else if (j.status === "error") setNotice(j.error ?? "Something went wrong verifying your proof.");
-      else setStatusMsg("Waiting for your proof payment");
+      else if (j.status === "finalizing") { setPaymentSeen(true); setStatusMsg("Proof seen — finalizing…"); }
+      else if (j.status === "minting") { setPaymentSeen(true); setStatusMsg("Proof confirmed — minting your handle…"); }
+      else { setPaymentSeen(false); setStatusMsg("Waiting for your proof payment"); }
     };
     const poll = async (txid?: string) => {
       try {
@@ -94,7 +100,9 @@ export default function ClaimHandle() {
       } catch { /* keep polling */ }
     };
     poll();
-    const id = setInterval(() => !stopped && poll(), 2500);
+    // Poll faster than finality settles (~2-3s) so we actually catch the brief
+    // "seen but not final" window and show the finalizing state, not skip it.
+    const id = setInterval(() => !stopped && poll(), 1500);
     return () => { stopped = true; clearInterval(id); };
   }, [phase, started]);
 
@@ -161,28 +169,40 @@ export default function ClaimHandle() {
 
       {phase === "prove" && started && (
         <div className="pay">
-          <p className="payhead">Send <strong>{started.amountXec} XEC</strong> to prove you hold <strong>@{started.handle}</strong></p>
-          <p className="warnline">Send from <strong>Cashtab</strong> — the wallet you send from is where your NFT lands. Don’t use Electrum ABC (it can’t hold NFTs safely).</p>
-          <div className="qr"><QRCodeSVG value={started.bip21} size={188} bgColor="#dffff2" fgColor="#05130d" /></div>
-          <a className="cta" href={cashtabUrl} target="_blank" rel="noreferrer">Open in Cashtab</a>
-          <p className="addr" title={started.proofAddress}>{started.proofAddress}</p>
-          <button className="copybtn" onClick={copyAddr}>{copied ? "copied \u2713" : "copy address"}</button>
-          <p className="poll">{statusMsg}{secondsLeft != null && secondsLeft > 0 && <span className="timer"> · expires in {mm}:{ss}</span>}</p>
-
-          <details className="manual">
-            <summary>Already sent it? Enter the transaction ID</summary>
-            <div className="manualrow">
-              <input value={txidInput} onChange={(e) => setTxidInput(e.target.value)} placeholder="txid" aria-label="Transaction ID" spellCheck={false} />
-              <button onClick={async () => {
-                if (!started || !txidInput.trim()) return;
-                const r = await fetch(`/api/claim/status?handle=${encodeURIComponent(started.handle)}&txid=${encodeURIComponent(txidInput.trim())}`);
-                const j = await r.json();
-                if (j.status === "claimed") { setResult(j); setPhase("done"); }
-                else if (j.status === "awaiting_proof") setNotice("That transaction doesn’t match yet — check the txid and amount.");
-                else setNotice(j.error ?? "Couldn’t verify that transaction.");
-              }}>Verify</button>
+          {paymentSeen ? (
+            <div className="settling" role="status" aria-live="polite">
+              <div className="spinner" aria-hidden="true" />
+              <p className="settlehead">{statusMsg}</p>
+              <p className="settlesub">Proof payment seen — waiting for the network to finalize it. Keep this tab open; your card reveals in a few seconds.</p>
             </div>
-          </details>
+          ) : (
+            <>
+              <p className="payhead">Send <strong>{started.amountXec} XEC</strong> to prove you hold <strong>@{started.handle}</strong></p>
+              <p className="warnline">Send from <strong>Cashtab</strong> — the wallet you send from is where your NFT lands. Don’t use Electrum ABC (it can’t hold NFTs safely).</p>
+              <div className="qr"><QRCodeSVG value={started.bip21} size={188} bgColor="#dffff2" fgColor="#05130d" /></div>
+              <a className="cta" href={cashtabUrl} target="_blank" rel="noreferrer">Open in Cashtab</a>
+              <p className="addr" title={started.proofAddress}>{started.proofAddress}</p>
+              <button className="copybtn" onClick={copyAddr}>{copied ? "copied \u2713" : "copy address"}</button>
+              <p className="poll">{statusMsg}{secondsLeft != null && secondsLeft > 0 && <span className="timer"> · expires in {mm}:{ss}</span>}</p>
+
+              <details className="manual">
+                <summary>Already sent it? Enter the transaction ID</summary>
+                <div className="manualrow">
+                  <input value={txidInput} onChange={(e) => setTxidInput(e.target.value)} placeholder="txid" aria-label="Transaction ID" spellCheck={false} />
+                  <button onClick={async () => {
+                    if (!started || !txidInput.trim()) return;
+                    const r = await fetch(`/api/claim/status?handle=${encodeURIComponent(started.handle)}&txid=${encodeURIComponent(txidInput.trim())}`);
+                    const j = await r.json();
+                    if (j.status === "claimed") { setResult(j); setPhase("done"); }
+                    else if (j.status === "finalizing") { setPaymentSeen(true); setStatusMsg("Proof seen — finalizing…"); }
+                    else if (j.status === "minting") { setPaymentSeen(true); setStatusMsg("Proof confirmed — minting your handle…"); }
+                    else if (j.status === "awaiting_proof") setNotice("That transaction doesn’t match yet — check the txid and amount.");
+                    else setNotice(j.error ?? "Couldn’t verify that transaction.");
+                  }}>Verify</button>
+                </div>
+              </details>
+            </>
+          )}
           {notice && <p className="notice">{notice}</p>}
         </div>
       )}
@@ -267,6 +287,15 @@ const CSS = `
 .pow-mint .poll::after{content:"\\2588";margin-left:3px;color:var(--neon);animation:pow-blink 1s steps(1) infinite;}
 .pow-mint .timer{color:var(--cyan);}
 @keyframes pow-blink{50%{opacity:0;}}
+
+/* proof-seen -> finalizing indicator (replaces the QR/send prompt) */
+.pow-mint .settling{display:flex;flex-direction:column;align-items:center;gap:16px;padding:22px 0 6px;}
+.pow-mint .spinner{width:46px;height:46px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--neon);
+  animation:pow-spin .8s linear infinite;box-shadow:0 0 20px rgba(0,255,156,.28);}
+@keyframes pow-spin{to{transform:rotate(360deg);}}
+.pow-mint .settlehead{font-size:18px;font-weight:700;color:var(--neon);letter-spacing:.03em;margin:0;
+  text-shadow:0 0 12px rgba(0,255,156,.45);}
+.pow-mint .settlesub{font-size:13px;color:var(--dim);line-height:1.55;margin:0;max-width:380px;}
 
 .pow-mint .manual{margin:24px 0 0;text-align:left;}
 .pow-mint .manual summary{color:var(--dim);font-size:13px;cursor:pointer;text-align:center;}

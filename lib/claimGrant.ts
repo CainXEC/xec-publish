@@ -75,7 +75,7 @@ async function assignProofSats(): Promise<number> {
 
 async function loadGrant(sk: string) {
   const { data } = await supabase.from("claim_grants")
-    .select("handle, code_hash, status, proof_sats, proof_started_unix, proof_expires_at, claimed_token_id, legacy_author_ref")
+    .select("handle, code_hash, status, proof_sats, proof_started_unix, proof_expires_at, claimed_token_id, claimed_address, legacy_author_ref")
     .eq("handle_skeleton", sk).maybeSingle();
   return data as any;
 }
@@ -113,6 +113,9 @@ export async function startClaim(input: { handle: string; code: string }): Promi
   const expiresAt = new Date(Date.now() + PROOF_MINUTES * 60_000).toISOString();
   await supabase.from("claim_grants").update({
     status: "awaiting_proof", proof_sats: proofSats, proof_started_unix: startedUnix, proof_expires_at: expiresAt,
+    // Clear any stale proof-captured marker from a prior attempt that died mid-mint,
+    // so this fresh proof round starts in detection, not straight into minting.
+    claimed_address: null,
   }).eq("handle_skeleton", sk);
 
   const amountXec = (proofSats / 100).toFixed(2);
@@ -122,6 +125,8 @@ export async function startClaim(input: { handle: string; code: string }): Promi
 // ---------------------------------------------------------------- step 2
 export type PollResult =
   | { ok: true; status: "awaiting_proof" }
+  | { ok: true; status: "finalizing" }
+  | { ok: true; status: "minting" }
   | { ok: true; status: "expired" }
   | { ok: true; status: "claimed"; handle: string; childTokenId: string; imageUrl: string | null; address: string }
   | { ok: false; status: "error"; error: string };
@@ -135,6 +140,17 @@ export async function pollClaim(input: { handle: string; txid?: string }): Promi
     return { ok: true, status: "claimed", handle: grant.handle, childTokenId: grant.claimed_token_id, imageUrl: null, address: "" };
   }
   if (grant.status !== "awaiting_proof") return { ok: false, status: "error", error: "Start a claim first." };
+
+  // DURABLE "proof captured — minting" state. Once a prior poll has verified the
+  // proof and written the delivery address, we're past detection: drive/await the
+  // mint. This mirrors the mint page's pending_mints flip to `paid` — a state that
+  // persists in the row across polls, so the client reliably renders the minting
+  // spinner even when the dev server serializes requests (no reliance on the ~2s
+  // finality window or on concurrent in-flight polls).
+  if (grant.claimed_address) {
+    return await runMint(sk, grant, grant.claimed_address);
+  }
+
   if (grant.proof_expires_at && Date.parse(grant.proof_expires_at) < Date.now()) {
     await supabase.from("claim_grants").update({ status: "unclaimed", proof_sats: null, proof_started_unix: null, proof_expires_at: null }).eq("handle_skeleton", sk);
     return { ok: true, status: "expired" };
@@ -147,56 +163,74 @@ export async function pollClaim(input: { handle: string; txid?: string }): Promi
   if (!det?.payerAddress) return { ok: true, status: "awaiting_proof" };
 
   // Hold the mint until the proof tx is Avalanche-final. Until then it could be
-  // replaced by a conflicting double-spend, so keep the client polling (a real
-  // but not-yet-final proof is indistinguishable, to the user, from one still
-  // propagating — "awaiting_proof" is the keep-waiting signal).
-  if (!det.isFinal) return { ok: true, status: "awaiting_proof" };
+  // replaced by a conflicting double-spend, so keep the client polling. We've now
+  // SEEN the proof tx, so surface a distinct "finalizing" signal (mirrors the mint
+  // page's post-payment wait) rather than the pre-payment "awaiting_proof".
+  if (!det.isFinal) return { ok: true, status: "finalizing" };
 
-  const verifiedAddress = det.payerAddress; // author demonstrably holds these keys
-
-  const minted = await mintToVerified(sk, grant.handle, verifiedAddress, grant);
-  if (!minted.ok) return { ok: false, status: "error", error: minted.error };
-  return { ok: true, status: "claimed", handle: grant.handle, childTokenId: minted.childTokenId, imageUrl: minted.imageUrl, address: verifiedAddress };
+  // Proof seen AND final: capture the delivery address DURABLY and return without
+  // minting in this request. The next poll sees claimed_address set and performs
+  // the (several-second) mint, guaranteeing the client shows a "minting" frame in
+  // between — the mint page's detect-then-process split, done with an existing
+  // column instead of a new status value (status is CHECK-constrained).
+  await supabase.from("claim_grants")
+    .update({ claimed_address: det.payerAddress })
+    .eq("handle_skeleton", sk).eq("status", "awaiting_proof").is("claimed_address", null);
+  return { ok: true, status: "minting" };
 }
 
 // ---------------------------------------------------------------- mint core
-async function mintToVerified(sk: string, grantHandle: string, address: string, grant: any): Promise<{ ok: true; childTokenId: string; imageUrl: string | null } | { ok: false; error: string }> {
+// Perform (or await) the mint for a grant whose proof address is already captured.
+// Serialized by the global mint_lock: the poll that holds the lock does the work;
+// any other poll that can't get the lock reports "minting" so the spinner holds.
+async function runMint(sk: string, grant: any, address: string): Promise<PollResult> {
   const holder = LOCK_HOLDER();
-  if (!(await claimMintLock(holder))) return { ok: false, error: "A mint is in progress — try again in a moment." };
+  // Another poll is already minting under the lock — keep the spinner up.
+  if (!(await claimMintLock(holder))) return { ok: true, status: "minting" };
   try {
     // re-check under the lock
     const [{ data: taken2 }, grant2] = await Promise.all([
       supabase.from("handles").select("token_id").eq("handle_skeleton", sk).maybeSingle(),
       loadGrant(sk),
     ]);
-    if (taken2) return { ok: false, error: "This handle has already been minted." };
-    if (!grant2 || grant2.status === "claimed") return { ok: false, error: "This handle has already been claimed." };
+    // Our own claim already completed (this or a concurrent poll finished it).
+    if (grant2?.status === "claimed") {
+      return { ok: true, status: "claimed", handle: grant2.handle, childTokenId: grant2.claimed_token_id, imageUrl: null, address };
+    }
+    if (taken2) {
+      // Minted out from under us by someone else — clear the marker and report it.
+      await supabase.from("claim_grants").update({ claimed_address: null }).eq("handle_skeleton", sk).eq("status", "awaiting_proof");
+      return { ok: false, status: "error", error: "This handle has already been minted." };
+    }
 
     // which legacy author does this grant belong to? (contract: legacy_author_ref = authors.id)
     const authorId = await resolveGrantAuthorId(grant2 ?? grant);
 
     const wallet = loadMintWallet(CHRONIK_URLS, { mnemonic: process.env.MINT_WALLET_MNEMONIC, skHex: process.env.MINT_WALLET_SK });
-    const res: any = await mintHandleChild(wallet, { handle: grantHandle, buyerAddress: address, groupTokenId: process.env.GROUP_TOKEN_ID! });
+    const res: any = await mintHandleChild(wallet, { handle: grant.handle, buyerAddress: address, groupTokenId: process.env.GROUP_TOKEN_ID! });
     const childTokenId: string = res.childTokenId;
 
-    const accountId = await bindAuthorAccount(address, childTokenId, grantHandle, authorId);
-    const { tier } = priceForHandle(grantHandle);
+    const accountId = await bindAuthorAccount(address, childTokenId, grant.handle, authorId);
+    const { tier } = priceForHandle(grant.handle);
     await supabase.from("handles").insert({
-      token_id: childTokenId, handle: grantHandle, handle_skeleton: sk,
+      token_id: childTokenId, handle: grant.handle, handle_skeleton: sk,
       origin: "grandfather", tier, mint_txid: childTokenId, minted_for_account_id: accountId,
     });
 
     let imageUrl: string | null = null;
-    try { imageUrl = await hostHandleCard(grantHandle, childTokenId); } catch { /* backfill later */ }
+    try { imageUrl = await hostHandleCard(grant.handle, childTokenId); } catch { /* backfill later */ }
 
     await supabase.from("claim_grants").update({
       status: "claimed", claimed_address: address, claimed_account_id: accountId,
       claimed_token_id: childTokenId, claimed_at: new Date().toISOString(),
     }).eq("handle_skeleton", sk);
 
-    return { ok: true, childTokenId, imageUrl };
+    return { ok: true, status: "claimed", handle: grant.handle, childTokenId, imageUrl, address };
   } catch (e: any) {
-    return { ok: false, error: e?.message ?? "The mint failed — please try again." };
+    // Mint failed — clear the captured address so the next poll re-detects and the
+    // author can retry, rather than being stranded in a permanent minting state.
+    await supabase.from("claim_grants").update({ claimed_address: null }).eq("handle_skeleton", sk).eq("status", "awaiting_proof");
+    return { ok: false, status: "error", error: e?.message ?? "The mint failed — please try again." };
   } finally {
     await releaseMintLock(holder);
   }
