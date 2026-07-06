@@ -11,6 +11,7 @@
 // =============================================================================
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { renderHandleCard, renderMysteryCard } from "@/lib/renderHandleCard";
 
@@ -123,7 +124,7 @@ export default function ClaimHandle() {
     <div className="pow-mint">
       <style>{CSS}</style>
 
-      <p className="eyebrow">proofofwriting // claim</p>
+      <p className="eyebrow"><Link href="/" className="eyebrowlink">proofofwriting</Link> // claim</p>
       <h1 className="title">Claim your handle</h1>
       <p className="sub">For grandfathered authors. Enter your handle and the one-time code we sent you, then prove the wallet is yours — your handle NFT is delivered to that wallet.</p>
 
@@ -245,6 +246,8 @@ const CSS = `
 .pow-mint > *{max-width:560px;width:100%;}
 .pow-mint .eyebrow{font-size:12px;letter-spacing:.34em;text-transform:uppercase;color:var(--cyan);margin:0 0 16px;
   text-shadow:0 0 10px rgba(61,240,255,.35);}
+.pow-mint .eyebrowlink{color:inherit;text-decoration:none;transition:text-shadow .15s;}
+.pow-mint .eyebrowlink:hover{text-shadow:0 0 14px rgba(61,240,255,.7);}
 .pow-mint .title{font-size:42px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--neon);margin:0 0 12px;
   text-shadow:0 0 8px rgba(0,255,156,.55),0 0 26px rgba(0,255,156,.28);}
 .pow-mint .sub{color:#a6d8c9;font-size:14.5px;line-height:1.55;margin:0 0 30px;}
