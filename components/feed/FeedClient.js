@@ -230,7 +230,7 @@ export default function FeedClient({
               dashboard
             </Link>
           ) : null}
-          <Link href="/mint#marketplace" className="toplink">
+          <Link href="/marketplace" className="toplink">
             marketplace
           </Link>
           <FeedNotifications signedIn={signedIn} />

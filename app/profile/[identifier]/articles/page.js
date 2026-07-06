@@ -114,7 +114,7 @@ export default async function AuthorArticlesPage({ params }) {
               dashboard
             </Link>
           ) : null}
-          <Link href="/mint#marketplace" className="toplink">
+          <Link href="/marketplace" className="toplink">
             marketplace
           </Link>
           <ThemeToggle variant="feed" />

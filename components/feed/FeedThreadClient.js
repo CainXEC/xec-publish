@@ -177,7 +177,7 @@ export default function FeedThreadClient({
           proofofwriting
         </Link>
         <div className="toplinks">
-          <Link href="/mint#marketplace" className="toplink">
+          <Link href="/marketplace" className="toplink">
             marketplace
           </Link>
           <FeedNotifications signedIn={viewerAccountId != null} />

@@ -162,7 +162,7 @@ export default function MarketplaceClient({ embedded = false }: { embedded?: boo
       ) : !items || items.length === 0 ? (
         <p className="state">
           No handles are listed for sale right now.{" "}
-          <Link href="/mint" className="inlink">Mint one</Link> or check back soon.
+          <Link href="/marketplace" className="inlink">Mint one</Link> or check back soon.
         </p>
       ) : (
         <div className="mkgrid">

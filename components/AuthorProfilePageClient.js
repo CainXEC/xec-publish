@@ -239,7 +239,7 @@ export default function AuthorProfilePageClient({
               dashboard
             </Link>
           ) : null}
-          <Link href="/mint#marketplace" className="toplink">
+          <Link href="/marketplace" className="toplink">
             marketplace
           </Link>
           <FeedNotifications signedIn={viewerAccountId != null} />

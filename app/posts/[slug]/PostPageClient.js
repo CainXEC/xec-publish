@@ -704,7 +704,7 @@ export default function PostPageClient({
               dashboard
             </Link>
           ) : null}
-          <Link href="/mint#marketplace" className="toplink">
+          <Link href="/marketplace" className="toplink">
             marketplace
           </Link>
           <ThemeToggle variant="feed" />
