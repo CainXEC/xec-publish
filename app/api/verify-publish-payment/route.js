@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { ChronikClient } from 'chronik-client'
 import { getOutputScriptFromAddress } from 'ecashaddrjs'
 import { decodeOpReturnToPostId } from '@/lib/opReturnEncode'
+import { decodeFeedOpReturn, contentHashHex, FEED_ACTION } from '@/lib/feedProtocol'
 import { rateLimit } from '@/lib/rateLimit'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { getAuthedAccount } from '@/lib/authHelpers'
@@ -75,7 +76,7 @@ export async function POST(request) {
 
     const { data: post, error: postError } = await admin
       .from('posts')
-      .select('id, author_id, publish_paid')
+      .select('id, author_id, publish_paid, body')
       .eq('id', postId)
       .maybeSingle()
 
@@ -158,30 +159,49 @@ export async function POST(request) {
     }))
 
     const expectedPostId = postId.toLowerCase()
-    let opReturnDecoded = null
+    // The new POWR publish envelope (OP_6) commits sha256 of the stored body —
+    // the article's "proof of writing". We recompute it here and compare, never
+    // trusting a client-sent value. The legacy layout carried the bare postId;
+    // accept it too so a payment started before this deploy still verifies.
+    const expectedHash = contentHashHex(post.body ?? '')
+    let powrPublishHash = null
+    let legacyDecoded = null
     for (const o of outputs) {
       const hex = outputScriptToHex(o.outputScript)
       if (!hex.startsWith('6a')) continue
-      opReturnDecoded = decodeOpReturnToPostId(hex)
+      const powr = decodeFeedOpReturn(hex)
+      if (powr && powr.action === FEED_ACTION.PUBLISH) {
+        powrPublishHash = String(powr.contentHash ?? '').toLowerCase()
+        break
+      }
+      legacyDecoded = decodeOpReturnToPostId(hex)
       break
     }
 
-    const decodedNorm =
-      opReturnDecoded != null
-        ? String(opReturnDecoded).trim().toLowerCase()
-        : null
-
-    if (decodedNorm == null || decodedNorm === '') {
-      return NextResponse.json(
-        { error: 'Payment missing post identifier' },
-        { status: 400 },
-      )
-    }
-    if (decodedNorm !== expectedPostId) {
-      return NextResponse.json(
-        { error: 'Payment OP_RETURN does not match this post' },
-        { status: 400 },
-      )
+    if (powrPublishHash != null) {
+      if (powrPublishHash !== expectedHash) {
+        return NextResponse.json(
+          { error: 'Payment OP_RETURN does not match this post' },
+          { status: 400 },
+        )
+      }
+    } else {
+      const decodedNorm =
+        legacyDecoded != null
+          ? String(legacyDecoded).trim().toLowerCase()
+          : null
+      if (decodedNorm == null || decodedNorm === '') {
+        return NextResponse.json(
+          { error: 'Payment missing post identifier' },
+          { status: 400 },
+        )
+      }
+      if (decodedNorm !== expectedPostId) {
+        return NextResponse.json(
+          { error: 'Payment OP_RETURN does not match this post' },
+          { status: 400 },
+        )
+      }
     }
 
     const platformHex = outputScriptToHex(platformOutputScript)

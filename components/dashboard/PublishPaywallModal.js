@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { encodePostIdOpReturnRaw } from '@/lib/opReturnEncode'
 import { triggerPaymentSuccessEffect } from '@/lib/paymentSuccessEffect'
 import { buildPublishFeeBip21 } from '@/lib/paymentSplit'
 import {
@@ -21,6 +20,7 @@ export default function PublishPaywallModal({
 }) {
   const [payError, setPayError] = useState(null)
   const [waiting, setWaiting] = useState(false)
+  const [opReturnRaw, setOpReturnRaw] = useState('')
   const pollRef = useRef(null)
   const baselineTxidRef = useRef('')
   const lastHandledTxidRef = useRef('')
@@ -46,10 +46,43 @@ export default function PublishPaywallModal({
     return stripped ? `ecash:${stripped}` : ''
   }, [])
 
+  // Fetch the POWR publish envelope (OP_6) from the server, which hashes the
+  // canonical stored body so the on-chain contentHash always matches what the
+  // verify route recomputes. Runs when the modal opens for a given post.
+  useEffect(() => {
+    if (!isOpen || !postId) {
+      setOpReturnRaw('')
+      return
+    }
+    let alive = true
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/publish/prepare?postId=${encodeURIComponent(postId)}`,
+          { credentials: 'include' },
+        )
+        const data = await res.json().catch(() => ({}))
+        if (!alive) return
+        if (res.ok && data.opReturnRaw) {
+          setOpReturnRaw(data.opReturnRaw)
+        } else {
+          setOpReturnRaw('')
+          setPayError(
+            data.error || 'Publishing is temporarily unavailable, please contact support.',
+          )
+        }
+      } catch {
+        if (alive) setOpReturnRaw('')
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [isOpen, postId])
+
   const publishFeeBip21Url = useMemo(() => {
-    if (!platformAddressForLatestTx || !postId) return ''
+    if (!platformAddressForLatestTx || !opReturnRaw) return ''
     try {
-      const opReturnRaw = encodePostIdOpReturnRaw(postId)
       return buildPublishFeeBip21(
         platformAddressForLatestTx,
         PUBLISH_FEE_XEC,
@@ -58,7 +91,7 @@ export default function PublishPaywallModal({
     } catch {
       return ''
     }
-  }, [platformAddressForLatestTx, postId])
+  }, [platformAddressForLatestTx, opReturnRaw])
 
   const publishFeeCashtabUrl = useMemo(
     () =>

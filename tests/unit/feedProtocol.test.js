@@ -11,6 +11,8 @@ import { toHex } from 'ecash-lib'
 const TARGET = 'a'.repeat(64)
 const HASH = contentHashHex('hello world')
 const LOKAD_HEX = toHex(FEED_LOKAD) // "50524f57"
+const SAMPLE_UUID = '123e4567-e89b-12d3-a456-426614174000' // 36 ASCII chars
+const SAMPLE_UUID_HEX = toHex(new TextEncoder().encode(SAMPLE_UUID))
 
 // Re-add the OP_RETURN byte that Cashtab prepends, so we can round-trip decode.
 const asScript = (raw) => `6a${raw}`
@@ -66,7 +68,7 @@ describe('encodeFeedOpReturnRaw', () => {
 
   it('rejects unknown actions', () => {
     expect(() => encodeFeedOpReturnRaw({ action: 0, contentHash: HASH })).toThrow()
-    expect(() => encodeFeedOpReturnRaw({ action: 6, contentHash: HASH })).toThrow()
+    expect(() => encodeFeedOpReturnRaw({ action: 9, contentHash: HASH })).toThrow()
   })
 
   it('requires a target for reply/quote/repost/like', () => {
@@ -74,11 +76,33 @@ describe('encodeFeedOpReturnRaw', () => {
     expect(() => encodeFeedOpReturnRaw({ action: FEED_ACTION.LIKE, targetTxid: 'short' })).toThrow()
   })
 
-  it('requires a content hash for post/reply/quote', () => {
+  it('requires a content hash for post/reply/quote/publish', () => {
     expect(() => encodeFeedOpReturnRaw({ action: FEED_ACTION.POST })).toThrow()
     expect(() =>
       encodeFeedOpReturnRaw({ action: FEED_ACTION.QUOTE, targetTxid: TARGET }),
     ).toThrow()
+    expect(() => encodeFeedOpReturnRaw({ action: FEED_ACTION.PUBLISH })).toThrow()
+  })
+
+  it('publish carries a content hash, no target (OP_6)', () => {
+    const raw = encodeFeedOpReturnRaw({ action: FEED_ACTION.PUBLISH, contentHash: HASH })
+    expect(raw).toBe(`04${LOKAD_HEX}0056` + `20${HASH}`)
+  })
+
+  it('unlock is the bare 8-byte marker — no payload (OP_7)', () => {
+    const raw = encodeFeedOpReturnRaw({ action: FEED_ACTION.UNLOCK })
+    expect(raw).toBe(`04${LOKAD_HEX}0057`)
+  })
+
+  it('auth carries the 36-byte ASCII nonce (OP_8)', () => {
+    const raw = encodeFeedOpReturnRaw({ action: FEED_ACTION.AUTH, nonce: SAMPLE_UUID })
+    // 24 = push 36 bytes.
+    expect(raw).toBe(`04${LOKAD_HEX}0058` + `24${SAMPLE_UUID_HEX}`)
+  })
+
+  it('requires a 36-byte nonce for auth', () => {
+    expect(() => encodeFeedOpReturnRaw({ action: FEED_ACTION.AUTH })).toThrow()
+    expect(() => encodeFeedOpReturnRaw({ action: FEED_ACTION.AUTH, nonce: 'short' })).toThrow()
   })
 })
 
@@ -90,6 +114,9 @@ describe('decodeFeedOpReturn', () => {
       { action: FEED_ACTION.QUOTE, targetTxid: TARGET, contentHash: HASH },
       { action: FEED_ACTION.REPOST, targetTxid: TARGET },
       { action: FEED_ACTION.LIKE, targetTxid: TARGET },
+      { action: FEED_ACTION.PUBLISH, contentHash: HASH },
+      { action: FEED_ACTION.UNLOCK },
+      { action: FEED_ACTION.AUTH, nonce: SAMPLE_UUID },
     ]
     for (const c of cases) {
       const decoded = decodeFeedOpReturn(asScript(encodeFeedOpReturnRaw(c)))
@@ -98,6 +125,7 @@ describe('decodeFeedOpReturn', () => {
       expect(decoded.action).toBe(c.action)
       expect(decoded.targetTxid).toBe(c.targetTxid ?? null)
       expect(decoded.contentHash).toBe(c.contentHash ?? null)
+      expect(decoded.nonce).toBe(c.nonce ?? null)
       // parentTxid is kept as a back-compat alias for targetTxid.
       expect(decoded.parentTxid).toBe(decoded.targetTxid)
     }
@@ -121,8 +149,8 @@ describe('decodeFeedOpReturn', () => {
   })
 
   it('returns null for an out-of-range action opcode', () => {
-    // OP_6 (0x56) is not a defined feed action.
-    const bad = `6a04${LOKAD_HEX}0056` + `20${TARGET}`
+    // OP_9 (0x59) is beyond the defined POWR actions (OP_1..OP_8).
+    const bad = `6a04${LOKAD_HEX}0059` + `20${TARGET}`
     expect(decodeFeedOpReturn(bad)).toBeNull()
   })
 

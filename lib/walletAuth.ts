@@ -27,7 +27,8 @@ import { createClient } from "@supabase/supabase-js";
 import { ChronikClient } from "chronik-client";
 import { encodeCashAddress } from "ecashaddrjs";
 import { randomUUID } from "node:crypto";
-import { encodePostIdOpReturnRaw, decodeOpReturnToPostId } from "@/lib/opReturnEncode";
+import { decodeOpReturnToPostId } from "@/lib/opReturnEncode";
+import { encodeFeedOpReturnRaw, decodeFeedOpReturn, FEED_ACTION } from "@/lib/feedProtocol";
 import { setSessionCookie } from "@/lib/session";
 import { heldHandlesForAddress } from "@/lib/heldHandles";
 
@@ -69,13 +70,17 @@ function payerOf(tx: any): string | null {
   const first = (tx.inputs ?? [])[0];
   return first ? scriptToAddress(first.outputScript) : null;
 }
+// Read the login nonce from a tx's OP_RETURN. Accepts BOTH layouts so payments
+// in flight across the deploy still verify: the new POWR auth envelope
+// (LOKAD | v0 | OP_8 | nonce) and the legacy bare-UUID push (no LOKAD).
 function nonceOf(tx: any): string | null {
   for (const out of tx.outputs ?? []) {
     const script = String(out.outputScript ?? "").toLowerCase();
-    if (script.startsWith("6a")) {
-      const decoded = decodeOpReturnToPostId(script);
-      if (decoded) return decoded;
-    }
+    if (!script.startsWith("6a")) continue;
+    const powr = decodeFeedOpReturn(script);
+    if (powr && powr.action === FEED_ACTION.AUTH && powr.nonce) return powr.nonce;
+    const legacy = decodeOpReturnToPostId(script);
+    if (legacy) return legacy;
   }
   return null;
 }
@@ -96,11 +101,11 @@ export async function startAuth(): Promise<StartAuthResult> {
   // sweep expired nonces (self-cleaning; no cron needed)
   await supabase.from("auth_challenges").delete().lt("expires_at", new Date().toISOString());
 
-  const nonce = randomUUID(); // 36-char UUID -> fits encodePostIdOpReturnRaw
+  const nonce = randomUUID(); // 36-char UUID -> fits the OP_8 nonce push
   const expiresAt = new Date(Date.now() + NONCE_TTL_MINUTES * 60_000).toISOString();
   await supabase.from("auth_challenges").insert({ nonce, expires_at: expiresAt });
 
-  const opReturnRaw = encodePostIdOpReturnRaw(nonce);
+  const opReturnRaw = encodeFeedOpReturnRaw({ action: FEED_ACTION.AUTH, nonce });
   const bip21Url = `${AUTH_ADDRESS}?amount=${PROOF_XEC}&op_return_raw=${opReturnRaw}`;
 
   return { ok: true, proofAddress: AUTH_ADDRESS, amountXec: PROOF_XEC, opReturnRaw, bip21Url, expiresAt };

@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import ThemeToggle from '@/components/ThemeToggle'
 import { ARTICLE_CSS } from './articleTheme'
 import { charCounterClassName } from '@/lib/charCounterClassName'
-import { encodePostIdOpReturnRaw } from '@/lib/opReturnEncode'
+import { encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
 import { buildPaywallBip21, computePaymentSplit } from '@/lib/paymentSplit'
 import { triggerPaymentSuccessEffect } from '@/lib/paymentSuccessEffect'
 import {
@@ -467,7 +467,9 @@ export default function PostPageClient({
           platformXecAddress,
           paymentSplit.authorAmount,
           paymentSplit.platformAmount,
-          encodePostIdOpReturnRaw(post.id),
+          // POWR unlock marker (OP_7, no payload). Which article the payment
+          // unlocks is attributed server-side from the DB, not on-chain.
+          encodeFeedOpReturnRaw({ action: FEED_ACTION.UNLOCK }),
         )
       : ''
   const cashtabUrl = bip21Url
