@@ -193,6 +193,9 @@ const CSS = `
 .pow-market.embed{min-height:0;background:none;padding:0;}
 html:not(.dark) .pow-market.embed{background:none;}
 .pow-market.embed .mkhead{margin-top:0;}
+/* In the 640px mint column, shrink the tiles so three listings sit per row
+   (falls back to two on narrow phones). */
+.pow-market.embed .mkgrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));}
 .pow-market .mkhead{max-width:760px;margin:0 auto 34px;text-align:center;}
 .pow-market .eyebrow{font-size:12px;letter-spacing:.34em;text-transform:uppercase;color:var(--cyan);margin:0 0 16px;}
 .pow-market .brandlink{color:inherit;text-decoration:none;transition:text-shadow .15s,color .15s;}

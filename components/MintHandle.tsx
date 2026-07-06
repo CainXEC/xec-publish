@@ -281,15 +281,15 @@ const CSS = `
   display:flex; flex-direction:column; align-items:center; text-align:center;
   padding:26px 20px 110px;
 }
-.pow-mint > *{max-width:560px;width:100%;}
-/* The embedded marketplace grid wants to be wider than the mint column, and
-   sits below the mint flow behind a hairline separator. */
-.pow-mint > .pow-market.embed{max-width:1120px;margin-top:64px;padding-top:52px;border-top:1px solid var(--line);}
-/* Header bar mirrors the feed's .topbar so the theme toggle lives in a proper
-   row (brand left, links + toggle right) instead of pinned to the viewport
-   corner. Widened to the marketplace grid so it frames the whole page. */
+/* Match the feed: one 640px column for the whole page — topbar, mint flow, and
+   the marketplace grid all share the feed's width so nothing spills wider. */
+.pow-mint > *{max-width:640px;width:100%;}
+/* The embedded marketplace sits below the mint flow behind a hairline separator,
+   at the same 640px width as everything else. */
+.pow-mint > .pow-market.embed{max-width:640px;margin-top:64px;padding-top:52px;border-top:1px solid var(--line);}
+/* Header bar mirrors the feed's .topbar (brand left, links + toggle right). */
 .pow-mint .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;
-  width:100%;max-width:1120px;margin:0 auto 36px;}
+  width:100%;max-width:640px;margin:0 auto 36px;}
 .pow-mint .wordmark{font-size:15px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--neon);
   text-decoration:none;text-shadow:0 0 8px rgba(0,255,156,.5);transition:text-shadow .15s;}
 .pow-mint .wordmark:hover{text-shadow:0 0 14px rgba(0,255,156,.7);}
