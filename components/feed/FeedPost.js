@@ -171,6 +171,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   const [showReply, setShowReply] = useState(false)
   const [showQuote, setShowQuote] = useState(false)
   const [replyCount, setReplyCount] = useState(post.replyCount ?? 0)
+  const [quoteCount, setQuoteCount] = useState(post.quoteCount ?? 0)
   const [deleting, setDeleting] = useState(false)
   const [expanded, setExpanded] = useState(false)
 
@@ -205,6 +206,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
 
   const handleQuoted = (quote) => {
     setShowQuote(false)
+    setQuoteCount((c) => c + 1)
     onQuoted?.(quote)
   }
 
@@ -285,6 +287,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
             targetTxid={post.txid}
             likeCount={post.likeCount ?? 0}
             repostCount={post.repostCount ?? 0}
+            quoteCount={quoteCount}
             likedByViewer={Boolean(post.likedByViewer)}
             repostedByViewer={Boolean(post.repostedByViewer)}
             onQuote={() => setShowQuote((s) => !s)}

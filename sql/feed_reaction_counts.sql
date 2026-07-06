@@ -1,8 +1,9 @@
 -- Denormalized engagement counters on feed_posts. Instead of re-aggregating
--- likes/reposts/replies on every feed read (the get_feed_event_counts /
+-- likes/reposts/replies/quotes on every feed read (the get_feed_event_counts /
 -- get_feed_reply_counts RPCs), each post row carries its own live counts,
--- maintained by triggers as reactions and replies are inserted, tombstoned, or
--- swept away. A page read then just SELECTs the columns — no per-page GROUP BY.
+-- maintained by triggers as reactions, replies and quotes are inserted,
+-- tombstoned, or swept away. A page read then just SELECTs the columns — no
+-- per-page GROUP BY.
 --
 -- Apply in the Supabase SQL editor (schema is managed in the dashboard; this
 -- file is the source of record). Everything here is idempotent — safe to re-run.
@@ -18,6 +19,7 @@
 ALTER TABLE public.feed_posts ADD COLUMN IF NOT EXISTS reply_count  integer NOT NULL DEFAULT 0;
 ALTER TABLE public.feed_posts ADD COLUMN IF NOT EXISTS like_count   integer NOT NULL DEFAULT 0;
 ALTER TABLE public.feed_posts ADD COLUMN IF NOT EXISTS repost_count integer NOT NULL DEFAULT 0;
+ALTER TABLE public.feed_posts ADD COLUMN IF NOT EXISTS quote_count  integer NOT NULL DEFAULT 0;
 
 -- 2a. Reaction counters: feed_events rows are likes (5) and reposts (4), keyed to
 -- a post by target_txid. Events have no soft delete — they're inserted at 0-conf
@@ -51,13 +53,16 @@ BEGIN
 END;
 $$;
 
--- 2b. Reply counter: a reply is a feed_posts row with action=2 pointing at its
--- parent via parent_txid. Only LIVE replies count, so we track three transitions:
+-- 2b. Reply + quote counters: both are feed_posts rows pointing at another post —
+-- a reply is action=2 via parent_txid (counted on the parent), a quote is action=3
+-- via quoted_txid (counted on the quoted post). The two are structurally identical,
+-- so one function maintains both. Only LIVE rows count, so we track three transitions
+-- (shown for a reply; a quote is the same on quote_count/quoted_txid):
 --   INSERT of a live reply            -> parent.reply_count + 1
 --   soft delete  (deleted_at set)     -> parent.reply_count - 1
 --   undelete     (deleted_at cleared) -> parent.reply_count + 1
 --   hard DELETE of a live reply       -> parent.reply_count - 1  (reconcile sweep)
--- A hard delete of an already-tombstoned reply is a no-op (it wasn't counted).
+-- A hard delete of an already-tombstoned row is a no-op (it wasn't counted).
 -- The UPDATE branch fires only for deleted_at changes (see the trigger's
 -- `UPDATE OF deleted_at` clause), which also means the counter-maintenance
 -- UPDATEs this function issues never re-enter it — no recursion.
@@ -71,6 +76,8 @@ BEGIN
   IF TG_OP = 'INSERT' THEN
     IF NEW.action = 2 AND NEW.parent_txid IS NOT NULL AND NEW.deleted_at IS NULL THEN
       UPDATE public.feed_posts SET reply_count = reply_count + 1 WHERE txid = NEW.parent_txid;
+    ELSIF NEW.action = 3 AND NEW.quoted_txid IS NOT NULL AND NEW.deleted_at IS NULL THEN
+      UPDATE public.feed_posts SET quote_count = quote_count + 1 WHERE txid = NEW.quoted_txid;
     END IF;
     RETURN NEW;
   ELSIF TG_OP = 'UPDATE' THEN
@@ -80,11 +87,19 @@ BEGIN
       ELSIF OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS NULL THEN
         UPDATE public.feed_posts SET reply_count = reply_count + 1 WHERE txid = NEW.parent_txid;
       END IF;
+    ELSIF NEW.action = 3 AND NEW.quoted_txid IS NOT NULL THEN
+      IF OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL THEN
+        UPDATE public.feed_posts SET quote_count = GREATEST(quote_count - 1, 0) WHERE txid = NEW.quoted_txid;
+      ELSIF OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS NULL THEN
+        UPDATE public.feed_posts SET quote_count = quote_count + 1 WHERE txid = NEW.quoted_txid;
+      END IF;
     END IF;
     RETURN NEW;
   ELSIF TG_OP = 'DELETE' THEN
     IF OLD.action = 2 AND OLD.parent_txid IS NOT NULL AND OLD.deleted_at IS NULL THEN
       UPDATE public.feed_posts SET reply_count = GREATEST(reply_count - 1, 0) WHERE txid = OLD.parent_txid;
+    ELSIF OLD.action = 3 AND OLD.quoted_txid IS NOT NULL AND OLD.deleted_at IS NULL THEN
+      UPDATE public.feed_posts SET quote_count = GREATEST(quote_count - 1, 0) WHERE txid = OLD.quoted_txid;
     END IF;
     RETURN OLD;
   END IF;
@@ -110,6 +125,9 @@ UPDATE public.feed_posts p SET
   reply_count = COALESCE((
     SELECT COUNT(*) FROM public.feed_posts c
     WHERE c.action = 2 AND c.deleted_at IS NULL AND c.parent_txid = p.txid), 0),
+  quote_count = COALESCE((
+    SELECT COUNT(*) FROM public.feed_posts c
+    WHERE c.action = 3 AND c.deleted_at IS NULL AND c.quoted_txid = p.txid), 0),
   like_count = COALESCE((
     SELECT COUNT(*) FROM public.feed_events e
     WHERE e.action = 5 AND e.target_txid = p.txid), 0),

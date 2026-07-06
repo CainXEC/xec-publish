@@ -14,6 +14,7 @@ export default function EngagementBar({
   targetTxid,
   likeCount = 0,
   repostCount = 0,
+  quoteCount = 0,
   likedByViewer = false,
   repostedByViewer = false,
   canQuote = true,
@@ -193,7 +194,7 @@ export default function EngagementBar({
             onClick={() => onQuote?.()}
             title="Quote this post"
           >
-            Quote
+            <span aria-hidden className="qico">❝</span> {quoteCount > 0 ? quoteCount : ''} Quote
           </button>
         ) : null}
       </div>

@@ -188,6 +188,10 @@ export const FEED_CSS = `
 .pow-feed .likebtn:hover{color:var(--no);}
 .pow-feed .likebtn.on{color:var(--no);text-shadow:0 0 10px rgba(255,92,108,.5);}
 .pow-feed .repostbtn:hover,.pow-feed .quotebtn:hover{color:var(--neon);}
+/* The ❝ quotation ornament sits on the cap-height line, riding high next to the
+   vertically-centred emoji glyphs (💬 ♡ 🔁). Bump the size and nudge it down so
+   it optically lines up with the other action icons. */
+.pow-feed .qico{display:inline-block;font-size:15px;line-height:1;transform:translateY(3px);}
 .pow-feed .repostbtn.on{color:var(--neon);text-shadow:0 0 10px rgba(0,255,156,.5);}
 .pow-feed .likebtn:disabled,.pow-feed .repostbtn:disabled{cursor:default;opacity:.7;}
 .pow-feed .reactpay{flex-basis:100%;width:100%;margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:12px;

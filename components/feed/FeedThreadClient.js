@@ -236,6 +236,7 @@ export default function FeedThreadClient({
                     targetTxid={post.txid}
                     likeCount={post.likeCount ?? 0}
                     repostCount={post.repostCount ?? 0}
+                    quoteCount={post.quoteCount ?? 0}
                     likedByViewer={Boolean(post.likedByViewer)}
                     repostedByViewer={Boolean(post.repostedByViewer)}
                     onQuote={() => setShowQuote((s) => !s)}
