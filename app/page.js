@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function HomePage({ searchParams }) {
   let posts = []
-  let hasNextPage = false
+  let nextCursor = null
   let loadError = null
 
   const params = await searchParams
@@ -20,9 +20,9 @@ export default async function HomePage({ searchParams }) {
   const acct = await getAuthedAccount()
 
   try {
-    const result = await getCachedForYouPage(1)
+    const result = await getCachedForYouPage()
     posts = result.posts
-    hasNextPage = result.hasNextPage
+    nextCursor = result.nextCursor
   } catch (err) {
     loadError = err?.message || 'Failed to load feed'
   }
@@ -30,8 +30,7 @@ export default async function HomePage({ searchParams }) {
   return (
     <FeedClient
       initialPosts={posts}
-      initialHasNextPage={hasNextPage}
-      initialPage={1}
+      initialNextCursor={nextCursor}
       initialLoadError={loadError}
       viewerAccountId={acct?.accountId ?? null}
       isAuthor={acct?.authorId != null}

@@ -68,7 +68,7 @@ export default async function ProfilePage({ params }) {
       : Promise.resolve(false),
     profileAccountId
       ? getAccountFeedPage({ accountId: profileAccountId, viewerAddress, viewerAccountId })
-      : Promise.resolve({ posts: [], hasNextPage: false }),
+      : Promise.resolve({ posts: [], nextCursor: null }),
   ])
 
   // Byline = the account's LIVE identity: "@handle" if held, else the raw address.

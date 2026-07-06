@@ -10,7 +10,7 @@ import { getAuthedAccount } from '@/lib/authHelpers'
  *  per-viewer and lower-traffic, so it stays personalized server-side. */
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
-  const page = Number(searchParams.get('page')) || 1
+  const cursor = searchParams.get('cursor') || null
   const scope = searchParams.get('scope') === 'following' ? 'following' : 'foryou'
   try {
     if (scope === 'following') {
@@ -18,15 +18,15 @@ export async function GET(request) {
       if (!acct) {
         return NextResponse.json({ error: 'Sign in to see who you follow' }, { status: 401 })
       }
-      const { posts, hasNextPage } = await getFollowingFeedPage({
-        page,
+      const { posts, nextCursor } = await getFollowingFeedPage({
+        cursor,
         viewerAddress: acct.address,
         viewerAccountId: acct.accountId,
       })
-      return NextResponse.json({ posts, hasNextPage })
+      return NextResponse.json({ posts, nextCursor })
     }
-    const { posts, hasNextPage } = await getCachedForYouPage(page)
-    return NextResponse.json({ posts, hasNextPage })
+    const { posts, nextCursor } = await getCachedForYouPage(cursor)
+    return NextResponse.json({ posts, nextCursor })
   } catch (e) {
     return NextResponse.json({ error: e?.message || 'Failed to load feed' }, { status: 500 })
   }

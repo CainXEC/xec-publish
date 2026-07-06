@@ -10,8 +10,7 @@ import ThemeToggle from '@/components/ThemeToggle'
 
 export default function FeedClient({
   initialPosts = [],
-  initialHasNextPage = false,
-  initialPage = 1,
+  initialNextCursor = null,
   initialLoadError = null,
   viewerAccountId: initialViewerAccountId = null,
   isAuthor = false,
@@ -23,19 +22,19 @@ export default function FeedClient({
   const [viewerAccountId, setViewerAccountId] = useState(initialViewerAccountId)
   const signedIn = viewerAccountId != null
 
-  // Each tab keeps its own posts/pagination so switching back doesn't refetch.
+  // Each tab keeps its own posts + keyset cursor so switching back doesn't
+  // refetch. nextCursor is the opaque "fetch older than this" token from the
+  // server; null means we've reached the end (no Load more).
   const [tabs, setTabs] = useState({
     foryou: {
       posts: initialPosts,
-      hasNextPage: initialHasNextPage,
-      page: initialPage,
+      nextCursor: initialNextCursor,
       error: initialLoadError,
       loaded: true,
     },
     following: {
       posts: [],
-      hasNextPage: false,
-      page: 1,
+      nextCursor: null,
       error: null,
       loaded: false,
     },
@@ -112,10 +111,12 @@ export default function FeedClient({
   }, [foryouKey, signedIn, patchTab])
 
   const fetchScope = useCallback(
-    async (key, page) => {
-      const qs = new URLSearchParams({ page: String(page) })
+    async (key, cursor) => {
+      const qs = new URLSearchParams()
+      if (cursor) qs.set('cursor', cursor)
       if (key === 'following') qs.set('scope', 'following')
-      const res = await fetch(`/api/feed?${qs.toString()}`, { cache: 'no-store' })
+      const suffix = qs.toString()
+      const res = await fetch(`/api/feed${suffix ? `?${suffix}` : ''}`, { cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to load feed')
       return data
@@ -130,11 +131,10 @@ export default function FeedClient({
       if (tabs[key].loaded || loading) return
       setLoading(true)
       try {
-        const data = await fetchScope(key, 1)
+        const data = await fetchScope(key, null)
         patchTab(key, {
           posts: data.posts ?? [],
-          hasNextPage: Boolean(data.hasNextPage),
-          page: 1,
+          nextCursor: data.nextCursor ?? null,
           error: null,
           loaded: true,
         })
@@ -195,20 +195,18 @@ export default function FeedClient({
   )
 
   const loadMore = useCallback(async () => {
-    if (loading || !active.hasNextPage) return
+    if (loading || !active.nextCursor) return
     setLoading(true)
     patchTab(scope, { error: null })
     try {
-      const nextPage = active.page + 1
-      const data = await fetchScope(scope, nextPage)
+      const data = await fetchScope(scope, active.nextCursor)
       patchTab(scope, (t) => {
         const seen = new Set(t.posts.map((p) => p.txid))
         const fresh = (data.posts ?? []).filter((p) => p?.txid && !seen.has(p.txid))
         return {
           ...t,
           posts: [...t.posts, ...fresh],
-          hasNextPage: Boolean(data.hasNextPage),
-          page: nextPage,
+          nextCursor: data.nextCursor ?? null,
         }
       })
     } catch (e) {
@@ -296,7 +294,7 @@ export default function FeedClient({
           </ul>
         )}
 
-        {active.hasNextPage ? (
+        {active.nextCursor ? (
           <div className="loadmore">
             <button type="button" onClick={() => void loadMore()} disabled={loading} className="ghost">
               {loading ? 'Loading…' : 'Load more'}
