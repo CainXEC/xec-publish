@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { FEED_ACTION } from '@/lib/feedProtocol'
+import { blockedAccountIds } from '@/lib/feedBlocks'
 
 const MAX_IDS = 100
 
@@ -17,9 +18,9 @@ function cleanIds(value) {
  * Per-viewer personalization overlay for the shared, cached For You feed. The
  * feed payload itself is viewer-neutral (same cached copy for everyone); this
  * endpoint resolves the ONE viewer-specific slice — which of the given posts the
- * signed-in wallet has liked/reposted, and which of the given authors it follows
- * — so the client can fill in the like/repost/Follow states after the feed
- * paints. Not signed in → empty sets (nothing to personalize).
+ * signed-in wallet has liked/reposted, which of the given authors it follows, and
+ * which are blocked — so the client can fill in the like/repost/Follow states and
+ * drop blocked authors after the feed paints. Not signed in → empty sets.
  */
 export async function POST(request) {
   let body
@@ -31,7 +32,7 @@ export async function POST(request) {
   const txids = cleanIds(body?.txids)
   const authorIds = cleanIds(body?.authorIds)
 
-  const empty = { liked: [], reposted: [], followed: [] }
+  const empty = { liked: [], reposted: [], followed: [], blocked: [] }
   const acct = await getAuthedAccount()
   if (!acct) return NextResponse.json(empty)
 
@@ -62,5 +63,10 @@ export async function POST(request) {
     for (const r of data ?? []) followed.push(r.followee_account_id)
   }
 
-  return NextResponse.json({ liked, reposted, followed })
+  // Which of the visible authors are in a block relationship with the viewer
+  // (either direction) — the client drops their posts from the cached feed.
+  const blockedSet = await blockedAccountIds(supabase, acct.accountId)
+  const blocked = authorIds.filter((id) => blockedSet.has(id))
+
+  return NextResponse.json({ liked, reposted, followed, blocked })
 }

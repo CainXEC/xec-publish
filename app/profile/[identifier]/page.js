@@ -5,6 +5,8 @@ import { hydrateAuthorProfile } from '@/lib/loadAuthorProfile'
 import { heldHandlesForAddress } from '@/lib/heldHandles'
 import { getAccountFeedPage } from '@/lib/getFeed'
 import { getAuthedAccount } from '@/lib/authHelpers'
+import { createServerSupabase } from '@/lib/supabase-server'
+import { viewerBlocksAccount } from '@/lib/feedBlocks'
 import {
   accountIdForAddress,
   followerCountForAccount,
@@ -58,9 +60,12 @@ export default async function ProfilePage({ params }) {
       : Promise.resolve(null),
   ])
 
-  const [followerCount, initialFollowing, feed] = await Promise.all([
+  const [followerCount, initialFollowing, initialBlocked, feed] = await Promise.all([
     followerCountForAccount(profileAccountId),
     viewerFollowsAccount(viewerAccountId, profileAccountId),
+    profileAccountId
+      ? viewerBlocksAccount(createServerSupabase(), viewerAccountId, profileAccountId)
+      : Promise.resolve(false),
     profileAccountId
       ? getAccountFeedPage({ accountId: profileAccountId, viewerAddress, viewerAccountId })
       : Promise.resolve({ posts: [], hasNextPage: false }),
@@ -102,6 +107,7 @@ export default async function ProfilePage({ params }) {
       profileAccountId={profileAccountId}
       viewerAccountId={viewerAccountId}
       initialFollowing={initialFollowing}
+      initialBlocked={initialBlocked}
       initialPosts={feed.posts}
       identifier={identifier}
       articleCount={articleCount}

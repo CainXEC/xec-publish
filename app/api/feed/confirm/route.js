@@ -9,6 +9,7 @@ import { priceFeedPost } from '@/lib/feedPricing'
 import { contentHashHex, FEED_ACTION } from '@/lib/feedProtocol'
 import { findFeedPayment, verifyFeedTxid } from '@/lib/verifyFeedPost'
 import { resolveOrCreateAccount } from '@/lib/walletAuth'
+import { isBlockedPair } from '@/lib/feedBlocks'
 import {
   verifySession,
   signSession,
@@ -75,6 +76,7 @@ export async function POST(request) {
   let targetTxid = null
   let quotedTxid = null
   let payoutAddress = null
+  let parentAuthorAccountId = null
   if (action === FEED_ACTION.REPLY) {
     targetTxid = typeof body?.parentTxid === 'string' ? body.parentTxid.trim().toLowerCase() : ''
     if (!/^[0-9a-f]{64}$/.test(targetTxid)) {
@@ -82,7 +84,7 @@ export async function POST(request) {
     }
     const { data: parent, error } = await supabase
       .from('feed_posts')
-      .select('payout_address')
+      .select('payout_address, author_account_id')
       .eq('txid', targetTxid)
       .maybeSingle()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -90,6 +92,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Parent post not found' }, { status: 404 })
     }
     payoutAddress = parent.payout_address
+    parentAuthorAccountId = parent.author_account_id
   } else if (action === FEED_ACTION.QUOTE) {
     targetTxid = typeof body?.quotedTxid === 'string' ? body.quotedTxid.trim().toLowerCase() : ''
     if (!/^[0-9a-f]{64}$/.test(targetTxid)) {
@@ -141,6 +144,18 @@ export async function POST(request) {
   }
 
   const resolved = await resolveOrCreateAccount(match.payerAddress)
+
+  // Reply gate: reject if the replier and the parent's author are in a block
+  // relationship (either direction). The blocked party can't normally reach the
+  // thread (it's hidden from them), so this is the server-side backstop against a
+  // direct call. The payment already landed on-chain; we simply don't record the
+  // reply — no blocked reply enters the feed.
+  if (action === FEED_ACTION.REPLY && parentAuthorAccountId) {
+    if (await isBlockedPair(supabase, parentAuthorAccountId, resolved.accountId)) {
+      return NextResponse.json({ error: 'You can’t reply to this post.' }, { status: 403 })
+    }
+  }
+
   const authorIdentity = identityFor(match.payerAddress, resolved.handle)
 
   const row = {

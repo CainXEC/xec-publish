@@ -84,14 +84,20 @@ export default function FeedClient({
         const liked = new Set(data.liked ?? [])
         const reposted = new Set(data.reposted ?? [])
         const followed = new Set(data.followed ?? [])
+        const blocked = new Set(data.blocked ?? [])
         patchTab('foryou', (t) => ({
           ...t,
-          posts: t.posts.map((p) => ({
-            ...p,
-            likedByViewer: liked.has(p.txid),
-            repostedByViewer: reposted.has(p.txid),
-            followedByViewer: followed.has(p.author_account_id),
-          })),
+          // The cached feed is viewer-neutral, so it can include authors this
+          // viewer has blocked (or who blocked them). Drop those here, then merge
+          // the like/repost/follow flags onto what remains.
+          posts: t.posts
+            .filter((p) => !blocked.has(p.author_account_id))
+            .map((p) => ({
+              ...p,
+              likedByViewer: liked.has(p.txid),
+              repostedByViewer: reposted.has(p.txid),
+              followedByViewer: followed.has(p.author_account_id),
+            })),
         }))
       } catch {
         /* overlay is best-effort; feed still renders without it */
@@ -161,6 +167,25 @@ export default function FeedClient({
         const next = {}
         for (const key of Object.keys(prev)) {
           next[key] = { ...prev[key], posts: prev[key].posts.filter((p) => p.txid !== txid) }
+        }
+        return next
+      })
+    },
+    [],
+  )
+
+  // Blocking an account drops every post of theirs from both tabs at once (the
+  // server-side filters keep them gone on the next fetch).
+  const removeByAuthor = useCallback(
+    (accountId) => {
+      if (!accountId) return
+      setTabs((prev) => {
+        const next = {}
+        for (const key of Object.keys(prev)) {
+          next[key] = {
+            ...prev[key],
+            posts: prev[key].posts.filter((p) => p.author_account_id !== accountId),
+          }
         }
         return next
       })
@@ -263,6 +288,7 @@ export default function FeedClient({
                 viewerAccountId={viewerAccountId}
                 onDeleted={removePost}
                 onQuoted={prependPost}
+                onBlocked={removeByAuthor}
               />
             ))}
           </ul>

@@ -116,12 +116,19 @@ export const FEED_CSS = `
 .pow-feed .dot{color:var(--line);}
 .pow-feed .time{font-size:12px;color:var(--dim);}
 .pow-feed .time:hover{color:var(--cyan);}
-.pow-feed .followbtn{margin-left:auto;align-self:center;background:none;border:1px solid var(--neon);color:var(--neon);
-  font:inherit;font-size:12px;font-weight:600;line-height:1;padding:5px 12px;border-radius:999px;cursor:pointer;
-  transition:background .15s,color .15s,box-shadow .15s;}
-.pow-feed .followbtn:hover{box-shadow:0 0 10px rgba(0,255,156,.4);}
-.pow-feed .followbtn.on{background:var(--neon);color:#04120c;border-color:var(--neon);}
-.pow-feed .followbtn:disabled{opacity:.6;cursor:default;}
+/* overflow (···) menu on a post / profile — Follow + Block live here */
+.pow-feed .postmenu{position:relative;align-self:center;display:inline-flex;margin-left:auto;}
+.pow-feed .menubtn{background:none;border:none;color:var(--dim);font:inherit;font-size:16px;line-height:1;
+  letter-spacing:1px;padding:2px 6px;border-radius:6px;cursor:pointer;transition:color .15s,background .15s;}
+.pow-feed .menubtn:hover{color:var(--text);background:rgba(255,255,255,.05);}
+.pow-feed .menupop{position:absolute;top:100%;right:0;margin-top:4px;z-index:20;min-width:120px;
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px;
+  box-shadow:0 8px 24px rgba(0,0,0,.5);}
+.pow-feed .menuitem{display:block;width:100%;text-align:left;background:none;border:none;font:inherit;font-size:13px;
+  color:var(--text);padding:8px 10px;border-radius:7px;cursor:pointer;transition:background .12s,color .12s;}
+.pow-feed .menuitem:hover{background:rgba(255,92,108,.12);}
+.pow-feed .menuitem.danger{color:var(--no);}
+.pow-feed .menuitem:disabled{opacity:.6;cursor:default;}
 .pow-feed .body{margin:8px 0 0;white-space:pre-wrap;word-break:break-word;font-size:15px;line-height:1.6;color:var(--text);}
 .pow-feed .showmore{display:inline;background:none;border:none;color:var(--cyan);font:inherit;font-size:14px;cursor:pointer;
   padding:0;margin-left:6px;transition:text-shadow .15s;}
@@ -189,7 +196,7 @@ export const FEED_CSS = `
 .pow-feed .proffollowers{font-size:14px;color:var(--dim);}
 .pow-feed .proffollowers.standalone{display:block;margin:14px 0 0;}
 .pow-feed .proffollowers strong{color:var(--text);font-weight:700;}
-.pow-feed .proffollow .followbtn{margin-left:0;font-size:13px;padding:6px 16px;}
+.pow-feed .proffollow .postmenu{margin-left:0;}
 .pow-feed .profstats{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin:16px 0 0;font-size:13px;color:var(--dim);}
 .pow-feed .profstat strong{color:var(--text);font-weight:700;}
 .pow-feed .artlink{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;

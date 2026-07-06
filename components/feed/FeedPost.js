@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ComposeBox from '@/components/feed/ComposeBox'
@@ -59,24 +59,38 @@ function Byline({ identity }) {
 }
 
 /**
- * Session-authorized follow toggle for a post's author. Optimistic: flips state
- * on click and reverts if POST /api/feed/follow fails. Only rendered when a
- * signed-in viewer is looking at someone else's post.
+ * Overflow "···" menu on someone else's post: the single home for the two
+ * relationship actions — Follow/Unfollow and Block. Both are session-authorized
+ * and optimistic. Follow flips in place; Block confirms, then calls onBlocked so
+ * the feed drops the account's posts immediately. Only rendered for a signed-in
+ * viewer on another account's live post (unblocking is done from the profile).
  */
-function FollowButton({ followeeAccountId, initialFollowing }) {
+function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked }) {
+  const [open, setOpen] = useState(false)
   const [following, setFollowing] = useState(Boolean(initialFollowing))
-  const [busy, setBusy] = useState(false)
+  const [busyFollow, setBusyFollow] = useState(false)
+  const [busyBlock, setBusyBlock] = useState(false)
+  const rootRef = useRef(null)
 
-  const toggle = useCallback(async () => {
-    if (busy) return
+  useEffect(() => {
+    if (!open) return
+    const onDocClick = (e) => {
+      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [open])
+
+  const toggleFollow = useCallback(async () => {
+    if (busyFollow) return
     const next = !following
-    setBusy(true)
+    setBusyFollow(true)
     setFollowing(next) // optimistic
     try {
       const res = await fetch('/api/feed/follow', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ followeeAccountId }),
+        body: JSON.stringify({ followeeAccountId: authorAccountId }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) {
@@ -87,24 +101,72 @@ function FollowButton({ followeeAccountId, initialFollowing }) {
     } catch {
       setFollowing(!next) // revert
     } finally {
-      setBusy(false)
+      setBusyFollow(false)
     }
-  }, [busy, following, followeeAccountId])
+  }, [busyFollow, following, authorAccountId])
+
+  const block = useCallback(async () => {
+    if (busyBlock) return
+    const who = authorLabel ? ` ${authorLabel}` : ''
+    if (!window.confirm(`Block${who}? You won't see each other's posts, and they can't reply to you.`)) {
+      return
+    }
+    setBusyBlock(true)
+    try {
+      const res = await fetch('/api/feed/block', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ blockedAccountId: authorAccountId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to block')
+      setOpen(false)
+      onBlocked?.(authorAccountId)
+    } catch (e) {
+      window.alert(e?.message || 'Failed to block')
+      setBusyBlock(false)
+    }
+  }, [busyBlock, authorAccountId, authorLabel, onBlocked])
 
   return (
-    <button
-      type="button"
-      className={`followbtn${following ? ' on' : ''}`}
-      onClick={toggle}
-      disabled={busy}
-      aria-pressed={following}
-    >
-      {following ? 'Following' : 'Follow'}
-    </button>
+    <span className="postmenu" ref={rootRef}>
+      <button
+        type="button"
+        className="menubtn"
+        onClick={() => setOpen((s) => !s)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="More"
+      >
+        ···
+      </button>
+      {open ? (
+        <div className="menupop" role="menu">
+          <button
+            type="button"
+            role="menuitem"
+            className="menuitem"
+            onClick={toggleFollow}
+            disabled={busyFollow}
+          >
+            {busyFollow ? '…' : following ? 'Unfollow' : 'Follow'}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="menuitem danger"
+            onClick={block}
+            disabled={busyBlock}
+          >
+            {busyBlock ? 'Blocking…' : 'Block'}
+          </button>
+        </div>
+      ) : null}
+    </span>
   )
 }
 
-export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = null, onDeleted }) {
+export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = null, onDeleted, onBlocked }) {
   const router = useRouter()
   const [showReply, setShowReply] = useState(false)
   const [showQuote, setShowQuote] = useState(false)
@@ -125,9 +187,15 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
     !!viewerAccountId &&
     post.author_account_id === viewerAccountId
 
-  // Show Follow only to a signed-in viewer looking at someone else's live post.
-  const canFollow =
+  // The overflow menu (Follow + Block) shows only to a signed-in viewer looking
+  // at someone else's live post.
+  const canManageAuthor =
     !post.deleted && !!viewerAccountId && !isOwn && !!post.author_account_id
+
+  const authorLabel = (() => {
+    const id = String(post.displayIdentity ?? post.author_identity ?? '').trim()
+    return id.startsWith('@') ? id : ''
+  })()
 
   const handleReplied = (reply) => {
     setShowReply(false)
@@ -161,7 +229,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   // interactive elements (the byline/timestamp links, the reply button, or the
   // inline reply composer).
   const openThread = (e) => {
-    if (e.target.closest('a, button, input, textarea, .inlinereply, .inlinequote, .quoted, .engage')) {
+    if (e.target.closest('a, button, input, textarea, .inlinereply, .inlinequote, .quoted, .engage, .postmenu')) {
       return
     }
     router.push(`/feed/${post.txid}`)
@@ -177,10 +245,12 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
         <Link href={`/feed/${post.txid}`} className="time">
           {timeAgo(post.created_at)}
         </Link>
-        {canFollow ? (
-          <FollowButton
-            followeeAccountId={post.author_account_id}
+        {canManageAuthor ? (
+          <PostMenu
+            authorAccountId={post.author_account_id}
+            authorLabel={authorLabel}
             initialFollowing={Boolean(post.followedByViewer)}
+            onBlocked={onBlocked}
           />
         ) : null}
       </div>

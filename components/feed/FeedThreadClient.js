@@ -118,6 +118,12 @@ export default function FeedThreadClient({
     setReplies((prev) => prev.filter((r) => r.txid !== txid))
   }, [])
 
+  // Blocking a replier drops all of their replies from the thread at once.
+  const removeReplyAuthor = useCallback((accountId) => {
+    if (!accountId) return
+    setReplies((prev) => prev.filter((r) => r.author_account_id !== accountId))
+  }, [])
+
   // A quote is a new top-level post; jump to its thread once it's recorded.
   const handleQuoted = useCallback(
     (quote) => {
@@ -289,6 +295,7 @@ export default function FeedThreadClient({
                 viewerAccountId={viewerAccountId}
                 onDeleted={removeReply}
                 onQuoted={handleQuoted}
+                onBlocked={removeReplyAuthor}
               />
             ))}
           </ul>
