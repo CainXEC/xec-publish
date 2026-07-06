@@ -182,8 +182,9 @@ export const FEED_CSS = `
 .pow-feed .profname{margin:0;font-size:30px;font-weight:800;letter-spacing:.02em;color:var(--neon);
   text-shadow:0 0 14px rgba(0,255,156,.45);word-break:break-word;}
 .pow-feed .profname.isaddr{font-size:18px;letter-spacing:0;color:var(--cyan);text-shadow:0 0 12px rgba(61,240,255,.4);}
-.pow-feed .profaddr{display:inline-block;margin:8px 0 0;font-size:12px;color:var(--dim);transition:color .15s;}
+.pow-feed .profaddr{display:inline-block;margin:8px 0 0;padding:0;font:inherit;font-size:12px;background:none;border:0;color:var(--dim);cursor:pointer;transition:color .15s;}
 .pow-feed .profaddr:hover{color:var(--cyan);}
+.pow-feed .profcopied{display:inline-block;margin:8px 0 0 10px;font-size:12px;color:var(--neon);}
 .pow-feed .proffollow{display:flex;align-items:center;gap:14px;margin:14px 0 0;}
 .pow-feed .proffollowers{font-size:14px;color:var(--dim);}
 .pow-feed .proffollowers.standalone{display:block;margin:14px 0 0;}

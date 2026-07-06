@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import FeedPost from '@/components/feed/FeedPost'
@@ -96,10 +96,25 @@ export default function AuthorProfilePageClient({
 }) {
   const router = useRouter()
   const [posts, setPosts] = useState(initialPosts)
+  const [copiedAddress, setCopiedAddress] = useState(false)
+  const copyTimeoutRef = useRef(null)
 
   const removePost = useCallback((txid) => {
     setPosts((prev) => prev.filter((p) => p.txid !== txid))
   }, [])
+
+  const copyAddress = useCallback(async () => {
+    const trimmed = typeof holderAddress === 'string' ? holderAddress.trim() : ''
+    if (!trimmed) return
+    try {
+      await navigator.clipboard.writeText(trimmed)
+      setCopiedAddress(true)
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
+      copyTimeoutRef.current = setTimeout(() => setCopiedAddress(false), 2000)
+    } catch {
+      /* clipboard unavailable — nothing to do */
+    }
+  }, [holderAddress])
 
   const handleQuoted = useCallback(
     (quote) => {
@@ -141,15 +156,17 @@ export default function AuthorProfilePageClient({
           </h1>
 
           {holderAddress ? (
-            <a
-              href={`https://explorer.e.cash/address/${holderAddress}`}
-              target="_blank"
-              rel="noreferrer"
-              className="profaddr"
-              title={holderAddress}
-            >
-              {truncateAddress(holderAddress)}
-            </a>
+            <>
+              <button
+                type="button"
+                className="profaddr"
+                onClick={() => void copyAddress()}
+                title="Click to copy"
+              >
+                {truncateAddress(holderAddress)}
+              </button>
+              {copiedAddress ? <span className="profcopied">Copied!</span> : null}
+            </>
           ) : null}
 
           {canFollow ? (
