@@ -178,10 +178,6 @@ export default function FeedThreadClient({
       </div>
 
       <main className="wrap" style={{ paddingTop: '28px' }}>
-        <Link href="/" className="back">
-          ← Back to feed
-        </Link>
-
         <div className="thread">
           {ancestors.map((a, i) => (
             <AncestorNode key={a.txid} post={a} top={i === 0} />

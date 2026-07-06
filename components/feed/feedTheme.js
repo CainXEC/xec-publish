@@ -333,9 +333,6 @@ html:not(.dark) .dashhandle-tip{background:#ffffff;border-color:#00b06e;color:#0
 .pow-feed .loadmore{text-align:center;margin-top:20px;}
 
 /* ---- thread ---- */
-.pow-feed .back{display:inline-block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);
-  margin:0 0 16px;transition:text-shadow .15s;}
-.pow-feed .back:hover{text-shadow:0 0 12px rgba(61,240,255,.5);}
 /* X-style connected thread: an ancestor chain joined by a rail line down to the
    focused post. Each .tnode is [rail | body]; .lineup/.linedown draw the segment
    above/below the node's dot so adjacent nodes form one continuous line. */
