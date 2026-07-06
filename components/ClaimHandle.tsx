@@ -173,7 +173,7 @@ export default function ClaimHandle() {
             <div className="settling" role="status" aria-live="polite">
               <div className="spinner" aria-hidden="true" />
               <p className="settlehead">{statusMsg}</p>
-              <p className="settlesub">Proof payment seen — waiting for the network to finalize it. Keep this tab open; your card reveals in a few seconds.</p>
+              <p className="settlesub">Payment received — waiting for the network to finalize and mint your NFT. Keep this tab open; your card reveals in a few seconds.</p>
             </div>
           ) : (
             <>
