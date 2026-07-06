@@ -121,9 +121,7 @@ export default function MarketplaceClient({ embedded = false }: { embedded?: boo
         <h1 className="title">Handles for sale</h1>
         <p className="sub">
           One-of-one <span className="mono">@handles</span>, listed by their holders on
-          Agora. Prices are live and on-chain — buy directly in Cashtab. A listed handle
-          can&apos;t be used as a profile name until the sale clears or the listing is
-          cancelled.
+          Agora.
         </p>
         <p className="sub sublist">
           Hold a handle you want to sell?{" "}
@@ -134,8 +132,8 @@ export default function MarketplaceClient({ embedded = false }: { embedded?: boo
             rel="noreferrer"
           >
             List it on Agora in Cashtab
-          </a>{" "}
-          and it will appear here automatically.
+          </a>
+          .
         </p>
       </header>
 

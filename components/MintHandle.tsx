@@ -163,7 +163,7 @@ export default function MintHandle() {
       </div>
 
       <h1 className="title">Mint a handle</h1>
-      <p className="sub">A one-of-one name on Proof of Writing. The card is revealed only after you mint.</p>
+      <p className="sub">A one-of-one name on Proof of Writing.</p>
 
       {/* mystery card — the reveal stays hidden until after payment */}
       {phase !== "done" && (
@@ -286,7 +286,7 @@ const CSS = `
 .pow-mint > *{max-width:640px;width:100%;}
 /* The embedded marketplace sits below the mint flow behind a hairline separator,
    at the same 640px width as everything else. */
-.pow-mint > .pow-market.embed{max-width:640px;margin-top:64px;padding-top:52px;border-top:1px solid var(--line);}
+.pow-mint > .pow-market.embed{max-width:640px;margin-top:32px;padding-top:28px;border-top:1px solid var(--line);}
 /* Header bar mirrors the feed's .topbar (brand left, links + toggle right). */
 .pow-mint .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;
   width:100%;max-width:640px;margin:0 auto 36px;}
