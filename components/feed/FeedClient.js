@@ -58,6 +58,52 @@ export default function FeedClient({
     }))
   }, [])
 
+  // The For You feed is served from a shared, viewer-neutral cache, so its posts
+  // arrive with like/repost/follow states blanked out. Once mounted (and whenever
+  // the visible set changes), a signed-in viewer fetches just their own slice —
+  // which of these posts they've liked/reposted and which authors they follow —
+  // and we merge it in so the hearts and Follow buttons reflect reality. Keyed on
+  // the txid set (not the post objects) so merging flags in doesn't re-trigger it.
+  const foryouPosts = tabs.foryou.posts
+  const foryouKey = foryouPosts.map((p) => p.txid).join(',')
+  useEffect(() => {
+    if (!signedIn || foryouPosts.length === 0) return
+    let cancelled = false
+    const txids = foryouPosts.map((p) => p.txid).filter(Boolean)
+    const authorIds = [...new Set(foryouPosts.map((p) => p.author_account_id).filter(Boolean))]
+    ;(async () => {
+      try {
+        const res = await fetch('/api/feed/viewer-state', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ txids, authorIds }),
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        if (cancelled) return
+        const liked = new Set(data.liked ?? [])
+        const reposted = new Set(data.reposted ?? [])
+        const followed = new Set(data.followed ?? [])
+        patchTab('foryou', (t) => ({
+          ...t,
+          posts: t.posts.map((p) => ({
+            ...p,
+            likedByViewer: liked.has(p.txid),
+            repostedByViewer: reposted.has(p.txid),
+            followedByViewer: followed.has(p.author_account_id),
+          })),
+        }))
+      } catch {
+        /* overlay is best-effort; feed still renders without it */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // foryouKey captures the visible txid set; foryouPosts is read fresh per run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [foryouKey, signedIn, patchTab])
+
   const fetchScope = useCallback(
     async (key, page) => {
       const qs = new URLSearchParams({ page: String(page) })

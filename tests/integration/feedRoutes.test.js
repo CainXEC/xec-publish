@@ -20,6 +20,12 @@ const mocks = vi.hoisted(() => ({
 process.env.PLATFORM_XEC_ADDRESS =
   process.env.PLATFORM_XEC_ADDRESS || 'ecash:qrw35trzq7hagejru2h3eqf5eyhxxmg4cul69u7am3'
 
+// next/cache needs Next's request/render store, which a bare route call lacks.
+// The feed routes only use it to invalidate the shared feed cache, so stub it.
+vi.mock('next/cache', () => ({
+  revalidateTag: vi.fn(),
+  unstable_cache: (fn) => fn,
+}))
 vi.mock('@/lib/supabase-server', () => ({ createServerSupabase: mocks.createServerSupabase }))
 vi.mock('@/lib/rateLimit', () => ({ rateLimit: mocks.rateLimit }))
 vi.mock('@/lib/verifyFeedPost', () => ({

@@ -1,8 +1,10 @@
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { rateLimit } from '@/lib/rateLimit'
 import { createServerSupabase } from '@/lib/supabase-server'
+import { FEED_CACHE_TAG } from '@/lib/getFeed'
 import { priceFeedPost } from '@/lib/feedPricing'
 import { contentHashHex, FEED_ACTION } from '@/lib/feedProtocol'
 import { findFeedPayment, verifyFeedTxid } from '@/lib/verifyFeedPost'
@@ -176,6 +178,11 @@ export async function POST(request) {
     }
     return NextResponse.json({ error: insertError.message }, { status: 500 })
   }
+
+  // Freshen the shared For You cache so the new post (or a reply's bumped count)
+  // shows within seconds instead of waiting out the revalidate window. Cheap:
+  // feed writes are payment-gated, so this can't thrash the cache.
+  revalidateTag(FEED_CACHE_TAG)
 
   const response = NextResponse.json({
     ok: true,

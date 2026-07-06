@@ -1,5 +1,5 @@
 import FeedClient from '@/components/feed/FeedClient'
-import { getFeedPage } from '@/lib/getFeed'
+import { getCachedForYouPage } from '@/lib/getFeed'
 import { getAuthedAccount } from '@/lib/authHelpers'
 
 export const dynamic = 'force-dynamic'
@@ -13,14 +13,14 @@ export default async function HomePage({ searchParams }) {
   const initialCompose =
     typeof params?.share === 'string' ? params.share.slice(0, 280) : ''
 
+  // Auth is read only for page chrome (dashboard link) and for the client-side
+  // personalization/own-post logic — NOT for the feed query itself. The For You
+  // feed is served from a shared, viewer-neutral cache; per-viewer state (your
+  // likes/reposts/follows) is layered on the client via /api/feed/viewer-state.
   const acct = await getAuthedAccount()
 
   try {
-    const result = await getFeedPage({
-      page: 1,
-      viewerAddress: acct?.address,
-      viewerAccountId: acct?.accountId ?? null,
-    })
+    const result = await getCachedForYouPage(1)
     posts = result.posts
     hasNextPage = result.hasNextPage
   } catch (err) {
