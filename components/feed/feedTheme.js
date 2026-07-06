@@ -351,12 +351,17 @@ html:not(.dark) .dashhandle-tip{background:#ffffff;border-color:#00b06e;color:#0
 .pow-feed .tmeta{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
 .pow-feed .ttext{margin:6px 0 0;white-space:pre-wrap;word-break:break-word;font-size:15px;line-height:1.55;color:#c8efe1;
   display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden;transition:color .15s;}
-.pow-feed .tnode.focused .tdot{background:var(--cyan);box-shadow:0 0 10px rgba(61,240,255,.6);}
-.pow-feed .focusbody{margin:8px 0 0;white-space:pre-wrap;word-break:break-word;font-size:18px;line-height:1.6;color:var(--text);}
-.pow-feed .focusmeta{margin:14px 0 0;font-size:12px;color:var(--dim);
-  border-top:1px solid var(--line);padding-top:12px;}
-.pow-feed .onchain{color:var(--cyan);}
-.pow-feed .onchain:hover{text-shadow:0 0 10px rgba(61,240,255,.5);}
+/* Focused post reads as "the post you're on": no rail indent (full width, content
+   flush-left with the dot), and its dot sits inline at the head of the byline row
+   rather than out in the rail gutter. */
+.pow-feed .tnode.focused{padding-left:10px;}
+.pow-feed .tnode.focused .tmeta{align-items:center;}
+.pow-feed .tnode.focused .tdot{position:static;flex:none;width:11px;height:11px;
+  background:var(--cyan);box-shadow:0 0 10px rgba(61,240,255,.6);}
+.pow-feed .tnode.focused.lineup::before{left:14px;top:0;height:22px;}
+.pow-feed .focusbody{margin:10px 0 0;white-space:pre-wrap;word-break:break-word;font-size:18px;line-height:1.6;color:var(--text);}
+.pow-feed .onchain{font-size:12px;color:var(--dim);}
+.pow-feed .onchain:hover{color:var(--cyan);}
 .pow-feed .replieshead{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:24px 0 10px;}
 
 @media (prefers-reduced-motion:reduce){.pow-feed *{transition:none!important;animation:none!important;}}

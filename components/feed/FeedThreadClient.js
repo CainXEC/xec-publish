@@ -187,14 +187,29 @@ export default function FeedThreadClient({
             <AncestorNode key={a.txid} post={a} top={i === 0} />
           ))}
 
-          {/* Focused post: emphasized, and joined to the chain above by a line. */}
+          {/* Focused post: emphasized, X-style — pulled out of the rail indent so
+              it spans full width (content aligned to the dot), with the dot, byline
+              and timestamp all on one line above the body. */}
           <article className={`tnode focused${hasAncestors ? ' lineup' : ''}`}>
-            <div className="trail">
-              <span className="tdot" />
-            </div>
             <div className="tbody">
               <div className="tmeta">
+                <span aria-hidden className="tdot" />
                 <ThreadByline identity={post.displayIdentity ?? post.author_identity} />
+                <span aria-hidden className="dot">
+                  ·
+                </span>
+                <span className="time">{createdAt}</span>
+                <span aria-hidden className="dot">
+                  ·
+                </span>
+                <a
+                  href={`https://explorer.e.cash/tx/${post.txid}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="onchain"
+                >
+                  on-chain
+                </a>
               </div>
               {rootDeleted ? (
                 <p className="focusbody tombstone">This post was deleted.</p>
@@ -208,18 +223,6 @@ export default function FeedThreadClient({
               {!rootDeleted ? (
                 <ArticleCard card={post.articleCard ?? null} content={post.content} />
               ) : null}
-              <p className="focusmeta">
-                {createdAt}
-                {' · '}
-                <a
-                  href={`https://explorer.e.cash/tx/${post.txid}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="onchain"
-                >
-                  on-chain
-                </a>
-              </p>
               <div className="actions">
                 <button type="button" onClick={() => setShowReply((s) => !s)} className="replybtn">
                   💬 {replies.length > 0 ? replies.length : ''} Reply
