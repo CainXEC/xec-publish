@@ -49,8 +49,9 @@ export const FEED_CSS = `
 .pow-feed .notifbell{position:relative;display:inline-flex;}
 .pow-feed .notifbtn{position:relative;display:inline-flex;align-items:center;justify-content:center;
   width:34px;height:34px;background:transparent;border:1px solid var(--line);border-radius:8px;
-  font-size:15px;line-height:1;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+  color:var(--neon);line-height:1;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
 .pow-feed .notifbtn:hover{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
+.pow-feed .notifbtn svg{display:block;}
 .pow-feed .notifbadge{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;
   display:inline-flex;align-items:center;justify-content:center;border-radius:9px;
   background:var(--no);color:#0b0304;font-size:10px;font-weight:800;line-height:1;
@@ -269,6 +270,7 @@ export const FEED_CSS = `
   width:38px;height:38px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);
   color:var(--text);font-size:16px;cursor:pointer;flex:none;transition:border-color .15s,box-shadow .15s;}
 .pow-feed .dashbell:hover{border-color:var(--cyan);box-shadow:0 0 14px rgba(61,240,255,.2);}
+.pow-feed .dashbell svg{display:block;}
 .pow-feed .dashbadge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;
   display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:var(--no);
   color:#170305;font-size:10px;font-weight:700;line-height:1;}

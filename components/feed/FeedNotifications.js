@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import BellIcon from '@/components/BellIcon'
 
 function timeAgo(iso) {
   if (!iso) return ''
@@ -118,7 +119,7 @@ export default function FeedNotifications({ signedIn = false }) {
         aria-expanded={open}
         aria-label={unread > 0 ? `Notifications (${unread} unread)` : 'Notifications'}
       >
-        <span aria-hidden>🔔</span>
+        <BellIcon />
         {unread > 0 ? (
           <span className="notifbadge">{unread > 9 ? '9+' : unread}</span>
         ) : null}

@@ -5,6 +5,11 @@ import { NextResponse } from 'next/server'
 import { rateLimit } from '@/lib/rateLimit'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { txFinalityState } from '@/lib/ecash/finality'
+import { pruneOldFeedNotifications } from '@/lib/feedNotifications'
+
+// Feed notifications never expire on their own; the cron prunes anything past
+// this age (read or unread) so the table stays bounded.
+const NOTIF_RETENTION_DAYS = 30
 
 // Reconcile provisional feed rows against Avalanche finality.
 //
@@ -101,7 +106,16 @@ export async function GET(request) {
 
   try {
     const result = await runSweep()
-    return NextResponse.json({ ok: true, ...result })
+    // Prune old notifications only on the trusted cron path, and only at the top
+    // of each hour — the cron fires every minute for finality reconcile, but a
+    // table-wide delete once an hour is plenty to keep the table bounded.
+    let prunedNotifications
+    if (trusted && new Date().getUTCMinutes() === 0) {
+      prunedNotifications = await pruneOldFeedNotifications(createServerSupabase(), {
+        olderThanDays: NOTIF_RETENTION_DAYS,
+      })
+    }
+    return NextResponse.json({ ok: true, ...result, prunedNotifications })
   } catch (e) {
     console.error('[feed-reconcile] sweep failed', e)
     return NextResponse.json({ error: 'Sweep failed' }, { status: 500 })

@@ -7,6 +7,7 @@ import FilterDropdown from '@/components/FilterDropdown'
 import DashboardHandleCarousel from '@/components/dashboard/DashboardHandleCarousel'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import ThemeToggle from '@/components/ThemeToggle'
+import BellIcon from '@/components/BellIcon'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { supabase } from '@/lib/supabase-browser'
 import { fetchAllUnlockCountRows } from '@/lib/supabaseUnlockCounts'
@@ -511,7 +512,7 @@ export default function DashboardClient({
               aria-label="Toggle notifications"
               aria-expanded={notificationsOpen}
             >
-              <span aria-hidden>🔔</span>
+              <BellIcon size={17} />
               {unreadNotificationCount > 0 ? (
                 <span className="dashbadge">{unreadNotificationCount}</span>
               ) : null}

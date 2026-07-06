@@ -39,3 +39,8 @@ ALTER TABLE public.feed_notifications ENABLE ROW LEVEL SECURITY;
 -- to one recipient.
 CREATE INDEX IF NOT EXISTS feed_notifications_recipient_idx
   ON public.feed_notifications (recipient_account_id, read, created_at DESC);
+
+-- The hourly retention prune deletes across all recipients by age
+-- (WHERE created_at < cutoff), so it needs a plain created_at index.
+CREATE INDEX IF NOT EXISTS feed_notifications_created_idx
+  ON public.feed_notifications (created_at);
