@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { rateLimit } from '@/lib/rateLimit'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { getAuthedAccount } from '@/lib/authHelpers'
+import { recordFeedNotification } from '@/lib/feedNotifications'
 
 /**
  * Toggle a feed-native follow: the signed-in account follows/unfollows another
@@ -75,6 +76,16 @@ export async function POST(request) {
   // the desired end state (following) rather than an error.
   if (insertErr && insertErr.code !== '23505') {
     return NextResponse.json({ ok: false, error: insertErr.message }, { status: 500 })
+  }
+
+  // Notify the followee (best-effort; skipped on a duplicate re-follow race).
+  if (!insertErr) {
+    await recordFeedNotification(supabase, {
+      recipientAccountId: followeeAccountId,
+      actorAccountId: acct.accountId,
+      actorIdentity: acct.identity,
+      type: 'follow',
+    })
   }
 
   return NextResponse.json({ ok: true, following: true })

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import ComposeBox from '@/components/feed/ComposeBox'
 import FeedPost from '@/components/feed/FeedPost'
+import FeedNotifications from '@/components/feed/FeedNotifications'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import ThemeToggle from '@/components/ThemeToggle'
 
@@ -234,6 +235,7 @@ export default function FeedClient({
           <Link href="/mint#marketplace" className="toplink">
             marketplace
           </Link>
+          <FeedNotifications signedIn={signedIn} />
           <ThemeToggle variant="feed" />
         </div>
       </div>

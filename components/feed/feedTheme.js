@@ -24,9 +24,15 @@ export const FEED_CSS = `
 .pow-feed a{color:inherit;text-decoration:none;}
 
 /* ---- top strip ---- */
+/* Sticky so the wordmark + notification bell stay reachable while scrolling.
+   Semi-transparent + blur lets the neon backdrop show through; the content
+   column shares the 640px width so nothing scrolls in the gutters beside it. */
 .pow-feed .topbar{
+  position:sticky;top:0;z-index:50;
   display:flex;align-items:center;justify-content:space-between;gap:16px;
-  max-width:640px;margin:0 auto;padding:22px 20px 0;
+  max-width:640px;margin:0 auto;padding:16px 20px 14px;
+  background:rgba(7,11,10,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
 }
 .pow-feed .wordmark{font-size:15px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--neon);
   text-shadow:0 0 8px rgba(0,255,156,.5);}
@@ -38,6 +44,33 @@ export const FEED_CSS = `
   padding:0;color:var(--neon);cursor:pointer;}
 .pow-feed .toplink-toggle:hover{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
 .pow-feed .toplink-toggle svg{width:15px;height:15px;}
+
+/* ---- notification bell ---- */
+.pow-feed .notifbell{position:relative;display:inline-flex;}
+.pow-feed .notifbtn{position:relative;display:inline-flex;align-items:center;justify-content:center;
+  width:34px;height:34px;background:transparent;border:1px solid var(--line);border-radius:8px;
+  font-size:15px;line-height:1;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+.pow-feed .notifbtn:hover{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
+.pow-feed .notifbadge{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;
+  display:inline-flex;align-items:center;justify-content:center;border-radius:9px;
+  background:var(--no);color:#0b0304;font-size:10px;font-weight:800;line-height:1;
+  box-shadow:0 0 10px rgba(255,92,108,.6);}
+.pow-feed .notifpop{position:absolute;top:100%;right:0;margin-top:8px;z-index:60;width:300px;max-width:82vw;
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;
+  box-shadow:0 10px 30px rgba(0,0,0,.55);}
+.pow-feed .notifpop-head{padding:11px 14px;border-bottom:1px solid var(--line);
+  font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);}
+.pow-feed .notifempty{margin:0;padding:18px 14px;font-size:13px;color:var(--dim);text-align:center;}
+.pow-feed .notiflist{list-style:none;margin:0;padding:0;max-height:60vh;overflow-y:auto;}
+.pow-feed .notifitem{display:flex;align-items:baseline;gap:10px;justify-content:space-between;
+  padding:11px 14px;border-bottom:1px solid rgba(23,58,51,.5);transition:background .12s;}
+.pow-feed .notiflist li:last-child .notifitem{border-bottom:none;}
+.pow-feed .notifitem:hover{background:rgba(0,255,156,.06);}
+.pow-feed .notifitem.unread{background:rgba(0,255,156,.08);}
+.pow-feed .notifitem.unread:hover{background:rgba(0,255,156,.12);}
+.pow-feed .notifmsg{font-size:13px;line-height:1.5;color:var(--text);}
+.pow-feed .notifmsg strong{color:var(--cyan);font-weight:700;}
+.pow-feed .notiftime{flex:none;font-size:11px;color:var(--dim);}
 
 /* ---- header ---- */
 .pow-feed .head{max-width:640px;margin:0 auto;padding:28px 20px 18px;text-align:center;}
@@ -397,4 +430,6 @@ html:not(.dark) .pow-feed .profbio,
 html:not(.dark) .pow-feed .dashbio{color:#2f5b4e;}
 html:not(.dark) .pow-feed .ttext{color:#26564a;}
 html:not(.dark) .pow-feed .compose textarea::placeholder{color:#8fb8ab;}
+/* sticky topbar tint matches the daylight ground (dark default is set inline above) */
+html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
 `

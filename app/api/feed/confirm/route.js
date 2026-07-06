@@ -10,6 +10,7 @@ import { contentHashHex, FEED_ACTION } from '@/lib/feedProtocol'
 import { findFeedPayment, verifyFeedTxid } from '@/lib/verifyFeedPost'
 import { resolveOrCreateAccount } from '@/lib/walletAuth'
 import { isBlockedPair } from '@/lib/feedBlocks'
+import { recordFeedNotification } from '@/lib/feedNotifications'
 import {
   verifySession,
   signSession,
@@ -77,6 +78,7 @@ export async function POST(request) {
   let quotedTxid = null
   let payoutAddress = null
   let parentAuthorAccountId = null
+  let quotedAuthorAccountId = null
   if (action === FEED_ACTION.REPLY) {
     targetTxid = typeof body?.parentTxid === 'string' ? body.parentTxid.trim().toLowerCase() : ''
     if (!/^[0-9a-f]{64}$/.test(targetTxid)) {
@@ -99,6 +101,13 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid quoted post' }, { status: 400 })
     }
     quotedTxid = targetTxid
+    // Who owns the quoted post? Used to notify them once the quote is recorded.
+    const { data: quoted } = await supabase
+      .from('feed_posts')
+      .select('author_account_id')
+      .eq('txid', quotedTxid)
+      .maybeSingle()
+    quotedAuthorAccountId = quoted?.author_account_id ?? null
   }
 
   const expected = { action, parentTxid: targetTxid, contentHash, platformAddress, payoutAddress, costXec }
@@ -192,6 +201,26 @@ export async function POST(request) {
       }
     }
     return NextResponse.json({ error: insertError.message }, { status: 500 })
+  }
+
+  // Notify the owner of the post being replied to / quoted (best-effort). A
+  // plain top-level POST references no one, so nothing fires there.
+  if (action === FEED_ACTION.REPLY && parentAuthorAccountId) {
+    await recordFeedNotification(supabase, {
+      recipientAccountId: parentAuthorAccountId,
+      actorAccountId: resolved.accountId,
+      actorIdentity: authorIdentity,
+      type: 'reply',
+      postTxid: targetTxid,
+    })
+  } else if (action === FEED_ACTION.QUOTE && quotedAuthorAccountId) {
+    await recordFeedNotification(supabase, {
+      recipientAccountId: quotedAuthorAccountId,
+      actorAccountId: resolved.accountId,
+      actorIdentity: authorIdentity,
+      type: 'quote',
+      postTxid: inserted.txid,
+    })
   }
 
   // Freshen the shared For You cache so the new post (or a reply's bumped count)

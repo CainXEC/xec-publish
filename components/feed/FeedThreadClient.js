@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ComposeBox from '@/components/feed/ComposeBox'
 import FeedPost from '@/components/feed/FeedPost'
+import FeedNotifications from '@/components/feed/FeedNotifications'
 import EngagementBar from '@/components/feed/EngagementBar'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import ArticleCard from '@/components/feed/ArticleCard'
@@ -179,6 +180,7 @@ export default function FeedThreadClient({
           <Link href="/mint#marketplace" className="toplink">
             marketplace
           </Link>
+          <FeedNotifications signedIn={viewerAccountId != null} />
           <ThemeToggle variant="feed" />
         </div>
       </div>

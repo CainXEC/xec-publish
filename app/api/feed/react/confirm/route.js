@@ -7,6 +7,7 @@ import { FEED_MIN_XEC } from '@/lib/feedPricing'
 import { FEED_ACTION } from '@/lib/feedProtocol'
 import { findFeedPayment, verifyFeedTxid } from '@/lib/verifyFeedPost'
 import { resolveOrCreateAccount } from '@/lib/walletAuth'
+import { recordFeedNotification } from '@/lib/feedNotifications'
 import {
   verifySession,
   signSession,
@@ -67,7 +68,7 @@ export async function POST(request) {
   const supabase = createServerSupabase()
   const { data: target, error: targetErr } = await supabase
     .from('feed_posts')
-    .select('payout_address, deleted_at')
+    .select('payout_address, deleted_at, author_account_id')
     .eq('txid', targetTxid)
     .maybeSingle()
   if (targetErr) return NextResponse.json({ error: targetErr.message }, { status: 500 })
@@ -162,6 +163,15 @@ export async function POST(request) {
     }
     return NextResponse.json({ error: insertError.message }, { status: 500 })
   }
+
+  // Notify the post's owner that it was liked/reposted (best-effort).
+  await recordFeedNotification(supabase, {
+    recipientAccountId: target.author_account_id,
+    actorAccountId: resolved.accountId,
+    actorIdentity: actorIdentity,
+    type: action === FEED_ACTION.LIKE ? 'like' : 'repost',
+    postTxid: targetTxid,
+  })
 
   const response = NextResponse.json({ ok: true, status: 'reacted', event: inserted })
 
