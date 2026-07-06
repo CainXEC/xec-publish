@@ -133,7 +133,11 @@ export default function MintHandle() {
       } catch { /* keep polling */ }
     };
     poll();
-    const id = setInterval(() => !stopped && poll(), 2000);
+    // Poll a touch faster than the old 2s so the UI reacts sooner once the
+    // payment finalizes and once the on-chain mint lands. This only shortens the
+    // dead time between polls — it does NOT weaken the finality gate, which still
+    // holds the mint until Chronik reports the funding tx Avalanche-final.
+    const id = setInterval(() => !stopped && poll(), 1200);
     return () => { stopped = true; clearInterval(id); };
   }, [phase, intent]);
 
