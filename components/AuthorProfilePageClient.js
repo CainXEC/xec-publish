@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import FeedPost from '@/components/feed/FeedPost'
+import HandleCarousel from '@/components/HandleCarousel'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import ThemeToggle from '@/components/ThemeToggle'
 
@@ -134,10 +135,6 @@ export default function AuthorProfilePageClient({
       </div>
 
       <main className="wrap" style={{ paddingTop: '28px' }}>
-        <Link href="/" className="back">
-          ← Back to feed
-        </Link>
-
         <header className="profhead">
           <h1 className={`profname${isAddressIdentity ? ' isaddr' : ''}`}>
             {isAddressIdentity ? identity : String(identity ?? '').replace(/^@/, '')}
@@ -192,21 +189,7 @@ export default function AuthorProfilePageClient({
           {bioText ? <p className="profbio">{bioText}</p> : null}
         </header>
 
-        {handleCards.length > 0 ? (
-          <section className="handlegrid">
-            {handleCards.map((h) => (
-              <div key={h.tokenId ?? h.handle} className="handlecard">
-                {h.imageUrl ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={h.imageUrl} alt={`@${h.handle} handle card`} className="handleimg" />
-                ) : (
-                  <div className="handleimg handleimg-empty" aria-hidden />
-                )}
-                <span className="handlename">{h.handle}</span>
-              </div>
-            ))}
-          </section>
-        ) : null}
+        <HandleCarousel handles={handleCards} title="Handles" />
 
         <h2 className="replieshead">Posts</h2>
 

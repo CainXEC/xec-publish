@@ -196,18 +196,6 @@ export const FEED_CSS = `
 .pow-feed .artlink:hover{border-color:var(--cyan);box-shadow:0 0 14px rgba(61,240,255,.2);}
 .pow-feed .profbio{margin:16px 0 0;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.6;color:#b9e6d8;}
 
-/* ---- held-handle voxel cards ---- */
-.pow-feed .handlegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;
-  margin:22px 0 4px;}
-.pow-feed .handlecard{display:flex;flex-direction:column;gap:8px;padding:12px;background:var(--panel2);
-  border:1px solid var(--line);border-radius:14px;transition:border-color .15s,box-shadow .15s;}
-.pow-feed .handlecard:hover{border-color:var(--neon);box-shadow:0 0 18px rgba(0,255,156,.12);}
-.pow-feed .handleimg{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;
-  background:#04120c;image-rendering:pixelated;}
-.pow-feed .handleimg-empty{border:1px dashed var(--line);}
-.pow-feed .handlename{font-size:13px;font-weight:700;color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.3);
-  text-align:center;word-break:break-word;}
-
 /* ---- article listing (profile → articles) ---- */
 .pow-feed .artlist{margin-top:16px;overflow:hidden;list-style:none;padding:0;}
 .pow-feed .artrow{padding:16px;border-bottom:1px solid var(--line);}
@@ -263,12 +251,22 @@ export const FEED_CSS = `
   font:inherit;color:var(--text);scroll-snap-align:start;transition:border-color .15s,box-shadow .15s,transform .1s;}
 .pow-feed .dashhandle:hover{border-color:var(--cyan);box-shadow:0 0 12px rgba(61,240,255,.14);}
 .pow-feed .dashhandle:disabled{cursor:default;opacity:.7;}
+.pow-feed .dashhandle.static{cursor:default;}
+.pow-feed .dashhandle.static:hover{border-color:var(--line);box-shadow:none;}
 .pow-feed .dashhandle.active{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.28);}
 .pow-feed .dashhandle-img{width:52px;height:52px;border-radius:50%;object-fit:cover;background:var(--panel);border:1px solid var(--line);}
 .pow-feed .dashhandle-addr{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   font-size:18px;font-weight:800;color:var(--neon);background:var(--panel);border:1px solid var(--line);}
 .pow-feed .dashhandle-name{max-width:100%;font-size:12px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .pow-feed .dashhandle.active .dashhandle-name{color:var(--neon);}
+/* Full handle shown in a floating tooltip on hover/focus (portal-rendered at
+   the body so the carousel's horizontal scroll can't clip it). The card itself
+   never resizes. */
+.dashhandle-tip{position:fixed;transform:translate(-50%,-100%);margin-top:-8px;background:#0d1513;
+  border:1px solid #00ff9c;color:#00ff9c;padding:4px 9px;border-radius:7px;font-size:11px;
+  font-family:'JetBrains Mono',ui-monospace,monospace;white-space:nowrap;pointer-events:none;z-index:9999;
+  box-shadow:0 0 14px rgba(0,255,156,.28);}
+html:not(.dark) .dashhandle-tip{background:#ffffff;border-color:#00b06e;color:#00b06e;box-shadow:0 4px 14px rgba(0,0,0,.14);}
 .pow-feed .dashhandle-more{flex:0 0 auto;align-self:center;font-size:11px;color:var(--dim);padding:0 8px;white-space:nowrap;}
 .pow-feed .dashhandles-error{margin:8px 0 0;font-size:12px;color:var(--no);}
 .pow-feed .dashnotifs{margin-top:16px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;}
@@ -371,7 +369,6 @@ export const FEED_CSS = `
    hardcoded rgba(0,255,156|61,240,255,…) that is untouched here — so neon text
    reads like a lit tube photographed at noon. Applies whenever <html> is NOT
    .dark; the dark block above is the default and still wins under .dark.
-   Voxel handle art (.handleimg) is intentionally left dark.
    ======================================================================== */
 html:not(.dark) .pow-feed{
   --bg:#e9faf2; --panel:#ffffff; --panel2:#f0f9f4; --line:#bfe6d5; --text:#07271d;

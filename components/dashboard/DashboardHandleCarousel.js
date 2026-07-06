@@ -1,17 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveDisplayHandle } from '@/app/dashboard/saveDisplayHandle'
+import HandleCarousel from '@/components/HandleCarousel'
 
-// A wallet can hold hundreds (or more) of handle NFTs, so we never stack them
-// all in the layout: the strip scrolls horizontally, a search narrows large
-// collections, and we cap how many nodes render at once (the search is the
-// escape hatch for anything past the cap). Images lazy-load so off-screen
-// cards cost nothing until scrolled into view.
-const SEARCH_THRESHOLD = 8
-const MAX_RENDER = 100
-
+// The dashboard's own-handle picker: fetches the session wallet's handles and
+// lets the author switch which one their profile displays, inline — no need to
+// open Edit Profile. Renders nothing until at least one handle loads.
 export default function DashboardHandleCarousel() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -19,7 +15,6 @@ export default function DashboardHandleCarousel() {
   const [activeTokenId, setActiveTokenId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
-  const [query, setQuery] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -40,15 +35,6 @@ export default function DashboardHandleCarousel() {
       cancelled = true
     }
   }, [])
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return handles
-    return handles.filter((h) => h.handle?.toLowerCase().includes(q))
-  }, [handles, query])
-
-  const shown = filtered.slice(0, MAX_RENDER)
-  const overflow = filtered.length - shown.length
 
   async function choose(tokenId) {
     if (saving || tokenId === activeTokenId) return
@@ -79,77 +65,14 @@ export default function DashboardHandleCarousel() {
   if (loading || handles.length === 0) return null
 
   return (
-    <div className="dashhandles">
-      <div className="dashhandles-head">
-        <h2 className="dashsection-title">Your handle</h2>
-        {handles.length > SEARCH_THRESHOLD ? (
-          <input
-            type="search"
-            className="dashhandles-search"
-            placeholder="Search handles…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search your handles"
-          />
-        ) : null}
-      </div>
-
-      <div className="dashhandles-track" role="radiogroup" aria-label="Display handle">
-        <button
-          type="button"
-          role="radio"
-          aria-checked={activeTokenId === null}
-          onClick={() => void choose(null)}
-          disabled={saving}
-          className={`dashhandle${activeTokenId === null ? ' active' : ''}`}
-          title="Display your wallet address"
-        >
-          <span className="dashhandle-addr" aria-hidden>
-            0x
-          </span>
-          <span className="dashhandle-name">Address</span>
-        </button>
-
-        {shown.map((h) => (
-          <button
-            key={h.tokenId}
-            type="button"
-            role="radio"
-            aria-checked={h.tokenId === activeTokenId}
-            onClick={() => void choose(h.tokenId)}
-            disabled={saving}
-            className={`dashhandle${h.tokenId === activeTokenId ? ' active' : ''}`}
-            title={`@${h.handle}`}
-          >
-            {h.imageUrl ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={h.imageUrl}
-                alt=""
-                loading="lazy"
-                className="dashhandle-img"
-              />
-            ) : (
-              <span className="dashhandle-addr" aria-hidden>
-                @
-              </span>
-            )}
-            <span className="dashhandle-name">@{h.handle}</span>
-          </button>
-        ))}
-
-        {overflow > 0 ? (
-          <span className="dashhandle-more">
-            +{overflow.toLocaleString()} more — search to narrow
-          </span>
-        ) : null}
-      </div>
-
-      {error ? (
-        <p className="dashhandles-error" role="alert">
-          {error}
-        </p>
-      ) : null}
-    </div>
+    <HandleCarousel
+      handles={handles}
+      title="Your handle"
+      activeTokenId={activeTokenId}
+      onChoose={(id) => void choose(id)}
+      includeAddress
+      busy={saving}
+      error={error}
+    />
   )
 }
