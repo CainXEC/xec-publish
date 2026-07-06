@@ -45,15 +45,15 @@ describe('validateHandleSyntax', () => {
     expect(validateHandleSyntax('simon')).toBeNull()
     expect(validateHandleSyntax('Simon_Cain')).toBeNull()
     expect(validateHandleSyntax('a')).toBeNull()
-    expect(validateHandleSyntax('a'.repeat(30))).toBeNull()
+    expect(validateHandleSyntax('a'.repeat(15))).toBeNull()
   })
 
   it('rejects the empty handle', () => {
     expect(validateHandleSyntax('')).toBeTruthy()
   })
 
-  it('rejects handles longer than 30 chars', () => {
-    expect(validateHandleSyntax('a'.repeat(31))).toBeTruthy()
+  it('rejects handles longer than 15 chars', () => {
+    expect(validateHandleSyntax('a'.repeat(16))).toBeTruthy()
   })
 
   it('rejects non-ASCII and disallowed characters', () => {

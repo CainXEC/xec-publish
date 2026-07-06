@@ -19,7 +19,7 @@
 //  BEFORE launch, never after names exist.
 // =============================================================================
 
-const HANDLE_RE = /^[A-Za-z0-9_]{1,30}$/;
+const HANDLE_RE = /^[A-Za-z0-9_]{1,15}$/;
 
 /** Display form — case PRESERVED; just strip invisibles. Stored in handles.handle. */
 export function displayHandle(raw: string): string {
@@ -33,7 +33,7 @@ export function displayHandle(raw: string): string {
 export function validateHandleSyntax(raw: string): string | null {
   const h = displayHandle(raw);
   if (!HANDLE_RE.test(h)) {
-    return "Handles must be 1–30 chars: A–Z, a–z, 0–9, and underscore.";
+    return "Handles must be 1–15 chars: A–Z, a–z, 0–9, and underscore.";
   }
   if (h.startsWith("_") || h.endsWith("_")) {
     return "Handles can’t start or end with an underscore.";

@@ -136,7 +136,7 @@ export default function ClaimHandle() {
               placeholder="yourhandle"
               aria-label="Handle"
               spellCheck={false}
-              maxLength={30}
+              maxLength={15}
             />
           </div>
           <div className="field">

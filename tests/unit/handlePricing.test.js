@@ -21,8 +21,8 @@ describe('priceForHandle', () => {
     }
   })
 
-  it('prices 11+ chars as the base tier (10,000 XEC)', () => {
-    for (const h of ['abcdefghijk', 'a'.repeat(30)]) {
+  it('prices 11–15 chars as the base tier (10,000 XEC)', () => {
+    for (const h of ['abcdefghijk', 'a'.repeat(15)]) {
       const p = priceForHandle(h)
       expect(p.tier).toBe('base')
       expect(p.priceXec).toBe(10_000)

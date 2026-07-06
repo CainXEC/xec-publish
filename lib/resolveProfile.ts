@@ -352,7 +352,7 @@ export async function resolveProfileByIdentifier(
   const id = (identifierRaw ?? "").trim();
   if (!id) return null;
 
-  // An eCash address can't collide with a handle (handles are ≤30 chars; a bare
+  // An eCash address can't collide with a handle (handles are ≤15 chars; a bare
   // address is 42 base32 chars), so classifying by "is it a valid address" is safe.
   if (normalizeAddress(id)) {
     return resolveAddress(id);

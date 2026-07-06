@@ -5,7 +5,7 @@
 //
 //    1–5   chars  -> short     1,000,000 XEC  (~$5)
 //    6–10  chars  -> mid         100,000 XEC  (~$0.50)
-//    11+   chars  -> base         10,000 XEC  (~$0.05)
+//    11–15 chars  -> base         10,000 XEC  (~$0.05)
 //
 //  No auction tier: every valid handle is directly mintable at a flat price.
 // =============================================================================

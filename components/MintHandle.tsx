@@ -20,7 +20,7 @@ type Availability = { available?: boolean; status: string; priceXec?: number; ti
 type Intent = { mintId: string; handle: string; amountXec: string; address: string; bip21Url: string; expiresAt: string };
 
 const STATUS_COPY: Record<string, string> = {
-  invalid: "Letters, numbers and single underscores only — 1 to 30 characters.",
+  invalid: "Letters, numbers and single underscores only — 1 to 15 characters.",
   taken: "Already claimed.",
   reserved: "Reserved.",
   pending: "Someone is minting this right now.",
@@ -184,7 +184,7 @@ export default function MintHandle() {
               placeholder="yourname"
               aria-label="Handle"
               spellCheck={false}
-              maxLength={30}
+              maxLength={15}
             />
           </div>
 
