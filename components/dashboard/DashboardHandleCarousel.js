@@ -70,7 +70,6 @@ export default function DashboardHandleCarousel() {
       title="Your handle"
       activeTokenId={activeTokenId}
       onChoose={(id) => void choose(id)}
-      includeAddress
       busy={saving}
       error={error}
     />
