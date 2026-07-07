@@ -10,10 +10,10 @@
 // =============================================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
-import { renderHandleCard, renderMysteryCard } from "@/lib/renderHandleCard";
-import ThemeToggle from "@/components/ThemeToggle";
+import { renderMysteryCard } from "@/lib/renderHandleCard";
+import FeedTopbar from "@/components/feed/FeedTopbar";
+import { FEED_CSS } from "@/components/feed/feedTheme";
 import MarketplaceClient from "@/components/MarketplaceClient";
 
 type Availability = { available?: boolean; status: string; priceXec?: number; tier?: string; auctionOnly?: boolean; reason?: string };
@@ -27,7 +27,13 @@ const STATUS_COPY: Record<string, string> = {
   auction: "Premium name — released by auction, not direct mint.",
 };
 
-export default function MintHandle() {
+export default function MintHandle({
+  signedIn = false,
+  isAuthor = false,
+}: {
+  signedIn?: boolean;
+  isAuthor?: boolean;
+}) {
   const [handle, setHandle] = useState("");
   const [avail, setAvail] = useState<Availability | null>(null);
   const [checking, setChecking] = useState(false);
@@ -50,7 +56,6 @@ export default function MintHandle() {
 
   const display = handle.trim();
   const mysterySvg = renderMysteryCard(display);
-  const revealSvg = result?.childTokenId ? renderHandleCard(display, { seed: result.childTokenId }) : null;
 
   // Open the Cashtab WEB wallet in a tab, pre-filled (avoids the OS ecash: handler).
   // MUST use the ?bip21= form (only the full BIP21 URI carries op_return_raw), and
@@ -168,12 +173,13 @@ export default function MintHandle() {
     <div className="pow-mint">
       <style>{CSS}</style>
 
-      <div className="topbar">
-        <Link href="/" className="wordmark">proofofwriting</Link>
-        <div className="toplinks">
-          <Link href="/dashboard" className="toplink">dashboard</Link>
-          <ThemeToggle variant="feed" />
-        </div>
+      {/* Shared feed header (wordmark + hamburger on mobile, links + bell +
+          theme toggle). Hosted in its own .pow-feed scope so it renders
+          identically to the homepage without the feed theme taking over the
+          mint page's own background. */}
+      <div className="pow-feed topbar-host">
+        <style>{FEED_CSS}</style>
+        <FeedTopbar signedIn={signedIn} isAuthor={isAuthor} />
       </div>
 
       <h1 className="title">Mint a handle</h1>
@@ -257,11 +263,9 @@ export default function MintHandle() {
 
       {phase === "done" && result && (
         <div className="done">
-          {result.imageUrl
-            ? <img className="card won" src={result.imageUrl} alt={`@${display} handle card`} />
-            : revealSvg
-              ? <div className="card won" dangerouslySetInnerHTML={{ __html: revealSvg }} />
-              : null}
+          {(result.imageUrl || result.childTokenId)
+            ? <img className="card won" src={result.imageUrl ?? `/api/handle-card/${result.childTokenId}`} alt={`@${display} handle card`} />
+            : null}
           <h2 className="wonhead">@{display} is yours</h2>
           <p className="wonsub">The NFT is in the wallet you paid from.</p>
           <div className="links">
@@ -301,20 +305,11 @@ const CSS = `
 /* The embedded marketplace sits below the mint flow behind a hairline separator,
    at the same 640px width as everything else. */
 .pow-mint > .pow-market.embed{max-width:640px;margin-top:32px;padding-top:28px;border-top:1px solid var(--line);}
-/* Header bar mirrors the feed's .topbar (brand left, links + toggle right). */
-.pow-mint .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;
-  width:100%;max-width:640px;margin:0 auto 36px;}
-.pow-mint .wordmark{font-size:15px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--neon);
-  text-decoration:none;text-shadow:0 0 8px rgba(0,255,156,.5);transition:text-shadow .15s;}
-.pow-mint .wordmark:hover{text-shadow:0 0 14px rgba(0,255,156,.7);}
-.pow-mint .toplinks{display:flex;align-items:center;gap:10px;}
-.pow-mint .toplink{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);border:1px solid var(--line);
-  border-radius:8px;padding:8px 14px;text-decoration:none;transition:border-color .15s,box-shadow .15s;}
-.pow-mint .toplink:hover{border-color:var(--cyan);box-shadow:0 0 16px rgba(61,240,255,.22);}
-.pow-mint .toplink-toggle{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;
-  padding:0;color:var(--neon);cursor:pointer;background:transparent;}
-.pow-mint .toplink-toggle:hover{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
-.pow-mint .toplink-toggle svg{width:15px;height:15px;}
+/* Header is the shared FeedTopbar, hosted in its own .pow-feed scope. Constrain
+   that host to the 640px column and stop the feed theme from taking over the
+   viewport (min-height/background) — the mint page owns its own backdrop. */
+.pow-mint .topbar-host.pow-feed{width:100%;max-width:640px;margin:0 auto 30px;
+  min-height:0;background:none;}
 .pow-mint .title{font-size:42px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--neon);margin:0 0 12px;
   text-shadow:0 0 8px rgba(0,255,156,.55),0 0 26px rgba(0,255,156,.28);}
 .pow-mint .sub{color:#a6d8c9;font-size:14.5px;line-height:1.55;margin:0 0 30px;}

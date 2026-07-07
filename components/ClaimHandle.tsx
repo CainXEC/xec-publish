@@ -13,7 +13,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
-import { renderHandleCard, renderMysteryCard } from "@/lib/renderHandleCard";
+import { renderMysteryCard } from "@/lib/renderHandleCard";
 
 type Started = {
   ok: true;
@@ -52,7 +52,6 @@ export default function ClaimHandle() {
 
   const display = handle.trim();
   const mysterySvg = renderMysteryCard(display || "claim");
-  const revealSvg = result?.childTokenId ? renderHandleCard(started?.handle ?? display, { seed: result.childTokenId }) : null;
 
   // Cashtab web deep link — RAW bip21 (no encodeURIComponent), same as the mint page.
   const cashtabUrl = started ? `https://cashtab.com/#/send?bip21=${started.bip21}` : "#";
@@ -210,11 +209,9 @@ export default function ClaimHandle() {
 
       {phase === "done" && result && (
         <div className="done">
-          {result.imageUrl
-            ? <img className="card won" src={result.imageUrl} alt={`@${started?.handle ?? display} handle card`} />
-            : revealSvg
-              ? <div className="card won" dangerouslySetInnerHTML={{ __html: revealSvg }} />
-              : null}
+          {(result.imageUrl || result.childTokenId)
+            ? <img className="card won" src={result.imageUrl ?? `/api/handle-card/${result.childTokenId}`} alt={`@${started?.handle ?? display} handle card`} />
+            : null}
           <h2 className="wonhead">@{started?.handle ?? display} is yours</h2>
           <p className="wonsub">The NFT is in the wallet you proved from.</p>
           <div className="links">

@@ -9,13 +9,13 @@
 //  each card deep-links to the token's Cashtab page, where the on-chain offer
 //  can be accepted. We never take custody or handle the purchase ourselves.
 //
-//  Cards are rendered client-side from renderHandleCard when no hosted PNG
-//  exists, so the grid always draws even before images backfill.
+//  Each card's art is the hosted PNG when present, else the on-demand server
+//  route /api/handle-card/<tokenId>, so the grid always draws even before
+//  images backfill (the ASCII engine is Node-only and can't run in the browser).
 // =============================================================================
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { renderHandleCard } from "@/lib/renderHandleCard";
 import ThemeToggle from "@/components/ThemeToggle";
 
 type Listing = {
@@ -49,10 +49,9 @@ const fmtDate = (iso: string) => {
 };
 
 function Card({ listing }: { listing: Listing }) {
-  const svg = useMemo(
-    () => renderHandleCard(listing.handle, { seed: listing.tokenId }),
-    [listing.handle, listing.tokenId]
-  );
+  // Hosted PNG when it exists; otherwise the on-demand server route re-renders
+  // the deterministic ASCII card (the browser can't run the Node-only engine).
+  const src = listing.imageUrl ?? `/api/handle-card/${listing.tokenId}`;
   return (
     <a
       className="mkcard"
@@ -61,12 +60,8 @@ function Card({ listing }: { listing: Listing }) {
       rel="noreferrer"
     >
       <div className="mkart">
-        {listing.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={listing.imageUrl} alt={`@${listing.handle}`} />
-        ) : (
-          <div className="mksvg" dangerouslySetInnerHTML={{ __html: svg }} />
-        )}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt={`@${listing.handle}`} />
       </div>
       <div className="mkmeta">
         <div className="mkhandle">{listing.handle}</div>

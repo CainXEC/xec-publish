@@ -36,22 +36,30 @@ https://ecashskill.vercel.app/skills/SKILL.md
 - App env var is NEXT_PUBLIC_SUPABASE_URL (not SUPABASE_URL).
 - Chronik REST routes need `export const runtime = 'nodejs'`.
 
-## Gen 1 NFT art engine (in build — see art-lab/ENGINE_SPEC.md)
-- ASCII/text art: 64×32 grid, 1024×1024, DejaVuSansMono-Bold 28px.
-- Architecture: offline Python bake (art-lab/ generators emit mask JSON at
-  frozen sampling params) + runtime TS renderer (@napi-rs/canvas). The
-  approved-art rule: conversions are frozen at exact sampling params
-  (Alice rabbit = 🐰 @ 44×21); compositions build around approved elements,
-  never resize them.
-- 10,000 hard cap, auto-pause at sellout (nft_mint_counter). 100 rares
-  (70 Gold + 30 First Lines) via pre-committed slot map — slotmap.json is
-  SERVER-SIDE SECRET; only its SHA256 commitment is public until sellout.
-- Determinism contract: every piece reproduces from (txid, serial, nonce).
-  Canonical RNG = sfc32 from SHA256(txid) (lib/nft-art/seed.ts). Combo
-  uniqueness = category|subject|palette|paper, enforced by
-  nft_serials.combo_hash UNIQUE; on 23505 re-roll with nonce+1.
-- Coarse-grid pieces (typed critters/kaomoji): ZERO ambience dots.
-- Golden tests: TS renders must pixel-match art-lab/approved/ references.
+## Gen 1 NFT art engine (in build)
+- ASCII/text art: 64×32 grid, 1024×1024, DejaVuSansMono-Bold 26px.
+- Architecture MIRRORS the voxel handle-card engine (lib/renderHandleCard.ts +
+  lib/hostHandleCard.ts): the runtime EMITS SVG and rasterizes SVG→PNG via
+  @resvg/resvg-js against a bundled font (loadSystemFonts:false), so the
+  runtime output IS the reference — no pixel-matching a foreign rasterizer.
+  Renderer: lib/nft-art/render.ts (renderAsciiCard / asciiCardTraits);
+  rasterizer: lib/nft-art/hostAsciiCard.ts (rasterizeAsciiCard).
+- The one font-dependent step — emoji glyph → silhouette mask — is frozen
+  OFFLINE by art-lab/bake_masks.py at fixed sampling params, shipped as
+  lib/nft-art/masks/library.json (1202 curated subjects @ 46×26). Fonts live
+  in lib/nft-art/fonts/ (DejaVu 2.37, OFL). The approved-art rule: masks are
+  frozen at exact sampling params (Alice rabbit = 🐰 @ 44×21); the runtime only
+  fills + paints them, never re-samples. art-lab/approved/*.png are DESIGN
+  references for the look, NOT byte oracles.
+- Rares: not yet built. Drop pinned per-piece params in art-lab/rares.json
+  (each pins its own max_cols/max_rows) and the bake emits masks/rares.json;
+  it refuses to invent frozen params. 100 rares (70 Gold + 30 First Lines) via
+  pre-committed slot map — slotmap.json SERVER-SIDE SECRET, only its SHA256
+  commitment public until sellout. (Slotmap/mint-counter = mint-side, TBD.)
+- Determinism: renderAsciiCard is seeded ONLY by the mint txid (blind reveal),
+  RNG = sfc32(xmur3(txid)) — same contract as the voxel engine. The broader
+  (txid, serial, nonce) + combo_hash UNIQUE re-roll design is mint-side (TBD).
+- 10,000 hard cap, auto-pause at sellout (nft_mint_counter).
 
 ## Platform conventions
 - Platform fee 6% (author receives 94%). Platform address:
