@@ -36,21 +36,60 @@ https://ecashskill.vercel.app/skills/SKILL.md
 - App env var is NEXT_PUBLIC_SUPABASE_URL (not SUPABASE_URL).
 - Chronik REST routes need `export const runtime = 'nodejs'`.
 
-## Gen 1 NFT art engine (in build)
-- ASCII/text art: 64×32 grid, 1024×1024, DejaVuSansMono-Bold 26px.
+## POWR OP_RETURN protocol (lib/feedProtocol.js)
+- ONE envelope for every on-chain action: feed (post/reply/quote/repost/like)
+  + the 3 site actions that used to ride a bare UUID push (publish/unlock/auth).
+  Layout: LOKAD(4) | OP_0 version | OP_N action | [targetTxid 32] | [contentHash
+  32] | [nonce 36]. targetTxid on reply/quote/repost/like; contentHash on
+  post/reply/quote/publish; nonce (ASCII auth UUID) on auth. `op_return_raw` is
+  the script WITHOUT the leading 0x6a — Cashtab re-adds OP_RETURN.
+- Content hash = sha256 of the EXACT stored UTF-8 bytes = the "proof of writing".
+  Backend NEVER trusts a client-sent hash; it recomputes over stored bytes and
+  compares to the on-chain value.
+- LOKAD is env-driven and MUST be NEXT_PUBLIC_ (browser encoder + server decoder
+  read the SAME value, else silent verify mismatch). Default = testing "PROW"
+  (50524f57); launch = "POWR" (504f5752) by setting
+  NEXT_PUBLIC_POW_LOKAD_HEX=504f5752 in prod. Freeze the byte spec before real
+  users post — it becomes permanent (docs/cashtab-powr-integration.md).
+
+## Gen 1 NFT art engine (built + wired)
 - Architecture MIRRORS the voxel handle-card engine (lib/renderHandleCard.ts +
   lib/hostHandleCard.ts): the runtime EMITS SVG and rasterizes SVG→PNG via
-  @resvg/resvg-js against a bundled font (loadSystemFonts:false), so the
-  runtime output IS the reference — no pixel-matching a foreign rasterizer.
-  Renderer: lib/nft-art/render.ts (renderAsciiCard / asciiCardTraits);
-  rasterizer: lib/nft-art/hostAsciiCard.ts (rasterizeAsciiCard).
-- The one font-dependent step — emoji glyph → silhouette mask — is frozen
-  OFFLINE by art-lab/bake_masks.py at fixed sampling params, shipped as
-  lib/nft-art/masks/library.json (1202 curated subjects @ 46×26). Fonts live
-  in lib/nft-art/fonts/ (DejaVu 2.37, OFL). The approved-art rule: masks are
-  frozen at exact sampling params (Alice rabbit = 🐰 @ 44×21); the runtime only
-  fills + paints them, never re-samples. art-lab/approved/*.png are DESIGN
-  references for the look, NOT byte oracles.
+  @resvg/resvg-js against bundled fonts (loadSystemFonts:false), so the runtime
+  output IS the reference — no pixel-matching a foreign rasterizer. Renderer:
+  lib/nft-art/render.ts (renderAsciiCard / asciiCardTraits); rasterizer:
+  lib/nft-art/hostAsciiCard.ts (rasterizeAsciiCard). Node-only (reads JSON off
+  disk); wired into mint via lib/mintProcessor.ts → hostAsciiCard, seed = mint
+  txid. Client reveal fallback = app/api/handle-card/[tokenId]/route.ts.
+- THE TIER IS THE COLLECTIBLE. Which of 3 engines renders is a PURE FUNCTION of
+  the handle via priceForHandle(handle).tier (lib/handlePricing.ts) — nothing is
+  threaded through the DB/mint pipeline. Color rolls FIRST in every branch (5
+  colors) so effective size = variants × 5:
+  - short (1–5 chars, 1M XEC)   → kaomoji face  (lib/nft-art/kaomoji.ts, ~378).
+  - mid   (6–10 chars, 100K XEC)→ ASCII scene: subject over starfield/planets
+    (lib/nft-art/subjects.json, 2199 subjects scraped from asciiart.eu).
+  - base  (11–15 chars, 10K XEC)→ ASCII silhouette mask from the 3-source
+    library (1920 masks × 5 colors = 9,600 effective).
+- White-ground variant (short tier only): ~10% of kaomoji cards invert to
+  ink-on-paper (PAPER_WHITE #f4efe3). Rolled r()<0.10 INSIDE the short branch
+  AFTER the color roll, so mid/base roll order is untouched; asciiCardTraits
+  mirrors the roll + exposes background: "charcoal" | "paper".
+- The one font-dependent step — glyph → silhouette mask — is frozen OFFLINE by
+  art-lab/bake_icons.py (supersedes bake_masks.py for the library; bake_masks.py
+  kept for rares) at fixed 46×26 sampling params, shipped as
+  lib/nft-art/masks/library.json. 3 permissive sources, prefixed keys so sets
+  never collide: emoji 821 unprefixed (NotoEmoji, OFL) + Tabler filled 402 "ti-"
+  (MIT) + Material Symbols filled 697 "ms-" (Apache-2.0, FILL=1 instanced). The
+  emoji masks reproduce BYTE-IDENTICAL to the old emoji-only bake (freeze
+  intact). Fonts live in lib/nft-art/fonts/ (DejaVu 2.37 + unifont for exotic
+  kaomoji) + art-lab/*.ttf (committed for provenance). The approved-art rule:
+  masks are frozen at exact sampling params (Alice rabbit = 🐰 @ 44×21); the
+  runtime only fills + paints them, never re-samples.
+- BUNDLING GOTCHA: runtime JSON/font assets load via
+  fileURLToPath(new URL("./x", import.meta.url)), NOT __dirname — only that
+  pattern makes Next's file tracer bundle them into the serverless fn.
+- Dev bench: /dev/cards (app/api/dev-card, 404 in prod) eyeballs all 3 tiers by
+  handle without minting.
 - Rares: not yet built. Drop pinned per-piece params in art-lab/rares.json
   (each pins its own max_cols/max_rows) and the bake emits masks/rares.json;
   it refuses to invent frozen params. 100 rares (70 Gold + 30 First Lines) via
