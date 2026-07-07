@@ -197,6 +197,7 @@ function DashboardPostCard({
 
 export default function DashboardClient({
   identity,
+  handleColor = null,
   profileHref,
   bio,
   xecAddress,
@@ -459,7 +460,10 @@ export default function DashboardClient({
           <div className="dashtop">
             <h1 className="dashwelcome">
               Welcome{' '}
-              <Link href={profileHref}>
+              <Link
+                href={profileHref}
+                style={identity?.startsWith('@') && handleColor ? { color: handleColor } : undefined}
+              >
                 {identity?.startsWith('@')
                   ? identity.slice(1)
                   : identity?.length <= 16

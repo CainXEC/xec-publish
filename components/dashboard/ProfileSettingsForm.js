@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { saveProfile } from '@/app/dashboard/saveProfile'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import { FEED_CSS } from '@/components/feed/feedTheme'
-import DisplayHandlePicker from '@/components/dashboard/DisplayHandlePicker'
 import HandleColorPicker from '@/components/dashboard/HandleColorPicker'
 
 export default function ProfileSettingsForm({ initialBio, hasAuthor = true }) {
@@ -91,11 +90,9 @@ export default function ProfileSettingsForm({ initialBio, hasAuthor = true }) {
           <p className="prof-sub">
             {hasAuthor
               ? 'Update how readers see you on your public author page.'
-              : 'Choose which of your handles is shown as your identity.'}
+              : 'Choose the color your handle appears in across the site.'}
           </p>
         </section>
-
-        <DisplayHandlePicker />
 
         <HandleColorPicker />
 

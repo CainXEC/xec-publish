@@ -57,6 +57,11 @@ export default function HandleColorPicker() {
         return
       }
       setSaved(true)
+      // Nudge the nav (and any other /api/me listener) to re-read the identity so
+      // the byline color updates live instead of only after a hard refresh.
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('sessionChanged'))
+      }
       router.refresh()
     } catch {
       setColor(previous)

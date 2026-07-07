@@ -57,6 +57,7 @@ export default async function DashboardPage() {
   return (
     <DashboardClient
       identity={identity}
+      handleColor={acct.handle ? acct.handleColor : null}
       profileHref={profileHref}
       bio={author?.bio ?? ''}
       xecAddress={author?.xec_address ?? ''}

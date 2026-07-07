@@ -33,6 +33,7 @@ export type AuthedAccount = {
   address: string;
   isAdmin: boolean;
   handle: string | null;
+  handleColor: string | null; // chosen byline color, or null for the theme default
   identity: string; // "@handle" if held, else the raw ecash address
 };
 
@@ -45,7 +46,7 @@ export async function getAuthedAccount(): Promise<AuthedAccount | null> {
 
   const { data: account } = await supabase
     .from("accounts")
-    .select("id, author_id, display_handle")
+    .select("id, author_id, display_handle, handle_color")
     .eq("id", claim.accountId)
     .maybeSingle();
   if (!account) return null;
@@ -68,6 +69,7 @@ export async function getAuthedAccount(): Promise<AuthedAccount | null> {
     address: claim.address,
     isAdmin,
     handle,
+    handleColor: account.handle_color ?? null,
     identity: handle ? `@${handle}` : claim.address,
   };
 }
