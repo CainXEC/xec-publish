@@ -59,8 +59,6 @@ export const FEED_CSS = `
   font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--text);padding:11px 12px;border-radius:8px;
   cursor:pointer;transition:background .12s,color .12s;}
 .pow-feed .hammenu-item:hover{background:rgba(0,255,156,.1);color:var(--neon);}
-.pow-feed .hammenu-item.logout{color:var(--no);}
-.pow-feed .hammenu-item.logout:hover{background:rgba(255,92,108,.12);color:var(--no);}
 /* Mobile: hamburger left, wordmark centered, bell + toggle right. */
 @media (max-width:600px){
   .pow-feed .topbar{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;padding:12px 16px;}
