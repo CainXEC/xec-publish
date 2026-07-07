@@ -1,12 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
 import ComposeBox from '@/components/feed/ComposeBox'
 import FeedPost from '@/components/feed/FeedPost'
-import FeedNotifications from '@/components/feed/FeedNotifications'
+import FeedTopbar from '@/components/feed/FeedTopbar'
 import { FEED_CSS } from '@/components/feed/feedTheme'
-import ThemeToggle from '@/components/ThemeToggle'
 
 export default function FeedClient({
   initialPosts = [],
@@ -220,28 +218,7 @@ export default function FeedClient({
     <div className="pow-feed">
       <style>{FEED_CSS}</style>
 
-      <div className="topbar">
-        <Link href="/" className="wordmark">
-          proofofwriting
-        </Link>
-        <div className="toplinks">
-          {isAuthor ? (
-            <Link href="/dashboard" className="toplink">
-              dashboard
-            </Link>
-          ) : null}
-          {!signedIn ? (
-            <Link href="/login" className="toplink">
-              log in
-            </Link>
-          ) : null}
-          <Link href="/marketplace" className="toplink">
-            marketplace
-          </Link>
-          <FeedNotifications signedIn={signedIn} />
-          <ThemeToggle variant="feed" />
-        </div>
-      </div>
+      <FeedTopbar signedIn={signedIn} isAuthor={isAuthor} />
 
       <main className="wrap" style={{ paddingTop: '28px' }}>
         <ComposeBox

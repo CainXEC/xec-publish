@@ -5,7 +5,7 @@ import { hydrateAuthorProfile } from '@/lib/loadAuthorProfile'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { FEED_CSS } from '@/components/feed/feedTheme'
-import ThemeToggle from '@/components/ThemeToggle'
+import FeedTopbar from '@/components/feed/FeedTopbar'
 
 // Reached via the next.config rewrite:  /@<identifier>/articles
 // The full list of an author's published articles, in the neon feed theme. A
@@ -104,26 +104,7 @@ export default async function AuthorArticlesPage({ params }) {
     <div className="pow-feed">
       <style>{FEED_CSS}</style>
 
-      <div className="topbar">
-        <Link href="/" className="wordmark">
-          proofofwriting
-        </Link>
-        <div className="toplinks">
-          {viewerIsAuthor ? (
-            <Link href="/dashboard" className="toplink">
-              dashboard
-            </Link>
-          ) : (
-            <Link href="/login" className="toplink">
-              log in
-            </Link>
-          )}
-          <Link href="/marketplace" className="toplink">
-            marketplace
-          </Link>
-          <ThemeToggle variant="feed" />
-        </div>
-      </div>
+      <FeedTopbar signedIn={viewer != null} isAuthor={viewerIsAuthor} />
 
       <main className="wrap" style={{ paddingTop: '28px' }}>
         <Link href={`/@${encodeURIComponent(identifier)}`} className="back">

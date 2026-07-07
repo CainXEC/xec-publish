@@ -44,6 +44,31 @@ export const FEED_CSS = `
   padding:0;color:var(--neon);cursor:pointer;}
 .pow-feed .toplink-toggle:hover{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
 .pow-feed .toplink-toggle svg{width:15px;height:15px;}
+/* Desktop: text links inline on the right; hamburger hidden entirely. */
+.pow-feed .toplinks-text{display:inline-flex;align-items:center;gap:10px;}
+.pow-feed .topnav{display:none;position:relative;}
+.pow-feed .hamburger{background:transparent;border:1px solid var(--line);border-radius:8px;width:38px;height:38px;
+  display:inline-flex;align-items:center;justify-content:center;color:var(--cyan);cursor:pointer;padding:0;
+  transition:border-color .15s,box-shadow .15s;}
+.pow-feed .hamburger:hover{border-color:var(--cyan);box-shadow:0 0 16px rgba(61,240,255,.22);}
+.pow-feed .hamicon{font-size:17px;line-height:1;}
+.pow-feed .hammenu{position:absolute;top:calc(100% + 8px);left:0;z-index:60;min-width:190px;
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px;
+  box-shadow:0 12px 32px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:2px;}
+.pow-feed .hammenu-item{display:block;width:100%;text-align:left;background:none;border:none;font:inherit;
+  font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--text);padding:11px 12px;border-radius:8px;
+  cursor:pointer;transition:background .12s,color .12s;}
+.pow-feed .hammenu-item:hover{background:rgba(0,255,156,.1);color:var(--neon);}
+.pow-feed .hammenu-item.logout{color:var(--no);}
+.pow-feed .hammenu-item.logout:hover{background:rgba(255,92,108,.12);color:var(--no);}
+/* Mobile: hamburger left, wordmark centered, bell + toggle right. */
+@media (max-width:600px){
+  .pow-feed .topbar{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;padding:12px 16px;}
+  .pow-feed .topnav{display:inline-flex;justify-self:start;}
+  .pow-feed .wordmark{justify-self:center;}
+  .pow-feed .toplinks{justify-self:end;gap:6px;}
+  .pow-feed .toplinks-text{display:none;}
+}
 
 /* ---- notification bell ---- */
 .pow-feed .notifbell{position:relative;display:inline-flex;}

@@ -28,6 +28,7 @@ export default async function FeedThreadPage({ params }) {
       initialAncestors={thread.ancestors}
       initialReplies={thread.replies}
       viewerAccountId={acct?.accountId ?? null}
+      isAuthor={acct?.authorId != null}
     />
   )
 }

@@ -4,10 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import FeedPost from '@/components/feed/FeedPost'
-import FeedNotifications from '@/components/feed/FeedNotifications'
+import FeedTopbar from '@/components/feed/FeedTopbar'
 import HandleCarousel from '@/components/HandleCarousel'
 import { FEED_CSS } from '@/components/feed/feedTheme'
-import ThemeToggle from '@/components/ThemeToggle'
 
 function truncateAddress(addr) {
   const t = String(addr ?? '').trim()
@@ -234,28 +233,7 @@ export default function AuthorProfilePageClient({
     <div className="pow-feed">
       <style>{FEED_CSS}</style>
 
-      <div className="topbar">
-        <Link href="/" className="wordmark">
-          proofofwriting
-        </Link>
-        <div className="toplinks">
-          {viewerIsAuthor ? (
-            <Link href="/dashboard" className="toplink">
-              dashboard
-            </Link>
-          ) : null}
-          {viewerAccountId == null ? (
-            <Link href="/login" className="toplink">
-              log in
-            </Link>
-          ) : null}
-          <Link href="/marketplace" className="toplink">
-            marketplace
-          </Link>
-          <FeedNotifications signedIn={viewerAccountId != null} />
-          <ThemeToggle variant="feed" />
-        </div>
-      </div>
+      <FeedTopbar signedIn={viewerAccountId != null} isAuthor={viewerIsAuthor} />
 
       <main className="wrap" style={{ paddingTop: '28px' }}>
         <header className="profhead">

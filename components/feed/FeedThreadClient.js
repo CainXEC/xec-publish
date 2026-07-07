@@ -5,13 +5,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ComposeBox from '@/components/feed/ComposeBox'
 import FeedPost from '@/components/feed/FeedPost'
-import FeedNotifications from '@/components/feed/FeedNotifications'
+import FeedTopbar from '@/components/feed/FeedTopbar'
 import EngagementBar from '@/components/feed/EngagementBar'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import ArticleCard from '@/components/feed/ArticleCard'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { FEED_CSS } from '@/components/feed/feedTheme'
-import ThemeToggle from '@/components/ThemeToggle'
 
 function truncateAddress(addr) {
   const t = String(addr ?? '').trim()
@@ -94,6 +93,7 @@ export default function FeedThreadClient({
   initialAncestors = [],
   initialReplies = [],
   viewerAccountId: initialViewerAccountId = null,
+  isAuthor = false,
 }) {
   const router = useRouter()
   const [replies, setReplies] = useState(initialReplies)
@@ -172,23 +172,7 @@ export default function FeedThreadClient({
     <div className="pow-feed">
       <style>{FEED_CSS}</style>
 
-      <div className="topbar">
-        <Link href="/" className="wordmark">
-          proofofwriting
-        </Link>
-        <div className="toplinks">
-          {viewerAccountId == null ? (
-            <Link href="/login" className="toplink">
-              log in
-            </Link>
-          ) : null}
-          <Link href="/marketplace" className="toplink">
-            marketplace
-          </Link>
-          <FeedNotifications signedIn={viewerAccountId != null} />
-          <ThemeToggle variant="feed" />
-        </div>
-      </div>
+      <FeedTopbar signedIn={viewerAccountId != null} isAuthor={isAuthor} />
 
       <main className="wrap" style={{ paddingTop: '28px' }}>
         <div className="thread">
