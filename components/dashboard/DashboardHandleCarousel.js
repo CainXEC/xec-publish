@@ -12,6 +12,7 @@ export default function DashboardHandleCarousel() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [handles, setHandles] = useState([])
+  const [address, setAddress] = useState(null)
   const [activeTokenId, setActiveTokenId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
@@ -24,6 +25,7 @@ export default function DashboardHandleCarousel() {
         if (cancelled) return
         if (data?.authenticated) {
           setHandles(Array.isArray(data.handles) ? data.handles : [])
+          setAddress(data.address ?? null)
           setActiveTokenId(data.activeTokenId ?? null)
         }
       })
@@ -70,6 +72,8 @@ export default function DashboardHandleCarousel() {
       title="Your handle"
       activeTokenId={activeTokenId}
       onChoose={(id) => void choose(id)}
+      includeAddress
+      address={address}
       busy={saving}
       error={error}
     />

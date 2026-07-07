@@ -7,6 +7,8 @@ import DashboardHandleCarousel from '@/components/dashboard/DashboardHandleCarou
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import BellIcon from '@/components/BellIcon'
+import UnlockIcon from '@/components/UnlockIcon'
+import EcashIcon from '@/components/EcashIcon'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { supabase } from '@/lib/supabase-browser'
 import { fetchAllUnlockCountRows } from '@/lib/supabaseUnlockCounts'
@@ -489,16 +491,22 @@ export default function DashboardClient({
           <div className="dashstats">
             <div className="dashstat">
               <p className="dashstat-label">Total Unlocks</p>
-              <p className="dashstat-value">
-                <span aria-hidden>🔓 </span>
-                {totalUnlocks}
+              <p
+                className="dashstat-value"
+                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <UnlockIcon size={17} />
+                <span>{totalUnlocks}</span>
               </p>
             </div>
             <div className="dashstat">
               <p className="dashstat-label">Total Earned</p>
-              <p className="dashstat-value">
-                <span aria-hidden>💰 </span>
-                {Math.round(totalXecEarned).toLocaleString('en-US')} XEC
+              <p
+                className="dashstat-value"
+                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+              >
+                <EcashIcon size={17} />
+                <span>{Math.round(totalXecEarned).toLocaleString('en-US')} XEC</span>
               </p>
             </div>
           </div>
@@ -582,7 +590,7 @@ export default function DashboardClient({
 
         <section className="dashpanel">
           <div className="dashsection-head">
-            <h2 className="dashsection-title">Your Posts</h2>
+            <h2 className="dashsection-title">Your Articles</h2>
             {nonLegacyPosts.length > 0 ? (
               <FilterDropdown
                 menuId={MENU_SORT}

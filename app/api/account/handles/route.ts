@@ -42,6 +42,7 @@ export async function GET() {
 
   return NextResponse.json({
     authenticated: true,
+    address: claim.address,
     activeTokenId: account.active_handle_token_id ?? null,
     handles: held.map((h) => ({
       tokenId: h.tokenId,

@@ -179,7 +179,7 @@ export default function MintHandle({
           mint page's own background. */}
       <div className="pow-feed topbar-host">
         <style>{FEED_CSS}</style>
-        <FeedTopbar signedIn={signedIn} isAuthor={isAuthor} />
+        <FeedTopbar signedIn={signedIn} isAuthor={isAuthor} showMarketplace={false} />
       </div>
 
       <h1 className="title">Mint a handle</h1>

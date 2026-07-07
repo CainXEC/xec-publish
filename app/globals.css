@@ -258,3 +258,16 @@ input[type="search"]::-webkit-search-decoration {
   -webkit-appearance: none;
   appearance: none;
 }
+
+/* eCash logo (EcashIcon): one element whose background image swaps by theme — the
+   black mark in light mode, the white mark in dark mode — so it stays legible on
+   either background with no left/right image flip (background, not <img>). */
+.ecash-logo {
+  background-image: url(/ecash-icon-black.png);
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.dark .ecash-logo {
+  background-image: url(/ecash-icon-white.png);
+}

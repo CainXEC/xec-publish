@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+import EcashIcon from '@/components/EcashIcon'
 
 // The horizontally-scrolling strip of handle-NFT cards, shared by the dashboard
 // (interactive: pick your own display handle) and the public profile (read-only:
@@ -34,6 +35,7 @@ export default function HandleCarousel({
   activeTokenId = undefined,
   onChoose = null, // provide to make cards selectable; omit for read-only display
   includeAddress = false, // show an "Address" option (display-your-address picker)
+  address = null, // the wallet address, shown in full on hover of the Address card
   busy = false,
   error = null,
 }) {
@@ -88,22 +90,6 @@ export default function HandleCarousel({
         role={interactive ? 'radiogroup' : undefined}
         aria-label={interactive ? 'Display handle' : undefined}
       >
-        {includeAddress && interactive ? (
-          <button
-            type="button"
-            role="radio"
-            aria-checked={activeTokenId === null}
-            onClick={() => onChoose(null)}
-            disabled={busy}
-            className={`dashhandle${activeTokenId === null ? ' active' : ''}`}
-          >
-            <span className="dashhandle-addr" aria-hidden>
-              0x
-            </span>
-            <span className="dashhandle-name">Address</span>
-          </button>
-        ) : null}
-
         {shown.map((h) => {
           const label = `@${h.handle}`
           return interactive ? (
@@ -135,6 +121,26 @@ export default function HandleCarousel({
           <span className="dashhandle-more">
             +{overflow.toLocaleString()} more — search to narrow
           </span>
+        ) : null}
+
+        {/* The "use my address instead of a handle" option lives LAST, after the
+            wallet's handles — picking it clears the display handle (tokenId null).
+            Hovering reveals the full address behind the truncated card label. */}
+        {includeAddress && interactive ? (
+          <button
+            type="button"
+            role="radio"
+            aria-checked={activeTokenId === null}
+            onClick={() => onChoose(null)}
+            disabled={busy}
+            className={`dashhandle${activeTokenId === null ? ' active' : ''}`}
+            {...(address ? cardProps(address) : {})}
+          >
+            <span className="dashhandle-addr" aria-hidden>
+              <EcashIcon size={22} />
+            </span>
+            <span className="dashhandle-name">Address</span>
+          </button>
         ) : null}
       </div>
 
