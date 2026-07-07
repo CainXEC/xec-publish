@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 
@@ -33,6 +34,7 @@ export default function ComposeBox({
   const [txidInput, setTxidInput] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const textareaRef = useRef(null)
+  const router = useRouter()
 
   const priced = priceFeedPost(content)
   const chars = priced.chars
@@ -50,6 +52,28 @@ export default function ComposeBox({
     setTxidInput('')
     setStatusMsg('Waiting for payment…')
   }, [])
+
+  // Shared success handler for the poll + manual-verify paths. Hands the new
+  // post up, clears the composer, then for a reply/quote lands the author on the
+  // post they just created (/feed/<txid>) rather than leaving them on the feed.
+  // Top-level posts (action="post") stay put — the new post is already visible
+  // at the top of the feed.
+  const handlePosted = useCallback(
+    (post) => {
+      onPosted?.(
+        action === 'quote' && quotedPost ? { ...post, quoted: quotedPost } : post,
+      )
+      setContent('')
+      resetToCompose()
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('sessionChanged'))
+      }
+      if ((action === 'reply' || action === 'quote') && post?.txid) {
+        router.push(`/feed/${post.txid}`)
+      }
+    },
+    [action, quotedPost, onPosted, resetToCompose, router],
+  )
 
   const startPayment = useCallback(async () => {
     if (!priced.ok) return
@@ -111,18 +135,9 @@ export default function ComposeBox({
         if (data.status === 'posted' && data.post) {
           stopped = true
           // The confirm route returns the bare inserted row with no `quoted`
-          // preview, so attach the one we already have to avoid a transient
-          // "Quoted post unavailable." until the next server render.
-          onPosted?.(
-            action === 'quote' && quotedPost
-              ? { ...data.post, quoted: quotedPost }
-              : data.post,
-          )
-          setContent('')
-          resetToCompose()
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('sessionChanged'))
-          }
+          // preview, so handlePosted attaches the one we already have to avoid a
+          // transient "Quoted post unavailable." until the next server render.
+          handlePosted(data.post)
         } else if (!res.ok) {
           setNotice(data.error || 'Verification failed.')
         }
@@ -136,7 +151,7 @@ export default function ComposeBox({
       stopped = true
       clearInterval(id)
     }
-  }, [phase, intent, content, action, parentTxid, quotedTxid, quotedPost, onPosted, resetToCompose])
+  }, [phase, intent, content, action, parentTxid, quotedTxid, handlePosted])
 
   const verifyManual = useCallback(async () => {
     const t = txidInput.trim()
@@ -153,13 +168,7 @@ export default function ComposeBox({
       })
       const data = await res.json()
       if (data.status === 'posted' && data.post) {
-        onPosted?.(
-          action === 'quote' && quotedPost
-            ? { ...data.post, quoted: quotedPost }
-            : data.post,
-        )
-        setContent('')
-        resetToCompose()
+        handlePosted(data.post)
       } else if (data.status === 'awaiting_payment') {
         setNotice("That transaction doesn't match this post yet.")
       } else {
@@ -168,7 +177,7 @@ export default function ComposeBox({
     } catch {
       setNotice('Network hiccup — try again.')
     }
-  }, [txidInput, content, action, parentTxid, quotedTxid, quotedPost, onPosted, resetToCompose])
+  }, [txidInput, content, action, parentTxid, quotedTxid, handlePosted])
 
   const isReply = action === 'reply'
   const isQuote = action === 'quote'
