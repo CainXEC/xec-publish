@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import PublishPaywallModal from '@/components/dashboard/PublishPaywallModal'
-import ThemeToggle from '@/components/ThemeToggle'
+import FeedTopbar from '@/components/feed/FeedTopbar'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import { warmOgImageForPost } from '@/app/dashboard/warmOgImage'
 import { savePost } from '@/app/dashboard/savePost'
@@ -281,17 +280,7 @@ export default function NewPostForm({ existingPost = null }) {
       <style>{FEED_CSS}</style>
       <style>{FORM_CSS}</style>
 
-      <div className="topbar">
-        <Link href="/" className="wordmark">
-          proofofwriting
-        </Link>
-        <div className="toplinks">
-          <Link href="/dashboard" className="toplink">
-            dashboard
-          </Link>
-          <ThemeToggle variant="feed" />
-        </div>
-      </div>
+      <FeedTopbar signedIn isAuthor showLogout />
 
       <main className="wrap" style={{ paddingTop: '28px' }}>
         <section className="dashpanel">

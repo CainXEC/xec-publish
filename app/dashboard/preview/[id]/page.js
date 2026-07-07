@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import ThemeToggle from '@/components/ThemeToggle'
+import FeedTopbar from '@/components/feed/FeedTopbar'
+import { FEED_CSS } from '@/components/feed/feedTheme'
 import { ARTICLE_CSS } from '@/app/posts/[slug]/articleTheme'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { getAuthedAccount } from '@/lib/authHelpers'
@@ -51,16 +52,12 @@ export default async function DraftPreviewPage({ params }) {
       <style>{ARTICLE_CSS}</style>
       <style>{PREVIEW_CSS}</style>
 
-      <div className="topbar">
-        <Link href="/" className="wordmark">
-          proofofwriting
-        </Link>
-        <div className="toplinks">
-          <Link href="/dashboard" className="toplink">
-            dashboard
-          </Link>
-          <ThemeToggle variant="feed" />
-        </div>
+      {/* Shared feed header — draft preview is author-only, so it carries the
+          dashboard link + log out in the hamburger. Hosted in its own .pow-feed
+          scope so it matches the homepage header. */}
+      <div className="pow-feed topbar-host">
+        <style>{FEED_CSS}</style>
+        <FeedTopbar signedIn isAuthor showLogout />
       </div>
 
       <div className="previewbar">

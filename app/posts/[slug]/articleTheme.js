@@ -26,20 +26,12 @@ export const ARTICLE_CSS = `
 .pow-article a{color:inherit;text-decoration:none;}
 
 /* ---- top strip (the banner) ---- */
-.pow-article .topbar{
-  display:flex;align-items:center;justify-content:space-between;gap:16px;
-  max-width:760px;margin:0 auto;padding:22px 20px 0;
-}
-.pow-article .wordmark{font-size:15px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--neon);
-  text-shadow:0 0 8px rgba(0,255,156,.5);}
-.pow-article .toplinks{display:flex;align-items:center;gap:10px;}
-.pow-article .toplink{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);
-  border:1px solid var(--line);border-radius:8px;padding:8px 14px;transition:border-color .15s,box-shadow .15s;}
-.pow-article .toplink:hover{border-color:var(--cyan);box-shadow:0 0 16px rgba(61,240,255,.22);}
-.pow-article .toplink-toggle{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;
-  padding:0;color:var(--neon);cursor:pointer;}
-.pow-article .toplink-toggle:hover{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
-.pow-article .toplink-toggle svg{width:15px;height:15px;}
+/* The header is the shared FeedTopbar, hosted in its own .pow-feed scope. Constrain
+   that host to the article column and stop the feed theme from taking over the
+   viewport (min-height/background) — the article page owns its own backdrop. */
+.pow-article .topbar-host.pow-feed{width:100%;max-width:760px;margin:0 auto;
+  min-height:0;background:none;}
+.pow-article .topbar-host .topbar{max-width:760px;}
 
 /* ---- column ---- */
 .pow-article .wrap{max-width:760px;margin:0 auto;padding:34px 20px 120px;}

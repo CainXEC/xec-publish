@@ -2,11 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import FilterDropdown from '@/components/FilterDropdown'
 import DashboardHandleCarousel from '@/components/dashboard/DashboardHandleCarousel'
 import { FEED_CSS } from '@/components/feed/feedTheme'
-import ThemeToggle from '@/components/ThemeToggle'
+import FeedTopbar from '@/components/feed/FeedTopbar'
 import BellIcon from '@/components/BellIcon'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { supabase } from '@/lib/supabase-browser'
@@ -222,19 +221,6 @@ export default function DashboardClient({
   )
   const [legacySectionOpen, setLegacySectionOpen] = useState(false)
   const copyTimeoutRef = useRef(null)
-  const router = useRouter()
-
-  const handleLogout = useCallback(async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST', cache: 'no-store' })
-    } catch {
-      /* ignore */
-    }
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('sessionChanged'))
-    }
-    router.push('/')
-  }, [router])
 
   // Stats come from the server — no loading state needed
   const totalUnlocks = typeof initialTotalUnlocks === 'number' ? initialTotalUnlocks : 0
@@ -449,17 +435,7 @@ export default function DashboardClient({
     return (
       <div className="pow-feed">
         <style>{FEED_CSS}</style>
-        <div className="topbar">
-          <Link href="/" className="wordmark">
-            proofofwriting
-          </Link>
-          <div className="toplinks">
-            <button type="button" onClick={() => void handleLogout()} className="toplink">
-              log out
-            </button>
-            <ThemeToggle variant="feed" />
-          </div>
-        </div>
+        <FeedTopbar signedIn isAuthor showLogout showDashboard={false} />
         <main className="wrap" style={{ paddingTop: '28px' }}>
           <div className="error">{loadError}</div>
           <p style={{ marginTop: '16px' }}>
@@ -476,20 +452,7 @@ export default function DashboardClient({
     <div className="pow-feed">
       <style>{FEED_CSS}</style>
 
-      <div className="topbar">
-        <Link href="/" className="wordmark">
-          proofofwriting
-        </Link>
-        <div className="toplinks">
-          <Link href="/marketplace" className="toplink">
-            marketplace
-          </Link>
-          <button type="button" onClick={() => void handleLogout()} className="toplink">
-            log out
-          </button>
-          <ThemeToggle variant="feed" />
-        </div>
-      </div>
+      <FeedTopbar signedIn isAuthor showLogout showDashboard={false} />
 
       <main className="wrap" style={{ paddingTop: '28px' }}>
         <div className="dashpanel">

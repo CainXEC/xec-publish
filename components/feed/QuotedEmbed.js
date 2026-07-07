@@ -9,11 +9,11 @@ function truncateAddress(addr) {
   return `${t.slice(0, 10)}…${t.slice(-4)}`
 }
 
-function QuotedByline({ identity }) {
+function QuotedByline({ identity, color }) {
   const id = typeof identity === 'string' ? identity.trim() : ''
   if (id.startsWith('@')) {
     return (
-      <Link href={`/@${id.slice(1)}`} className="qbyline">
+      <Link href={`/@${id.slice(1)}`} className="qbyline" style={color ? { color } : undefined}>
         {id.slice(1)}
       </Link>
     )
@@ -61,7 +61,7 @@ export default function QuotedEmbed({ post, interactive = true }) {
       style={interactive ? { cursor: 'pointer' } : undefined}
     >
       <div className="qmeta">
-        <QuotedByline identity={post.displayIdentity ?? post.author_identity} />
+        <QuotedByline identity={post.displayIdentity ?? post.author_identity} color={post.displayColor} />
       </div>
       <p className="qbody">
         {post.deleted ? (

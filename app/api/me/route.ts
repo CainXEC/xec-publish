@@ -27,7 +27,7 @@ export async function GET() {
 
   const { data: account } = await supabase
     .from("accounts")
-    .select("id, author_id, display_handle, active_handle_token_id")
+    .select("id, author_id, display_handle, handle_color, active_handle_token_id")
     .eq("id", claim.accountId)
     .maybeSingle();
 
@@ -67,6 +67,7 @@ export async function GET() {
     isAdmin,
     address: claim.address,
     handle: account.display_handle ?? null,
+    handleColor: account.handle_color ?? null,
     identity: account.display_handle ? `@${account.display_handle}` : claim.address,
     unlockedPostIds,
   });

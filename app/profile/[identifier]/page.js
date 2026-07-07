@@ -101,6 +101,7 @@ export default async function ProfilePage({ params }) {
     <AuthorProfilePageClient
       identity={resolved.identity}
       isAddressIdentity={isAddressIdentity}
+      handleColor={resolved.handleColor}
       bio={resolved.author?.bio ?? null}
       holderAddress={resolved.holderAddress}
       handleCards={handleCards}

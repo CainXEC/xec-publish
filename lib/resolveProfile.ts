@@ -56,6 +56,9 @@ export type ResolvedProfile = {
   author: Author | null;
   /** The current handle to show as the byline, or null if the account holds none. */
   displayHandle: string | null;
+  /** The account's chosen handle color (one of the 5 theme swatches), or null to
+   *  use the default neon byline. Only meaningful when a handle is displayed. */
+  handleColor: string | null;
   /** What to render as the identity: "@handle" if held, else the raw address. */
   identity: string;
   tokenId: string | null;
@@ -146,6 +149,29 @@ async function authorForAddress(addressRaw: string): Promise<Author | null> {
     .in("xec_address", forms)
     .limit(1);
   return (authors?.[0] as Author) ?? null;
+}
+
+/** The handle color chosen by the account at a wallet address, if any. Rides the
+ *  same account_addresses -> accounts lookup as authorForAddress; null when the
+ *  address has no account or the account hasn't picked a color. */
+async function accountColorForAddress(addressRaw: string): Promise<string | null> {
+  const bare = normalizeAddress(addressRaw);
+  if (!bare) return null;
+  const supabase = createServerSupabase();
+  const forms = addressForms(bare);
+  const { data: links } = await supabase
+    .from("account_addresses")
+    .select("account_id")
+    .in("address", forms)
+    .limit(1);
+  const accountId = links?.[0]?.account_id;
+  if (!accountId) return null;
+  const { data: account } = await supabase
+    .from("accounts")
+    .select("handle_color")
+    .eq("id", accountId)
+    .maybeSingle();
+  return (account as { handle_color?: string | null } | null)?.handle_color ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -255,21 +281,26 @@ async function resolveHandle(handleRaw: string): Promise<ResolvedProfile | null>
   // A holder with no author -> handle-only profile (author stays null).
   let author = holder ? await authorForAddress(holder) : null;
 
+  // The byline color follows the current holder's account preference.
+  let handleColor = holder ? await accountColorForAddress(holder) : null;
+
   // Resilience: if Chronik was unavailable, fall back to whatever account is
   // currently bound to this token so the profile still resolves during an outage.
   if (!holder) {
     const { data: bound } = await supabase
       .from("accounts")
-      .select("author_id")
+      .select("author_id, handle_color")
       .eq("active_handle_token_id", h.token_id)
       .maybeSingle();
     if (bound?.author_id) author = await authorById(bound.author_id);
+    handleColor = (bound as { handle_color?: string | null } | null)?.handle_color ?? null;
   }
 
   return {
     kind: "handle",
     author,
     displayHandle: h.handle,
+    handleColor,
     identity: `@${h.handle}`,
     tokenId: h.token_id,
     holderAddress: holder ? normalizeAddress(holder) : null,
@@ -295,7 +326,7 @@ async function resolveAddress(addressRaw: string): Promise<ResolvedProfile | nul
   if (link?.account_id) {
     const { data: account } = await supabase
       .from("accounts")
-      .select("id, author_id, display_handle, active_handle_token_id, display_handle_checked_at")
+      .select("id, author_id, display_handle, handle_color, active_handle_token_id, display_handle_checked_at")
       .eq("id", link.account_id)
       .maybeSingle();
 
@@ -307,6 +338,8 @@ async function resolveAddress(addressRaw: string): Promise<ResolvedProfile | nul
           kind: "address",
           author,
           displayHandle,
+          handleColor:
+            (account as { handle_color?: string | null }).handle_color ?? null,
           identity: displayHandle ? `@${displayHandle}` : address,
           tokenId: account.active_handle_token_id ?? null,
           holderAddress: address,
@@ -329,6 +362,7 @@ async function resolveAddress(addressRaw: string): Promise<ResolvedProfile | nul
       kind: "address",
       author: author as Author,
       displayHandle: null,
+      handleColor: null,
       identity: address,
       tokenId: null,
       holderAddress: address,

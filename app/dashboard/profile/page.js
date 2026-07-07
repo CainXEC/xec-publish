@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import ProfileSettingsForm from '@/components/dashboard/ProfileSettingsForm'
+import FeedTopbar from '@/components/feed/FeedTopbar'
+import { FEED_CSS } from '@/components/feed/feedTheme'
 
 export default async function AuthorProfileSettingsPage() {
   const acct = await getAuthedAccount()
@@ -14,7 +16,7 @@ export default async function AuthorProfileSettingsPage() {
 
   // Reader-only holder (no author row): show just the display-handle picker.
   if (!acct.authorId) {
-    return <ProfileSettingsForm hasAuthor={false} initialUsername="" initialBio="" />
+    return <ProfileSettingsForm hasAuthor={false} initialBio="" />
   }
 
   const supabase = createSupabaseAdminClient()
@@ -26,18 +28,21 @@ export default async function AuthorProfileSettingsPage() {
 
   if (authorError || !author) {
     return (
-      <div className="flex min-h-full flex-1 items-center justify-center bg-zinc-50 px-4 py-16 dark:bg-zinc-950">
-        <div className="w-full max-w-xl rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-sm text-red-600 dark:text-red-400">
-            {authorError?.message || 'Author profile not found.'}
-          </p>
-          <Link
-            href="/dashboard"
-            className="mt-4 inline-block text-sm font-medium text-zinc-900 underline dark:text-zinc-200"
-          >
-            ← Back to dashboard
-          </Link>
-        </div>
+      <div className="pow-feed">
+        <style>{FEED_CSS}</style>
+        <FeedTopbar signedIn isAuthor showLogout />
+        <main className="wrap" style={{ paddingTop: '28px' }}>
+          <section className="dashpanel">
+            <div className="error">
+              {authorError?.message || 'Author profile not found.'}
+            </div>
+            <p style={{ marginTop: '16px' }}>
+              <Link href="/dashboard" className="dashbtn sec">
+                ← Back to dashboard
+              </Link>
+            </p>
+          </section>
+        </main>
       </div>
     )
   }
@@ -45,9 +50,7 @@ export default async function AuthorProfileSettingsPage() {
   return (
     <ProfileSettingsForm
       hasAuthor
-      initialUsername={author.username ?? ''}
       initialBio={author.bio != null ? String(author.bio) : ''}
-      initialXecAddress={author.xec_address ?? ''}
     />
   )
 }

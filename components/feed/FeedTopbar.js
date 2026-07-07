@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import FeedNotifications from '@/components/feed/FeedNotifications'
 import ThemeToggle from '@/components/ThemeToggle'
 
@@ -14,11 +15,19 @@ import ThemeToggle from '@/components/ThemeToggle'
  *    toggle stay pinned top-right.
  * The same link set feeds both the desktop row and the mobile menu, so they never
  * drift apart. `signedIn` drives whether "log in" shows; `isAuthor` gates the
- * dashboard link. Log out lives on the dashboard, not here.
+ * dashboard link. `showLogout` adds a "log out" action (used on the dashboard and
+ * its sub-pages, where log out belongs); it clears the session and returns home.
  */
-export default function FeedTopbar({ signedIn = false, isAuthor = false }) {
+export default function FeedTopbar({
+  signedIn = false,
+  isAuthor = false,
+  showLogout = false,
+  showMarketplace = true,
+  showDashboard = true,
+}) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef(null)
+  const router = useRouter()
 
   // Close the hamburger menu on any outside click.
   useEffect(() => {
@@ -30,11 +39,24 @@ export default function FeedTopbar({ signedIn = false, isAuthor = false }) {
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [open])
 
+  const handleLogout = useCallback(async () => {
+    setOpen(false)
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', cache: 'no-store' })
+    } catch {
+      /* ignore */
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sessionChanged'))
+    }
+    router.push('/')
+  }, [router])
+
   // One link set, rendered twice: `cls` styles them as desktop pills ('toplink')
   // or mobile menu rows ('hammenu-item'). Both close the menu on click.
   const renderLinks = (cls) => (
     <>
-      {isAuthor ? (
+      {isAuthor && showDashboard ? (
         <Link href="/dashboard" className={cls} onClick={() => setOpen(false)}>
           dashboard
         </Link>
@@ -44,9 +66,16 @@ export default function FeedTopbar({ signedIn = false, isAuthor = false }) {
           log in
         </Link>
       ) : null}
-      <Link href="/marketplace" className={cls} onClick={() => setOpen(false)}>
-        marketplace
-      </Link>
+      {showMarketplace ? (
+        <Link href="/marketplace" className={cls} onClick={() => setOpen(false)}>
+          marketplace
+        </Link>
+      ) : null}
+      {showLogout ? (
+        <button type="button" className={cls} onClick={() => void handleLogout()}>
+          log out
+        </button>
+      ) : null}
     </>
   )
 

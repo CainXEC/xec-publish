@@ -73,9 +73,9 @@ export default function DisplayHandlePicker() {
   if (loading) return null
   if (handles.length === 0) {
     return (
-      <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Display handle</h2>
-        <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+      <section className="dashpanel">
+        <h2 className="prof-panel-title">Display handle</h2>
+        <p className="prof-panel-sub">
           This wallet doesn’t hold any handle NFTs yet. Mint or buy one to display
           it as your identity.
         </p>
@@ -86,73 +86,55 @@ export default function DisplayHandlePicker() {
   const single = handles.length === 1
 
   return (
-    <section className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Display handle</h2>
-      <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
+    <section className="dashpanel">
+      <h2 className="prof-panel-title">Display handle</h2>
+      <p className="prof-panel-sub">
         {single
           ? 'Shown as your identity in the nav, on your profile, and on comments.'
           : 'Your wallet holds several handles. Choose which one is shown as your identity.'}
       </p>
 
-      <fieldset className="mt-4 flex flex-col gap-2" disabled={saving}>
+      <fieldset className="prof-radios" disabled={saving}>
         {handles.map((h) => {
           const selected = h.tokenId === activeTokenId
           return (
             <label
               key={h.tokenId}
-              className={
-                selected
-                  ? 'flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-900 bg-zinc-50 px-3 py-2 dark:border-zinc-100 dark:bg-zinc-800'
-                  : 'flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 px-3 py-2 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800/50'
-              }
+              className={selected ? 'prof-radio sel' : 'prof-radio'}
             >
               <input
                 type="radio"
                 name="displayHandle"
                 checked={selected}
                 onChange={() => void choose(h.tokenId)}
-                className="h-4 w-4"
               />
               {h.imageUrl ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={h.imageUrl}
-                  alt=""
-                  className="h-8 w-8 rounded border border-zinc-200 dark:border-zinc-700"
-                />
+                <img src={h.imageUrl} alt="" className="prof-radio-img" />
               ) : null}
-              <span className="font-medium text-zinc-900 dark:text-zinc-50">@{h.handle}</span>
+              <span className="prof-radio-name">@{h.handle}</span>
             </label>
           )
         })}
 
-        <label
-          className={
-            activeTokenId === null
-              ? 'flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-900 bg-zinc-50 px-3 py-2 dark:border-zinc-100 dark:bg-zinc-800'
-              : 'flex cursor-pointer items-center gap-3 rounded-lg border border-zinc-200 px-3 py-2 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800/50'
-          }
-        >
+        <label className={activeTokenId === null ? 'prof-radio sel' : 'prof-radio'}>
           <input
             type="radio"
             name="displayHandle"
             checked={activeTokenId === null}
             onChange={() => void choose(null)}
-            className="h-4 w-4"
           />
-          <span className="text-sm text-zinc-600 dark:text-zinc-400">
-            Display my wallet address instead
-          </span>
+          <span className="prof-radio-addr">Display my wallet address instead</span>
         </label>
       </fieldset>
 
       {error ? (
-        <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
+        <p className="error" style={{ marginTop: '14px' }} role="alert">
           {error}
         </p>
       ) : null}
       {saved && !error ? (
-        <p className="mt-3 text-sm text-emerald-700 dark:text-emerald-400" role="status">
+        <p className="prof-ok" style={{ marginTop: '14px' }} role="status">
           Display handle updated.
         </p>
       ) : null}

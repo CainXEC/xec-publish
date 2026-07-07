@@ -41,12 +41,14 @@ const FEED_CLAMP_CHARS = 280
  * frozen author_identity for optimistic posts): "@handle" links to the profile;
  * a raw address is shown as truncated monospace text.
  */
-function Byline({ identity }) {
+function Byline({ identity, color }) {
   const id = typeof identity === 'string' ? identity.trim() : ''
   if (id.startsWith('@')) {
     const handle = id.slice(1)
+    // A custom handle color (one of the theme swatches) overrides the default
+    // neon byline; absent color keeps the CSS default.
     return (
-      <Link href={`/@${handle}`} className="byline">
+      <Link href={`/@${handle}`} className="byline" style={color ? { color } : undefined}>
         {handle}
       </Link>
     )
@@ -250,7 +252,10 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
       {post.parent ? (
         <Link href={`/feed/${post.parent.txid}`} className="replyingto">
           <span aria-hidden className="replyarrow">↳</span> Replying to{' '}
-          <span className="replyingto-who">
+          <span
+            className="replyingto-who"
+            style={parentIsHandle && post.parent.displayColor ? { color: post.parent.displayColor } : undefined}
+          >
             {post.parent.deleted
               ? 'a deleted post'
               : parentIsHandle
@@ -261,7 +266,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
       ) : null}
 
       <div className="postmeta">
-        <Byline identity={post.displayIdentity ?? post.author_identity} />
+        <Byline identity={post.displayIdentity ?? post.author_identity} color={post.displayColor} />
         <span aria-hidden className="dot">
           ·
         </span>

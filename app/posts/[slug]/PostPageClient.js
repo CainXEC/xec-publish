@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import ThemeToggle from '@/components/ThemeToggle'
+import FeedTopbar from '@/components/feed/FeedTopbar'
+import { FEED_CSS } from '@/components/feed/feedTheme'
 import { ARTICLE_CSS } from './articleTheme'
 import { charCounterClassName } from '@/lib/charCounterClassName'
 import { encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
@@ -696,25 +697,12 @@ export default function PostPageClient({
     <div className="pow-article">
       <style>{ARTICLE_CSS}</style>
 
-      <div className="topbar">
-        <Link href="/" className="wordmark">
-          proofofwriting
-        </Link>
-        <div className="toplinks">
-          {me?.authorId ? (
-            <Link href="/dashboard" className="toplink">
-              dashboard
-            </Link>
-          ) : (
-            <Link href="/login" className="toplink">
-              log in
-            </Link>
-          )}
-          <Link href="/marketplace" className="toplink">
-            marketplace
-          </Link>
-          <ThemeToggle variant="feed" />
-        </div>
+      {/* Shared feed header (wordmark + hamburger on mobile). Hosted in its own
+          .pow-feed scope so it renders identically to the homepage without the
+          article theme taking over. */}
+      <div className="pow-feed topbar-host">
+        <style>{FEED_CSS}</style>
+        <FeedTopbar signedIn={me?.accountId != null} isAuthor={me?.authorId != null} />
       </div>
 
       <main className="wrap">
@@ -731,6 +719,11 @@ export default function PostPageClient({
                       : `/u/${encodeURIComponent(author.username.trim())}`
                   }
                   className="bylink"
+                  style={
+                    author?.display_handle?.trim() && author?.handle_color
+                      ? { color: author.handle_color }
+                      : undefined
+                  }
                 >
                   {author.display_handle?.trim() || author.username.trim()}
                 </Link>

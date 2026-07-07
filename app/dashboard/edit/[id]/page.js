@@ -1,6 +1,6 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import NewPostForm from '@/components/dashboard/NewPostForm'
+import FeedTopbar from '@/components/feed/FeedTopbar'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { getAuthedAccount } from '@/lib/authHelpers'
@@ -11,16 +11,7 @@ function EditStateShell({ title, message }) {
   return (
     <div className="pow-feed">
       <style>{FEED_CSS}</style>
-      <div className="topbar">
-        <Link href="/" className="wordmark">
-          proofofwriting
-        </Link>
-        <div className="toplinks">
-          <Link href="/dashboard" className="toplink">
-            dashboard
-          </Link>
-        </div>
-      </div>
+      <FeedTopbar signedIn isAuthor showLogout />
       <main className="wrap" style={{ paddingTop: '28px' }}>
         <section className="dashpanel">
           <h1 className="dashwelcome">{title}</h1>

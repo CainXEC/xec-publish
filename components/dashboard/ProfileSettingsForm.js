@@ -1,14 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { saveProfile } from '@/app/dashboard/saveProfile'
+import FeedTopbar from '@/components/feed/FeedTopbar'
+import { FEED_CSS } from '@/components/feed/feedTheme'
 import DisplayHandlePicker from '@/components/dashboard/DisplayHandlePicker'
+import HandleColorPicker from '@/components/dashboard/HandleColorPicker'
 
-export default function ProfileSettingsForm({ initialUsername, initialBio, hasAuthor = true }) {
+export default function ProfileSettingsForm({ initialBio, hasAuthor = true }) {
   const router = useRouter()
-  const [username, setUsername] = useState(initialUsername ?? '')
   const [bio, setBio] = useState(initialBio ?? '')
 
   const [submitting, setSubmitting] = useState(false)
@@ -24,7 +25,7 @@ export default function ProfileSettingsForm({ initialUsername, initialBio, hasAu
     setSubmitting(true)
 
     try {
-      const result = await saveProfile({ username, bio })
+      const result = await saveProfile({ bio })
       if (result?.unauthorized) {
         router.replace('/login')
         return
@@ -78,117 +79,137 @@ export default function ProfileSettingsForm({ initialUsername, initialBio, hasAu
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-zinc-50 px-4 py-10 dark:bg-zinc-950">
-      <main className="mx-auto w-full max-w-2xl">
-        <Link
-          href="/dashboard"
-          className="text-sm font-medium text-zinc-700 underline dark:text-zinc-300"
-        >
-          ← Back to dashboard
-        </Link>
+    <div className="pow-feed">
+      <style>{FEED_CSS}</style>
+      <style>{PROFILE_CSS}</style>
 
-        <div className="mt-6 mb-6">
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Profile settings</h1>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+      <FeedTopbar signedIn isAuthor={hasAuthor} showLogout showMarketplace={false} />
+
+      <main className="wrap" style={{ paddingTop: '28px' }}>
+        <section className="dashpanel">
+          <h1 className="dashwelcome">Profile settings</h1>
+          <p className="prof-sub">
             {hasAuthor
               ? 'Update how readers see you on your public author page.'
               : 'Choose which of your handles is shown as your identity.'}
           </p>
-        </div>
+        </section>
 
         <DisplayHandlePicker />
 
+        <HandleColorPicker />
+
         {hasAuthor ? (
-        <>
-        <form
-          onSubmit={handleSubmit}
-          className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-        >
-          <div className="flex flex-col gap-5">
-            <div>
-              <label
-                htmlFor="username"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+          <>
+            <section className="dashpanel">
+              <form onSubmit={handleSubmit}>
+                <div className="prof-field">
+                  <label htmlFor="bio" className="prof-label">
+                    Bio <span className="opt">(optional)</span>
+                  </label>
+                  <textarea
+                    id="bio"
+                    name="bio"
+                    rows={5}
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    className="prof-input"
+                    placeholder="Shown on your public author page"
+                  />
+                </div>
+
+                {submitError ? (
+                  <p className="error" style={{ marginTop: '18px' }} role="alert">
+                    {submitError}
+                  </p>
+                ) : null}
+
+                {savedMessage ? (
+                  <p className="prof-ok" style={{ marginTop: '18px' }} role="status">
+                    Profile saved.
+                  </p>
+                ) : null}
+
+                <div style={{ marginTop: '22px' }}>
+                  <button type="submit" disabled={submitting} className="dashbtn">
+                    {submitting ? 'Saving…' : 'Save changes'}
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            <section className="dashpanel prof-danger">
+              <h2 className="prof-danger-title">Danger zone</h2>
+              <p className="prof-danger-sub">
+                Permanently delete your account and all posts. This cannot be undone.
+              </p>
+              {deleteError ? (
+                <p className="error" style={{ marginTop: '12px' }} role="alert">
+                  {deleteError}
+                </p>
+              ) : null}
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+                className="prof-danger-btn"
               >
-                Username
-              </label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                autoComplete="username"
-                required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-500"
-              />
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
-                Public URL: /u/{username.trim() || 'your-username'}
-              </p>
-            </div>
-
-            <div>
-              <label
-                htmlFor="bio"
-                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-              >
-                Bio <span className="font-normal text-zinc-500">(optional)</span>
-              </label>
-              <textarea
-                id="bio"
-                name="bio"
-                rows={5}
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                className="mt-1 w-full resize-y rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:focus:ring-zinc-500"
-                placeholder="Shown on your public author page"
-              />
-            </div>
-
-            {submitError ? (
-              <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-                {submitError}
-              </p>
-            ) : null}
-
-            {savedMessage ? (
-              <p className="text-sm text-emerald-700 dark:text-emerald-400" role="status">
-                Profile saved.
-              </p>
-            ) : null}
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-            >
-              {submitting ? 'Saving…' : 'Save changes'}
-            </button>
-          </div>
-        </form>
-
-        <section className="mt-6 rounded-xl border border-red-200 bg-white p-6 shadow-sm dark:border-red-900/60 dark:bg-zinc-900">
-          <h2 className="text-sm font-semibold text-red-700 dark:text-red-400">Danger zone</h2>
-          <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-            Permanently delete your account and all posts. This cannot be undone.
-          </p>
-          {deleteError ? (
-            <p className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert">
-              {deleteError}
-            </p>
-          ) : null}
-          <button
-            type="button"
-            onClick={handleDeleteAccount}
-            disabled={deleting}
-            className="mt-3 rounded-lg border border-red-300 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-800 transition hover:bg-red-100 disabled:opacity-50 dark:border-red-800 dark:bg-red-950/50 dark:text-red-200 dark:hover:bg-red-950"
-          >
-            {deleting ? 'Deleting…' : 'Delete account'}
-          </button>
-        </section>
-        </>
+                {deleting ? 'Deleting…' : 'Delete account'}
+              </button>
+            </section>
+          </>
         ) : null}
       </main>
     </div>
   )
 }
+
+// Profile-settings chrome layered on FEED_CSS. Reuses .dashpanel / .dashwelcome /
+// .dashbtn / .error; adds the neon form fields, the display-handle radio rows
+// (shared with DisplayHandlePicker), and the red "danger zone" delete action.
+const PROFILE_CSS = `
+.pow-feed .prof-sub{margin:10px 0 0;font-size:13px;line-height:1.55;color:var(--dim);}
+.pow-feed .prof-field{margin-top:22px;}
+.pow-feed .prof-field:first-child{margin-top:0;}
+.pow-feed .prof-label{display:block;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);
+  text-shadow:0 0 8px rgba(0,255,156,.3);}
+.pow-feed .prof-label .opt{font-size:11px;letter-spacing:0;text-transform:none;color:var(--dim);text-shadow:none;}
+.pow-feed .prof-input{margin-top:8px;width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:9px;
+  padding:11px 13px;color:var(--text);font:inherit;font-size:14px;outline:none;
+  transition:border-color .15s,box-shadow .15s;}
+.pow-feed .prof-input:focus{border-color:var(--cyan);box-shadow:0 0 14px rgba(61,240,255,.15);}
+.pow-feed textarea.prof-input{resize:vertical;min-height:120px;}
+.pow-feed .prof-hint{margin:8px 0 0;font-size:12px;color:var(--dim);word-break:break-word;}
+/* handle color swatches */
+.pow-feed .prof-swatches{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;}
+.pow-feed .prof-swatch{width:34px;height:34px;border-radius:50%;padding:0;cursor:pointer;
+  background:var(--sw);border:2px solid var(--line);outline:none;
+  transition:transform .12s,box-shadow .12s,border-color .12s;}
+.pow-feed .prof-swatch:hover{transform:scale(1.08);box-shadow:0 0 14px var(--sw);}
+.pow-feed .prof-swatch.sel{border-color:var(--text);box-shadow:0 0 0 2px var(--bg),0 0 16px var(--sw);}
+.pow-feed .prof-ok{font-size:13px;color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.3);}
+/* shared panel heading used by the display-handle picker */
+.pow-feed .prof-panel-title{margin:0;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.3);}
+.pow-feed .prof-panel-sub{margin:8px 0 0;font-size:12px;line-height:1.55;color:var(--dim);}
+/* display-handle radio rows */
+.pow-feed .prof-radios{display:flex;flex-direction:column;gap:8px;margin:14px 0 0;padding:0;border:0;}
+.pow-feed .prof-radio{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:10px;
+  padding:10px 12px;background:var(--panel2);cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+.pow-feed .prof-radio:hover{border-color:var(--cyan);}
+.pow-feed .prof-radio.sel{border-color:var(--neon);box-shadow:0 0 14px rgba(0,255,156,.15);}
+.pow-feed .prof-radio input{width:16px;height:16px;flex:none;accent-color:var(--neon);cursor:pointer;}
+.pow-feed .prof-radio-img{width:32px;height:32px;flex:none;border-radius:8px;border:1px solid var(--line);object-fit:cover;
+  background:var(--panel);}
+.pow-feed .prof-radio-name{font-size:14px;font-weight:700;color:var(--text);}
+.pow-feed .prof-radio-addr{font-size:13px;color:var(--dim);}
+/* danger zone */
+.pow-feed .prof-danger{border-color:var(--no);}
+.pow-feed .prof-danger-title{margin:0;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--no);}
+.pow-feed .prof-danger-sub{margin:8px 0 0;font-size:12px;line-height:1.55;color:var(--dim);}
+.pow-feed .prof-danger-btn{margin-top:14px;background:transparent;color:var(--no);border:1px solid var(--no);border-radius:9px;
+  padding:9px 16px;font:inherit;font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;
+  transition:background .15s,color .15s,box-shadow .15s;}
+.pow-feed .prof-danger-btn:hover:not(:disabled){background:var(--no);color:#120406;box-shadow:0 0 20px rgba(255,92,108,.4);}
+.pow-feed .prof-danger-btn:disabled{opacity:.5;cursor:default;}
+`

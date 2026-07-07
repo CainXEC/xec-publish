@@ -174,6 +174,7 @@ function ProfileActionsMenu({
 export default function AuthorProfilePageClient({
   identity,
   isAddressIdentity = false,
+  handleColor = null,
   bio = null,
   holderAddress = null,
   handleCards = [],
@@ -237,7 +238,10 @@ export default function AuthorProfilePageClient({
 
       <main className="wrap" style={{ paddingTop: '28px' }}>
         <header className="profhead">
-          <h1 className={`profname${isAddressIdentity ? ' isaddr' : ''}`}>
+          <h1
+            className={`profname${isAddressIdentity ? ' isaddr' : ''}`}
+            style={!isAddressIdentity && handleColor ? { color: handleColor } : undefined}
+          >
             {isAddressIdentity ? identity : String(identity ?? '').replace(/^@/, '')}
           </h1>
 

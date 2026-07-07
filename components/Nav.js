@@ -45,6 +45,8 @@ export default function Nav({ authorCtaOverride, showPostSearch = false }) {
   const identityLabel = me?.handle
     ? me.handle
     : truncateAddress(me?.address ?? '')
+  // A custom handle color only applies when a handle is shown (not a raw address).
+  const identityColor = me?.handle && me?.handleColor ? me.handleColor : undefined
 
   const refetchMe = useCallback(async () => {
     try {
@@ -291,6 +293,7 @@ export default function Nav({ authorCtaOverride, showPostSearch = false }) {
       <span
         className="min-w-0 flex-1 truncate text-center font-mono"
         title={me.address}
+        style={identityColor ? { color: identityColor } : undefined}
       >
         {identityLabel}
       </span>
@@ -460,7 +463,10 @@ export default function Nav({ authorCtaOverride, showPostSearch = false }) {
                   className="flex h-11 w-full flex-nowrap items-center justify-between gap-2 whitespace-nowrap rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-left text-xs font-medium text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/50"
                 >
                   <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-                  <span className="min-w-0 flex-1 truncate text-center font-mono">
+                  <span
+                    className="min-w-0 flex-1 truncate text-center font-mono"
+                    style={identityColor ? { color: identityColor } : undefined}
+                  >
                     {identityLabel}
                   </span>
                   <span className="shrink-0 text-zinc-700 dark:text-emerald-100">Logout</span>
