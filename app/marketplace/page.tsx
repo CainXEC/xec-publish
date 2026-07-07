@@ -7,6 +7,7 @@
 
 import type { Metadata } from "next";
 import MintHandle from "@/components/MintHandle";
+import { getAuthedAccount } from "@/lib/authHelpers";
 
 export const metadata: Metadata = {
   title: "Handles — proofofwriting",
@@ -21,6 +22,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function MarketplacePage() {
-  return <MintHandle />;
+export default async function MarketplacePage() {
+  // Auth drives the shared header chrome only (dashboard link + notifications).
+  const acct = await getAuthedAccount();
+  return <MintHandle signedIn={acct != null} isAuthor={acct?.authorId != null} />;
 }
