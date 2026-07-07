@@ -33,7 +33,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { skeleton, displayHandle, validateHandleSyntax } from "./handleSkeleton";
 import { priceForHandle } from "./handlePricing";
 import { loadMintWallet, mintHandleChild } from "./mintHandleChild";
-import { hostHandleCard } from "./hostHandleCard";
+import { hostAsciiCard } from "./nft-art/hostAsciiCard"; // Gen 1 ASCII card, seed = mint txid (matches mintProcessor)
 import { findMintPayment, verifyMintTxid } from "./mintPayments";
 
 const CHRONIK_URLS = ["https://chronik.e.cash", "https://chronik-native.fabien.cash"];
@@ -218,7 +218,7 @@ async function runMint(sk: string, grant: any, address: string): Promise<PollRes
     });
 
     let imageUrl: string | null = null;
-    try { imageUrl = await hostHandleCard(grant.handle, childTokenId); } catch { /* backfill later */ }
+    try { imageUrl = await hostAsciiCard(grant.handle, childTokenId); } catch { /* backfill later */ }
 
     await supabase.from("claim_grants").update({
       status: "claimed", claimed_address: address, claimed_account_id: accountId,
