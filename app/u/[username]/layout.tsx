@@ -36,7 +36,7 @@ export async function generateMetadata({
       siteName: "Proof Of Writing",
       images: [
         {
-          url: `${siteUrl}/og-image.png`,
+          url: `${siteUrl}/api/og/site`,
           width: 1200,
           height: 630,
           alt: `${authorUsername} | Proof Of Writing`,
@@ -48,7 +48,7 @@ export async function generateMetadata({
       card: "summary_large_image",
       title: `${authorUsername} | Proof Of Writing`,
       description: bio,
-      images: [`${siteUrl}/og-image.png`],
+      images: [`${siteUrl}/api/og/site`],
     },
   };
 }
