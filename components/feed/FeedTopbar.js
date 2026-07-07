@@ -39,7 +39,7 @@ export default function FeedTopbar({ signedIn = false, isAuthor = false }) {
           dashboard
         </Link>
       ) : null}
-      {!signedIn ? (
+      {!signedIn && !isAuthor ? (
         <Link href="/login" className={cls} onClick={() => setOpen(false)}>
           log in
         </Link>
