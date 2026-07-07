@@ -143,6 +143,12 @@ export const FEED_CSS = `
 .pow-feed .posts{margin-top:16px;overflow:hidden;}
 .pow-feed .post{padding:16px;border-bottom:1px solid var(--line);}
 .pow-feed .post:last-child{border-bottom:none;}
+/* "Replying to @X" context line above a reply shown in a timeline */
+.pow-feed .replyingto{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);
+  margin:0 0 6px;transition:color .15s;}
+.pow-feed .replyingto:hover{color:var(--cyan);}
+.pow-feed .replyingto .replyarrow{color:var(--line);}
+.pow-feed .replyingto-who{color:var(--cyan);font-weight:600;}
 .pow-feed .postmeta{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
 .pow-feed .byline{font-size:13px;font-weight:700;color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.35);transition:text-shadow .15s;}
 .pow-feed .byline:hover{text-shadow:0 0 14px rgba(0,255,156,.6);}

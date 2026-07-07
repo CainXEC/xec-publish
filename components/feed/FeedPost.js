@@ -237,8 +237,29 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
     router.push(`/feed/${post.txid}`)
   }
 
+  // In timelines that surface replies (Following feed, profile Replies tab), the
+  // server attaches `post.parent` — a shallow preview of the post being replied
+  // to — so we can show a "Replying to @X" context line that jumps to the thread.
+  const parentId = post.parent
+    ? String(post.parent.displayIdentity ?? post.parent.author_identity ?? '').trim()
+    : ''
+  const parentIsHandle = parentId.startsWith('@')
+
   return (
     <li className="post" onClick={openThread} style={{ cursor: 'pointer' }}>
+      {post.parent ? (
+        <Link href={`/feed/${post.parent.txid}`} className="replyingto">
+          <span aria-hidden className="replyarrow">↳</span> Replying to{' '}
+          <span className="replyingto-who">
+            {post.parent.deleted
+              ? 'a deleted post'
+              : parentIsHandle
+                ? parentId
+                : truncateAddress(parentId)}
+          </span>
+        </Link>
+      ) : null}
+
       <div className="postmeta">
         <Byline identity={post.displayIdentity ?? post.author_identity} />
         <span aria-hidden className="dot">

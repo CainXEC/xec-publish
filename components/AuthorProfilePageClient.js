@@ -186,18 +186,23 @@ export default function AuthorProfilePageClient({
   initialFollowing = false,
   initialBlocked = false,
   initialPosts = [],
+  initialReplies = [],
   identifier = '',
   articleCount = 0,
   viewerIsAuthor = false,
 }) {
   const router = useRouter()
+  const [tab, setTab] = useState('posts') // 'posts' | 'replies'
   const [posts, setPosts] = useState(initialPosts)
+  const [replies, setReplies] = useState(initialReplies)
   const [blocked, setBlocked] = useState(Boolean(initialBlocked))
   const [copiedAddress, setCopiedAddress] = useState(false)
   const copyTimeoutRef = useRef(null)
 
+  // A delete/block can target a post in either list, so filter both.
   const removePost = useCallback((txid) => {
     setPosts((prev) => prev.filter((p) => p.txid !== txid))
+    setReplies((prev) => prev.filter((p) => p.txid !== txid))
   }, [])
 
   const copyAddress = useCallback(async () => {
@@ -313,15 +318,50 @@ export default function AuthorProfilePageClient({
 
         <HandleCarousel handles={handleCards} title="Handles" />
 
-        <h2 className="replieshead">Posts</h2>
+        <div className="tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'posts'}
+            className={`tab${tab === 'posts' ? ' on' : ''}`}
+            onClick={() => setTab('posts')}
+          >
+            Posts
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'replies'}
+            className={`tab${tab === 'replies' ? ' on' : ''}`}
+            onClick={() => setTab('replies')}
+          >
+            Replies
+          </button>
+        </div>
 
         {blocked ? (
           <p className="empty">You’ve blocked this account. Unblock to see their posts.</p>
-        ) : posts.length === 0 ? (
-          <p className="empty">No posts yet.</p>
+        ) : tab === 'posts' ? (
+          posts.length === 0 ? (
+            <p className="empty">No posts yet.</p>
+          ) : (
+            <ul className="panel posts">
+              {posts.map((post) => (
+                <FeedPost
+                  key={post.txid}
+                  post={post}
+                  viewerAccountId={viewerAccountId}
+                  onDeleted={removePost}
+                  onQuoted={handleQuoted}
+                />
+              ))}
+            </ul>
+          )
+        ) : replies.length === 0 ? (
+          <p className="empty">No replies yet.</p>
         ) : (
           <ul className="panel posts">
-            {posts.map((post) => (
+            {replies.map((post) => (
               <FeedPost
                 key={post.txid}
                 post={post}

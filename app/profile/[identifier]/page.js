@@ -3,7 +3,7 @@ import AuthorProfilePageClient from '@/components/AuthorProfilePageClient'
 import { resolveProfileByIdentifier } from '@/lib/resolveProfile'
 import { hydrateAuthorProfile } from '@/lib/loadAuthorProfile'
 import { heldHandlesForAddress } from '@/lib/heldHandles'
-import { getAccountFeedPage } from '@/lib/getFeed'
+import { getAccountFeedPage, getAccountRepliesPage } from '@/lib/getFeed'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { viewerBlocksAccount } from '@/lib/feedBlocks'
@@ -60,7 +60,7 @@ export default async function ProfilePage({ params }) {
       : Promise.resolve(null),
   ])
 
-  const [followerCount, initialFollowing, initialBlocked, feed] = await Promise.all([
+  const [followerCount, initialFollowing, initialBlocked, feed, replies] = await Promise.all([
     followerCountForAccount(profileAccountId),
     viewerFollowsAccount(viewerAccountId, profileAccountId),
     profileAccountId
@@ -68,6 +68,9 @@ export default async function ProfilePage({ params }) {
       : Promise.resolve(false),
     profileAccountId
       ? getAccountFeedPage({ accountId: profileAccountId, viewerAddress, viewerAccountId })
+      : Promise.resolve({ posts: [], nextCursor: null }),
+    profileAccountId
+      ? getAccountRepliesPage({ accountId: profileAccountId, viewerAddress, viewerAccountId })
       : Promise.resolve({ posts: [], nextCursor: null }),
   ])
 
@@ -109,6 +112,7 @@ export default async function ProfilePage({ params }) {
       initialFollowing={initialFollowing}
       initialBlocked={initialBlocked}
       initialPosts={feed.posts}
+      initialReplies={replies.posts}
       identifier={identifier}
       articleCount={articleCount}
       postsErrorMessage={articleData.error || null}
