@@ -171,7 +171,7 @@ export default function MintHandle() {
       <div className="topbar">
         <Link href="/" className="wordmark">proofofwriting</Link>
         <div className="toplinks">
-          <Link href="/" className="toplink">feed</Link>
+          <Link href="/dashboard" className="toplink">dashboard</Link>
           <ThemeToggle variant="feed" />
         </div>
       </div>
