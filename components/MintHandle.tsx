@@ -43,6 +43,10 @@ export default function MintHandle() {
   const [notice, setNotice] = useState("");
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
+  // Latch: once the payment is seen on-chain we commit to the "minting" screen
+  // and never bounce back to the QR/waiting view, even if a later poll transiently
+  // reports awaiting_payment (Chronik race). Only a terminal error clears it.
+  const paidSeenRef = useRef(false);
 
   const display = handle.trim();
   const mysterySvg = renderMysteryCard(display);
@@ -81,6 +85,7 @@ export default function MintHandle() {
   const startMint = useCallback(async () => {
     setNotice("");
     setPaymentSeen(false);
+    paidSeenRef.current = false;
     // Open the Cashtab tab synchronously inside the click gesture so popup
     // blockers don't eat it, then redirect it once the intent (and its bip21)
     // lands. Opening with a handle (no noopener) is what lets us set its URL
@@ -118,12 +123,17 @@ export default function MintHandle() {
     let stopped = false;
     const apply = (j: any) => {
       if (j.status === "minted") { setResult(j); setPhase("done"); }
-      else if (j.status === "refunded") { setPaymentSeen(false); setNotice("Refunded — the name wasn't available when payment landed. Your XEC is on its way back. Pick another name."); }
-      else if (j.status === "failed") { setPaymentSeen(false); setNotice("The mint failed. If you paid, a refund is on its way."); }
-      else if (j.status === "expired") { setPaymentSeen(false); setNotice("The 15-minute hold expired. Start again to re-lock the name."); setPhase("choose"); setIntent(null); }
-      else if (j.status === "processing") { setPaymentSeen(true); setStatusMsg("Payment received — minting your handle"); }
-      else if (j.status === "finalizing") { setPaymentSeen(true); setStatusMsg("Finalizing payment…"); }
-      else { setPaymentSeen(false); setStatusMsg("Waiting for payment"); }
+      else if (j.status === "refunded") { paidSeenRef.current = false; setPaymentSeen(false); setNotice("Refunded — the name wasn't available when payment landed. Your XEC is on its way back. Pick another name."); }
+      else if (j.status === "failed") { paidSeenRef.current = false; setPaymentSeen(false); setNotice("The mint failed. If you paid, a refund is on its way."); }
+      else if (j.status === "expired") { paidSeenRef.current = false; setPaymentSeen(false); setNotice("The 15-minute hold expired. Start again to re-lock the name."); setPhase("choose"); setIntent(null); }
+      // Payment is on-chain now — commit to the minting screen and stay there. We
+      // treat "finalizing" the same as "minting": the moment we see the payment
+      // the user gets the confident "minting your handle" view, so the finality
+      // wait + on-chain broadcast read as the mint finishing, not a hang.
+      else if (j.status === "processing" || j.status === "finalizing") { paidSeenRef.current = true; setPaymentSeen(true); setStatusMsg("Minting your handle"); }
+      // Still awaiting the payment — but never demote out of the minting screen
+      // once we've latched it (a transient awaiting_payment is just a Chronik race).
+      else if (!paidSeenRef.current) { setPaymentSeen(false); setStatusMsg("Waiting for payment"); }
     };
     const poll = async (txid?: string) => {
       try {
@@ -213,7 +223,7 @@ export default function MintHandle() {
             <div className="settling" role="status" aria-live="polite">
               <div className="spinner" aria-hidden="true" />
               <p className="settlehead">{statusMsg}</p>
-              <p className="settlesub">Payment received — waiting for the network to finalize and mint your NFT. Keep this tab open; your card reveals in a few seconds.</p>
+              <p className="settlesub">Payment received ✓ — <strong>@{intent.handle}</strong> is being written on-chain. Keep this tab open; your card reveals automatically in a few seconds.</p>
             </div>
           ) : (
             <>
