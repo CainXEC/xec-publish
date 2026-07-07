@@ -44,6 +44,13 @@ export default function MintHandle({
   // screen from the QR/send prompt to a clear "payment received" indicator, so
   // the user knows the site saw their payment during the ~2-3s finality wait.
   const [paymentSeen, setPaymentSeen] = useState(false);
+  // Second stage of the post-payment tracker: true once the payment is final and
+  // the on-chain NFT mint is actually running, so the tracker advances from
+  // "finalizing" to "minting". Driven by the 'processing' status (a concurrent
+  // poll that can't grab the serialized mint lock returns it) and, as a fallback,
+  // by a poll that stays in flight for a while (the request doing the mint is the
+  // slow one) — whichever we notice first.
+  const [mintingActive, setMintingActive] = useState(false);
   const [result, setResult] = useState<{ childTokenId?: string; imageUrl?: string } | null>(null);
   const [txidInput, setTxidInput] = useState("");
   const [notice, setNotice] = useState("");
@@ -53,6 +60,10 @@ export default function MintHandle({
   // and never bounce back to the QR/waiting view, even if a later poll transiently
   // reports awaiting_payment (Chronik race). Only a terminal error clears it.
   const paidSeenRef = useRef(false);
+  // Web Audio context for the reveal chime. Created + resumed inside the Mint
+  // click (a user gesture) so browser autoplay policy lets us play the sound
+  // seconds later when the card reveals, long after the click.
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
   const display = handle.trim();
   const mysterySvg = renderMysteryCard(display);
@@ -90,7 +101,16 @@ export default function MintHandle({
   const startMint = useCallback(async () => {
     setNotice("");
     setPaymentSeen(false);
+    setMintingActive(false);
     paidSeenRef.current = false;
+    // Prime the audio context on this gesture so the reveal chime can fire later.
+    try {
+      const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (AC) {
+        if (!audioCtxRef.current) audioCtxRef.current = new AC();
+        void audioCtxRef.current.resume();
+      }
+    } catch { /* no audio — reveal is still silent-safe */ }
     // Open the Cashtab tab synchronously inside the click gesture so popup
     // blockers don't eat it, then redirect it once the intent (and its bip21)
     // lands. Opening with a handle (no noopener) is what lets us set its URL
@@ -128,24 +148,33 @@ export default function MintHandle({
     let stopped = false;
     const apply = (j: any) => {
       if (j.status === "minted") { setResult(j); setPhase("done"); }
-      else if (j.status === "refunded") { paidSeenRef.current = false; setPaymentSeen(false); setNotice("Refunded — the name wasn't available when payment landed. Your XEC is on its way back. Pick another name."); }
-      else if (j.status === "failed") { paidSeenRef.current = false; setPaymentSeen(false); setNotice("The mint failed. If you paid, a refund is on its way."); }
-      else if (j.status === "expired") { paidSeenRef.current = false; setPaymentSeen(false); setNotice("The 15-minute hold expired. Start again to re-lock the name."); setPhase("choose"); setIntent(null); }
-      // Payment is on-chain now — commit to the minting screen and stay there. We
-      // treat "finalizing" the same as "minting": the moment we see the payment
-      // the user gets the confident "minting your handle" view, so the finality
-      // wait + on-chain broadcast read as the mint finishing, not a hang.
-      else if (j.status === "processing" || j.status === "finalizing") { paidSeenRef.current = true; setPaymentSeen(true); setStatusMsg("Minting your handle"); }
+      else if (j.status === "refunded") { paidSeenRef.current = false; setPaymentSeen(false); setMintingActive(false); setNotice("Refunded — the name wasn't available when payment landed. Your XEC is on its way back. Pick another name."); }
+      else if (j.status === "failed") { paidSeenRef.current = false; setPaymentSeen(false); setMintingActive(false); setNotice("The mint failed. If you paid, a refund is on its way."); }
+      else if (j.status === "expired") { paidSeenRef.current = false; setPaymentSeen(false); setMintingActive(false); setNotice("The 15-minute hold expired. Start again to re-lock the name."); setPhase("choose"); setIntent(null); }
+      // Payment is on-chain now — commit to the minting screen and stay there, and
+      // advance the tracker: 'finalizing' = payment detected, awaiting Avalanche
+      // finality; 'processing' = final + the NFT genesis is actually being minted.
+      else if (j.status === "processing") { paidSeenRef.current = true; setPaymentSeen(true); setMintingActive(true); }
+      else if (j.status === "finalizing") { paidSeenRef.current = true; setPaymentSeen(true); }
       // Still awaiting the payment — but never demote out of the minting screen
       // once we've latched it (a transient awaiting_payment is just a Chronik race).
       else if (!paidSeenRef.current) { setPaymentSeen(false); setStatusMsg("Waiting for payment"); }
     };
     const poll = async (txid?: string) => {
+      // Once the payment is seen, the request that actually mints the NFT is the
+      // slow one (finality re-checks return in well under a second). If a poll
+      // stays in flight past this threshold, treat it as the mint running and
+      // advance the tracker to "minting" even before we observe a 'processing'.
+      let longTimer: ReturnType<typeof setTimeout> | undefined;
+      if (paidSeenRef.current) {
+        longTimer = setTimeout(() => { if (!stopped) setMintingActive(true); }, 1200);
+      }
       try {
         const url = `/api/mint/status?mintId=${intent.mintId}` + (txid ? `&txid=${encodeURIComponent(txid)}` : "");
         const r = await fetch(url);
         if (!stopped) apply(await r.json());
       } catch { /* keep polling */ }
+      finally { if (longTimer) clearTimeout(longTimer); }
     };
     poll();
     // Poll a touch faster than the old 2s so the UI reacts sooner once the
@@ -164,6 +193,51 @@ export default function MintHandle({
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [phase, intent]);
+
+  // A short, bright arpeggio + sparkle synthesized on the fly — the celebratory
+  // "ta-da" when the mystery card flips to the real one. Fully self-contained
+  // (no audio file to ship); a rising C-major run with a high shimmer on top.
+  const playRevealChime = useCallback(() => {
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+    if (ctx.state === "suspended") void ctx.resume();
+    const now = ctx.currentTime;
+    const master = ctx.createGain();
+    master.gain.value = 0.9;
+    master.connect(ctx.destination);
+    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6
+    notes.forEach((freq, i) => {
+      const t = now + i * 0.085;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.16, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+      osc.connect(g).connect(master);
+      osc.start(t);
+      osc.stop(t + 0.55);
+    });
+    // high sparkle on the final beat
+    const sparkT = now + notes.length * 0.085;
+    const spark = ctx.createOscillator();
+    const sg = ctx.createGain();
+    spark.type = "sine";
+    spark.frequency.value = 2093; // C7
+    sg.gain.setValueAtTime(0.0001, sparkT);
+    sg.gain.exponentialRampToValueAtTime(0.09, sparkT + 0.03);
+    sg.gain.exponentialRampToValueAtTime(0.0001, sparkT + 0.45);
+    spark.connect(sg).connect(master);
+    spark.start(sparkT);
+    spark.stop(sparkT + 0.5);
+  }, []);
+
+  // Play the chime once, the moment the card reveals (phase flips to "done").
+  useEffect(() => {
+    if (phase === "done") playRevealChime();
+  }, [phase, playRevealChime]);
 
   const canMint = avail?.available && !avail.auctionOnly;
   const mm = secondsLeft != null ? String(Math.floor(secondsLeft / 60)).padStart(1, "0") : "";
@@ -227,9 +301,22 @@ export default function MintHandle({
         <div className="pay">
           {paymentSeen ? (
             <div className="settling" role="status" aria-live="polite">
-              <div className="spinner" aria-hidden="true" />
-              <p className="settlehead">{statusMsg}</p>
-              <p className="settlesub">Payment received ✓ — <strong>@{intent.handle}</strong> is being written on-chain. Keep this tab open; your card reveals automatically in a few seconds.</p>
+              <p className="settlehead">{mintingActive ? "Minting your NFT" : "Payment finalizing"}</p>
+              <ol className="mintsteps">
+                <li className="done">
+                  <span className="mintstep-mark" aria-hidden>{"\u2713"}</span>
+                  <span>Payment detected</span>
+                </li>
+                <li className={mintingActive ? "done" : "active"}>
+                  <span className="mintstep-mark" aria-hidden>{mintingActive ? "\u2713" : ""}</span>
+                  <span>Payment finalizing</span>
+                </li>
+                <li className={mintingActive ? "active" : "pending"}>
+                  <span className="mintstep-mark" aria-hidden />
+                  <span>Minting NFT</span>
+                </li>
+              </ol>
+              <p className="settlesub"><strong>@{intent.handle}</strong> is being written on-chain. Keep this tab open — your card reveals automatically in a few seconds.</p>
             </div>
           ) : (
             <>
@@ -359,6 +446,20 @@ const CSS = `
 .pow-mint .settlehead{font-size:18px;font-weight:700;color:var(--neon);letter-spacing:.03em;margin:0;
   text-shadow:0 0 12px rgba(0,255,156,.45);}
 .pow-mint .settlesub{font-size:13px;color:var(--dim);line-height:1.55;margin:0;max-width:380px;}
+
+/* three-step post-payment tracker: detected -> finalizing -> minting. Each row's
+   marker is a dim ring (pending), a neon spinner (active) or a filled ✓ (done). */
+.pow-mint .mintsteps{list-style:none;padding:0;margin:2px 0 0;display:flex;flex-direction:column;gap:13px;text-align:left;}
+.pow-mint .mintsteps li{display:flex;align-items:center;gap:11px;font-size:14.5px;color:var(--dim);transition:color .2s;}
+.pow-mint .mintstep-mark{width:19px;height:19px;flex:0 0 auto;border-radius:50%;border:2px solid var(--line);box-sizing:border-box;
+  display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#04120c;
+  transition:border-color .2s,background .2s;}
+.pow-mint .mintsteps li.pending .mintstep-mark{opacity:.5;}
+.pow-mint .mintsteps li.active{color:var(--text);}
+.pow-mint .mintsteps li.active .mintstep-mark{border-color:var(--neon);border-top-color:transparent;background:transparent;
+  animation:pow-spin .8s linear infinite;box-shadow:0 0 12px rgba(0,255,156,.3);}
+.pow-mint .mintsteps li.done{color:var(--neon);}
+.pow-mint .mintsteps li.done .mintstep-mark{border-color:var(--neon);background:var(--neon);box-shadow:0 0 12px rgba(0,255,156,.4);}
 
 .pow-mint .manual{margin:24px 0 0;text-align:left;}
 .pow-mint .manual summary{color:var(--dim);font-size:13px;cursor:pointer;text-align:center;}
