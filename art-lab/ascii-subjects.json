@@ -1,0 +1,1672 @@
+{
+  "meta": {
+    "count": 126,
+    "notes": "Small iconic ASCII-art subjects for the Gen 1 NFT card center. Curated from classic, widely-shared, folk-style public-domain ASCII collections (asciiart.eu category pages and the Christopher Johnson ASCII Art Collection are the canonical homes for these pieces). Every piece is pure printable ASCII (0x20-0x7E), fits within 40 cols x 18 rows, and strongly favors <=30 cols / <=12 rows. width = longest line length, height = number of lines. NOTE: this environment blocked all live network access (WebFetch/WebSearch/curl all denied), so pieces were reconstructed from knowledge of these canonical public-domain collections rather than scraped byte-for-byte; source URLs point to the canonical category pages where each style lives. All entries validated pure-ASCII + size by script before writing."
+  },
+  "subjects": [
+    {
+      "name": "cat_sitting",
+      "category": "animals",
+      "width": 7,
+      "height": 4,
+      "art": [
+        " /\\_/\\ ",
+        "( o.o )",
+        " > ^ < ",
+        "  ---  "
+      ],
+      "source": "https://www.asciiart.eu/animals/cats"
+    },
+    {
+      "name": "cat_peeking",
+      "category": "animals",
+      "width": 7,
+      "height": 3,
+      "art": [
+        " /\\_/\\ ",
+        "( o o )",
+        " =_Y_= "
+      ],
+      "source": "https://www.asciiart.eu/animals/cats"
+    },
+    {
+      "name": "cat_meow",
+      "category": "animals",
+      "width": 12,
+      "height": 3,
+      "art": [
+        "  /\\_/\\     ",
+        " ( o.o )  ~ ",
+        "  > ^ <     "
+      ],
+      "source": "https://www.asciiart.eu/animals/cats"
+    },
+    {
+      "name": "cat_curled",
+      "category": "animals",
+      "width": 25,
+      "height": 3,
+      "art": [
+        "   |\\      _,,,---,,_",
+        "   /,`.-'`'    -.  ;-;;,_",
+        "  |,4-  ) )-,_..;\\ ( `'-'"
+      ],
+      "source": "https://www.asciiart.eu/animals/cats"
+    },
+    {
+      "name": "kitten_face",
+      "category": "animals",
+      "width": 8,
+      "height": 3,
+      "art": [
+        "  ,_,   ",
+        " (o,o)  ",
+        " (   )  "
+      ],
+      "source": "https://www.asciiart.eu/animals/cats"
+    },
+    {
+      "name": "dog_sitting",
+      "category": "animals",
+      "width": 14,
+      "height": 4,
+      "art": [
+        "  / \\__       ",
+        " (    @\\___   ",
+        " /         O ",
+        "/   (_____/   "
+      ],
+      "source": "https://www.asciiart.eu/animals/dogs"
+    },
+    {
+      "name": "dog_face",
+      "category": "animals",
+      "width": 9,
+      "height": 4,
+      "art": [
+        " / \\_/ \\ ",
+        "( o   o )",
+        " >  ^  < ",
+        "  \\___/  "
+      ],
+      "source": "https://www.asciiart.eu/animals/dogs"
+    },
+    {
+      "name": "puppy",
+      "category": "animals",
+      "width": 11,
+      "height": 4,
+      "art": [
+        "  __      ",
+        " o'')}____",
+        "  \\_/     )",
+        "  `'-. .-'`"
+      ],
+      "source": "https://www.asciiart.eu/animals/dogs"
+    },
+    {
+      "name": "rabbit_bunny",
+      "category": "animals",
+      "width": 8,
+      "height": 5,
+      "art": [
+        " (\\_/)  ",
+        " ( '_') ",
+        " /   |  ",
+        "(  |  | ",
+        " \"\"'\"\"' "
+      ],
+      "source": "https://www.asciiart.eu/animals/rabbits"
+    },
+    {
+      "name": "rabbit_small",
+      "category": "animals",
+      "width": 8,
+      "height": 3,
+      "art": [
+        " (\\_/) ",
+        " (o.o) ",
+        " (\")_(\")"
+      ],
+      "source": "https://www.asciiart.eu/animals/rabbits"
+    },
+    {
+      "name": "fox",
+      "category": "animals",
+      "width": 11,
+      "height": 4,
+      "art": [
+        "  /\\   /\\  ",
+        " //\\\\_//\\\\ ",
+        " \\_     _/ ",
+        "  / . . \\  "
+      ],
+      "source": "https://www.asciiart.eu/animals/foxes"
+    },
+    {
+      "name": "bear_face",
+      "category": "animals",
+      "width": 12,
+      "height": 4,
+      "art": [
+        " (  )  (  ) ",
+        "  (  \\/  )  ",
+        "  ( o  o )  ",
+        "   \\ vv /   "
+      ],
+      "source": "https://www.asciiart.eu/animals/bears"
+    },
+    {
+      "name": "teddy_bear",
+      "category": "animals",
+      "width": 5,
+      "height": 4,
+      "art": [
+        " q p ",
+        "(o.o)",
+        "(   )",
+        " www "
+      ],
+      "source": "https://www.asciiart.eu/animals/bears"
+    },
+    {
+      "name": "owl",
+      "category": "animals",
+      "width": 8,
+      "height": 5,
+      "art": [
+        "  ___   ",
+        " (o,o)  ",
+        " {`\"'}  ",
+        " -\"-\"-  ",
+        "        "
+      ],
+      "source": "https://www.asciiart.eu/animals/birds/owls"
+    },
+    {
+      "name": "owl_small",
+      "category": "animals",
+      "width": 7,
+      "height": 3,
+      "art": [
+        " ,___, ",
+        " {o,o} ",
+        " /)_) "
+      ],
+      "source": "https://www.asciiart.eu/animals/birds/owls"
+    },
+    {
+      "name": "fish",
+      "category": "animals",
+      "width": 9,
+      "height": 3,
+      "art": [
+        "  ><(((>",
+        "         ",
+        "  ><(((>"
+      ],
+      "source": "https://www.asciiart.eu/animals/fish"
+    },
+    {
+      "name": "fish_detailed",
+      "category": "animals",
+      "width": 11,
+      "height": 3,
+      "art": [
+        "   /\\      ",
+        " ><(((*>   ",
+        "   \\/      "
+      ],
+      "source": "https://www.asciiart.eu/animals/fish"
+    },
+    {
+      "name": "whale",
+      "category": "animals",
+      "width": 23,
+      "height": 4,
+      "art": [
+        "       .-'      ",
+        "  '--./ /     _.---. ",
+        "  '-,  (__..-`       \\",
+        "     \\          .     |"
+      ],
+      "source": "https://www.asciiart.eu/animals/whales"
+    },
+    {
+      "name": "whale_small",
+      "category": "animals",
+      "width": 15,
+      "height": 3,
+      "art": [
+        "    .-.        ",
+        "  ('v')        ",
+        " //-=-\\\\  <><  "
+      ],
+      "source": "https://www.asciiart.eu/animals/whales"
+    },
+    {
+      "name": "dolphin",
+      "category": "animals",
+      "width": 17,
+      "height": 4,
+      "art": [
+        "          _     ",
+        "       .-'  `.   ",
+        "  __.-'       )  ",
+        " (____.....--'   "
+      ],
+      "source": "https://www.asciiart.eu/animals/dolphins"
+    },
+    {
+      "name": "snake",
+      "category": "animals",
+      "width": 13,
+      "height": 3,
+      "art": [
+        "    __       ",
+        "   /  \\_/\\   ",
+        "  ~ ~<' >~ ~ "
+      ],
+      "source": "https://www.asciiart.eu/animals/snakes"
+    },
+    {
+      "name": "snake_s",
+      "category": "animals",
+      "width": 9,
+      "height": 3,
+      "art": [
+        "  _____  ",
+        " /=====\\_",
+        " \\-----/ "
+      ],
+      "source": "https://www.asciiart.eu/animals/snakes"
+    },
+    {
+      "name": "frog",
+      "category": "animals",
+      "width": 11,
+      "height": 4,
+      "art": [
+        "  (o)(o)  ",
+        " /       \\ ",
+        "(  .  .  ) ",
+        " \\  \\_/  / "
+      ],
+      "source": "https://www.asciiart.eu/animals/frogs"
+    },
+    {
+      "name": "frog_small",
+      "category": "animals",
+      "width": 8,
+      "height": 3,
+      "art": [
+        " @..@  ",
+        "(----) ",
+        "( >__< )"
+      ],
+      "source": "https://www.asciiart.eu/animals/frogs"
+    },
+    {
+      "name": "elephant",
+      "category": "animals",
+      "width": 12,
+      "height": 5,
+      "art": [
+        "   __     ",
+        "  /  \\~~~/",
+        " (    |    )",
+        "  \\__/   (",
+        "    ||   ||"
+      ],
+      "source": "https://www.asciiart.eu/animals/elephants"
+    },
+    {
+      "name": "penguin",
+      "category": "animals",
+      "width": 8,
+      "height": 5,
+      "art": [
+        "  .--.  ",
+        " |o_o | ",
+        " |:_/ | ",
+        "//   \\ \\",
+        "(|   | )"
+      ],
+      "source": "https://www.asciiart.eu/animals/penguins"
+    },
+    {
+      "name": "penguin_small",
+      "category": "animals",
+      "width": 7,
+      "height": 4,
+      "art": [
+        "  ___  ",
+        " (o o) ",
+        "(  V  )",
+        " -m-m- "
+      ],
+      "source": "https://www.asciiart.eu/animals/penguins"
+    },
+    {
+      "name": "bird_small",
+      "category": "animals",
+      "width": 6,
+      "height": 2,
+      "art": [
+        "  ,(  ",
+        " <))> "
+      ],
+      "source": "https://www.asciiart.eu/animals/birds"
+    },
+    {
+      "name": "bird_perched",
+      "category": "animals",
+      "width": 10,
+      "height": 3,
+      "art": [
+        "   ,~~.   ",
+        "  ( 6 )-, ",
+        "   `-'    "
+      ],
+      "source": "https://www.asciiart.eu/animals/birds"
+    },
+    {
+      "name": "butterfly",
+      "category": "animals",
+      "width": 11,
+      "height": 4,
+      "art": [
+        " \\       / ",
+        "  (\\o o/)  ",
+        "   ) ! (   ",
+        "  (/   \\)  "
+      ],
+      "source": "https://www.asciiart.eu/animals/insects/butterflies"
+    },
+    {
+      "name": "bee",
+      "category": "animals",
+      "width": 11,
+      "height": 3,
+      "art": [
+        "    __     ",
+        " \\ (oo) /  ",
+        "  \\/==\\/   "
+      ],
+      "source": "https://www.asciiart.eu/animals/insects/bees"
+    },
+    {
+      "name": "spider",
+      "category": "animals",
+      "width": 11,
+      "height": 3,
+      "art": [
+        " /\\ oo /\\  ",
+        "/\\/(  )\\/\\ ",
+        "   |  |    "
+      ],
+      "source": "https://www.asciiart.eu/animals/insects/spiders"
+    },
+    {
+      "name": "snail",
+      "category": "animals",
+      "width": 13,
+      "height": 3,
+      "art": [
+        "      __    ",
+        "  .-'`   `'.",
+        "_/  ,-.  .-.\\"
+      ],
+      "source": "https://www.asciiart.eu/animals/insects/snails"
+    },
+    {
+      "name": "turtle",
+      "category": "animals",
+      "width": 15,
+      "height": 4,
+      "art": [
+        "     ___       ",
+        " __ / o \\___   ",
+        "(____ .  . __)>",
+        "   / /   \\ \\   "
+      ],
+      "source": "https://www.asciiart.eu/animals/reptiles/turtles"
+    },
+    {
+      "name": "horse",
+      "category": "animals",
+      "width": 15,
+      "height": 5,
+      "art": [
+        "    >>\\.       ",
+        "   /_  )`.     ",
+        "  /  _)`^)`.   ",
+        " (_,' \\  `^-)  ",
+        "      \\   |    "
+      ],
+      "source": "https://www.asciiart.eu/animals/horses"
+    },
+    {
+      "name": "cow",
+      "category": "animals",
+      "width": 15,
+      "height": 4,
+      "art": [
+        "  ^__^        ",
+        "  (oo)\\_____  ",
+        "  (__)\\     )\\",
+        "      ||----w |"
+      ],
+      "source": "https://www.asciiart.eu/animals/cows"
+    },
+    {
+      "name": "pig",
+      "category": "animals",
+      "width": 12,
+      "height": 3,
+      "art": [
+        "  ,__,      ",
+        " (oo)____   ",
+        " (__)    )\\ "
+      ],
+      "source": "https://www.asciiart.eu/animals/pigs"
+    },
+    {
+      "name": "mouse",
+      "category": "animals",
+      "width": 13,
+      "height": 3,
+      "art": [
+        "   (\\_/)     ",
+        "   (o.o)     ",
+        "  =(_(\")(\")= "
+      ],
+      "source": "https://www.asciiart.eu/animals/mice"
+    },
+    {
+      "name": "crab",
+      "category": "animals",
+      "width": 13,
+      "height": 3,
+      "art": [
+        " (\\/) . (\\/) ",
+        "  \\  (oo)  / ",
+        "   \\/    \\/  "
+      ],
+      "source": "https://www.asciiart.eu/animals/crustaceans/crabs"
+    },
+    {
+      "name": "octopus",
+      "category": "animals",
+      "width": 10,
+      "height": 4,
+      "art": [
+        "   ___    ",
+        "  /o o\\   ",
+        "  \\ v /   ",
+        " {}{}{}{} "
+      ],
+      "source": "https://www.asciiart.eu/animals/octopi"
+    },
+    {
+      "name": "chick",
+      "category": "animals",
+      "width": 7,
+      "height": 3,
+      "art": [
+        "  ,    ",
+        " (o>   ",
+        " //\\   "
+      ],
+      "source": "https://www.asciiart.eu/animals/birds"
+    },
+    {
+      "name": "duck",
+      "category": "animals",
+      "width": 12,
+      "height": 3,
+      "art": [
+        "   __       ",
+        " <(o )___   ",
+        "  ( ._> /   "
+      ],
+      "source": "https://www.asciiart.eu/animals/birds/ducks"
+    },
+    {
+      "name": "sheep",
+      "category": "animals",
+      "width": 13,
+      "height": 3,
+      "art": [
+        "   __  __    ",
+        " o'')}____// ",
+        "  `_/      ) "
+      ],
+      "source": "https://www.asciiart.eu/animals/sheep"
+    },
+    {
+      "name": "monkey",
+      "category": "animals",
+      "width": 9,
+      "height": 3,
+      "art": [
+        "  //^\\\\  ",
+        " (o . o) ",
+        "  \\ - /  "
+      ],
+      "source": "https://www.asciiart.eu/animals/monkeys"
+    },
+    {
+      "name": "lion",
+      "category": "animals",
+      "width": 10,
+      "height": 4,
+      "art": [
+        "  \\|/|/  ",
+        " --(o o)--",
+        "    (V)   ",
+        "   / | \\  "
+      ],
+      "source": "https://www.asciiart.eu/animals/cats/lions"
+    },
+    {
+      "name": "ant",
+      "category": "animals",
+      "width": 9,
+      "height": 2,
+      "art": [
+        " `\\/`\\/  ",
+        " (o)(o)  "
+      ],
+      "source": "https://www.asciiart.eu/animals/insects/ants"
+    },
+    {
+      "name": "ladybug",
+      "category": "animals",
+      "width": 9,
+      "height": 3,
+      "art": [
+        "   ,_,   ",
+        "  (o.o)  ",
+        " (: | :) "
+      ],
+      "source": "https://www.asciiart.eu/animals/insects"
+    },
+    {
+      "name": "tree_pine",
+      "category": "nature",
+      "width": 10,
+      "height": 6,
+      "art": [
+        "    /\\   ",
+        "   /  \\  ",
+        "  /    \\ ",
+        " /      \\",
+        "/________\\",
+        "   ||||  "
+      ],
+      "source": "https://www.asciiart.eu/nature/trees"
+    },
+    {
+      "name": "tree_deciduous",
+      "category": "nature",
+      "width": 10,
+      "height": 5,
+      "art": [
+        "   ,@@@.  ",
+        "  @@@@@@@ ",
+        "  '@@@@@' ",
+        "    |||   ",
+        "    |||   "
+      ],
+      "source": "https://www.asciiart.eu/nature/trees"
+    },
+    {
+      "name": "tree_simple",
+      "category": "nature",
+      "width": 7,
+      "height": 4,
+      "art": [
+        "  (%)  ",
+        " (%%%) ",
+        "(%%%%%)",
+        "   |   "
+      ],
+      "source": "https://www.asciiart.eu/nature/trees"
+    },
+    {
+      "name": "palm_tree",
+      "category": "nature",
+      "width": 11,
+      "height": 5,
+      "art": [
+        "   __/\\__  ",
+        "  \\  ..  / ",
+        "   |    |  ",
+        "   |    |  ",
+        "  _|____|_ "
+      ],
+      "source": "https://www.asciiart.eu/nature/trees"
+    },
+    {
+      "name": "flower",
+      "category": "nature",
+      "width": 5,
+      "height": 5,
+      "art": [
+        "  _  ",
+        " (_) ",
+        "(_|_)",
+        "  |  ",
+        " \\|/ "
+      ],
+      "source": "https://www.asciiart.eu/nature/flowers"
+    },
+    {
+      "name": "flower_tulip",
+      "category": "nature",
+      "width": 7,
+      "height": 4,
+      "art": [
+        " (\\ /) ",
+        " (\\|/) ",
+        "  \\|/  ",
+        "   |   "
+      ],
+      "source": "https://www.asciiart.eu/nature/flowers"
+    },
+    {
+      "name": "rose",
+      "category": "nature",
+      "width": 9,
+      "height": 5,
+      "art": [
+        "   .-.   ",
+        "  (@ @)  ",
+        "   )0(   ",
+        "  / | \\  ",
+        "    |    "
+      ],
+      "source": "https://www.asciiart.eu/nature/flowers"
+    },
+    {
+      "name": "cactus",
+      "category": "nature",
+      "width": 8,
+      "height": 6,
+      "art": [
+        "   _    ",
+        "  | |   ",
+        " _| |_  ",
+        "|  _  | ",
+        "| | | | ",
+        "|_| |_| "
+      ],
+      "source": "https://www.asciiart.eu/nature/plants"
+    },
+    {
+      "name": "mushroom",
+      "category": "nature",
+      "width": 9,
+      "height": 5,
+      "art": [
+        "  .-\"-.  ",
+        " /o . o\\ ",
+        " \\_._._/ ",
+        "   | |   ",
+        "  _|_|_  "
+      ],
+      "source": "https://www.asciiart.eu/nature/plants"
+    },
+    {
+      "name": "mountain",
+      "category": "nature",
+      "width": 16,
+      "height": 5,
+      "art": [
+        "      /\\       ",
+        "     /  \\  /\\  ",
+        "    / /\\ \\/  \\ ",
+        "   / /  \\/ /\\ \\",
+        "  /_/___/_/__\\_\\"
+      ],
+      "source": "https://www.asciiart.eu/nature/mountains"
+    },
+    {
+      "name": "sun",
+      "category": "nature",
+      "width": 11,
+      "height": 5,
+      "art": [
+        "  \\  |  /  ",
+        "   .---.   ",
+        " -( ` ` )- ",
+        "   '---'   ",
+        "  /  |  \\  "
+      ],
+      "source": "https://www.asciiart.eu/nature/sun"
+    },
+    {
+      "name": "sun_small",
+      "category": "nature",
+      "width": 8,
+      "height": 3,
+      "art": [
+        " \\ | /  ",
+        "- (_) - ",
+        " / | \\  "
+      ],
+      "source": "https://www.asciiart.eu/nature/sun"
+    },
+    {
+      "name": "moon_crescent",
+      "category": "nature",
+      "width": 8,
+      "height": 5,
+      "art": [
+        "   ___  ",
+        "  /  _) ",
+        " / /    ",
+        " \\ \\    ",
+        "  \\__)  "
+      ],
+      "source": "https://www.asciiart.eu/nature/moon"
+    },
+    {
+      "name": "star",
+      "category": "nature",
+      "width": 9,
+      "height": 5,
+      "art": [
+        "    *    ",
+        "   /|\\   ",
+        " *-- --* ",
+        "   \\|/   ",
+        "    *    "
+      ],
+      "source": "https://www.asciiart.eu/nature/stars"
+    },
+    {
+      "name": "star_simple",
+      "category": "nature",
+      "width": 7,
+      "height": 3,
+      "art": [
+        "  ,    ",
+        " -+-   ",
+        "  '    "
+      ],
+      "source": "https://www.asciiart.eu/nature/stars"
+    },
+    {
+      "name": "cloud",
+      "category": "nature",
+      "width": 13,
+      "height": 3,
+      "art": [
+        "    .--.     ",
+        " .-(    ).   ",
+        "(___.__)__)  "
+      ],
+      "source": "https://www.asciiart.eu/nature/clouds"
+    },
+    {
+      "name": "rain_cloud",
+      "category": "nature",
+      "width": 13,
+      "height": 4,
+      "art": [
+        "    .--.     ",
+        " .-(    ).   ",
+        "(___.__)__)  ",
+        " / / / / /   "
+      ],
+      "source": "https://www.asciiart.eu/nature/weather"
+    },
+    {
+      "name": "snowflake",
+      "category": "nature",
+      "width": 9,
+      "height": 5,
+      "art": [
+        "  \\ | /  ",
+        " --*--*- ",
+        "  /|X|\\  ",
+        " --*--*- ",
+        "  / | \\  "
+      ],
+      "source": "https://www.asciiart.eu/holiday-and-events/christmas/snowflakes"
+    },
+    {
+      "name": "snowflake_small",
+      "category": "nature",
+      "width": 7,
+      "height": 3,
+      "art": [
+        " \\ | / ",
+        "--- ---",
+        " / | \\ "
+      ],
+      "source": "https://www.asciiart.eu/holiday-and-events/christmas/snowflakes"
+    },
+    {
+      "name": "wave",
+      "category": "nature",
+      "width": 15,
+      "height": 3,
+      "art": [
+        " .-.  .-.  .-.",
+        "/   \\/   \\/   \\",
+        "              "
+      ],
+      "source": "https://www.asciiart.eu/nature/water"
+    },
+    {
+      "name": "leaf",
+      "category": "nature",
+      "width": 8,
+      "height": 5,
+      "art": [
+        "   .-.  ",
+        "  / | \\ ",
+        " (  |  )",
+        "  \\ | / ",
+        "   `+`  "
+      ],
+      "source": "https://www.asciiart.eu/nature/plants"
+    },
+    {
+      "name": "raindrop",
+      "category": "nature",
+      "width": 5,
+      "height": 4,
+      "art": [
+        "  .  ",
+        " / \\ ",
+        "(   )",
+        " \\_/ "
+      ],
+      "source": "https://www.asciiart.eu/nature/weather"
+    },
+    {
+      "name": "lightning",
+      "category": "nature",
+      "width": 7,
+      "height": 5,
+      "art": [
+        "   /   ",
+        "  /    ",
+        " /___  ",
+        "   /   ",
+        "  /    "
+      ],
+      "source": "https://www.asciiart.eu/nature/weather"
+    },
+    {
+      "name": "rocket",
+      "category": "objects",
+      "width": 8,
+      "height": 8,
+      "art": [
+        "   /\\  ",
+        "  /  \\ ",
+        "  |  | ",
+        "  |  | ",
+        " /|  |\\",
+        "/_|__|_\\",
+        "  /\\   ",
+        " /  \\  "
+      ],
+      "source": "https://www.asciiart.eu/vehicles/rockets"
+    },
+    {
+      "name": "rocket_small",
+      "category": "objects",
+      "width": 5,
+      "height": 6,
+      "art": [
+        "  ^  ",
+        " /|\\ ",
+        " |=| ",
+        " |=| ",
+        "/| |\\",
+        " /^\\ "
+      ],
+      "source": "https://www.asciiart.eu/vehicles/rockets"
+    },
+    {
+      "name": "sailboat",
+      "category": "objects",
+      "width": 10,
+      "height": 6,
+      "art": [
+        "    |    ",
+        "    |\\   ",
+        "    | \\  ",
+        "    |  \\ ",
+        "~~~~|~~~\\~",
+        " \\_______/"
+      ],
+      "source": "https://www.asciiart.eu/vehicles/boats"
+    },
+    {
+      "name": "sailboat_small",
+      "category": "objects",
+      "width": 9,
+      "height": 4,
+      "art": [
+        "   |>>   ",
+        "   |     ",
+        " __|__   ",
+        " \\___/   "
+      ],
+      "source": "https://www.asciiart.eu/vehicles/boats"
+    },
+    {
+      "name": "car",
+      "category": "objects",
+      "width": 14,
+      "height": 4,
+      "art": [
+        "   ______    ",
+        "  /|_||_\\`.__",
+        " (   _    _ _\\",
+        " =`-(_)--(_)-'"
+      ],
+      "source": "https://www.asciiart.eu/vehicles/cars"
+    },
+    {
+      "name": "car_small",
+      "category": "objects",
+      "width": 11,
+      "height": 3,
+      "art": [
+        "   ___     ",
+        "  /___\\-.  ",
+        " (o)---(o) "
+      ],
+      "source": "https://www.asciiart.eu/vehicles/cars"
+    },
+    {
+      "name": "plane",
+      "category": "objects",
+      "width": 15,
+      "height": 4,
+      "art": [
+        "       __      ",
+        "  _____|_____  ",
+        "  \\_________/  ",
+        "     |   |     "
+      ],
+      "source": "https://www.asciiart.eu/vehicles/airplanes"
+    },
+    {
+      "name": "plane_small",
+      "category": "objects",
+      "width": 14,
+      "height": 3,
+      "art": [
+        "      __      ",
+        "  ___/  \\___  ",
+        " <__________> "
+      ],
+      "source": "https://www.asciiart.eu/vehicles/airplanes"
+    },
+    {
+      "name": "house",
+      "category": "objects",
+      "width": 11,
+      "height": 5,
+      "art": [
+        "    __     ",
+        "   /  \\    ",
+        "  /____\\   ",
+        "  |[]  |   ",
+        "  |  []|   "
+      ],
+      "source": "https://www.asciiart.eu/art-and-design/buildings"
+    },
+    {
+      "name": "house_small",
+      "category": "objects",
+      "width": 9,
+      "height": 4,
+      "art": [
+        "   /\\    ",
+        "  /  \\   ",
+        " /____\\  ",
+        " |_||_|  "
+      ],
+      "source": "https://www.asciiart.eu/art-and-design/buildings"
+    },
+    {
+      "name": "castle",
+      "category": "objects",
+      "width": 15,
+      "height": 6,
+      "art": [
+        " |^|^|^|^|^|^| ",
+        " |          | ",
+        " | []  []  [] ",
+        " |          | ",
+        " | []  []  [] ",
+        " |__________| "
+      ],
+      "source": "https://www.asciiart.eu/art-and-design/buildings"
+    },
+    {
+      "name": "umbrella",
+      "category": "objects",
+      "width": 11,
+      "height": 5,
+      "art": [
+        "   .---.   ",
+        " .'     '. ",
+        "'---------'",
+        "     |     ",
+        "     '-    "
+      ],
+      "source": "https://www.asciiart.eu/miscellaneous/umbrellas"
+    },
+    {
+      "name": "anchor",
+      "category": "objects",
+      "width": 9,
+      "height": 6,
+      "art": [
+        "   .-.   ",
+        "  ( o )  ",
+        "   |||   ",
+        " --+++-- ",
+        "  \\   /  ",
+        "   '-'   "
+      ],
+      "source": "https://www.asciiart.eu/miscellaneous/anchors"
+    },
+    {
+      "name": "key",
+      "category": "objects",
+      "width": 11,
+      "height": 3,
+      "art": [
+        "  .--.     ",
+        " ( () )====",
+        "  '--'   ' "
+      ],
+      "source": "https://www.asciiart.eu/miscellaneous/keys"
+    },
+    {
+      "name": "crown",
+      "category": "objects",
+      "width": 12,
+      "height": 3,
+      "art": [
+        " .  .  .  . ",
+        " |\\_|\\_|\\_| ",
+        " '--------' "
+      ],
+      "source": "https://www.asciiart.eu/miscellaneous/crowns"
+    },
+    {
+      "name": "crown_jewel",
+      "category": "objects",
+      "width": 13,
+      "height": 3,
+      "art": [
+        " \\o/ \\o/ \\o/ ",
+        "  |   |   |  ",
+        " '=========' "
+      ],
+      "source": "https://www.asciiart.eu/miscellaneous/crowns"
+    },
+    {
+      "name": "guitar",
+      "category": "objects",
+      "width": 9,
+      "height": 7,
+      "art": [
+        "  __     ",
+        " |  |    ",
+        " |  |    ",
+        " |  |    ",
+        " (())    ",
+        "( o  )   ",
+        " (__)    "
+      ],
+      "source": "https://www.asciiart.eu/music/instruments/guitars"
+    },
+    {
+      "name": "coffee_cup",
+      "category": "objects",
+      "width": 11,
+      "height": 5,
+      "art": [
+        "  ( (      ",
+        "   ) )     ",
+        " ........  ",
+        " |      |] ",
+        " \\______/  "
+      ],
+      "source": "https://www.asciiart.eu/food-and-drinks/coffee"
+    },
+    {
+      "name": "candle",
+      "category": "objects",
+      "width": 7,
+      "height": 6,
+      "art": [
+        "   (   ",
+        "   )   ",
+        "  ( )  ",
+        "   |   ",
+        "  |_|  ",
+        " |___| "
+      ],
+      "source": "https://www.asciiart.eu/holiday-and-events/christmas/candles"
+    },
+    {
+      "name": "book",
+      "category": "objects",
+      "width": 13,
+      "height": 5,
+      "art": [
+        "   ______    ",
+        "  /     /|   ",
+        " /_____/ |   ",
+        " |     | |   ",
+        " |_____|/    "
+      ],
+      "source": "https://www.asciiart.eu/books"
+    },
+    {
+      "name": "book_open",
+      "category": "objects",
+      "width": 13,
+      "height": 4,
+      "art": [
+        "   ___ ___   ",
+        "  /   |   \\  ",
+        " |    |    | ",
+        "  \\___|___/  "
+      ],
+      "source": "https://www.asciiart.eu/books"
+    },
+    {
+      "name": "lightbulb",
+      "category": "objects",
+      "width": 7,
+      "height": 6,
+      "art": [
+        "  ___  ",
+        " /   \\ ",
+        "|     |",
+        " \\   / ",
+        "  |=|  ",
+        "  |_|  "
+      ],
+      "source": "https://www.asciiart.eu/miscellaneous/light-bulbs"
+    },
+    {
+      "name": "gift_box",
+      "category": "objects",
+      "width": 11,
+      "height": 5,
+      "art": [
+        "   _|_|_   ",
+        "  |\\   /|  ",
+        "  |_\\_/_|  ",
+        "  | | | |  ",
+        "  |_|_|_|  "
+      ],
+      "source": "https://www.asciiart.eu/holiday-and-events/christmas/presents"
+    },
+    {
+      "name": "balloon",
+      "category": "objects",
+      "width": 7,
+      "height": 5,
+      "art": [
+        "  ___  ",
+        " /   \\ ",
+        "|     |",
+        " \\   / ",
+        "   |   "
+      ],
+      "source": "https://www.asciiart.eu/miscellaneous/balloons"
+    },
+    {
+      "name": "heart",
+      "category": "objects",
+      "width": 9,
+      "height": 4,
+      "art": [
+        " **   ** ",
+        "*  * *  *",
+        " *     * ",
+        "   ***   "
+      ],
+      "source": "https://www.asciiart.eu/art-and-design/hearts"
+    },
+    {
+      "name": "diamond",
+      "category": "objects",
+      "width": 9,
+      "height": 4,
+      "art": [
+        "  /\\/\\   ",
+        " /    \\  ",
+        " \\    /  ",
+        "  \\  /   "
+      ],
+      "source": "https://www.asciiart.eu/art-and-design/diamonds"
+    },
+    {
+      "name": "telephone",
+      "category": "objects",
+      "width": 10,
+      "height": 4,
+      "art": [
+        "  _____   ",
+        " /o o o\\  ",
+        " |o o o| ",
+        " \\_____/  "
+      ],
+      "source": "https://www.asciiart.eu/electronics"
+    },
+    {
+      "name": "camera",
+      "category": "objects",
+      "width": 12,
+      "height": 4,
+      "art": [
+        "  ___  __   ",
+        " |[O]|=|_|  ",
+        " |   ___   |",
+        " |__|___|__|"
+      ],
+      "source": "https://www.asciiart.eu/electronics/cameras"
+    },
+    {
+      "name": "clock",
+      "category": "objects",
+      "width": 9,
+      "height": 5,
+      "art": [
+        "  .---.  ",
+        " / .-. \\ ",
+        " | |-'  |",
+        " \\ '-'  /",
+        "  '---'  "
+      ],
+      "source": "https://www.asciiart.eu/miscellaneous/clocks"
+    },
+    {
+      "name": "envelope",
+      "category": "objects",
+      "width": 14,
+      "height": 4,
+      "art": [
+        " _________   ",
+        " |\\       /|  ",
+        " | \\     / |  ",
+        " |__\\___/__|  "
+      ],
+      "source": "https://www.asciiart.eu/miscellaneous"
+    },
+    {
+      "name": "lock",
+      "category": "objects",
+      "width": 9,
+      "height": 5,
+      "art": [
+        "   ___   ",
+        "  /   \\  ",
+        " |_____| ",
+        " | [ ] | ",
+        " |_____| "
+      ],
+      "source": "https://www.asciiart.eu/miscellaneous/locks"
+    },
+    {
+      "name": "ice_cream",
+      "category": "food",
+      "width": 7,
+      "height": 6,
+      "art": [
+        "  ___  ",
+        " (~~~) ",
+        " (~~~) ",
+        "  \\ /  ",
+        "   V   ",
+        "   '   "
+      ],
+      "source": "https://www.asciiart.eu/food-and-drinks/ice-cream"
+    },
+    {
+      "name": "cake",
+      "category": "food",
+      "width": 12,
+      "height": 5,
+      "art": [
+        "   i i i    ",
+        "  |||||||   ",
+        " ,-------.  ",
+        " |=======|  ",
+        " '-------'  "
+      ],
+      "source": "https://www.asciiart.eu/food-and-drinks/cakes"
+    },
+    {
+      "name": "birthday_cake",
+      "category": "food",
+      "width": 13,
+      "height": 5,
+      "art": [
+        "    ,,,,,    ",
+        "   |||||||   ",
+        " __|_____|__ ",
+        "|:::::::::::|",
+        "|___________|"
+      ],
+      "source": "https://www.asciiart.eu/food-and-drinks/cakes"
+    },
+    {
+      "name": "apple",
+      "category": "food",
+      "width": 9,
+      "height": 5,
+      "art": [
+        "   ,--.  ",
+        "  (    ) ",
+        " (      )",
+        "  \\    / ",
+        "   `--'  "
+      ],
+      "source": "https://www.asciiart.eu/food-and-drinks/apples"
+    },
+    {
+      "name": "pizza_slice",
+      "category": "food",
+      "width": 11,
+      "height": 5,
+      "art": [
+        " /\\        ",
+        "/o \\       ",
+        "\\ o \\      ",
+        " \\o \\     ",
+        "  \\__\\    "
+      ],
+      "source": "https://www.asciiart.eu/food-and-drinks/pizza"
+    },
+    {
+      "name": "coffee_mug",
+      "category": "food",
+      "width": 11,
+      "height": 4,
+      "art": [
+        " ______   ",
+        "|      |__",
+        "|      |  )",
+        "|______|_/ "
+      ],
+      "source": "https://www.asciiart.eu/food-and-drinks/coffee"
+    },
+    {
+      "name": "cherry",
+      "category": "food",
+      "width": 10,
+      "height": 4,
+      "art": [
+        "   __ __  ",
+        "   \\ | /  ",
+        "   (o)(o) ",
+        "         "
+      ],
+      "source": "https://www.asciiart.eu/food-and-drinks/fruits"
+    },
+    {
+      "name": "banana",
+      "category": "food",
+      "width": 13,
+      "height": 3,
+      "art": [
+        "  _         ",
+        " ( `-.      ",
+        "  `.__.-.___)"
+      ],
+      "source": "https://www.asciiart.eu/food-and-drinks/fruits"
+    },
+    {
+      "name": "donut",
+      "category": "food",
+      "width": 9,
+      "height": 4,
+      "art": [
+        "  .---.  ",
+        " / .-. \\ ",
+        " \\ '-' / ",
+        "  '---'  "
+      ],
+      "source": "https://www.asciiart.eu/food-and-drinks"
+    },
+    {
+      "name": "ghost",
+      "category": "mythical",
+      "width": 8,
+      "height": 5,
+      "art": [
+        "  .-.   ",
+        " (o o)  ",
+        " | O \\  ",
+        "  \\   \\ ",
+        "   `~~~'"
+      ],
+      "source": "https://www.asciiart.eu/holiday-and-events/halloween/ghosts"
+    },
+    {
+      "name": "ghost_boo",
+      "category": "mythical",
+      "width": 9,
+      "height": 5,
+      "art": [
+        "  .---.  ",
+        " / o o \\ ",
+        " |  >  | ",
+        " |     | ",
+        " '^v^v^' "
+      ],
+      "source": "https://www.asciiart.eu/holiday-and-events/halloween/ghosts"
+    },
+    {
+      "name": "skull",
+      "category": "mythical",
+      "width": 9,
+      "height": 5,
+      "art": [
+        "  _____  ",
+        " /     \\ ",
+        "| () () |",
+        "|   ^   |",
+        " \\ === / "
+      ],
+      "source": "https://www.asciiart.eu/people/body-parts/skulls"
+    },
+    {
+      "name": "skull_small",
+      "category": "mythical",
+      "width": 7,
+      "height": 3,
+      "art": [
+        "  ___  ",
+        " (o o) ",
+        " /vvv\\ "
+      ],
+      "source": "https://www.asciiart.eu/people/body-parts/skulls"
+    },
+    {
+      "name": "dragon",
+      "category": "mythical",
+      "width": 12,
+      "height": 4,
+      "art": [
+        "      __== ",
+        "  __/ o o\\ ",
+        " /  \\___/ | ",
+        "(________/  "
+      ],
+      "source": "https://www.asciiart.eu/mythology/dragons"
+    },
+    {
+      "name": "robot",
+      "category": "mythical",
+      "width": 9,
+      "height": 6,
+      "art": [
+        "  .---.  ",
+        "  |o o|  ",
+        "  | - |  ",
+        " [=====] ",
+        "  | | |  ",
+        "  '-'-'  "
+      ],
+      "source": "https://www.asciiart.eu/electronics/robots"
+    },
+    {
+      "name": "robot_small",
+      "category": "mythical",
+      "width": 7,
+      "height": 4,
+      "art": [
+        " [-.-] ",
+        " /|_|\\ ",
+        "  d b  ",
+        "       "
+      ],
+      "source": "https://www.asciiart.eu/electronics/robots"
+    },
+    {
+      "name": "alien",
+      "category": "mythical",
+      "width": 9,
+      "height": 5,
+      "art": [
+        "  .---.  ",
+        " / o o \\ ",
+        " |  V  | ",
+        " \\_____/ ",
+        "  /   \\  "
+      ],
+      "source": "https://www.asciiart.eu/television/x-files"
+    },
+    {
+      "name": "ufo",
+      "category": "mythical",
+      "width": 13,
+      "height": 4,
+      "art": [
+        "    .-\"-.    ",
+        "   /_____\\   ",
+        " .-\"\"\"\"\"\"\"-. ",
+        "'-.._____..-'"
+      ],
+      "source": "https://www.asciiart.eu/space/ufos"
+    },
+    {
+      "name": "snowman",
+      "category": "mythical",
+      "width": 9,
+      "height": 6,
+      "art": [
+        "   _===_ ",
+        "  (.,.)  ",
+        "  ( : )  ",
+        " (  :  ) ",
+        "         ",
+        "         "
+      ],
+      "source": "https://www.asciiart.eu/holiday-and-events/christmas/snowmen"
+    },
+    {
+      "name": "jack_o_lantern",
+      "category": "mythical",
+      "width": 12,
+      "height": 5,
+      "art": [
+        "    ,--.    ",
+        "   .----.   ",
+        "  ( o  o )  ",
+        "  ( \\vv/ )  ",
+        "   `----'   "
+      ],
+      "source": "https://www.asciiart.eu/holiday-and-events/halloween/pumpkins"
+    },
+    {
+      "name": "wizard",
+      "category": "mythical",
+      "width": 9,
+      "height": 6,
+      "art": [
+        "    /\\   ",
+        "   /  \\  ",
+        "   |..|  ",
+        "  (o  o) ",
+        "   \\__/  ",
+        "   /||\\  "
+      ],
+      "source": "https://www.asciiart.eu/mythology/wizards"
+    },
+    {
+      "name": "unicorn",
+      "category": "mythical",
+      "width": 12,
+      "height": 5,
+      "art": [
+        "    /       ",
+        "  \\/  ,     ",
+        "  /\\ /|     ",
+        " (o o) |    ",
+        "  \\_/  \\    "
+      ],
+      "source": "https://www.asciiart.eu/mythology/unicorns"
+    },
+    {
+      "name": "smiley",
+      "category": "mythical",
+      "width": 9,
+      "height": 5,
+      "art": [
+        "  .---.  ",
+        " / o o \\ ",
+        " |  ^  | ",
+        " \\ \\_/ / ",
+        "  '---'  "
+      ],
+      "source": "https://www.asciiart.eu/art-and-design/faces"
+    },
+    {
+      "name": "space_planet_saturn",
+      "category": "nature",
+      "width": 13,
+      "height": 4,
+      "art": [
+        "    ____     ",
+        "  /      \\   ",
+        " ((======))  ",
+        "  \\______/   "
+      ],
+      "source": "https://www.asciiart.eu/space/planets"
+    },
+    {
+      "name": "comet",
+      "category": "nature",
+      "width": 13,
+      "height": 3,
+      "art": [
+        "  ___        ",
+        " (_o_)-------",
+        "  \"\"\"        "
+      ],
+      "source": "https://www.asciiart.eu/space/comets"
+    }
+  ]
+}

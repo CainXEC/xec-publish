@@ -8,7 +8,7 @@ import { createClient } from "@supabase/supabase-js";
 import { skeleton } from "./handleSkeleton";
 import { priceForHandle } from "./handlePricing";
 import { loadMintWallet, mintHandleChild } from "./mintHandleChild";
-import { hostHandleCard } from "./hostHandleCard"; // best-effort image host (seam)
+import { hostAsciiCard } from "./nft-art/hostAsciiCard"; // best-effort image host (Gen 1 ASCII card, seed = mint txid)
 
 const CHRONIK_URLS = ["https://chronik.e.cash", "https://chronik-native.fabien.cash"];
 const supabase = createClient((process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
@@ -93,7 +93,7 @@ export async function processPaidMint(mintId: string): Promise<{ status: string;
 
     // best-effort image (deterministic, so safe to backfill if this fails)
     let imageUrl: string | null = null;
-    try { imageUrl = await hostHandleCard(res.handle, res.childTokenId); } catch { /* backfill later */ }
+    try { imageUrl = await hostAsciiCard(res.handle, res.childTokenId); } catch { /* backfill later */ }
 
     await supabase.from("pending_mints")
       .update({ status: "minted", child_token_id: res.childTokenId, image_url: imageUrl })

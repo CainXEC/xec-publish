@@ -32,10 +32,13 @@ function sfc32(a: number, b: number, c: number, d: number) {
 const rngFromSeed = (seed: string) => { const s = xmur3(seed); return sfc32(s(), s(), s(), s()); };
 
 // ---------------------------------------------------------------- palette
-const CHARCOAL = "#171513", PAPER = "#ece6d9", DIM = "#8a8172";
-const COLORS = ["#e6b93f", "#3e8d8a", "#9a5b7a", "#d2603f", "#4f7fd4"]; // gold, teal, plum, coral, blue
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-function shade(hex: string, pct: number) {
+// Shell primitives are exported so the Gen 1 ASCII card (lib/nft-art/render.ts)
+// reuses the EXACT same frame / label / palette — only the box art differs.
+export const CHARCOAL = "#171513", PAPER = "#ece6d9", DIM = "#8a8172";
+export const COLORS = ["#e6b93f", "#3e8d8a", "#9a5b7a", "#d2603f", "#4f7fd4"]; // gold, teal, plum, coral, blue
+export const COLOR_NAMES = ["gold", "teal", "plum", "coral", "blue"];
+export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+export function shade(hex: string, pct: number) {
   const n = parseInt(hex.slice(1), 16); let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
   const f = pct < 0 ? 0 : 255, p = Math.abs(pct);
   r = Math.round((f - r) * p) + r; g = Math.round((f - g) * p) + g; b = Math.round((f - b) * p) + b;
@@ -197,11 +200,11 @@ function renderVoxels(voxels: Vox[], color: string, S: number): string {
   return o;
 }
 
-function frame(S: number, color: string, opacity: number) {
+export function frame(S: number, color: string, opacity: number) {
   const fi = Math.round(S * 0.043), fr = Math.round(S * 0.04);
   return `<rect x="${fi}" y="${fi}" width="${S - fi * 2}" height="${S - fi * 2}" rx="${fr}" fill="none" stroke="${color}" stroke-width="${(S * 0.005).toFixed(1)}" opacity="${opacity}"/>`;
 }
-function labelBlock(display: string, S: number, footer: string) {
+export function labelBlock(display: string, S: number, footer: string) {
   const text = "@" + display; const fs = Math.min(S * 0.06, (S - S * 0.23) / (text.length * 0.6));
   return (
     `<text x="${S / 2}" y="${S * 0.80}" font-family="Courier Prime, monospace" font-weight="700" font-size="${fs.toFixed(0)}" text-anchor="middle" dominant-baseline="middle" fill="${PAPER}">${esc(text)}</text>` +
@@ -240,7 +243,6 @@ export function renderHandleCard(handle: string, opts: HandleCardOptions): strin
 /** The traits a token id produces — count / color / form — without building geometry.
  *  Same roll order as renderHandleCard, so it's exact. Handy for gallery captions. */
 export interface CardTraits { count: number; color: string; colorName: string; form: string; }
-const COLOR_NAMES = ["gold", "teal", "plum", "coral", "blue"];
 export function handleCardTraits(seed: string): CardTraits {
   const r = rngFromSeed(seed);
   const count = 1 + Math.floor(r() * 1000);
