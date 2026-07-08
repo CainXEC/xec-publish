@@ -384,7 +384,7 @@ const CSS = `
   color:var(--text);
   font-family:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   display:flex; flex-direction:column; align-items:center; text-align:center;
-  padding:26px 20px 110px;
+  padding:0 20px 110px;
 }
 /* Match the feed: one 640px column for the whole page — topbar, mint flow, and
    the marketplace grid all share the feed's width so nothing spills wider. */
@@ -395,7 +395,7 @@ const CSS = `
 /* Header is the shared FeedTopbar, hosted in its own .pow-feed scope. Constrain
    that host to the 640px column and stop the feed theme from taking over the
    viewport (min-height/background) — the mint page owns its own backdrop. */
-.pow-mint .topbar-host.pow-feed{width:100%;max-width:640px;margin:0 auto 30px;
+.pow-mint .topbar-host.pow-feed{align-self:stretch;width:auto;max-width:none;margin:0 -20px 30px;
   min-height:0;background:none;}
 .pow-mint .title{font-size:42px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--neon);margin:0 0 12px;
   text-shadow:0 0 8px rgba(0,255,156,.55),0 0 26px rgba(0,255,156,.28);}
