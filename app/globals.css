@@ -271,3 +271,29 @@ input[type="search"]::-webkit-search-decoration {
 .dark .ecash-logo {
   background-image: url(/ecash-icon-white.png);
 }
+
+/* Global navigation progress bar (NavProgress): a thin neon strip pinned to the
+   top of the viewport that trickles forward while a clicked route loads, so the
+   click-to-render gap on heavier pages reads as progress (not a dead click). */
+.navprogress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 2147483647;
+  pointer-events: none;
+  background: transparent;
+}
+.navprogress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #3df0ff, #00ff9c);
+  box-shadow: 0 0 10px rgba(0, 255, 156, 0.7), 0 0 4px rgba(61, 240, 255, 0.6);
+  border-radius: 0 2px 2px 0;
+  transition: width 0.2s ease-out, opacity 0.26s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .navprogress-bar {
+    transition: opacity 0.26s ease-out;
+  }
+}

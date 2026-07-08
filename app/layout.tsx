@@ -8,7 +8,9 @@ import {
   JetBrains_Mono,
   Newsreader,
 } from "next/font/google";
+import { Suspense } from "react";
 import ScrollToTopOnRouteChange from "@/components/ScrollToTopOnRouteChange";
+import NavProgress from "@/components/NavProgress";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -107,6 +109,9 @@ export default async function RootLayout({
       </head>
       <body className="min-h-[100dvh]">
         <ScrollToTopOnRouteChange />
+        <Suspense fallback={null}>
+          <NavProgress />
+        </Suspense>
         {children}
         <Analytics />
       </body>
