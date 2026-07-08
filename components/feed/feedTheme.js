@@ -163,7 +163,10 @@ export const FEED_CSS = `
 .pow-feed .tab.on{color:var(--neon);border-bottom-color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.4);}
 
 /* ---- feed list ---- */
-.pow-feed .posts{margin-top:16px;overflow:hidden;}
+/* overflow stays visible so a post's hover popovers (e.g. the like → tip menu)
+   can escape the panel instead of being clipped on the first/last post. Posts
+   carry no background and dividers sit mid-list, so nothing needs corner-clipping. */
+.pow-feed .posts{margin-top:16px;}
 .pow-feed .post{padding:16px;border-bottom:1px solid var(--line);}
 .pow-feed .post:last-child{border-bottom:none;}
 /* "Replying to @X" context line above a reply shown in a timeline */
@@ -233,6 +236,32 @@ export const FEED_CSS = `
 .pow-feed .reactpay .poll{margin:0;}
 .pow-feed .reactpay .manual{margin-top:14px;}
 .pow-feed .engage .notice{flex-basis:100%;width:100%;}
+
+/* like → tip menu: quick presets + a custom amount, floating above the button.
+   Revealed on hover (or keyboard focus) of the Like button; a transparent bridge
+   spans the gap so the pointer can travel from button up into the menu without
+   the hover dropping. */
+.pow-feed .likewrap{position:relative;display:inline-flex;}
+.pow-feed .tipmenu{display:none;position:absolute;bottom:calc(100% + 6px);left:0;z-index:20;width:210px;
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;
+  box-shadow:0 8px 24px rgba(0,0,0,.5);}
+.pow-feed .likewrap:hover .tipmenu,.pow-feed .likewrap:focus-within .tipmenu{display:block;}
+.pow-feed .tipmenu::after{content:"";position:absolute;top:100%;left:0;right:0;height:10px;}
+.pow-feed .tiptitle{margin:0 0 8px;font-size:12px;color:var(--dim);}
+.pow-feed .tippresets{display:flex;gap:6px;margin-bottom:8px;}
+.pow-feed .tippreset{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--text);
+  font:inherit;font-size:13px;padding:6px 0;border-radius:8px;cursor:pointer;font-variant-numeric:tabular-nums;
+  transition:border-color .12s,color .12s;}
+.pow-feed .tippreset:hover{border-color:var(--neon);color:var(--neon);}
+.pow-feed .tiprow{display:flex;align-items:center;gap:6px;}
+.pow-feed .tipinput{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);color:var(--text);
+  font:inherit;font-size:13px;padding:6px 8px;border-radius:8px;font-variant-numeric:tabular-nums;}
+.pow-feed .tipinput:focus{outline:none;border-color:var(--neon);}
+.pow-feed .tipunit{font-size:12px;color:var(--dim);}
+.pow-feed .tipgo{background:var(--neon);border:1px solid var(--neon);color:#04140d;font:inherit;font-size:13px;
+  font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer;transition:opacity .12s;}
+.pow-feed .tipgo:hover{opacity:.85;}
+.pow-feed .tipmenu .notice{margin:8px 0 0;font-size:12px;}
 
 /* ---- quoted embed ---- */
 .pow-feed .quoted{margin:12px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);

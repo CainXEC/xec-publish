@@ -3,12 +3,13 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { createServerSupabase } from '@/lib/supabase-server'
-import { FEED_MIN_XEC } from '@/lib/feedPricing'
+import { FEED_MIN_XEC, normalizeTipXec } from '@/lib/feedPricing'
 import { computePaymentSplit, buildPaywallBip21 } from '@/lib/paymentSplit'
 import { encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
 
-// Likes and reposts carry no content of their own — just a flat 100 XEC payment
-// split 94/6 to the reacted-to post's author and the platform.
+// Likes and reposts carry no content of their own — just a payment split 94/6 to
+// the reacted-to post's author and the platform. Reposts (and a like with no
+// amount) use the flat 100 XEC floor; a like can carry a larger custom tip.
 const REACT_COST_XEC = FEED_MIN_XEC
 
 function normalizeReaction(action) {
@@ -51,6 +52,16 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Invalid target post' }, { status: 400 })
   }
 
+  // A like can carry a custom tip; no amount → the flat 100 XEC floor. Any tip
+  // must be a whole number of at least 100 XEC.
+  const amountXec = body?.amountXec == null ? REACT_COST_XEC : normalizeTipXec(body.amountXec)
+  if (amountXec == null) {
+    return NextResponse.json(
+      { error: 'Enter a whole number of at least 100 XEC.' },
+      { status: 400 },
+    )
+  }
+
   const supabase = createServerSupabase()
   const { data: target, error } = await supabase
     .from('feed_posts')
@@ -62,7 +73,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
   }
 
-  const split = computePaymentSplit(REACT_COST_XEC)
+  const split = computePaymentSplit(amountXec)
   if (!split) {
     return NextResponse.json({ error: 'Invalid price' }, { status: 500 })
   }
@@ -86,8 +97,8 @@ export async function POST(request) {
     ok: true,
     action,
     targetTxid,
-    costXec: REACT_COST_XEC,
-    amountXec: REACT_COST_XEC,
+    costXec: amountXec,
+    amountXec,
     bip21Url,
     cashtabUrl: `https://cashtab.com/#/send?bip21=${bip21Url}`,
     preparedAt: Math.floor(Date.now() / 1000),

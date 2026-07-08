@@ -1,14 +1,25 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { normalizeTipXec } from '@/lib/feedPricing'
+
+// Quick-pick tip amounts (XEC) shown in the like menu; the field takes any custom
+// amount. Labels abbreviate the thousands.
+const TIP_PRESETS = [
+  { xec: 100, label: '100' },
+  { xec: 1000, label: '1K' },
+  { xec: 10000, label: '10K' },
+]
 
 /**
  * Like / Repost / Quote controls for a feed post. Likes and reposts are on-chain
- * paid actions (flat 100 XEC, 94/6 to the post's author/platform), so tapping
- * one opens Cashtab and then polls /api/feed/react/confirm until the payment is
- * detected. There is no undo in v1: once you've liked or reposted, the button is
- * shown as "on" and further taps are no-ops. Quote is delegated to the parent
- * (which opens a composer) via onQuote.
+ * paid actions (94/6 to the post's author/platform), so tapping one opens Cashtab
+ * and then polls /api/feed/react/confirm until the payment is detected. The Like
+ * button doubles as a tip: it opens a small menu to pick a preset or type any
+ * amount (100 XEC minimum), so a like can send the author more than the floor.
+ * Repost stays a flat 100 XEC. There is no undo in v1: once you've liked or
+ * reposted, the button is shown as "on" and further taps are no-ops. Quote is
+ * delegated to the parent (which opens a composer) via onQuote.
  */
 export default function EngagementBar({
   targetTxid,
@@ -32,15 +43,31 @@ export default function EngagementBar({
   const [txidInput, setTxidInput] = useState('')
   const startingRef = useRef(false)
 
+  // Like → tip menu (revealed on hover/focus via CSS): the custom-amount field
+  // and its inline validation error.
+  const [tipAmount, setTipAmount] = useState('')
+  const [tipError, setTipError] = useState('')
+
   const isLike = pending === 'like'
 
   const startReaction = useCallback(
-    async (action) => {
+    async (action, amountXec) => {
       if (startingRef.current || pending) return
       if (action === 'like' && liked) return
       if (action === 'repost' && reposted) return
+      // A like can carry a custom tip; validate it before opening the wallet so a
+      // bad amount never reaches Cashtab. No amount → the server's 100 XEC floor.
+      let amount
+      if (amountXec != null) {
+        amount = normalizeTipXec(amountXec)
+        if (amount == null) {
+          setTipError('Enter a whole number of at least 100 XEC.')
+          return
+        }
+      }
       startingRef.current = true
       setNotice('')
+      setTipError('')
       // Open the tab synchronously inside the click gesture (popup blockers
       // swallow a window.open that happens after an await), then point it at
       // Cashtab once /prepare returns.
@@ -51,7 +78,11 @@ export default function EngagementBar({
         const res = await fetch('/api/feed/react/prepare', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ action, targetTxid }),
+          body: JSON.stringify({
+            action,
+            targetTxid,
+            ...(amount != null ? { amountXec: amount } : {}),
+          }),
         })
         const data = await res.json()
         if (!res.ok || !data.ok) {
@@ -168,16 +199,58 @@ export default function EngagementBar({
   return (
     <div className="engage">
       <div className="engagebar">
-        <button
-          type="button"
-          className={`likebtn${liked ? ' on' : ''}`}
-          onClick={() => void startReaction('like')}
-          disabled={Boolean(pending)}
-          aria-pressed={liked}
-          title={liked ? 'You liked this' : 'Like · 100 XEC to the author'}
-        >
-          {liked ? '♥' : '♡'} {likes > 0 ? likes : ''} Like
-        </button>
+        <span className="likewrap">
+          <button
+            type="button"
+            className={`likebtn${liked ? ' on' : ''}`}
+            disabled={Boolean(pending)}
+            aria-pressed={liked}
+            aria-haspopup="menu"
+            title={liked ? 'You liked this' : 'Tip the author'}
+          >
+            {liked ? '♥' : '♡'} {likes > 0 ? likes : ''} Like
+          </button>
+          {!liked && !pending ? (
+            <div className="tipmenu" role="menu">
+              <p className="tiptitle">Tip the author</p>
+              <div className="tippresets">
+                {TIP_PRESETS.map(({ xec, label }) => (
+                  <button
+                    key={xec}
+                    type="button"
+                    className="tippreset"
+                    onClick={() => void startReaction('like', xec)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="tiprow">
+                <input
+                  className="tipinput"
+                  value={tipAmount}
+                  onChange={(e) => setTipAmount(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void startReaction('like', tipAmount)
+                  }}
+                  placeholder="Custom"
+                  inputMode="numeric"
+                  spellCheck={false}
+                  aria-label="Custom tip amount in XEC"
+                />
+                <span className="tipunit">XEC</span>
+                <button
+                  type="button"
+                  className="tipgo"
+                  onClick={() => void startReaction('like', tipAmount)}
+                >
+                  Tip
+                </button>
+              </div>
+              {tipError ? <p className="notice">{tipError}</p> : null}
+            </div>
+          ) : null}
+        </span>
 
         <button
           type="button"
