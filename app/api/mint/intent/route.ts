@@ -10,6 +10,7 @@ import { createClient } from "@supabase/supabase-js";
 import { validateHandleSyntax, skeleton, displayHandle } from "@/lib/handleSkeleton";
 import { priceForHandle } from "@/lib/handlePricing";
 import { encodePostIdOpReturnRaw } from "@/lib/opReturnEncode";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,6 +20,14 @@ const MINT_ADDRESS = process.env.MINT_PAYMENT_ADDRESS!; // the mint wallet's eca
 const LOCK_MINUTES = 15;
 
 export async function POST(req: NextRequest) {
+  // Unauthenticated endpoint that inserts a pending_mints row and holds a 15-min
+  // name lock per call — throttle it so a flood can't bloat the table or grief
+  // legitimate minters by squatting name locks.
+  const ip = req.headers.get("x-forwarded-for") || "unknown";
+  if (!(await rateLimit(ip, 10, 60, "mint-intent"))) {
+    return NextResponse.json({ ok: false, error: "Too many requests. Try again shortly." }, { status: 429 });
+  }
+
   // Fail loudly if the mint wallet address isn't configured — otherwise the
   // BIP21 below is built with a literal "undefined" address and Cashtab can't
   // parse the deep link.

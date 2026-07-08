@@ -5,6 +5,7 @@ import { FEED_CSS } from '@/components/feed/feedTheme'
 import { ARTICLE_CSS } from '@/app/posts/[slug]/articleTheme'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { getAuthedAccount } from '@/lib/authHelpers'
+import { sanitizePostBodyHtml } from '@/lib/sanitizePostBodyHtml'
 import { publishDraftPost } from './actions'
 
 function authorFromPost(post) {
@@ -45,7 +46,10 @@ export default async function DraftPreviewPage({ params }) {
 
   const author = authorFromPost(post)
   const username = author?.username?.trim()
-  const bodyHtml = typeof post.body === 'string' ? post.body : ''
+  // Sanitize even though this is the author's own draft: every other article
+  // render path goes through sanitizePostBodyHtml (bodies are stored raw), and a
+  // dangerouslySetInnerHTML sink on raw DB HTML is a self-XSS footgun otherwise.
+  const bodyHtml = sanitizePostBodyHtml(post.body)
 
   return (
     <div className="pow-article">

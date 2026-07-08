@@ -131,23 +131,27 @@ export async function verifyAuth(): Promise<VerifyAuthResult> {
       const nonce = nonceOf(tx);
       if (!nonce) continue;
 
-      // is this nonce live?
-      const { data: challenge } = await supabase
-        .from("auth_challenges").select("nonce, expires_at").eq("nonce", nonce).maybeSingle();
-      if (!challenge) continue;
-      if (Date.parse(challenge.expires_at) < Date.now()) {
-        await supabase.from("auth_challenges").delete().eq("nonce", nonce);
-        continue;
-      }
-
       const address = payerOf(tx);
       if (!address) continue;
 
-      // resolve-or-create the account for this proven address
-      const resolved = await resolveOrCreateAccount(address);
+      // Atomically claim the nonce with a conditional DELETE ... RETURNING. The
+      // client polls this endpoint, so two in-flight verifies could otherwise
+      // both pass a non-atomic read-then-delete and mint two sessions. Folding
+      // the liveness check into the delete predicate (expires_at >= now) means an
+      // expired nonce claims nothing; a returned row proves we won the single-use
+      // race for a still-live challenge.
+      const { data: claimed } = await supabase
+        .from("auth_challenges")
+        .delete()
+        .eq("nonce", nonce)
+        .gte("expires_at", new Date().toISOString())
+        .select("nonce")
+        .maybeSingle();
+      if (!claimed) continue; // already used, expired, or lost the race
 
-      // burn the nonce (single use) and issue the session (nonce-proven = challenge scope)
-      await supabase.from("auth_challenges").delete().eq("nonce", nonce);
+      // resolve-or-create the account for this proven address, then issue the
+      // session (nonce-proven = challenge scope).
+      const resolved = await resolveOrCreateAccount(address);
       await setSessionCookie(resolved.accountId, address, "challenge");
 
       return { ok: true, accountId: resolved.accountId, address, authorId: resolved.authorId, handle: resolved.handle };
