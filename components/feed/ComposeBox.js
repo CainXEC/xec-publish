@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 
@@ -34,7 +33,6 @@ export default function ComposeBox({
   const [txidInput, setTxidInput] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const textareaRef = useRef(null)
-  const router = useRouter()
 
   const priced = priceFeedPost(content)
   const chars = priced.chars
@@ -54,10 +52,10 @@ export default function ComposeBox({
   }, [])
 
   // Shared success handler for the poll + manual-verify paths. Hands the new
-  // post up, clears the composer, then for a reply/quote lands the author on the
-  // post they just created (/feed/<txid>) rather than leaving them on the feed.
-  // Top-level posts (action="post") stay put — the new post is already visible
-  // at the top of the feed.
+  // post up and clears the composer. Where the viewer lands is the parent's call,
+  // not ours: on the feed a post/quote is prepended to the top and the reply
+  // nests under its parent (both stay on the page); only the thread-page composer
+  // navigates, since a quote made there has nowhere on that page to appear.
   const handlePosted = useCallback(
     (post) => {
       onPosted?.(
@@ -68,11 +66,8 @@ export default function ComposeBox({
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('sessionChanged'))
       }
-      if ((action === 'reply' || action === 'quote') && post?.txid) {
-        router.push(`/feed/${post.txid}`)
-      }
     },
-    [action, quotedPost, onPosted, resetToCompose, router],
+    [action, quotedPost, onPosted, resetToCompose],
   )
 
   const startPayment = useCallback(async () => {

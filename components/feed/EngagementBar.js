@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
 
 /**
  * Like / Repost / Quote controls for a feed post. Likes and reposts are on-chain
@@ -32,7 +31,6 @@ export default function EngagementBar({
   const [notice, setNotice] = useState('')
   const [txidInput, setTxidInput] = useState('')
   const startingRef = useRef(false)
-  const router = useRouter()
 
   const isLike = pending === 'like'
 
@@ -93,12 +91,10 @@ export default function EngagementBar({
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('sessionChanged'))
     }
-    // Land the author on the post they just reposted. Likes have no destination
-    // of their own, so they stay put.
-    if (action === 'repost' && targetTxid) {
-      router.push(`/feed/${targetTxid}`)
-    }
-  }, [router, targetTxid])
+    // Neither a like nor a repost has a page of its own to land on — a repost
+    // just surfaces the existing post — so both stay put, the button flipping to
+    // its "on" state in place.
+  }, [])
 
   // Poll for the on-chain reaction while a payment is pending.
   useEffect(() => {

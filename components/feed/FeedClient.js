@@ -156,6 +156,12 @@ export default function FeedClient({
       patchTab('foryou', (t) =>
         t.posts.some((p) => p.txid === post.txid) ? t : { ...t, posts: [post, ...t.posts] },
       )
+      // Land the author on their new post: it sits at the top of the feed, so
+      // bring the viewport up to it — a quote fired from deep in the feed would
+      // otherwise slot in off-screen with nothing to show for the payment.
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
     },
     [patchTab],
   )

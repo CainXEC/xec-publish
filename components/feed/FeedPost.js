@@ -176,6 +176,9 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   const [quoteCount, setQuoteCount] = useState(post.quoteCount ?? 0)
   const [deleting, setDeleting] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  // Replies the viewer just posted, shown nested right here so they stay on the
+  // feed instead of being navigated to the thread page.
+  const [newReplies, setNewReplies] = useState([])
 
   const body = typeof post.content === 'string' ? post.content : ''
   // The article preview card is itself the link, so strip the raw article URL
@@ -203,7 +206,17 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   const handleReplied = (reply) => {
     setShowReply(false)
     setReplyCount((c) => c + 1)
+    if (reply?.txid) {
+      setNewReplies((prev) =>
+        prev.some((r) => r.txid === reply.txid) ? prev : [...prev, reply],
+      )
+    }
     onReplied?.(reply)
+  }
+
+  const removeNewReply = (txid) => {
+    setNewReplies((prev) => prev.filter((r) => r.txid !== txid))
+    setReplyCount((c) => Math.max(0, c - 1))
   }
 
   const handleQuoted = (quote) => {
@@ -236,6 +249,8 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
     if (e.target.closest('a, button, input, textarea, .inlinereply, .inlinequote, .quoted, .engage, .postmenu')) {
       return
     }
+    // Stop here so a click on a nested reply opens ITS thread, not the ancestor's.
+    e.stopPropagation()
     router.push(`/feed/${post.txid}`)
   }
 
@@ -351,6 +366,22 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
             onCancel={() => setShowQuote(false)}
           />
         </div>
+      ) : null}
+
+      {newReplies.length > 0 ? (
+        <ul className="postreplies">
+          {newReplies.map((reply) => (
+            <FeedPost
+              key={reply.txid}
+              post={reply}
+              viewerAccountId={viewerAccountId}
+              onReplied={onReplied}
+              onQuoted={onQuoted}
+              onDeleted={removeNewReply}
+              onBlocked={onBlocked}
+            />
+          ))}
+        </ul>
       ) : null}
     </li>
   )

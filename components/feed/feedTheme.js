@@ -205,6 +205,11 @@ export const FEED_CSS = `
 .pow-feed .delbtn:hover{color:var(--no);}
 .pow-feed .delbtn:disabled{opacity:.5;cursor:default;}
 .pow-feed .inlinereply,.pow-feed .inlinequote{margin-top:12px;flex-basis:100%;}
+/* replies just posted, nested inline under their parent post on the feed */
+.pow-feed .postreplies{list-style:none;margin:12px 0 0 6px;padding:0 0 0 14px;border-left:2px solid var(--line);}
+.pow-feed .postreplies .post{padding:12px 0;}
+.pow-feed .postreplies .post:first-child{padding-top:0;}
+.pow-feed .postreplies .post:last-child{padding-bottom:0;border-bottom:none;}
 .pow-feed .tombstone{color:var(--dim);font-style:italic;}
 
 /* ---- engagement (like / repost / quote) ---- */
