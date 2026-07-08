@@ -262,8 +262,33 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
     : ''
   const parentIsHandle = parentId.startsWith('@')
 
+  // "Reposted by @X" context: the Following feed resurfaces a post at the moment
+  // one of your followees reposted it (post.repostedBy). Show who did, linking to
+  // their profile when it's a handle.
+  const repostedBy = post.repostedBy ?? null
+  const reposterId =
+    typeof repostedBy?.identity === 'string' ? repostedBy.identity.trim() : ''
+  const reposterIsHandle = reposterId.startsWith('@')
+
   return (
     <li className="post" onClick={openThread} style={{ cursor: 'pointer' }}>
+      {repostedBy ? (
+        <div className="repostedby">
+          <span aria-hidden className="reposticon">🔁</span> Reposted by{' '}
+          {reposterIsHandle ? (
+            <Link
+              href={`/${reposterId}`}
+              className="repostedby-who"
+              style={repostedBy.color ? { color: repostedBy.color } : undefined}
+            >
+              {reposterId}
+            </Link>
+          ) : (
+            <span className="repostedby-who">{truncateAddress(reposterId)}</span>
+          )}
+        </div>
+      ) : null}
+
       {post.parent ? (
         <Link href={`/feed/${post.parent.txid}`} className="replyingto">
           <span aria-hidden className="replyarrow">↳</span> Replying to{' '}

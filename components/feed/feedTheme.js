@@ -175,6 +175,12 @@ export const FEED_CSS = `
 .pow-feed .replyingto:hover{color:var(--cyan);}
 .pow-feed .replyingto .replyarrow{color:var(--line);}
 .pow-feed .replyingto-who{color:var(--cyan);font-weight:600;}
+/* "Reposted by @X" context line above a resurfaced repost (Following timeline) */
+.pow-feed .repostedby{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);
+  margin:0 0 6px;}
+.pow-feed .reposticon{font-size:11px;line-height:1;}
+.pow-feed .repostedby-who{color:var(--dim);font-weight:600;transition:color .15s;}
+.pow-feed a.repostedby-who:hover{color:var(--cyan);}
 .pow-feed .postmeta{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
 .pow-feed .byline{font-size:13px;font-weight:700;color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.35);transition:text-shadow .15s;}
 .pow-feed .byline:hover{text-shadow:0 0 14px rgba(0,255,156,.6);}

@@ -9,6 +9,8 @@ const TIP_PRESETS = [
   { xec: 100, label: '100' },
   { xec: 1000, label: '1K' },
   { xec: 10000, label: '10K' },
+  { xec: 100000, label: '100K' },
+  { xec: 1000000, label: '1M' },
 ]
 
 /**
