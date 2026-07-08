@@ -7,8 +7,16 @@ import { saveHandleColor } from '@/app/dashboard/saveHandleColor'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import HandleColorPicker from '@/components/dashboard/HandleColorPicker'
+import DashboardHandleCarousel from '@/components/dashboard/DashboardHandleCarousel'
 
-export default function ProfileSettingsForm({ initialBio, initialColor = '', hasAuthor = true }) {
+export default function ProfileSettingsForm({
+  initialBio,
+  initialColor = '',
+  hasAuthor = true,
+  initialHandles = [],
+  handleAddress = null,
+  initialActiveTokenId = null,
+}) {
   const router = useRouter()
   const [bio, setBio] = useState(initialBio ?? '')
   const [color, setColor] = useState(initialColor ?? '')
@@ -114,6 +122,12 @@ export default function ProfileSettingsForm({ initialBio, initialColor = '', has
               : 'Choose the color your handle appears in across the site.'}
           </p>
         </section>
+
+        <DashboardHandleCarousel
+          initialHandles={initialHandles}
+          initialAddress={handleAddress}
+          initialActiveTokenId={initialActiveTokenId}
+        />
 
         <form onSubmit={handleSubmit}>
           <HandleColorPicker value={color} onChange={setColor} disabled={submitting} />

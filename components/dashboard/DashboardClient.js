@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import FilterDropdown from '@/components/FilterDropdown'
-import DashboardHandleCarousel from '@/components/dashboard/DashboardHandleCarousel'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import BellIcon from '@/components/BellIcon'
@@ -208,9 +207,6 @@ export default function DashboardClient({
   loadError,
   initialTotalUnlocks,
   initialTotalXecRaw,
-  initialHandles = [],
-  handleAddress = null,
-  initialActiveTokenId = null,
 }) {
   const [posts, setPosts] = useState(initialPosts)
   const [sortMode, setSortMode] = useState('newest')
@@ -527,12 +523,6 @@ export default function DashboardClient({
               {copiedAddress ? <p className="dashcopied">Copied!</p> : null}
             </>
           ) : null}
-
-          <DashboardHandleCarousel
-            initialHandles={initialHandles}
-            initialAddress={handleAddress}
-            initialActiveTokenId={initialActiveTokenId}
-          />
 
           {notificationsOpen ? (
             <div className="dashnotifs">
