@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import FeedPost from '@/components/feed/FeedPost'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import HandleCarousel from '@/components/HandleCarousel'
+import UnlockIcon from '@/components/UnlockIcon'
+import EcashIcon from '@/components/EcashIcon'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 
 function truncateAddress(addr) {
@@ -284,12 +286,14 @@ export default function AuthorProfilePageClient({
               ) : null}
               {totalUnlocks > 0 ? (
                 <span className="profstat">
-                  🔓 <strong>{Number(totalUnlocks).toLocaleString()}</strong> unlocks
+                  <UnlockIcon size={14} />
+                  <strong>{Number(totalUnlocks).toLocaleString()}</strong> unlocks
                 </span>
               ) : null}
               {earnedXec > 0 ? (
                 <span className="profstat">
-                  💰 <strong>{earnedXec.toLocaleString()}</strong> XEC earned
+                  <EcashIcon size={14} />
+                  <strong>{earnedXec.toLocaleString()}</strong> XEC earned
                 </span>
               ) : null}
             </div>

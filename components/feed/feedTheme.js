@@ -265,6 +265,7 @@ export const FEED_CSS = `
 .pow-feed .proffollowers strong{color:var(--text);font-weight:700;}
 .pow-feed .proffollow .postmenu{margin-left:0;}
 .pow-feed .profstats{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin:16px 0 0;font-size:13px;color:var(--dim);}
+.pow-feed .profstat{display:inline-flex;align-items:center;gap:6px;}
 .pow-feed .profstat strong{color:var(--text);font-weight:700;}
 .pow-feed .artlink{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;
   padding:6px 14px;font-size:13px;color:var(--cyan);transition:border-color .15s,box-shadow .15s;}
