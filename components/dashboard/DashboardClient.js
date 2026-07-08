@@ -208,6 +208,9 @@ export default function DashboardClient({
   loadError,
   initialTotalUnlocks,
   initialTotalXecRaw,
+  initialHandles = [],
+  handleAddress = null,
+  initialActiveTokenId = null,
 }) {
   const [posts, setPosts] = useState(initialPosts)
   const [sortMode, setSortMode] = useState('newest')
@@ -525,7 +528,11 @@ export default function DashboardClient({
             </>
           ) : null}
 
-          <DashboardHandleCarousel />
+          <DashboardHandleCarousel
+            initialHandles={initialHandles}
+            initialAddress={handleAddress}
+            initialActiveTokenId={initialActiveTokenId}
+          />
 
           {notificationsOpen ? (
             <div className="dashnotifs">

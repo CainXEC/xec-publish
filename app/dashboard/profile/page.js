@@ -16,7 +16,7 @@ export default async function AuthorProfileSettingsPage() {
 
   // Reader-only holder (no author row): show just the display-handle picker.
   if (!acct.authorId) {
-    return <ProfileSettingsForm hasAuthor={false} initialBio="" />
+    return <ProfileSettingsForm hasAuthor={false} initialBio="" initialColor={acct.handleColor ?? ''} />
   }
 
   const supabase = createSupabaseAdminClient()
@@ -51,6 +51,7 @@ export default async function AuthorProfileSettingsPage() {
     <ProfileSettingsForm
       hasAuthor
       initialBio={author.bio != null ? String(author.bio) : ''}
+      initialColor={acct.handleColor ?? ''}
     />
   )
 }

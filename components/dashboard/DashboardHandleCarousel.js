@@ -1,42 +1,26 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveDisplayHandle } from '@/app/dashboard/saveDisplayHandle'
 import HandleCarousel from '@/components/HandleCarousel'
 
-// The dashboard's own-handle picker: fetches the session wallet's handles and
-// lets the author switch which one their profile displays, inline — no need to
-// open Edit Profile. Renders nothing until at least one handle loads.
-export default function DashboardHandleCarousel() {
+// The dashboard's own-handle picker: lets the author switch which held handle
+// their profile displays, inline — no need to open Edit Profile. The held
+// handles are fetched on the server (dashboard page) and passed in as props, so
+// the carousel renders with the rest of the page instead of popping in after a
+// client fetch waterfall. Renders nothing when the wallet holds no handles.
+export default function DashboardHandleCarousel({
+  initialHandles = [],
+  initialAddress = null,
+  initialActiveTokenId = null,
+}) {
   const router = useRouter()
-  const [loading, setLoading] = useState(true)
-  const [handles, setHandles] = useState([])
-  const [address, setAddress] = useState(null)
-  const [activeTokenId, setActiveTokenId] = useState(null)
+  const [handles] = useState(initialHandles)
+  const [address] = useState(initialAddress)
+  const [activeTokenId, setActiveTokenId] = useState(initialActiveTokenId)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
-
-  useEffect(() => {
-    let cancelled = false
-    fetch('/api/account/handles', { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((data) => {
-        if (cancelled) return
-        if (data?.authenticated) {
-          setHandles(Array.isArray(data.handles) ? data.handles : [])
-          setAddress(data.address ?? null)
-          setActiveTokenId(data.activeTokenId ?? null)
-        }
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   async function choose(tokenId) {
     if (saving || tokenId === activeTokenId) return
@@ -64,7 +48,7 @@ export default function DashboardHandleCarousel() {
     }
   }
 
-  if (loading || handles.length === 0) return null
+  if (handles.length === 0) return null
 
   return (
     <HandleCarousel
