@@ -73,6 +73,9 @@ export default function PostPageClient({
   const pollRef = useRef(null)
   const [payBusy, setPayBusy] = useState(false)
   const [paymentInitiated, setPaymentInitiated] = useState(false)
+  // True once the payment tx has been SEEN on-chain but is not yet Avalanche-
+  // final — lets the status message advance from "waiting" to "finalizing".
+  const [paymentFinalizing, setPaymentFinalizing] = useState(false)
   const payTxPollRef = useRef(null)
   const payBaselineTxidRef = useRef('')
   const payLastHandledTxidRef = useRef('')
@@ -511,6 +514,7 @@ export default function PostPageClient({
       }
     }
     setPaymentInitiated(true)
+    setPaymentFinalizing(false)
     setPollingActive(true)
     setPayBusy(true)
     openCashtab(cashtabUrl)
@@ -566,16 +570,19 @@ export default function PostPageClient({
         })
         const verifyData = await verifyRes.json().catch(() => ({}))
 
-        // Payment seen but not yet Avalanche-final (202). Clear the handled ref
-        // so the next poll retries this same txid — the unlock row is written
-        // only once finality lands, so we must keep asking until then.
+        // Payment seen but not yet Avalanche-final (202). Surface the interim
+        // "finalizing" state, then clear the handled ref so the next poll
+        // retries this same txid — the unlock row is written only once finality
+        // lands, so we must keep asking until then.
         if (verifyRes.status === 202 || verifyData.finalizing) {
+          setPaymentFinalizing(true)
           payLastHandledTxidRef.current = ''
           return
         }
 
         if (verifyRes.ok && verifyData.unlocked) {
           triggerPaywallUnlockEffect()
+          setPaymentFinalizing(false)
           setUnlocked(true)
           setPollingActive(false)
           router.refresh()
@@ -599,6 +606,7 @@ export default function PostPageClient({
           const unlockData = await unlockRes.json().catch(() => ({}))
           if (unlockData.unlocked) {
             triggerPaywallUnlockEffect()
+            setPaymentFinalizing(false)
             setUnlocked(true)
             setPollingActive(false)
             router.refresh()
@@ -856,9 +864,17 @@ export default function PostPageClient({
                       <div className="pollcard">
                         <div className="pollrow">
                           <span aria-hidden className="spinner" />
-                          <p className="pollmsg">Waiting for payment confirmation...</p>
+                          <p className="pollmsg">
+                            {paymentFinalizing
+                              ? 'Payment seen — finalizing…'
+                              : 'Waiting for payment…'}
+                          </p>
                         </div>
-                        <p className="pollsub">This usually takes a few seconds</p>
+                        <p className="pollsub">
+                          {paymentFinalizing
+                            ? 'Almost there — confirming Avalanche finality'
+                            : 'This usually takes a few seconds'}
+                        </p>
                       </div>
                     ) : null}
                   </>
@@ -1025,9 +1041,17 @@ export default function PostPageClient({
                       <div className="pollcard">
                         <div className="pollrow">
                           <span aria-hidden className="spinner" />
-                          <p className="pollmsg">Waiting for payment confirmation...</p>
+                          <p className="pollmsg">
+                            {paymentFinalizing
+                              ? 'Payment seen — finalizing…'
+                              : 'Waiting for payment…'}
+                          </p>
                         </div>
-                        <p className="pollsub">This usually takes a few seconds</p>
+                        <p className="pollsub">
+                          {paymentFinalizing
+                            ? 'Almost there — confirming Avalanche finality'
+                            : 'This usually takes a few seconds'}
+                        </p>
                       </div>
                     ) : null}
                   </>
