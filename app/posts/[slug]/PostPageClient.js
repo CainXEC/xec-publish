@@ -258,13 +258,18 @@ export default function PostPageClient({
       ? `/api/check-unlock/${encodeURIComponent(postId)}?walletAddress=${encodeURIComponent(walletAddress)}`
       : `/api/check-unlock/${encodeURIComponent(postId)}`
 
-    const res = await fetch(url)
-    const data = await res.json().catch(() => ({}))
-    if (data.unlocked) {
-      setUnlocked(true)
-      setPollingActive(false)
-      router.refresh()
-      return true
+    try {
+      const res = await fetch(url)
+      const data = await res.json().catch(() => ({}))
+      if (data.unlocked) {
+        setUnlocked(true)
+        setPollingActive(false)
+        router.refresh()
+        return true
+      }
+    } catch {
+      // Network blip — treat as "not unlocked" so the caller shows the paywall.
+      // The polling checks re-run, so a transient failure self-heals.
     }
     return false
   }, [router])
@@ -332,9 +337,17 @@ export default function PostPageClient({
 
     async function initialUnlock() {
       setUnlockCheckPending(true)
-      // cookie fast-path; address-based unlock now comes from /api/me below.
-      await checkUnlock(post.id)
-      if (!cancelled) setUnlockCheckPending(false)
+      try {
+        // cookie fast-path; address-based unlock now comes from /api/me below.
+        await checkUnlock(post.id)
+      } catch {
+        // A failed check must fail safe TO the paywall — never leave the reader
+        // stuck on "Checking access...". If they've actually paid, the address
+        // fast-path (/api/me unlockedPostIds) and the polling checks still
+        // reconcile them to unlocked.
+      } finally {
+        if (!cancelled) setUnlockCheckPending(false)
+      }
     }
 
     void initialUnlock()
