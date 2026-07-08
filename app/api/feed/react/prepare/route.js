@@ -1,7 +1,7 @@
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
-import { rateLimit } from '@/lib/rateLimit'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { FEED_MIN_XEC } from '@/lib/feedPricing'
 import { computePaymentSplit, buildPaywallBip21 } from '@/lib/paymentSplit'
@@ -23,7 +23,7 @@ function normalizeReaction(action) {
  * the on-chain tx and records the reaction (deduped, one per wallet per post).
  */
 export async function POST(request) {
-  const ip = request.headers.get('x-forwarded-for') || 'unknown'
+  const ip = getClientIp(request)
   if (!(await rateLimit(ip, 30, 60, 'feed-react-prepare'))) {
     return NextResponse.json({ error: 'Too many requests. Please slow down.' }, { status: 429 })
   }

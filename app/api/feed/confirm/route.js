@@ -2,7 +2,7 @@ export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
-import { rateLimit } from '@/lib/rateLimit'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { FEED_CACHE_TAG } from '@/lib/getFeed'
 import { priceFeedPost } from '@/lib/feedPricing'
@@ -40,7 +40,7 @@ function identityFor(address, handle) {
  * `awaiting_payment` while the tx hasn't been seen yet (client re-polls).
  */
 export async function POST(request) {
-  const ip = request.headers.get('x-forwarded-for') || 'unknown'
+  const ip = getClientIp(request)
   if (!(await rateLimit(ip, 60, 60, 'feed-confirm'))) {
     return NextResponse.json({ error: 'Too many requests. Please slow down.' }, { status: 429 })
   }

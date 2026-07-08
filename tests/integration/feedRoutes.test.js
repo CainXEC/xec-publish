@@ -27,7 +27,7 @@ vi.mock('next/cache', () => ({
   unstable_cache: (fn) => fn,
 }))
 vi.mock('@/lib/supabase-server', () => ({ createServerSupabase: mocks.createServerSupabase }))
-vi.mock('@/lib/rateLimit', () => ({ rateLimit: mocks.rateLimit }))
+vi.mock('@/lib/rateLimit', () => ({ rateLimit: mocks.rateLimit, getClientIp: () => 'test-ip' }))
 vi.mock('@/lib/verifyFeedPost', () => ({
   findFeedPayment: mocks.findFeedPayment,
   verifyFeedTxid: mocks.verifyFeedTxid,

@@ -10,7 +10,8 @@ import { createClient } from "@supabase/supabase-js";
 import { validateHandleSyntax, skeleton, displayHandle } from "@/lib/handleSkeleton";
 import { priceForHandle } from "@/lib/handlePricing";
 import { encodePostIdOpReturnRaw } from "@/lib/opReturnEncode";
-import { rateLimit } from "@/lib/rateLimit";
+import { rateLimit, getClientIp } from "@/lib/rateLimit";
+import { mintCapSoldOut } from "@/lib/mintCap";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
   // Unauthenticated endpoint that inserts a pending_mints row and holds a 15-min
   // name lock per call — throttle it so a flood can't bloat the table or grief
   // legitimate minters by squatting name locks.
-  const ip = req.headers.get("x-forwarded-for") || "unknown";
+  const ip = getClientIp(req);
   if (!(await rateLimit(ip, 10, 60, "mint-intent"))) {
     return NextResponse.json({ ok: false, error: "Too many requests. Try again shortly." }, { status: 429 });
   }
@@ -56,6 +57,11 @@ export async function POST(req: NextRequest) {
   ]);
   if (taken) return NextResponse.json({ ok: false, status: "taken" });
   if (reserved) return NextResponse.json({ ok: false, status: "reserved", reason: reserved.reason });
+
+  // Fail fast if the collection is live and sold out — don't take a payment we'd
+  // only have to refund. Advisory only; the authoritative cap check runs in
+  // mintProcessor under the global mint_lock. No-op pre-launch.
+  if (await mintCapSoldOut()) return NextResponse.json({ ok: false, status: "sold_out", reason: "The collection is sold out." });
 
   // flat per-tier price — disambiguation is now the op_return_raw (mintId), not amount.
   const expectedSats = priceSats;

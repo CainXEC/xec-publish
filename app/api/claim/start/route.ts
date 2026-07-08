@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { startClaim } from "@/lib/claimGrant";
-import { rateLimit } from "@/lib/rateLimit";
+import { rateLimit, getClientIp } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   // The one-time claim code is the only thing standing between a caller and a
   // free handle grant, so cap redemption attempts to make brute-forcing codes
   // infeasible.
-  const ip = req.headers.get("x-forwarded-for") || "unknown";
+  const ip = getClientIp(req);
   if (!(await rateLimit(ip, 5, 60, "claim-start"))) {
     return NextResponse.json({ ok: false, error: "Too many attempts. Try again shortly." }, { status: 429 });
   }

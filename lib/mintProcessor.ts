@@ -9,6 +9,7 @@ import { skeleton } from "./handleSkeleton";
 import { priceForHandle } from "./handlePricing";
 import { loadMintWallet, mintHandleChild } from "./mintHandleChild";
 import { hostAsciiCard } from "./nft-art/hostAsciiCard"; // best-effort image host (Gen 1 ASCII card, seed = mint txid)
+import { mintCapSoldOut, recordMintAgainstCap } from "./mintCap";
 
 const CHRONIK_URLS = ["https://chronik.e.cash", "https://chronik-native.fabien.cash"];
 const supabase = createClient((process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
@@ -73,6 +74,15 @@ export async function processPaidMint(mintId: string): Promise<{ status: string;
       return { status: "refunded", error: "name was no longer available" };
     }
 
+    // 10K hard cap: once the collection is live and sold out, don't mint — refund
+    // the payer. No-op pre-launch. Checked under the global mint_lock, so the
+    // count can't be raced past the cap.
+    if (await mintCapSoldOut()) {
+      const refundTxid = await refund(await synced(wallet), m.payer_address, Number(m.expected_sats));
+      await supabase.from("pending_mints").update({ status: "refunded", refund_txid: refundTxid, error: "collection sold out" }).eq("id", mintId);
+      return { status: "refunded", error: "The collection is sold out." };
+    }
+
     // MINT (mintHandleChild syncs the wallet internally)
     const res = await mintHandleChild(wallet, {
       handle: m.handle,
@@ -90,6 +100,10 @@ export async function processPaidMint(mintId: string): Promise<{ status: string;
       tier,
       mint_txid: res.childTokenId,
     });
+
+    // count this mint against the 10K cap (no-op pre-launch). Success-only, under
+    // the lock, so a failed mint never consumes a slot.
+    await recordMintAgainstCap();
 
     // best-effort image (deterministic, so safe to backfill if this fails)
     let imageUrl: string | null = null;

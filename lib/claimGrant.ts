@@ -29,12 +29,14 @@
 // =============================================================================
 
 import { createClient } from "@supabase/supabase-js";
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual, randomUUID } from "node:crypto";
 import { skeleton, displayHandle, validateHandleSyntax } from "./handleSkeleton";
 import { priceForHandle } from "./handlePricing";
 import { loadMintWallet, mintHandleChild } from "./mintHandleChild";
 import { hostAsciiCard } from "./nft-art/hostAsciiCard"; // Gen 1 ASCII card, seed = mint txid (matches mintProcessor)
 import { findMintPayment, verifyMintTxid } from "./mintPayments";
+import { encodePostIdOpReturnRaw } from "./opReturnEncode";
+import { mintCapSoldOut, recordMintAgainstCap } from "./mintCap";
 
 const CHRONIK_URLS = ["https://chronik.e.cash", "https://chronik-native.fabien.cash"];
 const supabase = createClient((process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
@@ -75,7 +77,7 @@ async function assignProofSats(): Promise<number> {
 
 async function loadGrant(sk: string) {
   const { data } = await supabase.from("claim_grants")
-    .select("handle, code_hash, status, proof_sats, proof_started_unix, proof_expires_at, claimed_token_id, claimed_address, legacy_author_ref")
+    .select("handle, code_hash, status, proof_sats, proof_nonce, proof_txid, proof_started_unix, proof_expires_at, claimed_token_id, claimed_address, legacy_author_ref")
     .eq("handle_skeleton", sk).maybeSingle();
   return data as any;
 }
@@ -109,17 +111,24 @@ export async function startClaim(input: { handle: string; code: string }): Promi
   if (taken) return { ok: false, code: "taken", error: "This handle has already been minted." };
 
   const proofSats = await assignProofSats();
+  // Per-round nonce (UUID) that tags THIS proof round in OP_RETURN, so detection
+  // binds to the exact tx we asked for — not merely any dust of the same amount
+  // hitting the shared proof address (== MINT_PAYMENT_ADDRESS, which also
+  // receives mint/unlock payments). Regenerated every start, so an old round's
+  // proof tx can never satisfy a fresh challenge (replay protection).
+  const proofNonce = randomUUID();
   const startedUnix = Math.floor(Date.now() / 1000);
   const expiresAt = new Date(Date.now() + PROOF_MINUTES * 60_000).toISOString();
   await supabase.from("claim_grants").update({
-    status: "awaiting_proof", proof_sats: proofSats, proof_started_unix: startedUnix, proof_expires_at: expiresAt,
+    status: "awaiting_proof", proof_sats: proofSats, proof_nonce: proofNonce, proof_started_unix: startedUnix, proof_expires_at: expiresAt,
     // Clear any stale proof-captured marker from a prior attempt that died mid-mint,
     // so this fresh proof round starts in detection, not straight into minting.
-    claimed_address: null,
+    claimed_address: null, proof_txid: null,
   }).eq("handle_skeleton", sk);
 
   const amountXec = (proofSats / 100).toFixed(2);
-  return { ok: true, handle: grant.handle, proofAddress: PROOF_ADDRESS, proofSats, amountXec, bip21: `${PROOF_ADDRESS}?amount=${amountXec}`, expiresAt };
+  const opReturnRaw = encodePostIdOpReturnRaw(proofNonce);
+  return { ok: true, handle: grant.handle, proofAddress: PROOF_ADDRESS, proofSats, amountXec, bip21: `${PROOF_ADDRESS}?amount=${amountXec}&op_return_raw=${opReturnRaw}`, expiresAt };
 }
 
 // ---------------------------------------------------------------- step 2
@@ -156,10 +165,13 @@ export async function pollClaim(input: { handle: string; txid?: string }): Promi
     return { ok: true, status: "expired" };
   }
 
-  // detect the proof tx and read the SENDER address (proof of key control)
+  // detect the proof tx and read the SENDER address (proof of key control).
+  // Match on THIS round's OP_RETURN nonce (grant.proof_nonce), not just the
+  // amount — an untagged coincidental payment of the same value to the shared
+  // proof address can no longer be mistaken for the claim proof.
   const det = input.txid
-    ? await verifyMintTxid(input.txid, PROOF_ADDRESS, grant.proof_sats)
-    : await findMintPayment(PROOF_ADDRESS, null, grant.proof_sats, grant.proof_started_unix);
+    ? await verifyMintTxid(input.txid, PROOF_ADDRESS, grant.proof_sats, grant.proof_nonce ?? undefined)
+    : await findMintPayment(PROOF_ADDRESS, grant.proof_nonce ?? null, grant.proof_sats, grant.proof_started_unix);
   if (!det?.payerAddress) return { ok: true, status: "awaiting_proof" };
 
   // Hold the mint until the proof tx is Avalanche-final. Until then it could be
@@ -173,9 +185,15 @@ export async function pollClaim(input: { handle: string; txid?: string }): Promi
   // the (several-second) mint, guaranteeing the client shows a "minting" frame in
   // between — the mint page's detect-then-process split, done with an existing
   // column instead of a new status value (status is CHECK-constrained).
-  await supabase.from("claim_grants")
-    .update({ claimed_address: det.payerAddress })
+  // Record the proof txid alongside the delivery address. proof_txid carries a
+  // UNIQUE constraint, so a single on-chain tx can back at most one claim — a
+  // DB-level backstop against replaying one proof across grants even if the
+  // nonce/amount guards were somehow bypassed. A conflict here means this tx is
+  // already committed to another claim: don't mint, keep polling.
+  const { error: capErr } = await supabase.from("claim_grants")
+    .update({ claimed_address: det.payerAddress, proof_txid: det.txid })
     .eq("handle_skeleton", sk).eq("status", "awaiting_proof").is("claimed_address", null);
+  if (capErr) return { ok: true, status: "awaiting_proof" };
   return { ok: true, status: "minting" };
 }
 
@@ -203,6 +221,14 @@ async function runMint(sk: string, grant: any, address: string): Promise<PollRes
       return { ok: false, status: "error", error: "This handle has already been minted." };
     }
 
+    // 10K hard cap: grandfather claims draw from the same collection supply, so
+    // honor the cap here too (no-op pre-launch). Clear the captured marker so the
+    // grant isn't stranded mid-mint.
+    if (await mintCapSoldOut()) {
+      await supabase.from("claim_grants").update({ claimed_address: null }).eq("handle_skeleton", sk).eq("status", "awaiting_proof");
+      return { ok: false, status: "error", error: "The collection is sold out." };
+    }
+
     // which legacy author does this grant belong to? (contract: legacy_author_ref = authors.id)
     const authorId = await resolveGrantAuthorId(grant2 ?? grant);
 
@@ -216,6 +242,9 @@ async function runMint(sk: string, grant: any, address: string): Promise<PollRes
       token_id: childTokenId, handle: grant.handle, handle_skeleton: sk,
       origin: "grandfather", tier, mint_txid: childTokenId, minted_for_account_id: accountId,
     });
+
+    // count this claim against the 10K cap (no-op pre-launch)
+    await recordMintAgainstCap();
 
     let imageUrl: string | null = null;
     try { imageUrl = await hostAsciiCard(grant.handle, childTokenId); } catch { /* backfill later */ }

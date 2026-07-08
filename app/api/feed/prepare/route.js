@@ -1,7 +1,7 @@
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
-import { rateLimit } from '@/lib/rateLimit'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { priceFeedPost } from '@/lib/feedPricing'
 import { computePaymentSplit, buildPaywallBip21, buildPublishFeeBip21 } from '@/lib/paymentSplit'
@@ -20,7 +20,7 @@ function normalizeAction(action) {
  * commits to is re-derived and checked on-chain at /api/feed/confirm.
  */
 export async function POST(request) {
-  const ip = request.headers.get('x-forwarded-for') || 'unknown'
+  const ip = getClientIp(request)
   if (!(await rateLimit(ip, 30, 60, 'feed-prepare'))) {
     return NextResponse.json({ error: 'Too many requests. Please slow down.' }, { status: 429 })
   }

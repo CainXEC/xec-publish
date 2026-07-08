@@ -28,6 +28,7 @@
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.37.0",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/functions": "^3.7.5",
     "cashtab-connect": "^1.1.0",
     "chronik-client": "^4.3.0",
     "dompurify": "^3.3.3",

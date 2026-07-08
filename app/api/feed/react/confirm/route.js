@@ -1,7 +1,7 @@
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
-import { rateLimit } from '@/lib/rateLimit'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { FEED_MIN_XEC } from '@/lib/feedPricing'
 import { FEED_ACTION } from '@/lib/feedProtocol'
@@ -37,7 +37,7 @@ function identityFor(address, handle) {
  * no-op. Returns `awaiting_payment` while the tx hasn't been seen yet.
  */
 export async function POST(request) {
-  const ip = request.headers.get('x-forwarded-for') || 'unknown'
+  const ip = getClientIp(request)
   if (!(await rateLimit(ip, 60, 60, 'feed-react-confirm'))) {
     return NextResponse.json({ error: 'Too many requests. Please slow down.' }, { status: 429 })
   }

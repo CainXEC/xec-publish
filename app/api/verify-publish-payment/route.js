@@ -5,7 +5,7 @@ import { ChronikClient } from 'chronik-client'
 import { getOutputScriptFromAddress } from 'ecashaddrjs'
 import { decodeOpReturnToPostId } from '@/lib/opReturnEncode'
 import { decodeFeedOpReturn, contentHashHex, FEED_ACTION } from '@/lib/feedProtocol'
-import { rateLimit } from '@/lib/rateLimit'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { getAuthedAccount } from '@/lib/authHelpers'
 
@@ -40,7 +40,7 @@ function outputScriptToHex(outputScript) {
 }
 
 export async function POST(request) {
-  const ip = request.headers.get('x-forwarded-for') || 'unknown'
+  const ip = getClientIp(request)
   if (!(await rateLimit(ip, 10, 60, 'verify-publish-payment'))) {
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },

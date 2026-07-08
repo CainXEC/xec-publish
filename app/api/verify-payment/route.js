@@ -3,7 +3,7 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { ChronikClient } from 'chronik-client'
 import { signCookieValue } from '@/lib/cookieSigner'
-import { rateLimit } from '@/lib/rateLimit'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { supabase } from '@/lib/supabase'
 import { verifyAndRecordUnlock } from '@/lib/verifyPaymentUnlock'
 import { resolveOrCreateAccount } from '@/lib/walletAuth'
@@ -22,7 +22,7 @@ const chronik = new ChronikClient([
 ])
 
 export async function POST(request) {
-  const ip = request.headers.get('x-forwarded-for') || 'unknown'
+  const ip = getClientIp(request)
   if (!(await rateLimit(ip, 10, 60, 'verify-payment'))) {
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },

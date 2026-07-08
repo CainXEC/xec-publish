@@ -25,6 +25,7 @@ const STATUS_COPY: Record<string, string> = {
   reserved: "Reserved.",
   pending: "Someone is minting this right now.",
   auction: "Premium name — released by auction, not direct mint.",
+  sold_out: "Sold out — all 10,000 handles have been minted.",
 };
 
 export default function MintHandle({

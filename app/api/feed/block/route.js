@@ -1,7 +1,7 @@
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
-import { rateLimit } from '@/lib/rateLimit'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { getAuthedAccount } from '@/lib/authHelpers'
 
@@ -18,7 +18,7 @@ import { getAuthedAccount } from '@/lib/authHelpers'
  * AFTER the toggle.
  */
 export async function POST(request) {
-  const ip = request.headers.get('x-forwarded-for') || 'unknown'
+  const ip = getClientIp(request)
   if (!(await rateLimit(ip, 60, 60, 'feed-block'))) {
     return NextResponse.json({ ok: false, error: 'Too many requests.' }, { status: 429 })
   }

@@ -1,7 +1,7 @@
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
-import { rateLimit } from '@/lib/rateLimit'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { encodeFeedOpReturnRaw, contentHashHex, FEED_ACTION } from '@/lib/feedProtocol'
@@ -13,7 +13,7 @@ import { encodeFeedOpReturnRaw, contentHashHex, FEED_ACTION } from '@/lib/feedPr
 // matches what verify-publish-payment recomputes — the client never hashes, so
 // there's no client/server drift. Authed to the owning author only.
 export async function GET(request) {
-  const ip = request.headers.get('x-forwarded-for') || 'unknown'
+  const ip = getClientIp(request)
   if (!(await rateLimit(ip, 30, 60, 'publish-prepare'))) {
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },

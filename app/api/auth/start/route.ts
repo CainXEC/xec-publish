@@ -7,13 +7,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { startAuth } from "@/lib/walletAuth";
-import { rateLimit } from "@/lib/rateLimit";
+import { rateLimit, getClientIp } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for") || "unknown";
+  const ip = getClientIp(req);
   if (!(await rateLimit(ip, 5, 60, "auth-start"))) {
     return NextResponse.json({ ok: false, error: "Too many login attempts. Try again shortly." }, { status: 429 });
   }

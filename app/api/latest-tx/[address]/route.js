@@ -2,7 +2,7 @@ export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
 import { ChronikClient } from 'chronik-client'
-import { rateLimit } from '@/lib/rateLimit'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 
 const chronik = new ChronikClient([
   'https://chronik.e.cash',
@@ -12,7 +12,7 @@ const chronik = new ChronikClient([
 ])
 
 export async function GET(request, { params }) {
-  const ip = request.headers.get('x-forwarded-for') || 'unknown'
+  const ip = getClientIp(request)
   if (!(await rateLimit(ip, 60, 60, 'latest-tx'))) {
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },

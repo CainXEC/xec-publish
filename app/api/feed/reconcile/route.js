@@ -2,7 +2,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server'
-import { rateLimit } from '@/lib/rateLimit'
+import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { txFinalityState } from '@/lib/ecash/finality'
 import { pruneOldFeedNotifications } from '@/lib/feedNotifications'
@@ -98,7 +98,7 @@ export async function GET(request) {
   const trusted = Boolean(secret) && auth === `Bearer ${secret}`
 
   if (!trusted) {
-    const ip = request.headers.get('x-forwarded-for') || 'unknown'
+    const ip = getClientIp(request)
     if (!(await rateLimit(ip, 6, 60, 'feed-reconcile'))) {
       return NextResponse.json({ error: 'Too many requests.' }, { status: 429 })
     }

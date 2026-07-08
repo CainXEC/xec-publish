@@ -7,13 +7,13 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/walletAuth";
-import { rateLimit } from "@/lib/rateLimit";
+import { rateLimit, getClientIp } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for") || "unknown";
+  const ip = getClientIp(req);
   if (!(await rateLimit(ip, 40, 60, "auth-status"))) {
     return NextResponse.json({ ok: false, status: "error", error: "Too many requests." }, { status: 429 });
   }
