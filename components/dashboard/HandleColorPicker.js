@@ -14,10 +14,6 @@ export default function HandleColorPicker({ value = '', onChange, disabled = fal
   return (
     <section className="dashpanel">
       <h2 className="prof-panel-title">Handle color</h2>
-      <p className="prof-panel-sub">
-        The color your handle appears in across the site. Tap the selected swatch
-        again to reset to the default. Hit “Save changes” below to apply.
-      </p>
 
       <div className="prof-swatches" role="radiogroup" aria-label="Handle color">
         {HANDLE_COLORS.map((c) => {
