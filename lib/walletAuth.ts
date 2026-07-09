@@ -190,15 +190,31 @@ export async function resolveOrCreateAccount(address: string): Promise<{ account
     }
   }
 
-  // 2) legacy author by xec_address
+  // 2) Every account is an author identity — there is no reader/author split.
+  //    Reuse a legacy author row if one already exists for this address; otherwise
+  //    mint a fresh one so a brand-new wallet is write-capable from day one, with
+  //    payout to the proven login address. (If author creation fails — e.g. the
+  //    unify_reader_author migration hasn't relaxed the legacy email/username
+  //    NOT NULLs yet — we fall back to author_id = null, i.e. today's behavior,
+  //    so login never breaks; the backfill migration then heals it.)
   const { data: authors } = await supabase
     .from("authors").select("id").in("xec_address", forms).limit(1);
-  const authorId = authors?.[0]?.id ?? null;
+  let authorId = authors?.[0]?.id ?? null;
+  if (!authorId) {
+    const { data: newAuthor } = await supabase
+      .from("authors")
+      .insert({ xec_address: address, is_admin: false })
+      .select("id")
+      .single();
+    authorId = newAuthor?.id ?? null;
+  }
 
-  // create the account (linking the author if we found one)
-  const insert: any = { kind: authorId ? "author" : "reader", updated_at: now };
-  if (authorId) insert.author_id = authorId;
-  const { data: acct } = await supabase.from("accounts").insert(insert).select("id, author_id, display_handle").single();
+  // create the account linked to its author
+  const { data: acct } = await supabase
+    .from("accounts")
+    .insert({ kind: "author", author_id: authorId, updated_at: now })
+    .select("id, author_id, display_handle")
+    .single();
   const accountId = acct!.id as string;
 
   // link the proven address as primary

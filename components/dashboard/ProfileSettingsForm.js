@@ -13,7 +13,6 @@ import DashboardHandleCarousel from '@/components/dashboard/DashboardHandleCarou
 export default function ProfileSettingsForm({
   initialBio,
   initialColor = '',
-  hasAuthor = true,
   initialHandles = [],
   handleAddress = null,
   initialActiveTokenId = null,
@@ -72,8 +71,9 @@ export default function ProfileSettingsForm({
         }
       }
 
-      // Only authors have a bio row to update.
-      if (hasAuthor) {
+      // Every account is an author identity, so the bio always lives on
+      // authors.bio (saveProfile). Only persist when it actually changed.
+      if (bio !== saved.bio) {
         const result = await saveProfile({ bio })
         if (result?.unauthorized) {
           router.replace('/login')
@@ -139,16 +139,12 @@ export default function ProfileSettingsForm({
       <style>{FEED_CSS}</style>
       <style>{PROFILE_CSS}</style>
 
-      <FeedTopbar signedIn isAuthor={hasAuthor} showLogout showMarketplace={false} />
+      <FeedTopbar signedIn isAuthor showLogout showMarketplace={false} />
 
       <main className="wrap" style={{ paddingTop: '28px' }}>
         <section className="dashpanel">
           <h1 className="dashwelcome">Profile settings</h1>
-          <p className="prof-sub">
-            {hasAuthor
-              ? 'Update how readers see you on your public author page.'
-              : 'Choose the color your handle appears in across the site.'}
-          </p>
+          <p className="prof-sub">Update how you appear across the site.</p>
         </section>
 
         <DashboardHandleCarousel
@@ -162,24 +158,23 @@ export default function ProfileSettingsForm({
         <form onSubmit={handleSubmit}>
           <HandleColorPicker value={color} onChange={setColor} disabled={submitting} />
 
-          {hasAuthor ? (
-            <section className="dashpanel">
-              <div className="prof-field">
-                <label htmlFor="bio" className="prof-label">
-                  Bio <span className="opt">(optional)</span>
-                </label>
-                <textarea
-                  id="bio"
-                  name="bio"
-                  rows={5}
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  className="prof-input"
-                  placeholder="Shown on your public author page"
-                />
-              </div>
-            </section>
-          ) : null}
+          <section className="dashpanel">
+            <div className="prof-field">
+              <label htmlFor="bio" className="prof-label">
+                Bio <span className="opt">(optional)</span>
+              </label>
+              <textarea
+                id="bio"
+                name="bio"
+                rows={5}
+                maxLength={500}
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                className="prof-input"
+                placeholder="A short bio shown on your profile"
+              />
+            </div>
+          </section>
 
           <section className="dashpanel">
             {submitError ? (
@@ -202,27 +197,25 @@ export default function ProfileSettingsForm({
           </section>
         </form>
 
-        {hasAuthor ? (
-          <section className="dashpanel prof-danger">
-            <h2 className="prof-danger-title">Danger zone</h2>
-            <p className="prof-danger-sub">
-              Permanently delete your account and all posts. This cannot be undone.
+        <section className="dashpanel prof-danger">
+          <h2 className="prof-danger-title">Danger zone</h2>
+          <p className="prof-danger-sub">
+            Permanently delete your account and all posts. This cannot be undone.
+          </p>
+          {deleteError ? (
+            <p className="error" style={{ marginTop: '12px' }} role="alert">
+              {deleteError}
             </p>
-            {deleteError ? (
-              <p className="error" style={{ marginTop: '12px' }} role="alert">
-                {deleteError}
-              </p>
-            ) : null}
-            <button
-              type="button"
-              onClick={handleDeleteAccount}
-              disabled={deleting}
-              className="prof-danger-btn"
-            >
-              {deleting ? 'Deleting…' : 'Delete account'}
-            </button>
-          </section>
-        ) : null}
+          ) : null}
+          <button
+            type="button"
+            onClick={handleDeleteAccount}
+            disabled={deleting}
+            className="prof-danger-btn"
+          >
+            {deleting ? 'Deleting…' : 'Delete account'}
+          </button>
+        </section>
       </main>
     </div>
   )
