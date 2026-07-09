@@ -364,7 +364,7 @@ export const FEED_CSS = `
 .pow-feed .dashhandles-search{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;
   font:inherit;font-size:12px;color:var(--text);min-width:160px;transition:border-color .15s,box-shadow .15s;}
 .pow-feed .dashhandles-search:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 12px rgba(61,240,255,.16);}
-.pow-feed .dashhandles-track{display:flex;gap:10px;margin-top:12px;overflow-x:auto;padding:4px 2px 12px;
+.pow-feed .dashhandles-track{display:flex;align-items:flex-start;gap:10px;margin-top:12px;overflow-x:auto;padding:4px 2px 12px;
   scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;}
 .pow-feed .dashhandle{flex:0 0 auto;width:88px;display:flex;flex-direction:column;align-items:center;gap:8px;
   background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 8px;cursor:pointer;
@@ -379,6 +379,12 @@ export const FEED_CSS = `
   font-size:18px;font-weight:800;color:var(--neon);background:var(--panel);border:1px solid var(--line);}
 .pow-feed .dashhandle-name{max-width:100%;font-size:12px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .pow-feed .dashhandle.active .dashhandle-name{color:var(--neon);}
+/* "Buy handle" call-to-action tile (shown when the wallet holds no handles). */
+.pow-feed .dashhandle.buy{border-style:dashed;border-color:var(--neon);text-decoration:none;}
+.pow-feed .dashhandle.buy:hover{border-color:var(--neon);box-shadow:0 0 14px rgba(0,255,156,.28);}
+.pow-feed .dashhandle.buy .dashhandle-addr{color:var(--neon);border-color:var(--neon);font-size:30px;font-weight:400;}
+.pow-feed .dashhandle.buy .dashhandle-name{color:var(--neon);white-space:normal;overflow:visible;text-overflow:clip;
+  line-height:1.2;text-align:center;}
 /* Full handle shown in a floating tooltip on hover/focus (portal-rendered at
    the body so the carousel's horizontal scroll can't clip it). The card itself
    never resizes. */

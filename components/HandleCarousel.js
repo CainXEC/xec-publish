@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+import Link from 'next/link'
 import EcashIcon from '@/components/EcashIcon'
 
 // The horizontally-scrolling strip of handle-NFT cards, shared by the dashboard
@@ -36,6 +37,7 @@ export default function HandleCarousel({
   onChoose = null, // provide to make cards selectable; omit for read-only display
   includeAddress = false, // show an "Address" option (display-your-address picker)
   address = null, // the wallet address, shown in full on hover of the Address card
+  buyHandleHref = null, // when set, append a "Buy handle" card linking out (e.g. marketplace)
   busy = false,
   error = null,
 }) {
@@ -60,7 +62,9 @@ export default function HandleCarousel({
   const shown = filtered.slice(0, MAX_RENDER)
   const overflow = filtered.length - shown.length
 
-  if (handles.length === 0) return null
+  // Render even with zero handles in the interactive picker (still shows the
+  // Address option + a Buy-handle prompt); read-only empty collapses to nothing.
+  if (handles.length === 0 && !interactive && !buyHandleHref) return null
 
   const cardProps = (label) => ({
     onMouseEnter: (e) => showTip(e, label),
@@ -141,6 +145,20 @@ export default function HandleCarousel({
             </span>
             <span className="dashhandle-name">Address</span>
           </button>
+        ) : null}
+
+        {/* No handle yet — point at the marketplace to buy one. */}
+        {buyHandleHref ? (
+          <Link
+            href={buyHandleHref}
+            className="dashhandle buy"
+            {...cardProps('Buy a handle on the marketplace')}
+          >
+            <span className="dashhandle-addr" aria-hidden>
+              +
+            </span>
+            <span className="dashhandle-name">Buy handle</span>
+          </Link>
         ) : null}
       </div>
 
