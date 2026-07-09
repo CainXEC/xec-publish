@@ -34,8 +34,8 @@ import { createServerSupabase } from "@/lib/supabase-server";
 import { skeleton } from "@/lib/handleSkeleton";
 import { ChronikClient } from "chronik-client";
 import { encodeCashAddress, decodeCashAddress } from "ecashaddrjs";
+import { CHRONIK_URLS } from "@/lib/ecash/chronikEndpoints";
 
-const CHRONIK_URLS = ["https://chronik.e.cash", "https://chronik-native.fabien.cash"];
 let _chronik: ChronikClient | null = null;
 const chronik = () => (_chronik ??= new ChronikClient(CHRONIK_URLS));
 

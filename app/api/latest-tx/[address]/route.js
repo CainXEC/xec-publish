@@ -3,13 +3,9 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { ChronikClient } from 'chronik-client'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
+import { CHRONIK_URLS } from '@/lib/ecash/chronikEndpoints'
 
-const chronik = new ChronikClient([
-  'https://chronik.e.cash',
-  'https://chronik-native1.fabien.cash',
-  'https://chronik-native2.fabien.cash',
-  'https://chronik-native3.fabien.cash',
-])
+const chronik = new ChronikClient(CHRONIK_URLS)
 
 export async function GET(request, { params }) {
   const ip = getClientIp(request)

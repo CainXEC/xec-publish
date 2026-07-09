@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
+import { watchPaymentAddress } from '@/lib/ecash/watchPaymentAddress'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 
 /**
@@ -142,9 +143,17 @@ export default function ComposeBox({
     }
     confirm()
     const id = setInterval(() => !stopped && confirm(), 2500)
+    // Live nudge: a Chronik websocket on the payment address fires an immediate
+    // confirm (with the txid) the moment the payment lands, instead of waiting up
+    // to 2.5s for the next tick. The confirm route still recomputes the content
+    // hash and gates on Avalanche finality server-side.
+    const stopWatch = watchPaymentAddress(intent.payAddress, (txid) => {
+      if (!stopped) confirm(txid)
+    })
     return () => {
       stopped = true
       clearInterval(id)
+      stopWatch()
     }
   }, [phase, intent, content, action, parentTxid, quotedTxid, handlePosted])
 

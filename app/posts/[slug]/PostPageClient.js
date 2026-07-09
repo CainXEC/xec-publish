@@ -9,6 +9,7 @@ import { ARTICLE_CSS } from './articleTheme'
 import { charCounterClassName } from '@/lib/charCounterClassName'
 import { encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
 import { buildPaywallBip21, computePaymentSplit } from '@/lib/paymentSplit'
+import { watchPaymentAddress } from '@/lib/ecash/watchPaymentAddress'
 import { triggerPaymentSuccessEffect } from '@/lib/paymentSuccessEffect'
 import {
   ensureAudioContextRunning,
@@ -77,6 +78,7 @@ export default function PostPageClient({
   // final — lets the status message advance from "waiting" to "finalizing".
   const [paymentFinalizing, setPaymentFinalizing] = useState(false)
   const payTxPollRef = useRef(null)
+  const payWatchRef = useRef(null)
   const payBaselineTxidRef = useRef('')
   const payLastHandledTxidRef = useRef('')
   /** Shared AudioContext, primed on Pay click (user gesture) for mobile unlock sound after async verify. */
@@ -416,13 +418,24 @@ export default function PostPageClient({
       void checkUnlock(post.id, wallet || undefined)
     }, 3000)
 
+    // Live nudge: a Chronik websocket on the author's address fires an immediate
+    // unlock check the moment the payment lands, instead of waiting up to 3s for
+    // the next tick. check-unlock is authoritative server-side, so an unrelated
+    // tx to the author just costs one harmless check. (Derived inline from
+    // `author` here — the memoized address var is declared later in render.)
+    const stopWatch = watchPaymentAddress(author?.xec_address?.trim() || '', () => {
+      const wallet = readerWalletAddress.trim()
+      void checkUnlock(post.id, wallet || undefined)
+    })
+
     return () => {
       if (pollRef.current) {
         clearInterval(pollRef.current)
         pollRef.current = null
       }
+      stopWatch()
     }
-  }, [pollingActive, post?.id, unlocked, isAuthorSession, checkUnlock, readerWalletAddress])
+  }, [pollingActive, post?.id, unlocked, isAuthorSession, checkUnlock, readerWalletAddress, author?.xec_address])
 
   useEffect(() => {
     if (!post?.id || unlocked || isAuthorSession) return
@@ -457,6 +470,10 @@ export default function PostPageClient({
       if (payTxPollRef.current) {
         clearInterval(payTxPollRef.current)
         payTxPollRef.current = null
+      }
+      if (payWatchRef.current) {
+        payWatchRef.current()
+        payWatchRef.current = null
       }
     }
   }, [])
@@ -539,6 +556,10 @@ export default function PostPageClient({
       clearInterval(payTxPollRef.current)
       payTxPollRef.current = null
     }
+    if (payWatchRef.current) {
+      payWatchRef.current()
+      payWatchRef.current = null
+    }
 
     try {
       const baselineRes = await fetch(
@@ -590,6 +611,10 @@ export default function PostPageClient({
             clearInterval(payTxPollRef.current)
             payTxPollRef.current = null
           }
+          if (payWatchRef.current) {
+            payWatchRef.current()
+            payWatchRef.current = null
+          }
           void persistReaderAfterPaywallUnlock()
           void fetchUnlockCount(post.id)
           return
@@ -614,6 +639,10 @@ export default function PostPageClient({
               clearInterval(payTxPollRef.current)
               payTxPollRef.current = null
             }
+            if (payWatchRef.current) {
+              payWatchRef.current()
+              payWatchRef.current = null
+            }
             void persistReaderAfterPaywallUnlock()
             void fetchUnlockCount(post.id)
           }
@@ -627,6 +656,13 @@ export default function PostPageClient({
     payTxPollRef.current = setInterval(() => {
       void checkLatest()
     }, 3000)
+    // Live nudge: a Chronik websocket on the author's address fires verify-payment
+    // the instant the unlock payment lands, instead of waiting up to 3s for the
+    // next tick. checkLatest re-baselines + verifies + gates on finality, so an
+    // unrelated tx to the author just costs one harmless check.
+    payWatchRef.current = watchPaymentAddress(authorAddressForLatestTx, () => {
+      void checkLatest()
+    })
   }, [
     authorAddressForLatestTx,
     fetchUnlockCount,

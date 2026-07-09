@@ -15,19 +15,14 @@
 
 import { ChronikClient } from "chronik-client";
 import { Agora } from "ecash-agora";
+import { CHRONIK_AGORA_URLS } from "@/lib/ecash/chronikEndpoints";
 
-// Agora needs a Chronik instance with the "agora" plugin loaded. The general
-// public nodes (chronik.e.cash, etc.) do NOT load it and 404 the plugin route;
-// the "native" fabien.cash nodes DO — they're the ones Cashtab uses for Agora.
-const CHRONIK_URLS = [
-  "https://chronik-native1.fabien.cash",
-  "https://chronik-native2.fabien.cash",
-  "https://chronik-native3.fabien.cash",
-];
-
+// Agora needs a Chronik instance with the "agora" plugin loaded. The public
+// chronik.e.cash node does NOT load it and 404s the plugin route; the "native"
+// fabien.cash nodes DO — hence the native-only CHRONIK_AGORA_URLS set.
 let _chronik: ChronikClient | null = null;
 let _agora: Agora | null = null;
-const chronik = () => (_chronik ??= new ChronikClient(CHRONIK_URLS));
+const chronik = () => (_chronik ??= new ChronikClient(CHRONIK_AGORA_URLS));
 const agora = () => (_agora ??= new Agora(chronik()));
 
 const SATS_PER_XEC = 100n;

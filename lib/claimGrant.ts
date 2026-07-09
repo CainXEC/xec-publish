@@ -38,7 +38,7 @@ import { findMintPayment, verifyMintTxid } from "./mintPayments";
 import { encodePostIdOpReturnRaw } from "./opReturnEncode";
 import { mintCapSoldOut, recordMintAgainstCap } from "./mintCap";
 
-const CHRONIK_URLS = ["https://chronik.e.cash", "https://chronik-native.fabien.cash"];
+import { CHRONIK_URLS } from "@/lib/ecash/chronikEndpoints";
 const supabase = createClient((process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 const PROOF_ADDRESS = process.env.MINT_PAYMENT_ADDRESS!;
 const CLAIM_WINDOW_ENDS = process.env.CLAIM_WINDOW_ENDS ? Date.parse(process.env.CLAIM_WINDOW_ENDS) : Infinity;

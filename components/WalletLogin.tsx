@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import { watchPaymentAddress } from "@/lib/ecash/watchPaymentAddress";
 
 type Started = {
   ok: true;
@@ -94,7 +95,11 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
     };
     poll();
     const id = setInterval(() => !stopped && poll(), 2500);
-    return () => { stopped = true; clearInterval(id); };
+    // Live nudge: a Chronik websocket on the proof address fires an immediate
+    // poll the instant the login payment lands, instead of waiting up to 2.5s
+    // for the next tick. The status route still verifies the nonce server-side.
+    const stopWatch = watchPaymentAddress(started.proofAddress, () => { if (!stopped) poll(); });
+    return () => { stopped = true; clearInterval(id); stopWatch(); };
   }, [phase, started, redirectTo]);
 
   // countdown to nonce expiry

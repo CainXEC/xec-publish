@@ -14,6 +14,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { renderMysteryCard } from "@/lib/renderHandleCard";
+import { watchPaymentAddress } from "@/lib/ecash/watchPaymentAddress";
 
 type Started = {
   ok: true;
@@ -103,7 +104,11 @@ export default function ClaimHandle() {
     // Poll faster than finality settles (~2-3s) so we actually catch the brief
     // "seen but not final" window and show the finalizing state, not skip it.
     const id = setInterval(() => !stopped && poll(), 1500);
-    return () => { stopped = true; clearInterval(id); };
+    // Live nudge: a Chronik websocket on the proof address fires an immediate
+    // poll (with the txid) the moment the proof payment lands, instead of waiting
+    // up to 1.5s for the next tick. The server still gates on Avalanche finality.
+    const stopWatch = watchPaymentAddress(started.proofAddress, (txid) => { if (!stopped) poll(txid); });
+    return () => { stopped = true; clearInterval(id); stopWatch(); };
   }, [phase, started]);
 
   // ---- countdown to expiry ----

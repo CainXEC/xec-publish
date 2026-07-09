@@ -100,6 +100,10 @@ export async function POST(request) {
     costXec: amountXec,
     amountXec,
     bip21Url,
+    // Author's address (the reaction's primary output) — the client watches it on
+    // a Chronik websocket to confirm the moment the payment lands, rather than
+    // waiting for the next 2.5s poll tick. Server still gates on finality.
+    payAddress: target.payout_address,
     cashtabUrl: `https://cashtab.com/#/send?bip21=${bip21Url}`,
     preparedAt: Math.floor(Date.now() / 1000),
   })

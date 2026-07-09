@@ -22,10 +22,10 @@
 // =============================================================================
 
 import { ChronikClient } from "chronik-client";
+import { CHRONIK_URLS } from "./chronikEndpoints";
 
-// Standard public nodes. `isFinal` is a core Chronik field (not a plugin), so
-// any node reports it — same failover pair the payment verifiers already use.
-const CHRONIK_URLS = ["https://chronik.e.cash", "https://chronik-native.fabien.cash"];
+// `isFinal` is a core Chronik field (not a plugin), so any node reports it —
+// same shared failover set the payment verifiers already use.
 let _chronik: ChronikClient | null = null;
 const chronik = () => (_chronik ??= new ChronikClient(CHRONIK_URLS));
 

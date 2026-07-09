@@ -13,13 +13,9 @@ import {
   SESSION_COOKIE,
   SESSION_MAX_AGE_DAYS,
 } from '@/lib/session'
+import { CHRONIK_URLS } from '@/lib/ecash/chronikEndpoints'
 
-const chronik = new ChronikClient([
-  'https://chronik.e.cash',
-  'https://chronik-native1.fabien.cash',
-  'https://chronik-native2.fabien.cash',
-  'https://chronik-native3.fabien.cash',
-])
+const chronik = new ChronikClient(CHRONIK_URLS)
 
 export async function POST(request) {
   const ip = getClientIp(request)

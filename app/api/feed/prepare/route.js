@@ -103,6 +103,10 @@ export async function POST(request) {
   // Post and quote are your own content → 100% platform fee. Reply splits 94/6
   // to the parent's author.
   let bip21Url
+  // Address the payment's primary output lands on — handed to the client so it
+  // can open a Chronik websocket on it and trigger an immediate confirm the
+  // moment the payment appears, instead of waiting for the next 2.5s poll tick.
+  let payAddress
   if (action === FEED_ACTION.REPLY) {
     const split = computePaymentSplit(costXec)
     if (!split) {
@@ -115,8 +119,10 @@ export async function POST(request) {
       split.platformAmount,
       opReturnRaw,
     )
+    payAddress = payoutAddress
   } else {
     bip21Url = buildPublishFeeBip21(platformAddress, costXec, opReturnRaw)
+    payAddress = platformAddress
   }
 
   return NextResponse.json({
@@ -129,6 +135,7 @@ export async function POST(request) {
     amountXec: costXec,
     contentHash,
     bip21Url,
+    payAddress,
     cashtabUrl: `https://cashtab.com/#/send?bip21=${bip21Url}`,
     preparedAt: Math.floor(Date.now() / 1000),
   })

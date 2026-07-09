@@ -47,8 +47,8 @@ const TOKEN_TYPE = "SLP_TOKEN_TYPE_NFT1_CHILD";
 const SUPPLY_TYPE = "FIXED";
 
 // chronik-client construction requires endpoints, but signing needs no network;
-// reuse the mint URLs so a wallet can be built purely to expose sk + address.
-const CHRONIK_URLS = ["https://chronik.e.cash", "https://chronik-native.fabien.cash"];
+// reuse the shared URLs so a wallet can be built purely to expose sk + address.
+import { CHRONIK_URLS } from "@/lib/ecash/chronikEndpoints";
 
 export interface SubmitTokenIconResult {
   ok: boolean;

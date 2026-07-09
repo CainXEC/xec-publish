@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { normalizeTipXec } from '@/lib/feedPricing'
+import { watchPaymentAddress } from '@/lib/ecash/watchPaymentAddress'
 
 // Quick-pick tip amounts (XEC) shown in the like menu; the field takes any custom
 // amount. Labels abbreviate the thousands.
@@ -159,9 +160,16 @@ export default function EngagementBar({
     }
     check()
     const id = setInterval(() => !stopped && check(), 2500)
+    // Live nudge: a Chronik websocket on the payment address fires an immediate
+    // confirm (with the txid) the moment the reaction payment lands, instead of
+    // waiting up to 2.5s for the next tick. The confirm route still gates finality.
+    const stopWatch = watchPaymentAddress(intent.payAddress, (txid) => {
+      if (!stopped) check(txid)
+    })
     return () => {
       stopped = true
       clearInterval(id)
+      stopWatch()
     }
   }, [pending, intent, targetTxid, applyReacted])
 

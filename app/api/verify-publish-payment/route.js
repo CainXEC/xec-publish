@@ -8,13 +8,9 @@ import { decodeFeedOpReturn, contentHashHex, FEED_ACTION } from '@/lib/feedProto
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { getAuthedAccount } from '@/lib/authHelpers'
+import { CHRONIK_URLS } from '@/lib/ecash/chronikEndpoints'
 
-const chronik = new ChronikClient([
-  'https://chronik.e.cash',
-  'https://chronik-native1.fabien.cash',
-  'https://chronik-native2.fabien.cash',
-  'https://chronik-native3.fabien.cash',
-])
+const chronik = new ChronikClient(CHRONIK_URLS)
 
 const PUBLISH_FEE_SATS = 10_000
 const LOG_PREFIX = '[verify-publish-payment]'

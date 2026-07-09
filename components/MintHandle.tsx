@@ -12,6 +12,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { renderMysteryCard } from "@/lib/renderHandleCard";
+import { watchPaymentAddress } from "@/lib/ecash/watchPaymentAddress";
 import FeedTopbar from "@/components/feed/FeedTopbar";
 import { FEED_CSS } from "@/components/feed/feedTheme";
 import MarketplaceClient from "@/components/MarketplaceClient";
@@ -201,7 +202,12 @@ export default function MintHandle({
     // dead time between polls — it does NOT weaken the finality gate, which still
     // holds the mint until Chronik reports the funding tx Avalanche-final.
     const id = setInterval(() => !stopped && poll(), 1200);
-    return () => { stopped = true; clearInterval(id); };
+    // Live nudge: a Chronik websocket watching the deposit address fires an
+    // immediate poll (with the txid) the instant the payment hits the mempool,
+    // instead of waiting up to 1.2s for the next tick. Pure detection speedup —
+    // the finality gate on the server is unchanged.
+    const stopWatch = watchPaymentAddress(intent.address, (txid) => { if (!stopped) poll(txid); });
+    return () => { stopped = true; clearInterval(id); stopWatch(); };
   }, [phase, intent]);
 
   // ---- countdown to expiry ----

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { triggerPaymentSuccessEffect } from '@/lib/paymentSuccessEffect'
 import { buildPublishFeeBip21 } from '@/lib/paymentSplit'
+import { watchPaymentAddress } from '@/lib/ecash/watchPaymentAddress'
 import {
   getSharedAudioContext,
   primeAudioContextOnUserGesture,
@@ -22,6 +23,7 @@ export default function PublishPaywallModal({
   const [waiting, setWaiting] = useState(false)
   const [opReturnRaw, setOpReturnRaw] = useState('')
   const pollRef = useRef(null)
+  const watchRef = useRef(null)
   const baselineTxidRef = useRef('')
   const lastHandledTxidRef = useRef('')
   const publishAudioContextRef = useRef(null)
@@ -106,6 +108,10 @@ export default function PublishPaywallModal({
       clearInterval(pollRef.current)
       pollRef.current = null
     }
+    if (watchRef.current) {
+      watchRef.current()
+      watchRef.current = null
+    }
     baselineTxidRef.current = ''
     lastHandledTxidRef.current = ''
   }, [])
@@ -115,6 +121,10 @@ export default function PublishPaywallModal({
       if (pollRef.current) {
         clearInterval(pollRef.current)
         pollRef.current = null
+      }
+      if (watchRef.current) {
+        watchRef.current()
+        watchRef.current = null
       }
     }
   }, [])
@@ -242,6 +252,14 @@ export default function PublishPaywallModal({
     pollRef.current = setInterval(() => {
       void checkLatest()
     }, 3000)
+    // Live nudge: a Chronik websocket on the platform address fires an immediate
+    // check the instant a payment lands there, instead of waiting up to 3s for
+    // the next tick. checkLatest still baselines + verifies server-side, so an
+    // unrelated platform tx just costs one harmless check.
+    if (watchRef.current) watchRef.current()
+    watchRef.current = watchPaymentAddress(platformAddressForLatestTx, () => {
+      void checkLatest()
+    })
   }, [platformAddressForLatestTx, postId, stopPublishFeePolling])
 
   function openPublishCashtab(url) {
