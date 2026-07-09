@@ -23,6 +23,9 @@ export default function FeedTopbar({
   isAuthor = false,
   showLogout = false,
   showMarketplace = true,
+  // Keep marketplace out of the desktop link row (to de-clutter a busy header)
+  // but leave it in the mobile hamburger menu.
+  marketplaceMobileOnly = false,
   showDashboard = true,
 }) {
   const [open, setOpen] = useState(false)
@@ -54,7 +57,7 @@ export default function FeedTopbar({
 
   // One link set, rendered twice: `cls` styles them as desktop pills ('toplink')
   // or mobile menu rows ('hammenu-item'). Both close the menu on click.
-  const renderLinks = (cls) => (
+  const renderLinks = (cls, mobile = false) => (
     <>
       {signedIn && showDashboard ? (
         <Link href="/dashboard" className={cls} onClick={() => setOpen(false)}>
@@ -66,7 +69,7 @@ export default function FeedTopbar({
           log in
         </Link>
       ) : null}
-      {showMarketplace ? (
+      {showMarketplace && (mobile || !marketplaceMobileOnly) ? (
         <Link href="/marketplace" className={cls} onClick={() => setOpen(false)}>
           marketplace
         </Link>
@@ -97,7 +100,7 @@ export default function FeedTopbar({
         </button>
         {open ? (
           <div className="hammenu" role="menu">
-            {renderLinks('hammenu-item')}
+            {renderLinks('hammenu-item', true)}
           </div>
         ) : null}
       </div>

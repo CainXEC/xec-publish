@@ -11,7 +11,7 @@ function EditStateShell({ title, message }) {
   return (
     <div className="pow-feed">
       <style>{FEED_CSS}</style>
-      <FeedTopbar signedIn isAuthor showLogout />
+      <FeedTopbar signedIn isAuthor showLogout marketplaceMobileOnly />
       <main className="wrap" style={{ paddingTop: '28px' }}>
         <section className="dashpanel">
           <h1 className="dashwelcome">{title}</h1>
