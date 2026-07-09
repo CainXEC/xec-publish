@@ -377,8 +377,8 @@ proofofwriting.com app; the wallet row is identification only.
 3. **Handle mint payment envelope migration.** ✅ Done — the mint payment now emits the
    POWR `OP_9` envelope (`6a 04 504f5752 00 59 24 <36B>`) and the verifier dual-accepts
    the legacy bare-UUID layout (`app/api/mint/intent/route.ts`, `lib/mintPayments.ts`,
-   `lib/feedProtocol.js` `FEED_ACTION.MINT`). Internal code names the action `MINT`; it
-   is the same opcode as the spec's `handle` (OP_9).
+   `lib/feedProtocol.js` `FEED_ACTION.HANDLE` — OP_9, named to match this spec's
+   `handle` and the "Handle Mint" wallet label).
 4. **Builder updates.** ✅ Done — publish (OP_6) and unlock (OP_7) emit the POWR
    envelope; confirmed by live examples in §1.2.
 5. **Refresh example txids.** ✅ Done — §1.2 holds one live POWR mainnet example per

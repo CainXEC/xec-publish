@@ -50,7 +50,7 @@ function payerOf(tx: any): string | null {
 
 // Recover the tagged mint UUID from a tx's OP_RETURN. Accepts BOTH layouts so
 // payments in flight across the deploy still verify (mirrors walletAuth.nonceOf):
-// the new POWR mint envelope (LOKAD | v0 | OP_9 | mintId) and the legacy bare-UUID
+// the new POWR handle envelope (LOKAD | v0 | OP_9 | mintId) and the legacy bare-UUID
 // push (no LOKAD). Try the envelope FIRST — the legacy decoder would misread an
 // envelope's leading 4-byte LOKAD push as the payload ("POWR"), not the UUID.
 function taggedMintId(tx: any): string | null {
@@ -58,7 +58,7 @@ function taggedMintId(tx: any): string | null {
     const script = String(out.outputScript ?? "").toLowerCase();
     if (!script.startsWith("6a")) continue;
     const powr = decodeFeedOpReturn(script);
-    if (powr && powr.action === FEED_ACTION.MINT && powr.nonce) return powr.nonce;
+    if (powr && powr.action === FEED_ACTION.HANDLE && powr.nonce) return powr.nonce;
     const legacy = decodeOpReturnToPostId(script);
     if (legacy) return legacy;
   }

@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
   // encodeFeedOpReturnRaw requires a 36-char UUID nonce; pending_mints.id is uuid.
   let opReturnRaw: string;
   try {
-    opReturnRaw = encodeFeedOpReturnRaw({ action: FEED_ACTION.MINT, nonce: row.id });
+    opReturnRaw = encodeFeedOpReturnRaw({ action: FEED_ACTION.HANDLE, nonce: row.id });
   } catch {
     return NextResponse.json(
       { ok: false, error: "pending_mints.id must be a uuid for op_return tagging" },
