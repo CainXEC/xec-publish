@@ -5,6 +5,7 @@ import { getAuthedAccount } from '@/lib/authHelpers'
 import { calculateReadingTimeMinutes } from '@/lib/calculateReadingTimeMinutes'
 import { generateSlug, isUrlSafeSlug } from '@/lib/generateSlug'
 import { POST_SLUG_MAX } from '@/lib/postFieldLimits'
+import { transformArticleBodyLinks } from '@/lib/articleBodyLinks'
 
 const PAYWALL_MARKER = '<div data-paywall-break="true"></div>'
 
@@ -52,7 +53,11 @@ export async function savePost(input = {}) {
   }
 
   const title = String(input.title ?? '').trim()
-  const bodyTrimmed = String(input.body ?? '').trim()
+  // Bake the link policy into the stored body at write time: on-site links become
+  // marked, clickable anchors; every other link is unwrapped to inert text; and
+  // @handle mentions become profile links. Doing it here (not at render) is what
+  // scopes the behavior to new/edited content — old articles are never touched.
+  const bodyTrimmed = transformArticleBodyLinks(String(input.body ?? '').trim())
   const nextPublished = input.nextPublished === true
   const isEditMode = input.isEditMode === true
   const checkboxPublished = input.published === true

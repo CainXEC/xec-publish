@@ -202,6 +202,9 @@ export const FEED_CSS = `
 .pow-feed .menuitem.danger{color:var(--no);}
 .pow-feed .menuitem:disabled{opacity:.6;cursor:default;}
 .pow-feed .body{margin:8px 0 0;white-space:pre-wrap;word-break:break-word;font-size:15px;line-height:1.6;color:var(--text);}
+/* Inline @handle mention link inside a post/reply/ancestor/focused body. */
+.pow-feed .mention{color:var(--cyan);text-decoration:none;transition:text-shadow .15s;}
+.pow-feed .mention:hover{text-shadow:0 0 10px rgba(61,240,255,.45);}
 .pow-feed .showmore{display:inline;background:none;border:none;color:var(--cyan);font:inherit;font-size:14px;cursor:pointer;
   padding:0;margin-left:6px;transition:text-shadow .15s;}
 .pow-feed .showmore:hover{text-shadow:0 0 10px rgba(61,240,255,.5);}

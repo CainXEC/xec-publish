@@ -9,8 +9,18 @@ import FeedTopbar from '@/components/feed/FeedTopbar'
 import EngagementBar from '@/components/feed/EngagementBar'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import ArticleCard from '@/components/feed/ArticleCard'
+import FeedBody from '@/components/feed/FeedBody'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
+import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
 import { FEED_CSS } from '@/components/feed/feedTheme'
+
+/** Strip both on-site link kinds (article + feed post) from displayed text — each
+ *  is shown as its own embed/card, so the raw URL is redundant. */
+function displayTextFor(content) {
+  let text = extractArticleSlug(content) ? stripArticleLink(content) : content
+  text = extractFeedPostTxid(text) ? stripFeedPostLink(text) : text
+  return text
+}
 
 function truncateAddress(addr) {
   const t = String(addr ?? '').trim()
@@ -80,9 +90,16 @@ function AncestorNode({ post, top = false }) {
           <span className="time">{timeAgo(post.created_at)}</span>
         </div>
         <p className="ttext">
-          {post.deleted ? <span className="tombstone">This post was deleted.</span> : post.content}
+          {post.deleted ? (
+            <span className="tombstone">This post was deleted.</span>
+          ) : (
+            <FeedBody text={displayTextFor(post.content)} />
+          )}
         </p>
         {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
+        {!post.deleted && !post.quoted_txid && extractFeedPostTxid(post.content) ? (
+          <QuotedEmbed post={post.linkedPost ?? null} />
+        ) : null}
       </div>
     </div>
   )
@@ -207,12 +224,17 @@ export default function FeedThreadClient({
               {rootDeleted ? (
                 <p className="focusbody tombstone">This post was deleted.</p>
               ) : (() => {
-                const focusText = extractArticleSlug(post.content)
-                  ? stripArticleLink(post.content)
-                  : post.content
-                return focusText ? <p className="focusbody">{focusText}</p> : null
+                const focusText = displayTextFor(post.content)
+                return focusText ? (
+                  <p className="focusbody">
+                    <FeedBody text={focusText} />
+                  </p>
+                ) : null
               })()}
               {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
+              {!rootDeleted && !post.quoted_txid && extractFeedPostTxid(post.content) ? (
+                <QuotedEmbed post={post.linkedPost ?? null} />
+              ) : null}
               {!rootDeleted ? (
                 <ArticleCard card={post.articleCard ?? null} content={post.content} />
               ) : null}

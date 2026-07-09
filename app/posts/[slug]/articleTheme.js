@@ -90,9 +90,12 @@ export const ARTICLE_CSS = `
 .pow-article .prose h1{font-size:1.6em;}
 .pow-article .prose h2{font-size:1.35em;}
 .pow-article .prose h3{font-size:1.15em;}
-.pow-article .prose a{color:var(--cyan);text-decoration:underline;text-underline-offset:2px;
+/* Only anchors that survived the link policy with a live href are styled as
+   links; an inert anchor (external/stale link whose href was stripped at render)
+   inherits body text so it reads as plain text. */
+.pow-article .prose a[href]{color:var(--cyan);text-decoration:underline;text-underline-offset:2px;
   text-decoration-color:rgba(61,240,255,.5);transition:text-shadow .15s;}
-.pow-article .prose a:hover{text-shadow:0 0 10px rgba(61,240,255,.45);}
+.pow-article .prose a[href]:hover{text-shadow:0 0 10px rgba(61,240,255,.45);}
 .pow-article .prose strong{color:var(--text);}
 .pow-article .prose blockquote{margin:1.2em 0;padding:.2em 0 .2em 1.1em;border-left:3px solid var(--neon);
   color:#a6d8c9;font-style:italic;}

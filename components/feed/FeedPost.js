@@ -7,7 +7,9 @@ import ComposeBox from '@/components/feed/ComposeBox'
 import EngagementBar from '@/components/feed/EngagementBar'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import ArticleCard from '@/components/feed/ArticleCard'
+import FeedBody from '@/components/feed/FeedBody'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
+import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
 
 function timeAgo(iso) {
   if (!iso) return ''
@@ -181,9 +183,11 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   const [newReplies, setNewReplies] = useState([])
 
   const body = typeof post.content === 'string' ? post.content : ''
-  // The article preview card is itself the link, so strip the raw article URL
-  // from the displayed text. Keep `body` intact for the card's slug detection.
-  const displayBody = extractArticleSlug(body) ? stripArticleLink(body) : body
+  // On-site links render as an embed/card that IS the link, so strip the raw URL
+  // from the displayed text (an article link → ArticleCard; a feed-post link →
+  // QuotedEmbed). Keep `body` intact for the card's slug/txid detection.
+  let displayBody = extractArticleSlug(body) ? stripArticleLink(body) : body
+  displayBody = extractFeedPostTxid(displayBody) ? stripFeedPostLink(displayBody) : displayBody
   const isLong = displayBody.length > FEED_CLAMP_CHARS
   const shownBody =
     !isLong || expanded ? displayBody : `${displayBody.slice(0, FEED_CLAMP_CHARS).trimEnd()}…`
@@ -325,7 +329,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
 
       {shownBody ? (
         <p className="body">
-          {shownBody}
+          <FeedBody text={shownBody} />
           {isLong ? (
             <button
               type="button"
@@ -339,6 +343,13 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
       ) : null}
 
       {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
+
+      {/* A pasted on-site feed-post link (not a native quote) renders the target
+          as a quoted embed below — "as if you'd quoted it". The server resolves
+          the target into post.linkedPost; null while it hydrates / if missing. */}
+      {!post.deleted && !post.quoted_txid && extractFeedPostTxid(body) ? (
+        <QuotedEmbed post={post.linkedPost ?? null} />
+      ) : null}
 
       {!post.deleted ? (
         <ArticleCard card={post.articleCard ?? null} content={body} />
