@@ -492,9 +492,9 @@ export default function DashboardClient({
               <p className="dashstat-label">Total Unlocks</p>
               <p
                 className="dashstat-value"
-                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                style={{ display: 'flex', alignItems: 'center', gap: '7px' }}
               >
-                <UnlockIcon size={17} />
+                <UnlockIcon size={14} />
                 <span>{totalUnlocks}</span>
               </p>
             </div>
@@ -502,10 +502,10 @@ export default function DashboardClient({
               <p className="dashstat-label">Total Earned</p>
               <p
                 className="dashstat-value"
-                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                style={{ display: 'flex', alignItems: 'center', gap: '7px' }}
               >
-                <EcashIcon size={17} />
-                <span>{Math.round(totalXecEarned).toLocaleString('en-US')} XEC</span>
+                <EcashIcon size={14} outline />
+                <span>{Math.round(totalXecEarned).toLocaleString('en-US')}</span>
               </p>
             </div>
           </div>
@@ -576,7 +576,7 @@ export default function DashboardClient({
           ) : null}
 
           <div className="dashactions">
-            <Link href="/dashboard/new-post" className="dashbtn">
+            <Link href="/?compose=1" className="dashbtn">
               Write New Post
             </Link>
             <Link href="/dashboard/profile" className="dashbtn sec">
@@ -610,10 +610,10 @@ export default function DashboardClient({
 
           {nonLegacyPosts.length === 0 ? (
             <div className="empty">
-              <p>Welcome to Proof Of Writing! Create your first post to get started.</p>
+              <p>Welcome to Proof of Writing! Write articles and put them behind an eCash paywall.</p>
               <p style={{ marginTop: '16px' }}>
                 <Link href="/dashboard/new-post" className="dashbtn">
-                  Create your first post
+                  Write your first article
                 </Link>
               </p>
             </div>

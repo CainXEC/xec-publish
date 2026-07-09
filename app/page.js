@@ -12,6 +12,9 @@ export default async function HomePage({ searchParams }) {
   const params = await searchParams
   const initialCompose =
     typeof params?.share === 'string' ? params.share.slice(0, 280) : ''
+  // `?compose=1` (from the dashboard "Write New Post" button) opens the feed with
+  // the compose box focused, ready to write — no pre-filled content.
+  const focusCompose = params?.compose === '1'
 
   // Auth is read only for page chrome (dashboard link) and for the client-side
   // personalization/own-post logic — NOT for the feed query itself. The For You
@@ -35,6 +38,7 @@ export default async function HomePage({ searchParams }) {
       viewerAccountId={acct?.accountId ?? null}
       isAuthor={acct?.authorId != null}
       initialCompose={initialCompose}
+      focusCompose={focusCompose}
     />
   )
 }

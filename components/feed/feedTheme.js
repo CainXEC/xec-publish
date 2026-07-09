@@ -351,10 +351,10 @@ export const FEED_CSS = `
 .pow-feed .dashbadge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;
   display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:var(--no);
   color:#170305;font-size:10px;font-weight:700;line-height:1;}
-.pow-feed .dashstats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px;}
-.pow-feed .dashstat{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;}
+.pow-feed .dashstats{display:flex;flex-direction:column;gap:10px;margin-top:18px;}
+.pow-feed .dashstat{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 16px;}
 .pow-feed .dashstat-label{margin:0;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);}
-.pow-feed .dashstat-value{margin:8px 0 0;font-size:24px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;}
+.pow-feed .dashstat-value{margin:6px 0 0;font-size:18px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;}
 .pow-feed .dashbio{margin:16px 0 0;font-size:14px;line-height:1.6;color:#b9e6d8;white-space:pre-wrap;word-break:break-word;}
 .pow-feed .dashaddr{margin:12px 0 0;font-size:12px;color:var(--dim);word-break:break-all;cursor:pointer;transition:color .15s;}
 .pow-feed .dashaddr:hover{color:var(--cyan);}

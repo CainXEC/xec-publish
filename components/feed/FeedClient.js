@@ -13,6 +13,7 @@ export default function FeedClient({
   viewerAccountId: initialViewerAccountId = null,
   isAuthor = false,
   initialCompose = '',
+  focusCompose = false,
 }) {
   const [scope, setScope] = useState('foryou') // 'foryou' | 'following'
   // Paying to post mints a session; if we didn't have one at SSR time, the post
@@ -231,7 +232,7 @@ export default function FeedClient({
           action="post"
           onPosted={prependPost}
           initialContent={initialCompose}
-          autoFocus={Boolean(initialCompose)}
+          autoFocus={Boolean(initialCompose) || focusCompose}
         />
 
         <div className="tabs" role="tablist">
