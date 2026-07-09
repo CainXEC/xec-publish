@@ -18,12 +18,13 @@ export const dynamic = "force-dynamic";
 
 const supabase = createClient((process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 const MINT_ADDRESS = process.env.MINT_PAYMENT_ADDRESS!; // the mint wallet's ecash: address
-const LOCK_MINUTES = 15;
+const PAY_WINDOW_MINUTES = 15;
 
 export async function POST(req: NextRequest) {
-  // Unauthenticated endpoint that inserts a pending_mints row and holds a 15-min
-  // name lock per call — throttle it so a flood can't bloat the table or grief
-  // legitimate minters by squatting name locks.
+  // Unauthenticated endpoint that inserts a pending_mints row (payment-tracking,
+  // NOT a free name lock). A name is only held once a real payment lands
+  // (status='paid'), so an unpaid intent squats nothing; still throttle so a
+  // flood can't bloat the table.
   const ip = getClientIp(req);
   if (!(await rateLimit(ip, 10, 60, "mint-intent"))) {
     return NextResponse.json({ ok: false, error: "Too many requests. Try again shortly." }, { status: 429 });
@@ -50,13 +51,18 @@ export async function POST(req: NextRequest) {
   const { tier, priceSats, auctionOnly } = priceForHandle(display);
   if (auctionOnly) return NextResponse.json({ ok: false, status: "auction", reason: "premium name — auction only" });
 
-  // availability (mirrors the check endpoint)
-  const [{ data: taken }, { data: reserved }] = await Promise.all([
+  // availability (mirrors the check endpoint). A PAID hold — someone whose
+  // payment has landed and is being minted — blocks a new intent; unpaid
+  // pending rows do not (no free squat).
+  const nowIso = new Date().toISOString();
+  const [{ data: taken }, { data: reserved }, { data: paidHold }] = await Promise.all([
     supabase.from("handles").select("token_id").eq("handle_skeleton", sk).maybeSingle(),
     supabase.from("reserved_handles").select("reason").eq("handle_skeleton", sk).maybeSingle(),
+    supabase.from("pending_mints").select("id").eq("handle_skeleton", sk).eq("status", "paid").gt("expires_at", nowIso).maybeSingle(),
   ]);
   if (taken) return NextResponse.json({ ok: false, status: "taken" });
   if (reserved) return NextResponse.json({ ok: false, status: "reserved", reason: reserved.reason });
+  if (paidHold) return NextResponse.json({ ok: false, status: "pending", reason: "name is being minted right now" });
 
   // Fail fast if the collection is live and sold out — don't take a payment we'd
   // only have to refund. Advisory only; the authoritative cap check runs in
@@ -65,17 +71,23 @@ export async function POST(req: NextRequest) {
 
   // flat per-tier price — disambiguation is now the op_return_raw (mintId), not amount.
   const expectedSats = priceSats;
-  const expiresAt = new Date(Date.now() + LOCK_MINUTES * 60_000).toISOString();
+  // Payment window (not a name hold): pay before this or the quote goes stale.
+  const expiresAt = new Date(Date.now() + PAY_WINDOW_MINUTES * 60_000).toISOString();
 
-  // create the lock. The partial unique index on skeleton rejects a double-lock.
+  // Create the payment-tracking row. Multiple unpaid intents for the same name
+  // may coexist now (the name is only held once one is paid); a real DB error is
+  // a 500, not a "someone else is minting" signal.
   const { data: row, error } = await supabase
     .from("pending_mints")
     .insert({ handle: display, handle_skeleton: sk, price_sats: priceSats, expected_sats: expectedSats, status: "pending", expires_at: expiresAt })
     .select("id")
     .single();
 
-  if (error) {
-    // unique-violation => someone is already minting this skeleton
+  if (error || !row) {
+    // Post-migration this only fires on a genuine DB error. Pre-migration, the
+    // legacy partial unique index still rejects a second concurrent intent for
+    // the same skeleton — treat that as "being minted" (graceful, old behavior)
+    // rather than a hard error, so the rollout order doesn't matter.
     return NextResponse.json({ ok: false, status: "pending", reason: "name is being minted right now" });
   }
 

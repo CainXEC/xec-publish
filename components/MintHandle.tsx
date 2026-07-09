@@ -155,7 +155,7 @@ export default function MintHandle({
       if (j.status === "minted") { setResult(j); setPhase("done"); }
       else if (j.status === "refunded") { paidSeenRef.current = false; setPaymentSeen(false); setMintingActive(false); setNotice("Refunded — the name wasn't available when payment landed. Your XEC is on its way back. Pick another name."); }
       else if (j.status === "failed") { paidSeenRef.current = false; setPaymentSeen(false); setMintingActive(false); setNotice("The mint failed. If you paid, a refund is on its way."); }
-      else if (j.status === "expired") { paidSeenRef.current = false; setPaymentSeen(false); setMintingActive(false); setNotice("The 15-minute hold expired. Start again to re-lock the name."); setPhase("choose"); setIntent(null); }
+      else if (j.status === "expired") { paidSeenRef.current = false; setPaymentSeen(false); setMintingActive(false); setNotice("This quote expired before payment. Start again to mint the name."); setPhase("choose"); setIntent(null); }
       // Payment is on-chain now — commit to the minting screen and stay there, and
       // advance the tracker: 'finalizing' = payment detected, awaiting Avalanche
       // finality; 'processing' = final + the NFT genesis is actually being minted.
@@ -347,7 +347,8 @@ export default function MintHandle({
               <a className="cta" href={cashtabUrl} target="_blank" rel="noreferrer">Open in Cashtab</a>
               <p className="addr" title={intent.address}>{intent.address}</p>
               <button className="copybtn" onClick={copyAddr}>{copied ? "copied \u2713" : "copy address"}</button>
-              <p className="poll">{statusMsg}{secondsLeft != null && secondsLeft > 0 && <span className="timer"> · hold expires in {mm}:{ss}</span>}</p>
+              <p className="poll">{statusMsg}{secondsLeft != null && secondsLeft > 0 && <span className="timer"> · pay within {mm}:{ss}</span>}</p>
+              <p className="mintnote">First paid mint wins — if someone mints this name before your payment finalizes, your XEC is refunded automatically.</p>
 
               <details className="manual">
                 <summary>Already paid? Enter the transaction ID</summary>
@@ -455,6 +456,7 @@ const CSS = `
 .pow-mint .copybtn{background:transparent;border:1px solid var(--line);color:var(--cyan);border-radius:8px;
   padding:6px 14px;font:inherit;font-size:12px;cursor:pointer;margin:0 0 10px;transition:border-color .15s;}
 .pow-mint .copybtn:hover{border-color:var(--cyan);}
+.pow-mint .mintnote{font-size:12px;color:var(--dim);line-height:1.5;margin:10px 0 0;}
 .pow-mint .poll{font-size:14px;color:var(--text);margin:10px 0 0;}
 .pow-mint .poll::after{content:"\\2588";margin-left:3px;color:var(--neon);animation:pow-blink 1s steps(1) infinite;}
 .pow-mint .timer{color:var(--cyan);}

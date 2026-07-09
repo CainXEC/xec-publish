@@ -45,7 +45,9 @@ export async function GET(req: NextRequest) {
   const display = displayHandle(raw);
   const sk = skeleton(raw);
 
-  // Run the three lookups. Any hit means unavailable.
+  // Run the three lookups. Any hit means unavailable. A name is only "held"
+  // once a payment has landed (status='paid') — unpaid intents don't block, so
+  // nobody can squat names for free by spamming intents.
   const [minted, reserved, pending] = await Promise.all([
     supabase.from("handles").select("token_id").eq("handle_skeleton", sk).maybeSingle(),
     supabase.from("reserved_handles").select("reason").eq("handle_skeleton", sk).maybeSingle(),
@@ -53,7 +55,7 @@ export async function GET(req: NextRequest) {
       .from("pending_mints")
       .select("id")
       .eq("handle_skeleton", sk)
-      .in("status", ["pending", "paid"])
+      .eq("status", "paid")
       .gt("expires_at", new Date().toISOString())
       .maybeSingle(),
   ]);
@@ -85,7 +87,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: true, available: false, status: "reserved", reason });
     }
   }
-  // 4. locked by an in-progress mint
+  // 4. held by a paid, in-progress mint
   if (pending.data) {
     return NextResponse.json({ ok: true, available: false, status: "pending" });
   }
