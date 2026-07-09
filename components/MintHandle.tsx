@@ -59,6 +59,10 @@ export default function MintHandle({
   const [result, setResult] = useState<{ childTokenId?: string; imageUrl?: string } | null>(null);
   const [txidInput, setTxidInput] = useState("");
   const [notice, setNotice] = useState("");
+  // Terminal failure (payment landed but the mint couldn't complete — usually the
+  // name was taken first — and the XEC was auto-refunded). Drives a prominent
+  // failure panel instead of a red note under the pay screen.
+  const [failure, setFailure] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   // Latch: once the payment is seen on-chain we commit to the "minting" screen
@@ -105,6 +109,7 @@ export default function MintHandle({
   // ---- start a mint (lock + payment request) ----
   const startMint = useCallback(async () => {
     setNotice("");
+    setFailure(null);
     setPaymentSeen(false);
     setMintingActive(false);
     paidSeenRef.current = false;
@@ -153,8 +158,17 @@ export default function MintHandle({
     let stopped = false;
     const apply = (j: any) => {
       if (j.status === "minted") { setResult(j); setPhase("done"); }
-      else if (j.status === "refunded") { paidSeenRef.current = false; setPaymentSeen(false); setMintingActive(false); setNotice("Refunded — the name wasn't available when payment landed. Your XEC is on its way back. Pick another name."); }
-      else if (j.status === "failed") { paidSeenRef.current = false; setPaymentSeen(false); setMintingActive(false); setNotice("The mint failed. If you paid, a refund is on its way."); }
+      // Terminal failure after payment: keep the minting tracker on screen and
+      // flip it to a clear failure state (the reason + refund), rather than
+      // demoting to "waiting for payment" with a red note hidden below.
+      else if (j.status === "refunded") {
+        const soldOut = /sold out/i.test(String(j.error ?? ""));
+        setPaymentSeen(true); setMintingActive(true); setNotice("");
+        setFailure(soldOut
+          ? "The collection sold out before your payment landed. A refund has been issued — try again later."
+          : "The handle wasn't available when your payment landed. A refund has been issued. Pick another name.");
+      }
+      else if (j.status === "failed") { setPaymentSeen(true); setMintingActive(true); setNotice(""); setFailure("The mint didn't complete. If your payment went through, a refund is on its way. Pick another name."); }
       else if (j.status === "expired") { paidSeenRef.current = false; setPaymentSeen(false); setMintingActive(false); setNotice("This quote expired before payment. Start again to mint the name."); setPhase("choose"); setIntent(null); }
       // Payment is on-chain now — commit to the minting screen and stay there, and
       // advance the tracker: 'finalizing' = payment detected, awaiting Avalanche
@@ -321,7 +335,36 @@ export default function MintHandle({
 
       {phase === "pay" && intent && (
         <div className="pay">
-          {paymentSeen ? (
+          {failure ? (
+            <div className="settling" role="status" aria-live="assertive">
+              <p className="settlehead fail">Minting failed</p>
+              <ol className="mintsteps">
+                <li className="done">
+                  <span className="mintstep-mark" aria-hidden>{"✓"}</span>
+                  <span>Payment detected</span>
+                </li>
+                <li className="done">
+                  <span className="mintstep-mark" aria-hidden>{"✓"}</span>
+                  <span>Payment finalizing</span>
+                </li>
+                <li className="failed">
+                  <span className="mintstep-mark" aria-hidden>{"✗"}</span>
+                  <span>Minting NFT</span>
+                </li>
+              </ol>
+              <p className="settlesub">{failure}</p>
+              <button
+                className="cta"
+                onClick={() => {
+                  setPhase("choose"); setHandle(""); setAvail(null); setIntent(null);
+                  setResult(null); setNotice(""); setFailure(null);
+                  setPaymentSeen(false); setMintingActive(false); paidSeenRef.current = false;
+                }}
+              >
+                Pick another name
+              </button>
+            </div>
+          ) : paymentSeen ? (
             <div className="settling" role="status" aria-live="polite">
               <p className="settlehead">{stageHeading}</p>
               <ol className="mintsteps">
@@ -469,12 +512,13 @@ const CSS = `
 @keyframes pow-spin{to{transform:rotate(360deg);}}
 .pow-mint .settlehead{font-size:18px;font-weight:700;color:var(--neon);letter-spacing:.03em;margin:0;
   text-shadow:0 0 12px rgba(0,255,156,.45);}
+.pow-mint .settlehead.fail{color:var(--no);text-shadow:0 0 12px rgba(255,92,108,.45);}
 .pow-mint .settlesub{font-size:13px;color:var(--dim);line-height:1.55;margin:0;max-width:380px;}
 
 /* three-step post-payment tracker: detected -> finalizing -> minting. Each row's
    marker is a dim ring (pending), a neon spinner (active) or a filled ✓ (done). */
 .pow-mint .mintsteps{list-style:none;padding:0;margin:2px 0 0;display:flex;flex-direction:column;gap:13px;text-align:left;}
-.pow-mint .mintsteps li{display:flex;align-items:center;gap:11px;font-size:14.5px;color:var(--dim);transition:color .2s;}
+.pow-mint .mintsteps li{display:flex;flex-direction:row;align-items:center;gap:11px;font-size:14.5px;color:var(--dim);transition:color .2s;}
 .pow-mint .mintstep-mark{width:19px;height:19px;flex:0 0 auto;border-radius:50%;border:2px solid var(--line);box-sizing:border-box;
   display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#04120c;
   transition:border-color .2s,background .2s;}
@@ -484,6 +528,8 @@ const CSS = `
   animation:pow-spin .8s linear infinite;box-shadow:0 0 12px rgba(0,255,156,.3);}
 .pow-mint .mintsteps li.done{color:var(--neon);}
 .pow-mint .mintsteps li.done .mintstep-mark{border-color:var(--neon);background:var(--neon);box-shadow:0 0 12px rgba(0,255,156,.4);}
+.pow-mint .mintsteps li.failed{color:var(--no);}
+.pow-mint .mintsteps li.failed .mintstep-mark{border-color:var(--no);background:var(--no);color:#120406;box-shadow:0 0 12px rgba(255,92,108,.4);}
 
 .pow-mint .manual{margin:24px 0 0;text-align:left;}
 .pow-mint .manual summary{color:var(--dim);font-size:13px;cursor:pointer;text-align:center;}
