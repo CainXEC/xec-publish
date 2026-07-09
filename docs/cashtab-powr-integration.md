@@ -96,20 +96,27 @@ Chronik indexed it under nothing — findable only by address or txid, never as 
 Proof-of-Writing action." All nine actions share the one LOKAD; consumers filter by the
 action opcode (e.g. `stackArray[2] === '59'` for a handle mint payment).
 
-### 1.2 Example txids — MUST be refreshed before the PR
+### 1.2 Example txids (live mainnet, POWR)
 
-> ⚠️ The prior draft of this spec carried nine "live example" txids. Verified against
-> Chronik, **they do not match this frozen contract** and must not be used as fixtures:
-> - eight (post…auth) were captured on the **testing** LOKAD `50524f57` ("PROW"), not
->   the launch LOKAD `504f5752` ("POWR"); their structure/opcodes are correct but the
->   4 LOKAD bytes differ, so a POWR-keyed parser won't match them.
-> - the handle example was the **pre-migration bare-UUID** form (`6a 24 <36B>`), which
->   has no LOKAD at all.
->
-> Action before handing this to Cashtab: after the POWR builders are deployed, broadcast
-> one fresh mainnet example per action on the **POWR** LOKAD and paste the real txids
-> into a table here. The `handle` (OP_9) example specifically requires the mint-payment
-> envelope migration to be live first (one real mint payment then yields the txid).
+One real transaction per action, all on the launch LOKAD `504f5752` ("POWR"). Each was
+verified to decode to the action + payload shape in the table above; pull them via
+Chronik to seed the parser test fixtures and sanity-check against real on-chain bytes.
+
+| # | Action  | Opcode | Example txid |
+|---|---------|--------|--------------|
+| 1 | post    | OP_1   | `c3a1a35aefc0111481c3246df2121d1321cb27516fd27e794b3fd4f461f6d6a3` |
+| 2 | reply   | OP_2   | `2782443f28af38f4291f32ad9865407cdc7a3f6e785ce2d947cd66b60b4b2eee` |
+| 3 | quote   | OP_3   | `156619e4718a6d9a18ff1f571e3639df9eace7d596a5c8ac6788d418d19f0fde` |
+| 4 | repost  | OP_4   | `aace15c9e2e4c4d5750786aa4098b045c123ff87afa1bc01c276891021f4e0c8` |
+| 5 | like    | OP_5   | `a8b76c155069dbd78f281a90ab3da3e3647222cc52a305a7c21daced6cc1977b` |
+| 6 | publish | OP_6   | `eafbaa6dd8429c617e3050b2d22026806732ca298a042e0f7a68af16b1857dc9` |
+| 7 | unlock  | OP_7   | `f846d4693c1e44dfb9a11aa9e182d92b908c31f61c3943707eaf4cdc123550f2` |
+| 8 | auth    | OP_8   | `df4c499cf2d2e7f4262ccf8a68e27476999c8c6dfc4db19d8416dd9d70bc1ec8` |
+| 9 | handle  | OP_9   | `84eeebf0402f500b8924d7e07d41ed108b96909648147cfed6d368113072343c` |
+
+(Superseded the earlier draft's examples, which were on the PROW test LOKAD `50524f57`
+— and the handle one, pre-migration bare-UUID — so they would not have matched a
+POWR-keyed parser.)
 
 ---
 
@@ -372,12 +379,10 @@ proofofwriting.com app; the wallet row is identification only.
    the legacy bare-UUID layout (`app/api/mint/intent/route.ts`, `lib/mintPayments.ts`,
    `lib/feedProtocol.js` `FEED_ACTION.MINT`). Internal code names the action `MINT`; it
    is the same opcode as the spec's `handle` (OP_9).
-4. **Builder updates.** Extend the publish/unlock builders to emit OP_6 (publish, at
-   article publish time) and OP_7 (unlock, in the paywall payment) alongside the feed
-   actions.
-5. **Refresh example txids.** Broadcast one fresh POWR mainnet example per action and
-   paste them into §1.2 (the old examples were PROW-era / pre-migration — see the
-   warning there).
+4. **Builder updates.** ✅ Done — publish (OP_6) and unlock (OP_7) emit the POWR
+   envelope; confirmed by live examples in §1.2.
+5. **Refresh example txids.** ✅ Done — §1.2 holds one live POWR mainnet example per
+   action (all 9), captured post-flip; the old PROW/bare examples are superseded.
 6. **Note on the token mint tx itself.** The NFT mint transaction's OP_RETURN is
    fully occupied by the token protocol (that is what makes it a token mint), so
    it carries no POWR data by design. Cashtab already renders it as a token mint
