@@ -8,6 +8,7 @@ import FeedPost from '@/components/feed/FeedPost'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import EngagementBar from '@/components/feed/EngagementBar'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
+import LinkedPostEmbed from '@/components/feed/LinkedPostEmbed'
 import ArticleCard from '@/components/feed/ArticleCard'
 import FeedBody from '@/components/feed/FeedBody'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
@@ -98,7 +99,7 @@ function AncestorNode({ post, top = false }) {
         </p>
         {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
         {!post.deleted && !post.quoted_txid && extractFeedPostTxid(post.content) ? (
-          <QuotedEmbed post={post.linkedPost ?? null} />
+          <LinkedPostEmbed linkedPost={post.linkedPost} content={post.content} />
         ) : null}
       </div>
     </div>
@@ -233,7 +234,7 @@ export default function FeedThreadClient({
               })()}
               {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
               {!rootDeleted && !post.quoted_txid && extractFeedPostTxid(post.content) ? (
-                <QuotedEmbed post={post.linkedPost ?? null} />
+                <LinkedPostEmbed linkedPost={post.linkedPost} content={post.content} />
               ) : null}
               {!rootDeleted ? (
                 <ArticleCard card={post.articleCard ?? null} content={post.content} />

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import ComposeBox from '@/components/feed/ComposeBox'
 import EngagementBar from '@/components/feed/EngagementBar'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
+import LinkedPostEmbed from '@/components/feed/LinkedPostEmbed'
 import ArticleCard from '@/components/feed/ArticleCard'
 import FeedBody from '@/components/feed/FeedBody'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
@@ -345,10 +346,10 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
       {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
 
       {/* A pasted on-site feed-post link (not a native quote) renders the target
-          as a quoted embed below — "as if you'd quoted it". The server resolves
-          the target into post.linkedPost; null while it hydrates / if missing. */}
+          as a quoted embed below — "as if you'd quoted it". Server posts carry a
+          resolved post.linkedPost; a just-posted one hydrates from the txid. */}
       {!post.deleted && !post.quoted_txid && extractFeedPostTxid(body) ? (
-        <QuotedEmbed post={post.linkedPost ?? null} />
+        <LinkedPostEmbed linkedPost={post.linkedPost} content={body} />
       ) : null}
 
       {!post.deleted ? (
