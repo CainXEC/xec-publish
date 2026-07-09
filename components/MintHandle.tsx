@@ -52,6 +52,10 @@ export default function MintHandle({
   // by a poll that stays in flight for a while (the request doing the mint is the
   // slow one) — whichever we notice first.
   const [mintingActive, setMintingActive] = useState(false);
+  // The backend collapses "detected" and "finalizing" into one status, but the
+  // tracker reads more clearly as three beats. Briefly hold on "Payment detected"
+  // the moment payment lands, then advance the headline to "Payment finalizing".
+  const [detectedBeat, setDetectedBeat] = useState(false);
   const [result, setResult] = useState<{ childTokenId?: string; imageUrl?: string } | null>(null);
   const [txidInput, setTxidInput] = useState("");
   const [notice, setNotice] = useState("");
@@ -240,6 +244,23 @@ export default function MintHandle({
     if (phase === "done") playRevealChime();
   }, [phase, playRevealChime]);
 
+  // Hold on "Payment detected" for a beat when payment first lands, then let the
+  // headline advance to "Payment finalizing". Skipped if we jump straight to
+  // minting (backend already 'processing').
+  useEffect(() => {
+    if (paymentSeen && !mintingActive) {
+      setDetectedBeat(true);
+      const t = setTimeout(() => setDetectedBeat(false), 1100);
+      return () => clearTimeout(t);
+    }
+    setDetectedBeat(false);
+  }, [paymentSeen, mintingActive]);
+
+  // Three-beat tracker stage: detected -> finalizing -> minting.
+  const mintStage = mintingActive ? "minting" : detectedBeat ? "detected" : "finalizing";
+  const stageHeading =
+    mintStage === "minting" ? "Minting NFT" : mintStage === "detected" ? "Payment detected" : "Payment finalizing";
+
   const canMint = avail?.available && !avail.auctionOnly;
   const mm = secondsLeft != null ? String(Math.floor(secondsLeft / 60)).padStart(1, "0") : "";
   const ss = secondsLeft != null ? String(secondsLeft % 60).padStart(2, "0") : "";
@@ -302,22 +323,22 @@ export default function MintHandle({
         <div className="pay">
           {paymentSeen ? (
             <div className="settling" role="status" aria-live="polite">
-              <p className="settlehead">{mintingActive ? "Minting your NFT" : "Payment finalizing"}</p>
+              <p className="settlehead">{stageHeading}</p>
               <ol className="mintsteps">
-                <li className="done">
-                  <span className="mintstep-mark" aria-hidden>{"\u2713"}</span>
+                <li className={mintStage === "detected" ? "active" : "done"}>
+                  <span className="mintstep-mark" aria-hidden>{mintStage === "detected" ? "" : "\u2713"}</span>
                   <span>Payment detected</span>
                 </li>
-                <li className={mintingActive ? "done" : "active"}>
-                  <span className="mintstep-mark" aria-hidden>{mintingActive ? "\u2713" : ""}</span>
+                <li className={mintStage === "minting" ? "done" : mintStage === "finalizing" ? "active" : "pending"}>
+                  <span className="mintstep-mark" aria-hidden>{mintStage === "minting" ? "\u2713" : ""}</span>
                   <span>Payment finalizing</span>
                 </li>
-                <li className={mintingActive ? "active" : "pending"}>
+                <li className={mintStage === "minting" ? "active" : "pending"}>
                   <span className="mintstep-mark" aria-hidden />
                   <span>Minting NFT</span>
                 </li>
               </ol>
-              <p className="settlesub"><strong>@{intent.handle}</strong> is being written on-chain. Keep this tab open — your card reveals automatically in a few seconds.</p>
+              <p className="settlesub"><strong>@{intent.handle}</strong> is being minted. Keep this tab open — your card reveals automatically in a few seconds.</p>
             </div>
           ) : (
             <>
