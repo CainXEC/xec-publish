@@ -406,6 +406,10 @@ html:not(.dark) .dashhandle-tip{background:#ffffff;border-color:#00b06e;color:#0
   letter-spacing:.05em;cursor:pointer;box-shadow:0 0 16px rgba(0,255,156,.14),inset 0 0 12px rgba(0,255,156,.05);
   transition:background .15s,color .15s,box-shadow .15s;white-space:nowrap;}
 .pow-feed .dashbtn:hover{background:var(--neon);color:#04120c;box-shadow:0 0 26px rgba(0,255,156,.5);}
+/* Muted until there are unsaved changes — the button "lights up" (neon glow
+   above) only when the form is dirty, cueing the user to save. */
+.pow-feed .dashbtn:disabled{color:var(--dim);border-color:var(--line);box-shadow:none;cursor:default;}
+.pow-feed .dashbtn:disabled:hover{background:transparent;color:var(--dim);box-shadow:none;}
 .pow-feed .dashbtn.sec{color:var(--cyan);border-color:var(--line);box-shadow:none;}
 .pow-feed .dashbtn.sec:hover{background:transparent;color:var(--cyan);border-color:var(--cyan);box-shadow:0 0 14px rgba(61,240,255,.18);}
 .pow-feed .dashsection-title{margin:0;font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);

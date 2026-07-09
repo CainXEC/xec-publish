@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveProfile } from '@/app/dashboard/saveProfile'
 import { saveHandleColor } from '@/app/dashboard/saveHandleColor'
+import { saveDisplayHandle } from '@/app/dashboard/saveDisplayHandle'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import HandleColorPicker from '@/components/dashboard/HandleColorPicker'
@@ -20,6 +21,18 @@ export default function ProfileSettingsForm({
   const router = useRouter()
   const [bio, setBio] = useState(initialBio ?? '')
   const [color, setColor] = useState(initialColor ?? '')
+  const [activeTokenId, setActiveTokenId] = useState(initialActiveTokenId ?? null)
+
+  // Last-saved snapshot. Everything above is staged; we diff against this to know
+  // whether there are unsaved changes (which lights up the Save button) and reset
+  // it after a successful save so the form goes "clean" again without a reload.
+  const [saved, setSaved] = useState({
+    bio: initialBio ?? '',
+    color: initialColor ?? '',
+    activeTokenId: initialActiveTokenId ?? null,
+  })
+  const dirty =
+    bio !== saved.bio || color !== saved.color || activeTokenId !== saved.activeTokenId
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
@@ -45,6 +58,20 @@ export default function ProfileSettingsForm({
         return
       }
 
+      // Persist the display handle only when it actually changed (an on-chain
+      // holder check runs server-side, so avoid the round-trip otherwise).
+      if (activeTokenId !== saved.activeTokenId) {
+        const handleResult = await saveDisplayHandle({ tokenId: activeTokenId })
+        if (handleResult?.unauthorized) {
+          router.replace('/login')
+          return
+        }
+        if (!handleResult?.ok) {
+          setSubmitError(handleResult?.error || 'Could not update display handle.')
+          return
+        }
+      }
+
       // Only authors have a bio row to update.
       if (hasAuthor) {
         const result = await saveProfile({ bio })
@@ -58,6 +85,7 @@ export default function ProfileSettingsForm({
         }
       }
 
+      setSaved({ bio, color, activeTokenId })
       setSavedMessage(true)
       // Update the live nav byline / feed color without a full reload.
       if (typeof window !== 'undefined') {
@@ -126,7 +154,9 @@ export default function ProfileSettingsForm({
         <DashboardHandleCarousel
           initialHandles={initialHandles}
           initialAddress={handleAddress}
-          initialActiveTokenId={initialActiveTokenId}
+          value={activeTokenId}
+          onChange={setActiveTokenId}
+          disabled={submitting}
         />
 
         <form onSubmit={handleSubmit}>
@@ -158,15 +188,15 @@ export default function ProfileSettingsForm({
               </p>
             ) : null}
 
-            {savedMessage ? (
+            {savedMessage && !dirty ? (
               <p className="prof-ok" role="status">
                 Changes saved.
               </p>
             ) : null}
 
-            <div style={{ marginTop: submitError || savedMessage ? '18px' : 0 }}>
-              <button type="submit" disabled={submitting} className="dashbtn">
-                {submitting ? 'Saving…' : 'Save changes'}
+            <div style={{ marginTop: submitError || (savedMessage && !dirty) ? '18px' : 0 }}>
+              <button type="submit" disabled={submitting || !dirty} className="dashbtn">
+                {submitting ? 'Saving…' : dirty ? 'Save changes' : 'Saved'}
               </button>
             </div>
           </section>
