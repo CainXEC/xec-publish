@@ -9,6 +9,7 @@
 import { ChronikClient } from "chronik-client";
 import { encodeCashAddress } from "ecashaddrjs"; // same lib your unlock flow uses
 import { decodeOpReturnToPostId } from "@/lib/opReturnEncode";
+import { decodeFeedOpReturn, FEED_ACTION } from "@/lib/feedProtocol";
 import { txIsFinal } from "@/lib/ecash/finality";
 
 const CHRONIK_URLS = ["https://chronik.e.cash", "https://chronik-native.fabien.cash"];
@@ -47,15 +48,19 @@ function payerOf(tx: any): string | null {
   return first ? scriptToAddress(first.outputScript) : null;
 }
 
-// Recover the tagged UUID from a tx: find the OP_RETURN output (script starts 6a)
-// and run it through the SAME decoder the paywall uses.
+// Recover the tagged mint UUID from a tx's OP_RETURN. Accepts BOTH layouts so
+// payments in flight across the deploy still verify (mirrors walletAuth.nonceOf):
+// the new POWR mint envelope (LOKAD | v0 | OP_9 | mintId) and the legacy bare-UUID
+// push (no LOKAD). Try the envelope FIRST — the legacy decoder would misread an
+// envelope's leading 4-byte LOKAD push as the payload ("POWR"), not the UUID.
 function taggedMintId(tx: any): string | null {
   for (const out of tx.outputs ?? []) {
     const script = String(out.outputScript ?? "").toLowerCase();
-    if (script.startsWith("6a")) {
-      const decoded = decodeOpReturnToPostId(script);
-      if (decoded) return decoded;
-    }
+    if (!script.startsWith("6a")) continue;
+    const powr = decodeFeedOpReturn(script);
+    if (powr && powr.action === FEED_ACTION.MINT && powr.nonce) return powr.nonce;
+    const legacy = decodeOpReturnToPostId(script);
+    if (legacy) return legacy;
   }
   return null;
 }

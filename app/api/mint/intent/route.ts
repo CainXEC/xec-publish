@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { validateHandleSyntax, skeleton, displayHandle } from "@/lib/handleSkeleton";
 import { priceForHandle } from "@/lib/handlePricing";
-import { encodePostIdOpReturnRaw } from "@/lib/opReturnEncode";
+import { encodeFeedOpReturnRaw, FEED_ACTION } from "@/lib/feedProtocol";
 import { rateLimit, getClientIp } from "@/lib/rateLimit";
 import { mintCapSoldOut } from "@/lib/mintCap";
 
@@ -79,11 +79,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, status: "pending", reason: "name is being minted right now" });
   }
 
-  // tag the payment with mintId (UUID) — identical convention to the paywall.
-  // encodePostIdOpReturnRaw requires a 36-char UUID; pending_mints.id must be uuid.
+  // Tag the payment with mintId (UUID) inside the POWR envelope (OP_9 = mint), so
+  // the 4-byte LOKAD leads the OP_RETURN and Chronik indexes it under POWR — the
+  // old bare-UUID push had no LOKAD and was invisible to chronik.lokadId(). Same
+  // UUID, just wrapped; the verifier dual-accepts the legacy layout during rollout.
+  // encodeFeedOpReturnRaw requires a 36-char UUID nonce; pending_mints.id is uuid.
   let opReturnRaw: string;
   try {
-    opReturnRaw = encodePostIdOpReturnRaw(row.id);
+    opReturnRaw = encodeFeedOpReturnRaw({ action: FEED_ACTION.MINT, nonce: row.id });
   } catch {
     return NextResponse.json(
       { ok: false, error: "pending_mints.id must be a uuid for op_return tagging" },
