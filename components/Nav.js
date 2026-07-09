@@ -190,7 +190,7 @@ export default function Nav({ authorCtaOverride, showPostSearch = false }) {
     <span
       style={{
         fontFamily:
-          "'American Typewriter', var(--font-courier-prime), 'Courier New', serif",
+          "'American Typewriter', var(--font-jetbrains-mono), 'Courier New', serif",
         color: 'var(--color-text-primary)',
         letterSpacing: '0.04em',
         lineHeight: '1',

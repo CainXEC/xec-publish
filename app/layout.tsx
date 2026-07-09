@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Analytics } from "@vercel/analytics/next";
 import {
-  Courier_Prime,
   Geist,
   Geist_Mono,
   JetBrains_Mono,
@@ -35,13 +34,6 @@ const newsreader = Newsreader({
   variable: "--font-newsreader",
   display: "swap",
   weight: ["400", "500", "600", "700"],
-});
-
-const courierPrime = Courier_Prime({
-  weight: ["400", "700"],
-  subsets: ["latin"],
-  variable: "--font-courier-prime",
-  display: "swap",
 });
 
 const siteUrl = "https://www.proofofwriting.com";
@@ -94,7 +86,7 @@ export default async function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${jetbrainsMono.variable} ${newsreader.variable} ${courierPrime.variable} h-full antialiased${isDark ? " dark" : ""}`}
+      className={`${geistSans.variable} ${geistMono.variable} ${jetbrainsMono.variable} ${newsreader.variable} h-full antialiased${isDark ? " dark" : ""}`}
     >
       <head>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

@@ -14,21 +14,23 @@ export async function GET(request) {
   let fonts = []
 
   try {
-    const [newsreaderFont, courierPrimeFont] = await Promise.all([
+    const [newsreaderFont, jetbrainsRegular, jetbrainsExtraBold] = await Promise.all([
       readFile(join(process.cwd(), 'public/fonts/newsreader-500.ttf')),
-      readFile(join(process.cwd(), 'public/fonts/courier-prime-400.ttf')),
+      readFile(join(process.cwd(), 'public/fonts/jetbrains-mono-400.ttf')),
+      readFile(join(process.cwd(), 'public/fonts/jetbrains-mono-800.ttf')),
     ])
 
     fonts = [
       { name: 'Newsreader', data: newsreaderFont, style: 'normal', weight: 500 },
-      { name: 'Courier Prime', data: courierPrimeFont, style: 'normal', weight: 400 },
+      { name: 'JetBrains Mono', data: jetbrainsRegular, style: 'normal', weight: 400 },
+      { name: 'JetBrains Mono', data: jetbrainsExtraBold, style: 'normal', weight: 800 },
     ]
   } catch (err) {
     console.error('[og] Font loading failed:', err)
   }
 
   const titleFont = fonts.length > 0 ? 'Newsreader' : 'Georgia'
-  const wordmarkFont = fonts.length > 0 ? 'Courier Prime' : 'monospace'
+  const wordmarkFont = fonts.length > 0 ? 'JetBrains Mono' : 'monospace'
 
   try {
     const imageResponse = new ImageResponse(
@@ -47,6 +49,7 @@ export async function GET(request) {
           <div
             style={{
               fontFamily: wordmarkFont,
+              fontWeight: 800,
               fontSize: '52px',
               letterSpacing: '0.14em',
               color: '#059669',
@@ -88,6 +91,7 @@ export async function GET(request) {
                 fontSize: '64px',
                 color: '#059669',
                 fontFamily: wordmarkFont,
+                fontWeight: 400,
                 flexShrink: 0,
                 marginTop: '72px',
               }}
