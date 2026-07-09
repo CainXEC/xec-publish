@@ -272,12 +272,12 @@ async function bindAuthorAccount(address: string, tokenId: string, handle: strin
   const now = new Date().toISOString();
   const { data: link } = await supabase.from("account_addresses").select("account_id").eq("address", address).maybeSingle();
   if (link?.account_id) {
-    const patch: any = { kind: "author", active_handle_token_id: tokenId, display_handle: handle, display_handle_checked_at: now, updated_at: now };
+    const patch: any = { active_handle_token_id: tokenId, display_handle: handle, display_handle_checked_at: now, updated_at: now };
     if (authorId) patch.author_id = authorId;
     await supabase.from("accounts").update(patch).eq("id", link.account_id);
     return link.account_id as string;
   }
-  const insert: any = { kind: "author", active_handle_token_id: tokenId, display_handle: handle, display_handle_checked_at: now };
+  const insert: any = { active_handle_token_id: tokenId, display_handle: handle, display_handle_checked_at: now };
   if (authorId) insert.author_id = authorId;
   const { data: acct } = await supabase.from("accounts").insert(insert).select("id").single();
   const accountId = acct!.id as string;

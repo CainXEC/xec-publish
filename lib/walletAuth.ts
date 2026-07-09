@@ -212,7 +212,7 @@ export async function resolveOrCreateAccount(address: string): Promise<{ account
   // create the account linked to its author
   const { data: acct } = await supabase
     .from("accounts")
-    .insert({ kind: "author", author_id: authorId, updated_at: now })
+    .insert({ author_id: authorId, updated_at: now })
     .select("id, author_id, display_handle")
     .single();
   const accountId = acct!.id as string;
