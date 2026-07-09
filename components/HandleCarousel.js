@@ -157,7 +157,7 @@ export default function HandleCarousel({
             <span className="dashhandle-addr" aria-hidden>
               +
             </span>
-            <span className="dashhandle-name">Buy handle</span>
+            <span className="dashhandle-name">Buy</span>
           </Link>
         ) : null}
       </div>

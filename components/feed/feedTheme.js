@@ -386,8 +386,7 @@ export const FEED_CSS = `
 .pow-feed .dashhandle.buy{border-style:dashed;border-color:var(--neon);text-decoration:none;}
 .pow-feed .dashhandle.buy:hover{border-color:var(--neon);box-shadow:0 0 14px rgba(0,255,156,.28);}
 .pow-feed .dashhandle.buy .dashhandle-addr{color:var(--neon);border-color:var(--neon);font-size:30px;font-weight:400;}
-.pow-feed .dashhandle.buy .dashhandle-name{color:var(--neon);white-space:normal;overflow:visible;text-overflow:clip;
-  line-height:1.2;text-align:center;}
+.pow-feed .dashhandle.buy .dashhandle-name{color:var(--neon);}
 /* Full handle shown in a floating tooltip on hover/focus (portal-rendered at
    the body so the carousel's horizontal scroll can't clip it). The card itself
    never resizes. */
