@@ -228,19 +228,21 @@ export default function EngagementBar({
                 ))}
               </div>
               <div className="tiprow">
-                <input
-                  className="tipinput"
-                  value={tipAmount}
-                  onChange={(e) => setTipAmount(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') void startReaction('like', tipAmount)
-                  }}
-                  placeholder="Custom"
-                  inputMode="numeric"
-                  spellCheck={false}
-                  aria-label="Custom tip amount in XEC"
-                />
-                <span className="tipunit">XEC</span>
+                <div className="tipfield">
+                  <input
+                    className="tipinput"
+                    value={tipAmount}
+                    onChange={(e) => setTipAmount(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') void startReaction('like', tipAmount)
+                    }}
+                    placeholder="Custom"
+                    inputMode="numeric"
+                    spellCheck={false}
+                    aria-label="Custom tip amount in XEC"
+                  />
+                  <span className="tipunit">XEC</span>
+                </div>
                 <button
                   type="button"
                   className="tipgo"

@@ -248,7 +248,7 @@ export const FEED_CSS = `
    spans the gap so the pointer can travel from button up into the menu without
    the hover dropping. */
 .pow-feed .likewrap{position:relative;display:inline-flex;}
-.pow-feed .tipmenu{display:none;position:absolute;bottom:calc(100% + 6px);left:0;z-index:20;width:210px;
+.pow-feed .tipmenu{display:none;position:absolute;bottom:calc(100% + 6px);left:0;z-index:20;width:264px;
   background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;
   box-shadow:0 8px 24px rgba(0,0,0,.5);}
 .pow-feed .likewrap:hover .tipmenu,.pow-feed .likewrap:focus-within .tipmenu{display:block;}
@@ -256,14 +256,17 @@ export const FEED_CSS = `
 .pow-feed .tiptitle{margin:0 0 8px;font-size:12px;color:var(--dim);}
 .pow-feed .tippresets{display:flex;gap:6px;margin-bottom:8px;}
 .pow-feed .tippreset{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--text);
-  font:inherit;font-size:13px;padding:6px 0;border-radius:8px;cursor:pointer;font-variant-numeric:tabular-nums;
+  font:inherit;font-size:11px;padding:6px 0;border-radius:8px;cursor:pointer;font-variant-numeric:tabular-nums;
   transition:border-color .12s,color .12s;}
 .pow-feed .tippreset:hover{border-color:var(--neon);color:var(--neon);}
 .pow-feed .tiprow{display:flex;align-items:center;gap:6px;}
-.pow-feed .tipinput{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);color:var(--text);
-  font:inherit;font-size:13px;padding:6px 8px;border-radius:8px;font-variant-numeric:tabular-nums;}
-.pow-feed .tipinput:focus{outline:none;border-color:var(--neon);}
-.pow-feed .tipunit{font-size:12px;color:var(--dim);}
+.pow-feed .tipfield{flex:1;min-width:0;display:flex;align-items:center;gap:6px;background:var(--bg);
+  border:1px solid var(--line);border-radius:8px;padding:0 8px;}
+.pow-feed .tipfield:focus-within{border-color:var(--neon);}
+.pow-feed .tipinput{flex:1;min-width:0;background:transparent;border:none;color:var(--text);
+  font:inherit;font-size:13px;padding:6px 0;font-variant-numeric:tabular-nums;}
+.pow-feed .tipinput:focus{outline:none;}
+.pow-feed .tipunit{font-size:12px;color:var(--dim);flex:none;}
 .pow-feed .tipgo{background:var(--neon);border:1px solid var(--neon);color:#04140d;font:inherit;font-size:13px;
   font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer;transition:opacity .12s;}
 .pow-feed .tipgo:hover{opacity:.85;}
