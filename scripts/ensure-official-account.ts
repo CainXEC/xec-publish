@@ -40,7 +40,7 @@ async function main() {
   if (!accountId) {
     const { data: acct, error } = await supabase
       .from("accounts")
-      .insert({ kind: "author", display_handle: HANDLE, updated_at: now })
+      .insert({ display_handle: HANDLE, updated_at: now })
       .select("id").single();
     if (error || !acct) { console.error("Failed to create account:", error?.message); process.exit(1); }
     accountId = acct.id as string;

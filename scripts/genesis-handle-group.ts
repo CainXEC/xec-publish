@@ -25,12 +25,12 @@ import { SLP_TOKEN_TYPE_NFT1_GROUP, payment, fromHex } from "ecash-lib";
 
 // ---- EDIT THESE before the real run ----------------------------------------
 const GENESIS_INFO = {
-  tokenName: "ProofofWriting Handles",
-  tokenTicker: "POWH",
+  tokenName: "POW Handles",
+  tokenTicker: "WRITE",
   url: "https://proofofwriting.com",
   decimals: 0,            // NFTs are whole units — must be 0
 };
-const SUPPLY = 1_000_000n;       // group cap = max handle NFTs (baton kept → extendable)
+const SUPPLY = 10_000n;          // first batch = 10k handles (matches the app cap; baton kept → extendable)
 const INCLUDE_MINT_BATON = true; // keep a baton so the cap is extendable later
 const CHRONIK_URLS = ["https://chronik.e.cash", "https://chronik-native.fabien.cash"];
 // ----------------------------------------------------------------------------

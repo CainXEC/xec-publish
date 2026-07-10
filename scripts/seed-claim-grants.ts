@@ -189,6 +189,18 @@ async function main() {
     status: "unclaimed",
   }));
 
+  // claim_grants.handle_skeleton is a FK into reserved_handles — a name must be
+  // reserved before it can be granted. Reserve each grandfather handle first
+  // (reason 'grandfather'; idempotent on skeleton), which also blocks a public
+  // mint of that name until its owner claims it. Then insert the grants.
+  const reservedRows = plan.seed.map((s) => ({
+    handle_skeleton: s.sk, handle: s.handle, reason: "grandfather",
+  }));
+  const { error: resErr } = await supabase
+    .from("reserved_handles")
+    .upsert(reservedRows, { onConflict: "handle_skeleton" });
+  if (resErr) { console.error("\nReserve failed:", resErr.message); process.exit(1); }
+
   const { error } = await supabase.from("claim_grants").insert(rows);
   if (error) { console.error("\nInsert failed:", error.message); process.exit(1); }
 
