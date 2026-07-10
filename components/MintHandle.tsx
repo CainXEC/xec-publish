@@ -16,6 +16,7 @@ import { watchPaymentAddress, prewarmPaymentWatch } from "@/lib/ecash/watchPayme
 import FeedTopbar from "@/components/feed/FeedTopbar";
 import { FEED_CSS } from "@/components/feed/feedTheme";
 import MarketplaceClient from "@/components/MarketplaceClient";
+import MintCounter from "@/components/MintCounter";
 
 type Availability = { available?: boolean; status: string; priceXec?: number; tier?: string; auctionOnly?: boolean; reason?: string };
 type Intent = { mintId: string; handle: string; amountXec: string; address: string; bip21Url: string; expiresAt: string };
@@ -302,6 +303,8 @@ export default function MintHandle({
       <h1 className="title">Mint a handle</h1>
       <p className="sub">A one-of-one name on Proof of Writing.</p>
 
+      <MintCounter />
+
       {/* mystery card — the reveal stays hidden until after payment */}
       {phase !== "done" && (
         <div className="stage">
@@ -473,6 +476,12 @@ const CSS = `
 .pow-mint .title{font-size:42px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--neon);margin:0 0 12px;
   text-shadow:0 0 8px rgba(0,255,156,.55),0 0 26px rgba(0,255,156,.28);}
 .pow-mint .sub{color:#a6d8c9;font-size:14.5px;line-height:1.55;margin:0 0 30px;}
+/* live "X / 10,000 minted" progress */
+.pow-mint .mintcount{margin:-14px auto 30px;max-width:320px;width:100%;}
+.pow-mint .mintcount-row{font-size:13px;letter-spacing:.03em;color:var(--dim);font-variant-numeric:tabular-nums;}
+.pow-mint .mintcount-num{color:var(--neon);font-weight:800;font-size:16px;text-shadow:0 0 8px rgba(0,255,156,.4);}
+.pow-mint .mintcount-bar{margin-top:8px;height:5px;border-radius:3px;background:rgba(0,255,156,.1);border:1px solid var(--line);overflow:hidden;}
+.pow-mint .mintcount-fill{height:100%;background:var(--neon);box-shadow:0 0 10px rgba(0,255,156,.5);transition:width .6s ease;}
 
 .pow-mint .stage{display:flex;justify-content:center;margin:0 0 28px;}
 .pow-mint .card{width:260px;height:260px;border-radius:14px;overflow:hidden;
