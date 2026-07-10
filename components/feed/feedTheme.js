@@ -294,9 +294,9 @@ export const FEED_CSS = `
 
 /* ---- article link card ---- */
 .pow-feed .artcard{display:flex;flex-direction:column;gap:6px;margin:12px 0 0;padding:14px 16px;
-  border:1px solid var(--line);border-left:3px solid var(--neon);border-radius:12px;background:var(--panel2);
-  transition:border-color .15s,box-shadow .15s;}
-.pow-feed .artcard:hover{border-color:var(--neon);box-shadow:0 0 18px rgba(0,255,156,.14);}
+  border:1px solid var(--neon);border-radius:12px;background:var(--panel2);
+  transition:box-shadow .15s,background .15s;}
+.pow-feed .artcard:hover{box-shadow:0 0 20px rgba(0,255,156,.22);background:rgba(0,255,156,.06);}
 .pow-feed .artcard-tag{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--neon);
   text-shadow:0 0 8px rgba(0,255,156,.4);}
 .pow-feed .artcard-title{font-size:16px;font-weight:700;line-height:1.35;color:var(--text);}

@@ -102,6 +102,9 @@ function AncestorNode({ post, top = false }) {
         {!post.deleted && !post.quoted_txid && extractFeedPostTxid(post.content) ? (
           <LinkedPostEmbed linkedPost={post.linkedPost} content={post.content} />
         ) : null}
+        {!post.deleted ? (
+          <ArticleCard card={post.articleCard ?? null} content={post.content} />
+        ) : null}
       </div>
     </div>
   )
