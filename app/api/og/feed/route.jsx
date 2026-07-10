@@ -12,6 +12,13 @@ const ACTION_TAG = {
   [FEED_ACTION.QUOTE]: 'quoted',
 }
 
+// Live dark-mode feed tokens (globals.css --bg/--text/--neon, feedTheme.js) so
+// the share card is the same neon-on-black identity readers see in-app.
+const NEON = '#00ff9c'
+const BG = '#070b0a'
+const TEXT = '#d6fff0'
+const DIM = '#5f8a7e'
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
   const rawText = searchParams.get('text') || ''
@@ -24,115 +31,128 @@ export async function GET(request) {
   if (text.length > 280) text = text.slice(0, 279).trimEnd() + '…'
 
   // Scale the body to the amount of text: short posts fill the card, long ones
-  // shrink to fit without overflowing.
+  // shrink to fit without overflowing. (Mono runs wide, so sizes stay modest.)
   const len = text.length
   const bodySize =
-    len > 220 ? 58 : len > 140 ? 74 : len > 70 ? 96 : len > 30 ? 116 : 140
+    len > 220 ? 54 : len > 140 ? 68 : len > 70 ? 88 : len > 30 ? 108 : 132
 
   let fonts = []
   try {
-    const [newsreader, mono, monoBold] = await Promise.all([
-      readFile(join(process.cwd(), 'public/fonts/newsreader-500.ttf')),
+    const [monoRegular, monoBold] = await Promise.all([
       readFile(join(process.cwd(), 'public/fonts/jetbrains-mono-400.ttf')),
       readFile(join(process.cwd(), 'public/fonts/jetbrains-mono-800.ttf')),
     ])
     fonts = [
-      { name: 'Newsreader', data: newsreader, style: 'normal', weight: 500 },
-      { name: 'JetBrains Mono', data: mono, style: 'normal', weight: 400 },
+      { name: 'JetBrains Mono', data: monoRegular, style: 'normal', weight: 400 },
       { name: 'JetBrains Mono', data: monoBold, style: 'normal', weight: 800 },
     ]
   } catch (err) {
     console.error('[og/feed] Font loading failed:', err)
   }
 
-  // Emoji are rasterized by next/og's built-in Twemoji handling (see the `emoji`
-  // option below), so the text fonts only need Latin coverage.
-  const bodyFont = fonts.length > 0 ? 'Newsreader' : 'Georgia'
-  const monoFont = fonts.length > 0 ? 'JetBrains Mono' : 'monospace'
+  // The whole card is JetBrains Mono — the same face as the live feed. Emoji are
+  // rasterized by next/og's built-in Twemoji handling (see the `emoji` option).
+  const mono = fonts.length > 0 ? 'JetBrains Mono' : 'monospace'
   const tag = ACTION_TAG[action] || ''
 
   try {
     const image = new ImageResponse(
       (
+        // Outer div = the neon frame wrapping all four sides (rendered as padding,
+        // not a CSS border, so it shows on every edge). Inner div = the dark feed
+        // panel with a soft neon bloom + inset glow, matching the site banner.
         <div
           style={{
             width: '2400px',
             height: '1260px',
-            background: '#ffffff',
             display: 'flex',
-            flexDirection: 'column',
-            padding: '110px 128px',
-            borderLeft: '16px solid #059669',
+            padding: '30px',
+            backgroundColor: NEON,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '28px', flexShrink: 0 }}>
-            <div
-              style={{
-                fontFamily: monoFont,
-                fontWeight: 800,
-                fontSize: '50px',
-                letterSpacing: '0.14em',
-                color: '#059669',
-                textTransform: 'uppercase',
-              }}
-            >
-              PROOF of WRITING
-            </div>
-            {tag ? (
-              <div style={{ fontFamily: monoFont, fontWeight: 400, fontSize: '40px', color: '#9ca3af' }}>
-                {`· ${tag}`}
-              </div>
-            ) : null}
-          </div>
-
           <div
             style={{
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
-              justifyContent: 'center',
-              overflow: 'hidden',
+              padding: '96px 112px',
+              backgroundColor: BG,
+              backgroundImage:
+                'radial-gradient(1500px 820px at 50% 0%, rgba(0,255,156,0.10), rgba(7,11,10,0) 68%)',
+              boxShadow: 'inset 0 0 120px rgba(0,255,156,0.12)',
             }}
           >
-            {author ? (
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '26px', flexShrink: 0 }}>
               <div
                 style={{
-                  fontFamily: monoFont,
-                  fontWeight: 400,
-                  fontSize: '56px',
-                  color: '#059669',
-                  marginBottom: '40px',
+                  fontFamily: mono,
+                  fontWeight: 800,
+                  fontSize: '50px',
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: NEON,
+                  textShadow: '0 0 26px rgba(0,255,156,0.55)',
                 }}
               >
-                {author}
+                proofofwriting
               </div>
-            ) : null}
+              {tag ? (
+                <div style={{ fontFamily: mono, fontWeight: 400, fontSize: '38px', color: DIM }}>
+                  {`· ${tag}`}
+                </div>
+              ) : null}
+            </div>
+
             <div
               style={{
-                fontFamily: bodyFont,
-                fontWeight: 500,
-                fontSize: `${bodySize}px`,
-                lineHeight: 1.25,
-                color: '#18181b',
-                maxWidth: '2050px',
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
                 overflow: 'hidden',
               }}
             >
-              {text}
+              {author ? (
+                <div
+                  style={{
+                    fontFamily: mono,
+                    fontWeight: 800,
+                    fontSize: '54px',
+                    color: NEON,
+                    textShadow: '0 0 12px rgba(0,255,156,0.35)',
+                    marginBottom: '40px',
+                  }}
+                >
+                  {author}
+                </div>
+              ) : null}
+              <div
+                style={{
+                  fontFamily: mono,
+                  fontWeight: 400,
+                  fontSize: `${bodySize}px`,
+                  lineHeight: 1.4,
+                  color: TEXT,
+                  maxWidth: '2040px',
+                  overflow: 'hidden',
+                }}
+              >
+                {text}
+              </div>
             </div>
-          </div>
 
-          <div
-            style={{
-              fontFamily: monoFont,
-              fontWeight: 400,
-              fontSize: '34px',
-              color: '#9ca3af',
-              letterSpacing: '0.08em',
-              flexShrink: 0,
-            }}
-          >
-            proofofwriting.com
+            <div
+              style={{
+                fontFamily: mono,
+                fontWeight: 400,
+                fontSize: '32px',
+                color: DIM,
+                letterSpacing: '0.08em',
+                flexShrink: 0,
+              }}
+            >
+              proofofwriting.com
+            </div>
           </div>
         </div>
       ),
