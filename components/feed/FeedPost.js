@@ -63,49 +63,27 @@ function Byline({ identity, color }) {
   )
 }
 
-const TIER_LABEL = { short: 'Short', mid: 'Mid', base: 'Base' }
-
 /**
  * Handle-mint card body: a native feed card for a freshly minted handle NFT.
- * Renders the deterministic NFT card image + the new @handle and its tier/price,
- * both linking to the profile. Backed by a feed_posts row whose txid is the token
- * id, so the normal EngagementBar (reply/like/repost) works on it unchanged.
+ * Renders just the deterministic NFT card image, linking to the @handle profile
+ * (the handle + tier are already printed on the card itself). Backed by a
+ * feed_posts row whose txid is the token id, so the normal EngagementBar
+ * (reply/like/repost) works on it unchanged, right below the image.
  */
 function MintCard({ post }) {
   const meta = post.card_meta ?? {}
   const handle = typeof meta.handle === 'string' ? meta.handle : ''
-  const tier = typeof meta.tier === 'string' ? meta.tier : ''
   const href = handle ? `/@${handle}` : null
-  const priceLabel =
-    typeof meta.priceXec === 'number' && meta.priceXec > 0
-      ? `${meta.priceXec.toLocaleString()} XEC`
-      : null
-  const tierLabel = TIER_LABEL[tier] ?? tier
   const alt = handle ? `@${handle} handle NFT card` : 'handle NFT card'
+  if (!post.image_url) return null
 
-  const Img = post.image_url ? (
+  const Img = (
     /* eslint-disable-next-line @next/next/no-img-element */
     <img className="mintcard-img" src={post.image_url} alt={alt} loading="lazy" />
-  ) : null
-
+  )
   return (
     <div className="mintcard">
-      {Img ? (href ? <Link href={href} className="mintcard-imglink">{Img}</Link> : Img) : null}
-      <div className="mintcard-info">
-        <span className="mintcard-kicker">🖊️ New handle minted</span>
-        {href ? (
-          <Link href={href} className="mintcard-handle">@{handle}</Link>
-        ) : (
-          <span className="mintcard-handle">@{handle}</span>
-        )}
-        {tierLabel || priceLabel ? (
-          <span className="mintcard-tier">
-            {tierLabel}
-            {tierLabel && priceLabel ? ' · ' : ''}
-            {priceLabel}
-          </span>
-        ) : null}
-      </div>
+      {href ? <Link href={href} className="mintcard-imglink">{Img}</Link> : Img}
     </div>
   )
 }
