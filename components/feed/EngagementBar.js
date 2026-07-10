@@ -53,6 +53,30 @@ export default function EngagementBar({
 
   const isLike = pending === 'like'
 
+  // Optimistic flip: reflect the like/repost the instant you tap, so it feels
+  // immediate. The payment runs in the background; startReaction blocks a second
+  // tap, so this only ever applies once per reaction.
+  const applyReaction = useCallback((action) => {
+    if (action === 'like') { setLiked(true); setLikes((n) => n + 1) }
+    else { setReposted(true); setReposts((n) => n + 1) }
+  }, [])
+  // Undo the optimistic flip when the payment is cancelled or fails to start.
+  const revertReaction = useCallback((action) => {
+    if (action === 'like') { setLiked(false); setLikes((n) => Math.max(0, n - 1)) }
+    else { setReposted(false); setReposts((n) => Math.max(0, n - 1)) }
+  }, [])
+  // Payment confirmed: the button is already flipped, so just clear the pending
+  // payment UI. Neither a like nor a repost has a page of its own — both stay put.
+  const finalizeReacted = useCallback(() => {
+    setPending(null)
+    setIntent(null)
+    setTxidInput('')
+    setNotice('')
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sessionChanged'))
+    }
+  }, [])
+
   const startReaction = useCallback(
     async (action, amountXec) => {
       if (startingRef.current || pending) return
@@ -111,30 +135,6 @@ export default function EngagementBar({
     },
     [pending, liked, reposted, targetTxid, applyReaction, revertReaction],
   )
-
-  // Optimistic flip: reflect the like/repost the instant you tap, so it feels
-  // immediate. The payment runs in the background; startReaction blocks a second
-  // tap, so this only ever applies once per reaction.
-  const applyReaction = useCallback((action) => {
-    if (action === 'like') { setLiked(true); setLikes((n) => n + 1) }
-    else { setReposted(true); setReposts((n) => n + 1) }
-  }, [])
-  // Undo the optimistic flip when the payment is cancelled or fails to start.
-  const revertReaction = useCallback((action) => {
-    if (action === 'like') { setLiked(false); setLikes((n) => Math.max(0, n - 1)) }
-    else { setReposted(false); setReposts((n) => Math.max(0, n - 1)) }
-  }, [])
-  // Payment confirmed: the button is already flipped, so just clear the pending
-  // payment UI. Neither a like nor a repost has a page of its own — both stay put.
-  const finalizeReacted = useCallback(() => {
-    setPending(null)
-    setIntent(null)
-    setTxidInput('')
-    setNotice('')
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('sessionChanged'))
-    }
-  }, [])
 
   // Poll for the on-chain reaction while a payment is pending.
   useEffect(() => {
