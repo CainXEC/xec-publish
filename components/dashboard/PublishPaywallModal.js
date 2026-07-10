@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { triggerPaymentSuccessEffect } from '@/lib/paymentSuccessEffect'
 import { buildPublishFeeBip21 } from '@/lib/paymentSplit'
-import { watchPaymentAddress } from '@/lib/ecash/watchPaymentAddress'
+import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 import {
   getSharedAudioContext,
   primeAudioContextOnUserGesture,
@@ -281,6 +281,11 @@ export default function PublishPaywallModal({
       )
       return
     }
+    // Warm the shared payment socket at the click so it's subscribed before the
+    // publish-fee payment lands — this flow polls every 3s, so a missed push is
+    // the most costly. Publish-fee is confirmed at 0-conf (no finality gate), so
+    // detection speed is what the author feels.
+    prewarmPaymentWatch()
     if (typeof window !== 'undefined') {
       const ctx = getSharedAudioContext()
       publishAudioContextRef.current = ctx
