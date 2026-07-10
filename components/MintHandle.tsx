@@ -208,7 +208,9 @@ export default function MintHandle({
     // immediate poll (with the txid) the instant the payment hits the mempool,
     // instead of waiting up to 1.2s for the next tick. Pure detection speedup —
     // the finality gate on the server is unchanged.
-    const stopWatch = watchPaymentAddress(intent.address, (txid) => { if (!stopped) poll(txid); });
+    // Third arg = wake (tab foregrounded / ws reconnect): poll immediately in
+    // case the payment broadcast while the tab was suspended in Cashtab.
+    const stopWatch = watchPaymentAddress(intent.address, (txid) => { if (!stopped) poll(txid); }, () => { if (!stopped) poll(); });
     return () => { stopped = true; clearInterval(id); stopWatch(); };
   }, [phase, intent]);
 

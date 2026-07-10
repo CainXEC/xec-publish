@@ -168,9 +168,13 @@ export default function EngagementBar({
     const id = setInterval(() => !stopped && check(), 1200)
     // Chronik ws nudge: confirm the instant the payment touches the payout
     // address instead of waiting for the next 1.2s tick.
-    const unwatch = watchPaymentAddress(intent.payAddress, () => {
-      if (!stopped) void check()
-    })
+    const unwatch = watchPaymentAddress(
+      intent.payAddress,
+      () => { if (!stopped) void check() },
+      // Wake (tab back to foreground / ws reconnect): the payment may have
+      // broadcast while this tab was suspended — check now, don't wait a tick.
+      () => { if (!stopped) void check() },
+    )
     return () => {
       stopped = true
       clearInterval(id)

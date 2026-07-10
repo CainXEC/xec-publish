@@ -152,9 +152,13 @@ export default function ComposeBox({
     // scanning the busy platform address's recent history — a post/reply/quote
     // is disambiguated by its content hash, so a cross-fired txid just misses
     // and polling continues. Server still verifies + gates.
-    const unwatch = watchPaymentAddress(intent.payAddress, (txid) => {
-      if (!stopped) void confirm(txid)
-    })
+    const unwatch = watchPaymentAddress(
+      intent.payAddress,
+      (txid) => { if (!stopped) void confirm(txid) },
+      // Wake (tab back to foreground / ws reconnect): the payment may have
+      // broadcast while this tab was suspended — check now, don't wait a tick.
+      () => { if (!stopped) void confirm() },
+    )
     return () => {
       stopped = true
       clearInterval(id)

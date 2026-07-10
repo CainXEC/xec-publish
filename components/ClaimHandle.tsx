@@ -108,7 +108,9 @@ export default function ClaimHandle() {
     // Live nudge: a Chronik websocket on the proof address fires an immediate
     // poll (with the txid) the moment the proof payment lands, instead of waiting
     // up to 1.5s for the next tick. The server still gates on Avalanche finality.
-    const stopWatch = watchPaymentAddress(started.proofAddress, (txid) => { if (!stopped) poll(txid); });
+    // Third arg = wake (tab foregrounded / ws reconnect): poll immediately in
+    // case the proof payment broadcast while the tab was suspended in Cashtab.
+    const stopWatch = watchPaymentAddress(started.proofAddress, (txid) => { if (!stopped) poll(txid); }, () => { if (!stopped) poll(); });
     return () => { stopped = true; clearInterval(id); stopWatch(); };
   }, [phase, started]);
 

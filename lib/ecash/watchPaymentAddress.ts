@@ -41,14 +41,37 @@ const POSITIVE: ReadonlySet<string> = new Set([
 ]);
 
 type Listener = (txid: string, msgType: string) => void;
+type WakeListener = () => void;
 
 // --- the one shared session socket -----------------------------------------
 let _ws: WsEndpoint | null = null;
 let _opening = false;
 const _listeners = new Set<Listener>();
+const _wakeListeners = new Set<WakeListener>();
 // Ref-count subscriptions per address so overlapping watches on the same
 // address don't unsubscribe each other.
 const _subCounts = new Map<string, number>();
+
+// "Wake" = a moment the tab may have MISSED a push and should run one immediate
+// status check instead of waiting for the next poll tick:
+//  - the tab returns to the foreground (mobile: the user tapped the BIP21 link,
+//    paid inside Cashtab while this tab was backgrounded — throttled timers,
+//    suspended socket — and just came back), or
+//  - the websocket reconnected (a tx may have landed during the gap).
+function dispatchWake() {
+  for (const cb of _wakeListeners) {
+    try { cb(); } catch { /* listener's problem */ }
+  }
+}
+
+let _visibilityHooked = false;
+function hookVisibility() {
+  if (_visibilityHooked || typeof document === "undefined") return;
+  _visibilityHooked = true;
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") dispatchWake();
+  });
+}
 
 function dispatch(msg: WsMsgClient) {
   if (msg.type !== "Tx" || !POSITIVE.has(msg.msgType)) return;
@@ -73,7 +96,13 @@ function ensureSocket(): WsEndpoint | null {
     // as a signal to close-WITHOUT-reconnect, which would kill this persistent
     // socket on the first transient blip. Leaving it undefined lets
     // autoReconnect rotate to the next endpoint and re-send all subscriptions.
-    const ws = client().ws({ autoReconnect: true, onMessage: dispatch });
+    const ws = client().ws({
+      autoReconnect: true,
+      onMessage: dispatch,
+      // A tx may have landed while the socket was down — nudge every active
+      // watcher to run one immediate check (subs are re-sent automatically).
+      onReconnect: () => dispatchWake(),
+    });
     _ws = ws;
     ws.waitForOpen()
       .catch(() => { if (_ws === ws) _ws = null; }) // all endpoints down → retry next call; poll still covers us
@@ -101,16 +130,25 @@ export function prewarmPaymentWatch(): void {
  * address subscription) but leaves the socket warm for the next payment. Call
  * the disposer from a useEffect cleanup.
  *
+ * `onWake` (optional) fires when the tab returns to the foreground or the
+ * socket reconnects — the two moments a push may have been missed. Run one
+ * immediate status check there instead of waiting for the next poll tick;
+ * this is what makes the mobile pay-in-Cashtab-and-come-back flow feel
+ * instant even though the tab was suspended while the payment broadcast.
+ *
  * Browser-only. No-ops (returns a do-nothing disposer) if `address` is falsy or
  * `window` is undefined.
  */
 export function watchPaymentAddress(
   address: string | null | undefined,
   onTx: Listener,
+  onWake?: WakeListener,
 ): () => void {
   if (!address || typeof window === "undefined") return () => {};
 
   _listeners.add(onTx);
+  if (onWake) _wakeListeners.add(onWake);
+  hookVisibility();
   const ws = ensureSocket();
   const n = _subCounts.get(address) ?? 0;
   if (ws && n === 0) {
@@ -125,6 +163,7 @@ export function watchPaymentAddress(
     if (disposed) return;
     disposed = true;
     _listeners.delete(onTx);
+    if (onWake) _wakeListeners.delete(onWake);
     const c = _subCounts.get(address) ?? 0;
     if (c <= 1) {
       _subCounts.delete(address);

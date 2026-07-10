@@ -423,10 +423,13 @@ export default function PostPageClient({
     // the next tick. check-unlock is authoritative server-side, so an unrelated
     // tx to the author just costs one harmless check. (Derived inline from
     // `author` here — the memoized address var is declared later in render.)
-    const stopWatch = watchPaymentAddress(author?.xec_address?.trim() || '', () => {
+    const runUnlockCheck = () => {
       const wallet = readerWalletAddress.trim()
       void checkUnlock(post.id, wallet || undefined)
-    })
+    }
+    // Second callback = wake (tab back to foreground / ws reconnect): the unlock
+    // payment may have broadcast while this tab was suspended in Cashtab.
+    const stopWatch = watchPaymentAddress(author?.xec_address?.trim() || '', runUnlockCheck, runUnlockCheck)
 
     return () => {
       if (pollRef.current) {
@@ -658,14 +661,18 @@ export default function PostPageClient({
     void checkLatest()
     payTxPollRef.current = setInterval(() => {
       void checkLatest()
-    }, 3000)
+    }, 1200)
     // Live nudge: a Chronik websocket on the author's address fires verify-payment
-    // the instant the unlock payment lands, instead of waiting up to 3s for the
-    // next tick. checkLatest re-baselines + verifies + gates on finality, so an
-    // unrelated tx to the author just costs one harmless check.
-    payWatchRef.current = watchPaymentAddress(authorAddressForLatestTx, () => {
-      void checkLatest()
-    })
+    // the instant the unlock payment lands, instead of waiting for the next tick.
+    // checkLatest re-baselines + verifies + gates on finality, so an unrelated tx
+    // to the author just costs one harmless check. Third arg = wake (tab back to
+    // foreground / ws reconnect): the payment may have broadcast while the tab
+    // was suspended in Cashtab — check immediately on return.
+    payWatchRef.current = watchPaymentAddress(
+      authorAddressForLatestTx,
+      () => { void checkLatest() },
+      () => { void checkLatest() },
+    )
   }, [
     authorAddressForLatestTx,
     fetchUnlockCount,

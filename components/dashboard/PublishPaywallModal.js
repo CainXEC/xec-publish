@@ -257,9 +257,13 @@ export default function PublishPaywallModal({
     // the next tick. checkLatest still baselines + verifies server-side, so an
     // unrelated platform tx just costs one harmless check.
     if (watchRef.current) watchRef.current()
-    watchRef.current = watchPaymentAddress(platformAddressForLatestTx, () => {
-      void checkLatest()
-    })
+    watchRef.current = watchPaymentAddress(
+      platformAddressForLatestTx,
+      () => { void checkLatest() },
+      // Wake (tab back to foreground / ws reconnect): the fee payment may have
+      // broadcast while this tab was suspended — check now, don't wait a tick.
+      () => { void checkLatest() },
+    )
   }, [platformAddressForLatestTx, postId, stopPublishFeePolling])
 
   function openPublishCashtab(url) {

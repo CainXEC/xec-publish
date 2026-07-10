@@ -99,7 +99,9 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
     // Live nudge: a Chronik websocket on the proof address fires an immediate
     // poll the instant the login payment lands, instead of waiting up to 2.5s
     // for the next tick. The status route still verifies the nonce server-side.
-    const stopWatch = watchPaymentAddress(started.proofAddress, () => { if (!stopped) poll(); });
+    // Third arg = wake (tab foregrounded / ws reconnect): poll immediately in
+    // case the login payment broadcast while the tab was suspended in Cashtab.
+    const stopWatch = watchPaymentAddress(started.proofAddress, () => { if (!stopped) poll(); }, () => { if (!stopped) poll(); });
     return () => { stopped = true; clearInterval(id); stopWatch(); };
   }, [phase, started, redirectTo]);
 
