@@ -30,6 +30,8 @@ import { randomUUID } from "node:crypto";
 import { decodeOpReturnToPostId } from "@/lib/opReturnEncode";
 import { encodeFeedOpReturnRaw, decodeFeedOpReturn, FEED_ACTION } from "@/lib/feedProtocol";
 import { setSessionCookie } from "@/lib/session";
+import { signCookieValue, verifyCookieValue } from "@/lib/cookieSigner";
+import { cookies } from "next/headers";
 import { heldHandlesForAddress } from "@/lib/heldHandles";
 import { CHRONIK_URLS } from "@/lib/ecash/chronikEndpoints";
 
@@ -43,6 +45,11 @@ const supabase = createClient(
 );
 
 const AUTH_ADDRESS = process.env.AUTH_PROOF_ADDRESS ?? process.env.MINT_PAYMENT_ADDRESS!;
+// Signed, HttpOnly cookie that binds a login challenge to the browser that
+// STARTED it. verifyAuth() will only accept the nonce carried in this cookie, so
+// an attacker who reads the (public, on-chain) nonce from the victim's payment
+// can no longer race the victim's status poll and be handed the victim's session.
+const AUTH_NONCE_COOKIE = "pow_auth_nonce";
 const PROOF_XEC = "5.50";               // fixed login amount, below the 6.00 claim floor
 const PROOF_SATS_MIN = 550;             // 5.50 XEC = 550 sats; accept >= this
 const NONCE_TTL_MINUTES = 5;
@@ -105,6 +112,18 @@ export async function startAuth(): Promise<StartAuthResult> {
   const expiresAt = new Date(Date.now() + NONCE_TTL_MINUTES * 60_000).toISOString();
   await supabase.from("auth_challenges").insert({ nonce, expires_at: expiresAt });
 
+  // Bind this challenge to the calling browser. verifyAuth() will only accept the
+  // nonce carried in this signed, HttpOnly cookie — so only the browser that
+  // started the login can complete it, even though the nonce is public on-chain.
+  const store = await cookies();
+  store.set(AUTH_NONCE_COOKIE, signCookieValue("auth_nonce", nonce), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: NONCE_TTL_MINUTES * 60,
+  });
+
   const opReturnRaw = encodeFeedOpReturnRaw({ action: FEED_ACTION.AUTH, nonce });
   const bip21Url = `${AUTH_ADDRESS}?amount=${PROOF_XEC}&op_return_raw=${opReturnRaw}`;
 
@@ -120,6 +139,19 @@ export type VerifyAuthResult =
 
 export async function verifyAuth(): Promise<VerifyAuthResult> {
   try {
+    // The login is bound to the browser that started it: only the nonce carried
+    // in this signed, HttpOnly cookie can complete here. Without it there is
+    // nothing to verify — an attacker polling with no/forged cookie matches
+    // nothing — which is what closes the front-running window.
+    const store = await cookies();
+    const { valid, txid: boundNonce } = verifyCookieValue(
+      "auth_nonce",
+      store.get(AUTH_NONCE_COOKIE)?.value,
+    );
+    if (!valid || !boundNonce) {
+      return { ok: false, status: "awaiting_payment" };
+    }
+
     const page = await chronik().address(AUTH_ADDRESS).history(0, 25);
     const nowSec = Math.floor(Date.now() / 1000);
 
@@ -129,7 +161,7 @@ export async function verifyAuth(): Promise<VerifyAuthResult> {
       if (satsToAddress(tx, AUTH_ADDRESS) < PROOF_SATS_MIN) continue;
 
       const nonce = nonceOf(tx);
-      if (!nonce) continue;
+      if (!nonce || nonce !== boundNonce) continue;   // only THIS browser's challenge
 
       const address = payerOf(tx);
       if (!address) continue;
@@ -153,6 +185,14 @@ export async function verifyAuth(): Promise<VerifyAuthResult> {
       // session (nonce-proven = challenge scope).
       const resolved = await resolveOrCreateAccount(address);
       await setSessionCookie(resolved.accountId, address, "challenge");
+      // single-use: drop the binding cookie so this challenge can't be replayed.
+      store.set(AUTH_NONCE_COOKIE, "", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 0,
+      });
 
       return { ok: true, accountId: resolved.accountId, address, authorId: resolved.authorId, handle: resolved.handle };
     }

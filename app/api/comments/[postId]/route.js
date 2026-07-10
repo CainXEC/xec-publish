@@ -3,8 +3,9 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { verifyCookieValue } from '@/lib/cookieSigner'
 import { createServerSupabase } from '@/lib/supabase-server'
-import { supabase } from '@/lib/supabase'
 import { getAuthedAccount } from '@/lib/authHelpers'
+
+const supabase = createServerSupabase()
 
 /** All stored forms of an ecash address, prefix-agnostic (matches /api/me). */
 function addressForms(address) {

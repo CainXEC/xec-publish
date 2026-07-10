@@ -1,7 +1,9 @@
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createServerSupabase } from '@/lib/supabase-server'
+
+const supabase = createServerSupabase()
 
 export async function GET(_request, { params }) {
   const { postId } = await params

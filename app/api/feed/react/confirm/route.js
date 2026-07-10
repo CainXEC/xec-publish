@@ -177,28 +177,36 @@ export async function POST(request) {
 
   // Reacting proves wallet ownership → mint a 'pay'-scope session (never
   // downgrade a stronger challenge session). Best-effort.
-  try {
-    const existing = verifySession(request.cookies.get(SESSION_COOKIE)?.value)
-    const keepStronger =
-      existing && existing.via === 'challenge' && existing.accountId === resolved.accountId
-    if (!keepStronger) {
-      response.cookies.set({
-        name: SESSION_COOKIE,
-        value: signSession({
-          accountId: resolved.accountId,
-          address: match.payerAddress,
-          iat: Date.now(),
-          via: 'pay',
-        }),
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: SESSION_MAX_AGE_DAYS * 24 * 60 * 60,
-      })
+  //
+  // ONLY mint when the client proved its OWN txid. On the address-scan path
+  // (`providedTxid` null) `match` can be ANOTHER wallet's reaction on the same
+  // post, so minting from it would hand the caller a stranger's session — a
+  // session-harvest on any popular post. Recording that reaction is fine;
+  // logging someone in from it is not.
+  if (providedTxid) {
+    try {
+      const existing = verifySession(request.cookies.get(SESSION_COOKIE)?.value)
+      const keepStronger =
+        existing && existing.via === 'challenge' && existing.accountId === resolved.accountId
+      if (!keepStronger) {
+        response.cookies.set({
+          name: SESSION_COOKIE,
+          value: signSession({
+            accountId: resolved.accountId,
+            address: match.payerAddress,
+            iat: Date.now(),
+            via: 'pay',
+          }),
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: SESSION_MAX_AGE_DAYS * 24 * 60 * 60,
+        })
+      }
+    } catch (e) {
+      console.error('[feed-react-confirm] session mint failed (reaction still ok)', e)
     }
-  } catch (e) {
-    console.error('[feed-react-confirm] session mint failed (reaction still ok)', e)
   }
 
   return response
