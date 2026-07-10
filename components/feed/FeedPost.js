@@ -52,7 +52,7 @@ function Byline({ identity, color }) {
     // A custom handle color (one of the theme swatches) overrides the default
     // neon byline; absent color keeps the CSS default.
     return (
-      <Link href={`/@${handle}`} className="byline" style={color ? { color } : undefined}>
+      <Link href={`/@${handle}`} className="byline" style={color ? { '--hc': color } : undefined}>
         {handle}
       </Link>
     )

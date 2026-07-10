@@ -292,7 +292,7 @@ export default function AuthorProfilePageClient({
         <header className="profhead">
           <h1
             className={`profname${isAddressIdentity ? ' isaddr' : ''}`}
-            style={!isAddressIdentity && handleColor ? { color: handleColor } : undefined}
+            style={!isAddressIdentity && handleColor ? { '--hc': handleColor } : undefined}
           >
             {isAddressIdentity ? identity : String(identity ?? '').replace(/^@/, '')}
           </h1>

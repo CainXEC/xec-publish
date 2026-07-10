@@ -13,7 +13,7 @@ function QuotedByline({ identity, color }) {
   const id = typeof identity === 'string' ? identity.trim() : ''
   if (id.startsWith('@')) {
     return (
-      <Link href={`/@${id.slice(1)}`} className="qbyline" style={color ? { color } : undefined}>
+      <Link href={`/@${id.slice(1)}`} className="qbyline" style={color ? { '--hc': color } : undefined}>
         {id.slice(1)}
       </Link>
     )

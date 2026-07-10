@@ -179,7 +179,7 @@ export const FEED_CSS = `
 .pow-feed .repostedby-who{color:var(--dim);font-weight:600;transition:color .15s;}
 .pow-feed a.repostedby-who:hover{color:var(--cyan);}
 .pow-feed .postmeta{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
-.pow-feed .byline{font-size:13px;font-weight:700;color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.35);transition:text-shadow .15s;}
+.pow-feed .byline{font-size:13px;font-weight:700;color:var(--hc,var(--neon));text-shadow:0 0 8px rgba(0,255,156,.35);transition:text-shadow .15s;}
 .pow-feed .byline:hover{text-shadow:0 0 14px rgba(0,255,156,.6);}
 .pow-feed .addr{font-size:13px;color:var(--cyan);}
 .pow-feed .dot{color:var(--line);}
@@ -287,7 +287,7 @@ export const FEED_CSS = `
   transition:border-color .15s,box-shadow .15s;}
 .pow-feed .quoted[role="link"]:hover{border-color:var(--cyan);box-shadow:0 0 16px rgba(61,240,255,.12);}
 .pow-feed .quoted .qmeta{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
-.pow-feed .qbyline{font-weight:700;color:var(--neon);font-size:12px;text-shadow:0 0 8px rgba(0,255,156,.3);}
+.pow-feed .qbyline{font-weight:700;color:var(--hc,var(--neon));font-size:12px;text-shadow:0 0 8px rgba(0,255,156,.3);}
 .pow-feed .qaddr{font-size:12px;color:var(--cyan);}
 .pow-feed .qbody{margin:6px 0 0;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.5;color:#b9e6d8;}
 .pow-feed .quoted-gone{color:var(--dim);font-style:italic;font-size:13px;}
@@ -306,7 +306,7 @@ export const FEED_CSS = `
 
 /* ---- profile header ---- */
 .pow-feed .profhead{margin:0 0 8px;}
-.pow-feed .profname{margin:0;font-size:30px;font-weight:800;letter-spacing:.02em;color:var(--neon);
+.pow-feed .profname{margin:0;font-size:30px;font-weight:800;letter-spacing:.02em;color:var(--hc,var(--neon));
   text-shadow:0 0 14px rgba(0,255,156,.45);word-break:break-word;}
 .pow-feed .profname.isaddr{font-size:18px;letter-spacing:0;color:var(--cyan);text-shadow:0 0 12px rgba(61,240,255,.4);}
 .pow-feed .profaddr{display:inline-block;margin:8px 0 0;padding:0;font:inherit;font-size:12px;background:none;border:0;color:var(--dim);cursor:pointer;transition:color .15s;}
@@ -533,6 +533,18 @@ html:not(.dark) .pow-feed .artrow-teaser,
 html:not(.dark) .pow-feed .profbio,
 html:not(.dark) .pow-feed .dashbio{color:#2f5b4e;}
 html:not(.dark) .pow-feed .ttext{color:#26564a;}
+/* @handle text in light mode: no neon glow, and MATTE the color — darken the
+   swatch (carried on --hc) toward ink so it stays on-hue but reads crisply on
+   white. Dark mode keeps the bright, glowing swatch. The plain var() is a fallback
+   for browsers without color-mix. */
+html:not(.dark) .pow-feed .byline,
+html:not(.dark) .pow-feed .qbyline,
+html:not(.dark) .pow-feed .profname{
+  color:var(--hc,#008a55);
+  color:color-mix(in oklab, var(--hc,#00b06e) 55%, #000);
+  text-shadow:none;
+}
+html:not(.dark) .pow-feed .byline:hover{text-shadow:none;filter:brightness(.88);}
 html:not(.dark) .pow-feed .compose textarea::placeholder{color:#8fb8ab;}
 /* sticky topbar tint matches the daylight ground (dark default is set inline above) */
 html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
