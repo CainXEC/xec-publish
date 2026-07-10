@@ -3,9 +3,21 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { getAuthedAccount } from '@/lib/authHelpers'
-import { clearSessionCookie } from '@/lib/session'
+import { clearSessionCookie, getChallengeSession } from '@/lib/session'
 
 export async function DELETE() {
+  // Deleting an account is irreversible — it removes the author row, ALL of its
+  // posts, and ALL comments on them. Require a challenge-scope session (the
+  // nonce-proven login), so a weaker, race-mintable 'pay' session can never nuke
+  // an account. A pay-only user is asked to log in properly first.
+  const challenge = await getChallengeSession()
+  if (!challenge) {
+    return NextResponse.json(
+      { error: 'Please log in again (a fresh wallet login) to delete your account.' },
+      { status: 403 },
+    )
+  }
+
   const acct = await getAuthedAccount()
   if (!acct) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -19,62 +31,16 @@ export async function DELETE() {
     )
   }
 
-  const { accountId, authorId } = acct
-
-  // --- authorship cleanup (only if this account is linked to an author) ---
-  if (authorId) {
-    const { data: authorPosts, error: postsSelectError } = await admin
-      .from('posts')
-      .select('id')
-      .eq('author_id', authorId)
-
-    if (postsSelectError) {
-      return NextResponse.json({ error: postsSelectError.message }, { status: 500 })
-    }
-
-    const postIds = (authorPosts ?? []).map((p) => p.id).filter(Boolean)
-    if (postIds.length > 0) {
-      const { error: commentsError } = await admin
-        .from('comments')
-        .delete()
-        .in('post_id', postIds)
-      if (commentsError) {
-        return NextResponse.json({ error: commentsError.message }, { status: 500 })
-      }
-    }
-
-    const { error: postsDeleteError } = await admin
-      .from('posts')
-      .delete()
-      .eq('author_id', authorId)
-    if (postsDeleteError) {
-      return NextResponse.json({ error: postsDeleteError.message }, { status: 500 })
-    }
-
-    const { error: authorDeleteError } = await admin
-      .from('authors')
-      .delete()
-      .eq('id', authorId)
-    if (authorDeleteError) {
-      return NextResponse.json({ error: authorDeleteError.message }, { status: 500 })
-    }
-  }
-
-  // --- wallet identity cleanup (FK-safe order: addresses before the account) ---
-  const { error: addrError } = await admin
-    .from('account_addresses')
-    .delete()
-    .eq('account_id', accountId)
-  if (addrError) {
-    return NextResponse.json({ error: addrError.message }, { status: 500 })
-  }
-
-  const { error: acctError } = await admin
-    .from('accounts')
-    .delete()
-    .eq('id', accountId)
-  if (acctError) {
-    return NextResponse.json({ error: acctError.message }, { status: 500 })
+  // Hard-delete the account and ALL of its data in one transaction, in FK-safe
+  // order (see sql/delete_account.sql). This replaces the old sequential
+  // per-table DELETEs, which skipped the feed tables and — because feed_posts /
+  // feed_events reference accounts(id) with no ON DELETE rule — hit a FK
+  // violation on the accounts delete for any feed-active account, leaving it
+  // half-deleted. The RPC is atomic: on any error nothing is removed. Minted
+  // handles are intentionally left untouched (on-chain NFTs, not DB-owned).
+  const { error } = await admin.rpc('delete_account', { p_account_id: acct.accountId })
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
   // log the user out (clear the session cookie)
