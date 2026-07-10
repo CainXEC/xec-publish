@@ -177,7 +177,6 @@ export default function ComposeBox({
   const isReply = action === 'reply'
   const isQuote = action === 'quote'
   const noun = isReply ? 'reply' : isQuote ? 'quote' : 'post'
-  const verb = isReply ? 'Reply' : isQuote ? 'Quote' : 'Post'
 
   if (phase === 'paying' && intent) {
     return (
@@ -234,7 +233,6 @@ export default function ComposeBox({
       <div className="composebar">
         <span className={`count${overCap ? ' over' : ''}`}>
           {chars}/{FEED_MAX_CHARS}
-          {priced.ok ? <span className="cost">{priced.costXec} XEC</span> : null}
         </span>
         <div className="barbtns">
           {(isReply || isQuote) && onCancel ? (
@@ -243,8 +241,7 @@ export default function ComposeBox({
             </button>
           ) : null}
           <button type="button" disabled={!canSubmit} onClick={() => void startPayment()} className="btn">
-            {verb}
-            {priced.ok ? ` · ${priced.costXec} XEC` : ''}
+            {priced.ok ? `Pay · ${priced.costXec} XEC` : 'Pay'}
           </button>
         </div>
       </div>
