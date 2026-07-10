@@ -16,7 +16,7 @@ function truncateAddress(addr) {
 }
 
 /**
- * The follower count plus a "···" dropdown holding the two relationship actions
+ * The follower count plus a "+" dropdown holding the two relationship actions
  * for the profile's account: Follow/Unfollow and Block/Unblock. Session-authorized
  * and optimistic. Follow updates the follower count in place. Blocking hides both
  * accounts' posts from each other, stops the blocked party replying, and
@@ -131,9 +131,9 @@ function ProfileActionsMenu({
           onClick={() => setOpen((s) => !s)}
           aria-haspopup="menu"
           aria-expanded={open}
-          aria-label="More"
+          aria-label="Follow or block"
         >
-          ···
+          +
         </button>
         {open ? (
           <div className="menupop" role="menu">

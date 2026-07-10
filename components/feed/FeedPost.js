@@ -111,7 +111,7 @@ function MintCard({ post }) {
 }
 
 /**
- * Overflow "···" menu on someone else's post: the single home for the two
+ * Overflow "+" menu on someone else's post: the single home for the two
  * relationship actions — Follow/Unfollow and Block. Both are session-authorized
  * and optimistic. Follow flips in place; Block confirms, then calls onBlocked so
  * the feed drops the account's posts immediately. Only rendered for a signed-in
@@ -188,9 +188,9 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
         onClick={() => setOpen((s) => !s)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="More"
+        aria-label="Follow or block"
       >
-        ···
+        +
       </button>
       {open ? (
         <div className="menupop" role="menu">

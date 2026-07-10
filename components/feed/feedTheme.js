@@ -52,7 +52,7 @@ export const FEED_CSS = `
   transition:border-color .15s,box-shadow .15s;}
 .pow-feed .hamburger:hover{border-color:var(--cyan);box-shadow:0 0 16px rgba(61,240,255,.22);}
 .pow-feed .hamicon{font-size:17px;line-height:1;}
-.pow-feed .hammenu{position:absolute;top:calc(100% + 8px);left:0;z-index:60;min-width:190px;
+.pow-feed .hammenu{position:absolute;top:calc(100% + 8px);left:0;z-index:60;width:max-content;min-width:120px;
   background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px;
   box-shadow:0 12px 32px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:2px;}
 .pow-feed .hammenu-item{display:block;width:100%;text-align:left;background:none;border:none;font:inherit;
@@ -187,13 +187,13 @@ export const FEED_CSS = `
 .pow-feed .time:hover{color:var(--cyan);}
 /* overflow (···) menu on a post / profile — Follow + Block live here */
 .pow-feed .postmenu{position:relative;align-self:center;display:inline-flex;margin-left:auto;}
-.pow-feed .menubtn{background:none;border:none;color:var(--dim);font:inherit;font-size:16px;line-height:1;
-  letter-spacing:1px;padding:2px 6px;border-radius:6px;cursor:pointer;transition:color .15s,background .15s;}
+.pow-feed .menubtn{background:none;border:none;color:var(--dim);font:inherit;font-size:19px;font-weight:600;line-height:1;
+  padding:0 6px;border-radius:6px;cursor:pointer;transition:color .15s,background .15s;}
 .pow-feed .menubtn:hover{color:var(--text);background:rgba(255,255,255,.05);}
-.pow-feed .menupop{position:absolute;top:100%;right:0;margin-top:4px;z-index:20;min-width:120px;
+.pow-feed .menupop{position:absolute;top:100%;right:0;margin-top:4px;z-index:20;width:max-content;min-width:96px;
   background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px;
   box-shadow:0 8px 24px rgba(0,0,0,.5);}
-.pow-feed .menuitem{display:block;width:100%;text-align:left;background:none;border:none;font:inherit;font-size:13px;
+.pow-feed .menuitem{display:block;width:100%;text-align:right;background:none;border:none;font:inherit;font-size:13px;
   color:var(--text);padding:8px 10px;border-radius:7px;cursor:pointer;transition:background .12s,color .12s;}
 .pow-feed .menuitem:hover{background:rgba(255,92,108,.12);}
 .pow-feed .menuitem.danger{color:var(--no);}
