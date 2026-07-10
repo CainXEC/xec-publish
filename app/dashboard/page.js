@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { getXecBalanceSats } from '@/lib/xecBalance'
+import { getAccountFeedPage, getAccountRepliesPage } from '@/lib/getFeed'
 export default async function DashboardPage() {
   const acct = await getAuthedAccount()
   // Any logged-in wallet reaches its dashboard — including a brand-new address
@@ -15,6 +16,13 @@ export default async function DashboardPage() {
   // Live wallet balance for the logged-in address — fetched concurrently with the
   // author queries below so it doesn't add serial latency.
   const walletBalancePromise = getXecBalanceSats(acct.address)
+  // The account's own feed posts (Posts tab) and replies (Replies tab) — keyed on
+  // accountId, so they populate even for a reader account with no article/author
+  // row. Fetched concurrently too.
+  const feedTabsPromise = Promise.all([
+    getAccountFeedPage({ accountId: acct.accountId, viewerAddress: acct.address, viewerAccountId: acct.accountId }),
+    getAccountRepliesPage({ accountId: acct.accountId, viewerAddress: acct.address, viewerAccountId: acct.accountId }),
+  ])
   const authorId = acct.authorId
   const admin = createSupabaseAdminClient()
   const supabase = admin // all queries below run on the service-role client now
@@ -54,6 +62,7 @@ export default async function DashboardPage() {
     : [{ data: [], error: null }, { data: null }, { data: [] }, { data: null }]
   const rows = unlockRows ?? []
   const walletXecRaw = await walletBalancePromise
+  const [feedPage, repliesPage] = await feedTabsPromise
   // The welcome byline should reflect the LIVE identity (a bound handle if the
   // account holds one, else the raw wallet address) — never the legacy
   // authors.username, which may name a handle the wallet no longer/never held.
@@ -72,6 +81,9 @@ export default async function DashboardPage() {
       loadError={postsError?.message ?? null}
       initialTotalUnlocks={rows.length}
       initialWalletXecRaw={walletXecRaw}
+      viewerAccountId={acct.accountId}
+      initialFeedPosts={feedPage.posts}
+      initialFeedReplies={repliesPage.posts}
     />
   )
 }

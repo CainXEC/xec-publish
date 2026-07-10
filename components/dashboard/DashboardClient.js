@@ -5,6 +5,7 @@ import Link from 'next/link'
 import FilterDropdown from '@/components/FilterDropdown'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import FeedTopbar from '@/components/feed/FeedTopbar'
+import FeedPost from '@/components/feed/FeedPost'
 import BellIcon from '@/components/BellIcon'
 import UnlockIcon from '@/components/UnlockIcon'
 import EcashIcon from '@/components/EcashIcon'
@@ -207,6 +208,9 @@ export default function DashboardClient({
   loadError,
   initialTotalUnlocks,
   initialWalletXecRaw,
+  viewerAccountId = null,
+  initialFeedPosts = [],
+  initialFeedReplies = [],
 }) {
   const [posts, setPosts] = useState(initialPosts)
   const [sortMode, setSortMode] = useState('newest')
@@ -223,6 +227,22 @@ export default function DashboardClient({
   )
   const [legacySectionOpen, setLegacySectionOpen] = useState(false)
   const copyTimeoutRef = useRef(null)
+
+  // Three-tab view (Posts / Replies / Articles), mirroring the profile page.
+  // Posts & Replies are the account's own feed items; Articles is the paywalled
+  // article manager below. New accounts land on Posts.
+  const [tab, setTab] = useState('posts')
+  const [feedPosts, setFeedPosts] = useState(initialFeedPosts ?? [])
+  const [feedReplies, setFeedReplies] = useState(initialFeedReplies ?? [])
+  // Deleting one of your own feed items drops it from whichever tab holds it.
+  const removeFeedItem = useCallback((txid) => {
+    setFeedPosts((prev) => prev.filter((p) => p.txid !== txid))
+    setFeedReplies((prev) => prev.filter((p) => p.txid !== txid))
+  }, [])
+  // A quote posted inline surfaces at the top of the Posts tab.
+  const handleFeedQuoted = useCallback((newPost) => {
+    if (newPost) setFeedPosts((prev) => [newPost, ...prev])
+  }, [])
 
   // Stats come from the server — no loading state needed
   const totalUnlocks = typeof initialTotalUnlocks === 'number' ? initialTotalUnlocks : 0
@@ -585,6 +605,77 @@ export default function DashboardClient({
           </div>
         </div>
 
+        <div className="tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'posts'}
+            className={`tab${tab === 'posts' ? ' on' : ''}`}
+            onClick={() => setTab('posts')}
+          >
+            Posts
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'replies'}
+            className={`tab${tab === 'replies' ? ' on' : ''}`}
+            onClick={() => setTab('replies')}
+          >
+            Replies
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'articles'}
+            className={`tab${tab === 'articles' ? ' on' : ''}`}
+            onClick={() => setTab('articles')}
+          >
+            Articles
+          </button>
+        </div>
+
+        {tab === 'posts' ? (
+          feedPosts.length === 0 ? (
+            <div className="empty">
+              <p>You haven’t posted to the feed yet.</p>
+              <p style={{ marginTop: '16px' }}>
+                <Link href="/?compose=1" className="dashbtn">
+                  Write your first post
+                </Link>
+              </p>
+            </div>
+          ) : (
+            <ul className="panel posts">
+              {feedPosts.map((post) => (
+                <FeedPost
+                  key={post.txid}
+                  post={post}
+                  viewerAccountId={viewerAccountId}
+                  onDeleted={removeFeedItem}
+                  onQuoted={handleFeedQuoted}
+                />
+              ))}
+            </ul>
+          )
+        ) : tab === 'replies' ? (
+          feedReplies.length === 0 ? (
+            <p className="empty">No replies yet.</p>
+          ) : (
+            <ul className="panel posts">
+              {feedReplies.map((post) => (
+                <FeedPost
+                  key={post.txid}
+                  post={post}
+                  viewerAccountId={viewerAccountId}
+                  onDeleted={removeFeedItem}
+                  onQuoted={handleFeedQuoted}
+                />
+              ))}
+            </ul>
+          )
+        ) : (
+          <>
         <section className="dashpanel">
           <div className="dashsection-head">
             <h2 className="dashsection-title">Your Articles</h2>
@@ -696,6 +787,8 @@ export default function DashboardClient({
             ) : null}
           </section>
         ) : null}
+          </>
+        )}
       </main>
     </div>
   )
