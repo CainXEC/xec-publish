@@ -8,6 +8,7 @@ import EngagementBar from '@/components/feed/EngagementBar'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import LinkedPostEmbed from '@/components/feed/LinkedPostEmbed'
 import ArticleCard from '@/components/feed/ArticleCard'
+import MintCard from '@/components/feed/MintCard'
 import FeedBody from '@/components/feed/FeedBody'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
@@ -60,31 +61,6 @@ function Byline({ identity, color }) {
     <span className="addr" title={id}>
       {truncateAddress(id)}
     </span>
-  )
-}
-
-/**
- * Handle-mint card body: a native feed card for a freshly minted handle NFT.
- * Renders just the deterministic NFT card image, linking to the @handle profile
- * (the handle + tier are already printed on the card itself). Backed by a
- * feed_posts row whose txid is the token id, so the normal EngagementBar
- * (reply/like/repost) works on it unchanged, right below the image.
- */
-function MintCard({ post }) {
-  const meta = post.card_meta ?? {}
-  const handle = typeof meta.handle === 'string' ? meta.handle : ''
-  const href = handle ? `/@${handle}` : null
-  const alt = handle ? `@${handle} handle NFT card` : 'handle NFT card'
-  if (!post.image_url) return null
-
-  const Img = (
-    /* eslint-disable-next-line @next/next/no-img-element */
-    <img className="mintcard-img" src={post.image_url} alt={alt} loading="lazy" />
-  )
-  return (
-    <div className="mintcard">
-      {href ? <Link href={href} className="mintcard-imglink">{Img}</Link> : Img}
-    </div>
   )
 }
 

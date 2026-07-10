@@ -11,6 +11,7 @@ import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import LinkedPostEmbed from '@/components/feed/LinkedPostEmbed'
 import ArticleCard from '@/components/feed/ArticleCard'
 import FeedBody from '@/components/feed/FeedBody'
+import MintCard from '@/components/feed/MintCard'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
 import { FEED_CSS } from '@/components/feed/feedTheme'
@@ -224,21 +225,25 @@ export default function FeedThreadClient({
               </div>
               {rootDeleted ? (
                 <p className="focusbody tombstone">This post was deleted.</p>
-              ) : (() => {
-                const focusText = displayTextFor(post.content)
-                return focusText ? (
-                  <p className="focusbody">
-                    <FeedBody text={focusText} />
-                  </p>
-                ) : null
-              })()}
-              {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
-              {!rootDeleted && !post.quoted_txid && extractFeedPostTxid(post.content) ? (
-                <LinkedPostEmbed linkedPost={post.linkedPost} content={post.content} />
-              ) : null}
-              {!rootDeleted ? (
-                <ArticleCard card={post.articleCard ?? null} content={post.content} />
-              ) : null}
+              ) : post.card_kind === 'handle_mint' ? (
+                <MintCard post={post} />
+              ) : (
+                <>
+                  {(() => {
+                    const focusText = displayTextFor(post.content)
+                    return focusText ? (
+                      <p className="focusbody">
+                        <FeedBody text={focusText} />
+                      </p>
+                    ) : null
+                  })()}
+                  {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
+                  {!post.quoted_txid && extractFeedPostTxid(post.content) ? (
+                    <LinkedPostEmbed linkedPost={post.linkedPost} content={post.content} />
+                  ) : null}
+                  <ArticleCard card={post.articleCard ?? null} content={post.content} />
+                </>
+              )}
               <div className="actions">
                 <button type="button" onClick={() => setShowReply((s) => !s)} className="replybtn">
                   💬 {replies.length > 0 ? replies.length : ''} Reply
