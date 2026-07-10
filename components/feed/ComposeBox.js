@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
-import { watchPaymentAddress } from '@/lib/ecash/watchPaymentAddress'
+import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 
 /**
@@ -75,6 +75,9 @@ export default function ComposeBox({
     if (!priced.ok) return
     setSubmitting(true)
     setNotice('')
+    // Warm the shared payment socket at the click so it's subscribed before the
+    // payment lands (see watchPaymentAddress). Cheap + idempotent.
+    prewarmPaymentWatch()
     // Open the tab synchronously inside the click gesture, then point it at
     // Cashtab once /prepare returns. Opening after the await would be swallowed
     // by popup blockers, so we grab the handle now and set its URL later.

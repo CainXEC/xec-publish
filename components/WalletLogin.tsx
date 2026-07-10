@@ -10,7 +10,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { watchPaymentAddress } from "@/lib/ecash/watchPaymentAddress";
+import { watchPaymentAddress, prewarmPaymentWatch } from "@/lib/ecash/watchPaymentAddress";
 
 type Started = {
   ok: true;
@@ -48,6 +48,7 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
     setNotice("");
     setPhase("starting");
     cashtabOpenedRef.current = false;
+    prewarmPaymentWatch(); // warm the shared socket during auth start + Cashtab approval
     try {
       const r = await fetch("/api/auth/start", { method: "POST" });
       const j = await r.json();

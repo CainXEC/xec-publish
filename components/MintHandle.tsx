@@ -12,7 +12,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { renderMysteryCard } from "@/lib/renderHandleCard";
-import { watchPaymentAddress } from "@/lib/ecash/watchPaymentAddress";
+import { watchPaymentAddress, prewarmPaymentWatch } from "@/lib/ecash/watchPaymentAddress";
 import FeedTopbar from "@/components/feed/FeedTopbar";
 import { FEED_CSS } from "@/components/feed/feedTheme";
 import MarketplaceClient from "@/components/MarketplaceClient";
@@ -114,6 +114,7 @@ export default function MintHandle({
     setPaymentSeen(false);
     setMintingActive(false);
     paidSeenRef.current = false;
+    prewarmPaymentWatch(); // warm the shared socket during intent + Cashtab approval
     // Prime the audio context on this gesture so the reveal chime can fire later.
     try {
       const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;

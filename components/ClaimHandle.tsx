@@ -14,7 +14,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { renderMysteryCard } from "@/lib/renderHandleCard";
-import { watchPaymentAddress } from "@/lib/ecash/watchPaymentAddress";
+import { watchPaymentAddress, prewarmPaymentWatch } from "@/lib/ecash/watchPaymentAddress";
 
 type Started = {
   ok: true;
@@ -67,6 +67,7 @@ export default function ClaimHandle() {
     if (!display || !code.trim() || starting) return;
     setStarting(true);
     setNotice("");
+    prewarmPaymentWatch(); // warm the shared socket during claim start + Cashtab approval
     try {
       const r = await fetch("/api/claim/start", {
         method: "POST",
