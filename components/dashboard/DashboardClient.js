@@ -208,9 +208,10 @@ export default function DashboardClient({
   loadError,
   initialTotalUnlocks,
   initialWalletXecRaw,
+  walletBalanceSlot = null,
   viewerAccountId = null,
   initialFeedPosts = [],
-  initialFeedReplies = [],
+  initialFeedReplies = null,
 }) {
   const [posts, setPosts] = useState(initialPosts)
   const [sortMode, setSortMode] = useState('newest')
@@ -233,11 +234,34 @@ export default function DashboardClient({
   // article manager below. New accounts land on Posts.
   const [tab, setTab] = useState('posts')
   const [feedPosts, setFeedPosts] = useState(initialFeedPosts ?? [])
-  const [feedReplies, setFeedReplies] = useState(initialFeedReplies ?? [])
+  // Replies load ON DEMAND: null = not fetched yet. The first switch to the
+  // Replies tab fetches them from /api/feed/account-replies (same shape as the
+  // server used to inline), so the dashboard render never waits on them.
+  const [feedReplies, setFeedReplies] = useState(initialFeedReplies)
+  const [feedRepliesLoading, setFeedRepliesLoading] = useState(false)
+  const loadFeedReplies = useCallback(async () => {
+    if (!viewerAccountId) { setFeedReplies((prev) => prev ?? []); return }
+    setFeedRepliesLoading(true)
+    try {
+      const res = await fetch(
+        `/api/feed/account-replies?accountId=${encodeURIComponent(viewerAccountId)}`,
+      )
+      const data = await res.json()
+      setFeedReplies(Array.isArray(data.posts) ? data.posts : [])
+    } catch {
+      setFeedReplies([])
+    } finally {
+      setFeedRepliesLoading(false)
+    }
+  }, [viewerAccountId])
+  const openRepliesTab = useCallback(() => {
+    setTab('replies')
+    if (feedReplies === null && !feedRepliesLoading) void loadFeedReplies()
+  }, [feedReplies, feedRepliesLoading, loadFeedReplies])
   // Deleting one of your own feed items drops it from whichever tab holds it.
   const removeFeedItem = useCallback((txid) => {
     setFeedPosts((prev) => prev.filter((p) => p.txid !== txid))
-    setFeedReplies((prev) => prev.filter((p) => p.txid !== txid))
+    setFeedReplies((prev) => (prev ? prev.filter((p) => p.txid !== txid) : prev))
   }, [])
   // A quote posted inline surfaces at the top of the Posts tab.
   const handleFeedQuoted = useCallback((newPost) => {
@@ -525,7 +549,9 @@ export default function DashboardClient({
                 style={{ display: 'flex', alignItems: 'center', gap: '7px' }}
               >
                 <EcashIcon size={14} />
-                <span>{walletXec.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                {walletBalanceSlot ?? (
+                  <span>{walletXec.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                )}
               </p>
             </div>
           </div>
@@ -620,7 +646,7 @@ export default function DashboardClient({
             role="tab"
             aria-selected={tab === 'replies'}
             className={`tab${tab === 'replies' ? ' on' : ''}`}
-            onClick={() => setTab('replies')}
+            onClick={openRepliesTab}
           >
             Replies
           </button>
@@ -659,7 +685,9 @@ export default function DashboardClient({
             </ul>
           )
         ) : tab === 'replies' ? (
-          feedReplies.length === 0 ? (
+          feedRepliesLoading || feedReplies === null ? (
+            <p className="empty">Loading replies…</p>
+          ) : feedReplies.length === 0 ? (
             <p className="empty">No replies yet.</p>
           ) : (
             <ul className="panel posts">

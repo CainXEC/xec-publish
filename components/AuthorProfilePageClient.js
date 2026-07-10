@@ -231,13 +231,14 @@ export default function AuthorProfilePageClient({
   bio = null,
   holderAddress = null,
   handleCards = [],
+  handleCardsSlot = null,
   followerCount = 0,
   profileAccountId = null,
   viewerAccountId = null,
   initialFollowing = false,
   initialBlocked = false,
   initialPosts = [],
-  initialReplies = [],
+  initialReplies = null,
   identifier = '',
   initialArticles = [],
   viewerIsAuthor = false,
@@ -245,17 +246,42 @@ export default function AuthorProfilePageClient({
   const router = useRouter()
   const [tab, setTab] = useState('posts') // 'posts' | 'replies' | 'articles'
   const [posts, setPosts] = useState(initialPosts)
+  // Replies load ON DEMAND: null = not fetched yet. The server no longer renders
+  // them into every profile visit; the first switch to the Replies tab fetches
+  // them from /api/feed/account-replies (same shape as before).
   const [replies, setReplies] = useState(initialReplies)
+  const [repliesLoading, setRepliesLoading] = useState(false)
   const articleList = (initialArticles ?? []).filter((p) => !p.legacy)
   const legacyList = (initialArticles ?? []).filter((p) => p.legacy)
   const [blocked, setBlocked] = useState(Boolean(initialBlocked))
   const [copiedAddress, setCopiedAddress] = useState(false)
   const copyTimeoutRef = useRef(null)
 
+  const loadReplies = useCallback(async () => {
+    if (!profileAccountId) { setReplies((prev) => prev ?? []); return }
+    setRepliesLoading(true)
+    try {
+      const res = await fetch(
+        `/api/feed/account-replies?accountId=${encodeURIComponent(profileAccountId)}`,
+      )
+      const data = await res.json()
+      setReplies(Array.isArray(data.posts) ? data.posts : [])
+    } catch {
+      setReplies([])
+    } finally {
+      setRepliesLoading(false)
+    }
+  }, [profileAccountId])
+
+  const openRepliesTab = useCallback(() => {
+    setTab('replies')
+    if (replies === null && !repliesLoading) void loadReplies()
+  }, [replies, repliesLoading, loadReplies])
+
   // A delete/block can target a post in either list, so filter both.
   const removePost = useCallback((txid) => {
     setPosts((prev) => prev.filter((p) => p.txid !== txid))
-    setReplies((prev) => prev.filter((p) => p.txid !== txid))
+    setReplies((prev) => (prev ? prev.filter((p) => p.txid !== txid) : prev))
   }, [])
 
   const copyAddress = useCallback(async () => {
@@ -329,7 +355,7 @@ export default function AuthorProfilePageClient({
           {bioText ? <p className="profbio">{bioText}</p> : null}
         </header>
 
-        <HandleCarousel handles={handleCards} title="Handles" />
+        {handleCardsSlot ?? <HandleCarousel handles={handleCards} title="Handles" />}
 
         <div className="tabs" role="tablist">
           <button
@@ -346,7 +372,7 @@ export default function AuthorProfilePageClient({
             role="tab"
             aria-selected={tab === 'replies'}
             className={`tab${tab === 'replies' ? ' on' : ''}`}
-            onClick={() => setTab('replies')}
+            onClick={openRepliesTab}
           >
             Replies
           </button>
@@ -380,7 +406,9 @@ export default function AuthorProfilePageClient({
             </ul>
           )
         ) : tab === 'replies' ? (
-          replies.length === 0 ? (
+          repliesLoading || replies === null ? (
+            <p className="empty">Loading replies…</p>
+          ) : replies.length === 0 ? (
             <p className="empty">No replies yet.</p>
           ) : (
             <ul className="panel posts">

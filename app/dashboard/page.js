@@ -1,9 +1,21 @@
+import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { getXecBalanceSats } from '@/lib/xecBalance'
-import { getAccountFeedPage, getAccountRepliesPage } from '@/lib/getFeed'
+import { getAccountFeedPage } from '@/lib/getFeed'
+
+/** Wallet balance, streamed OUTSIDE the critical path: it's a Chronik UTXO scan,
+ *  so it renders behind Suspense and fills in when Chronik answers — the
+ *  dashboard HTML streams immediately, nothing else waits on it. Formatting is
+ *  identical to what DashboardClient used to compute from the raw prop. */
+async function WalletBalanceValue({ address }) {
+  const raw = await getXecBalanceSats(address) // never throws; 0 on error
+  const xec = typeof raw === 'number' ? raw / 100 : 0
+  return <span>{xec.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+}
+
 export default async function DashboardPage() {
   const acct = await getAuthedAccount()
   // Any logged-in wallet reaches its dashboard — including a brand-new address
@@ -13,16 +25,15 @@ export default async function DashboardPage() {
   if (!acct) {
     redirect('/login')
   }
-  // Live wallet balance for the logged-in address — fetched concurrently with the
-  // author queries below so it doesn't add serial latency.
-  const walletBalancePromise = getXecBalanceSats(acct.address)
-  // The account's own feed posts (Posts tab) and replies (Replies tab) — keyed on
-  // accountId, so they populate even for a reader account with no article/author
-  // row. Fetched concurrently too.
-  const feedTabsPromise = Promise.all([
-    getAccountFeedPage({ accountId: acct.accountId, viewerAddress: acct.address, viewerAccountId: acct.accountId }),
-    getAccountRepliesPage({ accountId: acct.accountId, viewerAddress: acct.address, viewerAccountId: acct.accountId }),
-  ])
+  // The account's own feed posts (Posts tab) — keyed on accountId, so they
+  // populate even for a reader account with no article/author row. Replies are
+  // NOT fetched here: the Replies tab loads on demand via
+  // /api/feed/account-replies the first time the user switches to it.
+  const feedTabsPromise = getAccountFeedPage({
+    accountId: acct.accountId,
+    viewerAddress: acct.address,
+    viewerAccountId: acct.accountId,
+  })
   const authorId = acct.authorId
   const admin = createSupabaseAdminClient()
   const supabase = admin // all queries below run on the service-role client now
@@ -61,8 +72,7 @@ export default async function DashboardPage() {
       ])
     : [{ data: [], error: null }, { data: null }, { data: [] }, { data: null }]
   const rows = unlockRows ?? []
-  const walletXecRaw = await walletBalancePromise
-  const [feedPage, repliesPage] = await feedTabsPromise
+  const feedPage = await feedTabsPromise
   // The welcome byline should reflect the LIVE identity (a bound handle if the
   // account holds one, else the raw wallet address) — never the legacy
   // authors.username, which may name a handle the wallet no longer/never held.
@@ -80,10 +90,13 @@ export default async function DashboardPage() {
       initialPosts={posts ?? []}
       loadError={postsError?.message ?? null}
       initialTotalUnlocks={rows.length}
-      initialWalletXecRaw={walletXecRaw}
+      walletBalanceSlot={
+        <Suspense fallback={<span>…</span>}>
+          <WalletBalanceValue address={acct.address} />
+        </Suspense>
+      }
       viewerAccountId={acct.accountId}
       initialFeedPosts={feedPage.posts}
-      initialFeedReplies={repliesPage.posts}
     />
   )
 }

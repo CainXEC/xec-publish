@@ -44,22 +44,17 @@ export async function getAuthedAccount(): Promise<AuthedAccount | null> {
   const claim = await getSession();
   if (!claim) return null;
 
+  // One round-trip: the author's is_admin comes embedded via the
+  // accounts.author_id -> authors FK instead of a second sequential query.
   const { data: account } = await supabase
     .from("accounts")
-    .select("id, author_id, display_handle, handle_color")
+    .select("id, author_id, display_handle, handle_color, authors(is_admin)")
     .eq("id", claim.accountId)
     .maybeSingle();
   if (!account) return null;
 
-  let isAdmin = false;
-  if (account.author_id) {
-    const { data: authorRow } = await supabase
-      .from("authors")
-      .select("is_admin")
-      .eq("id", account.author_id)
-      .maybeSingle();
-    isAdmin = authorRow?.is_admin === true;
-  }
+  const authorRow = Array.isArray(account.authors) ? account.authors[0] : account.authors;
+  const isAdmin = authorRow?.is_admin === true;
 
   const handle = account.display_handle ?? null;
 

@@ -30,6 +30,8 @@
 //  outage.
 // =============================================================================
 
+import { cache } from "react";
+import { after } from "next/server";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { skeleton } from "@/lib/handleSkeleton";
 import { ChronikClient } from "chronik-client";
@@ -263,6 +265,38 @@ async function freshDisplayHandle(account: {
 //  resolution paths
 // ---------------------------------------------------------------------------
 
+/** Background re-verification of a handle -> account binding, scheduled with
+ *  after() so it never blocks the response. Same writes freshDisplayHandle
+ *  makes: bump display_handle_checked_at when the account still holds the
+ *  token, clear the binding when the handle has moved wallets. Never throws. */
+async function reverifyHandleBinding(
+  accountId: string,
+  tokenId: string,
+  primaryAddress: string | null,
+): Promise<void> {
+  try {
+    const holder = await currentTokenHolder(tokenId);
+    if (!holder || !primaryAddress) return; // couldn't verify -> keep cache, don't churn
+
+    const supabase = createServerSupabase();
+    const now = new Date().toISOString();
+    if (holder === primaryAddress) {
+      await supabase
+        .from("accounts")
+        .update({ display_handle_checked_at: now })
+        .eq("id", accountId);
+    } else {
+      // handle has moved wallets -> this account no longer displays it
+      await supabase
+        .from("accounts")
+        .update({ active_handle_token_id: null, display_handle: null, display_handle_checked_at: now })
+        .eq("id", accountId);
+    }
+  } catch {
+    /* best-effort: the next fresh resolution re-verifies */
+  }
+}
+
 async function resolveHandle(handleRaw: string): Promise<ResolvedProfile | null> {
   const supabase = createServerSupabase();
   const sk = skeleton(handleRaw);
@@ -274,27 +308,58 @@ async function resolveHandle(handleRaw: string): Promise<ResolvedProfile | null>
     .maybeSingle();
   if (!h?.token_id) return null;
 
-  // Current on-chain holder is the source of truth, independent of any login.
+  // FAST PATH: the account currently bound to this token (set at login / mint).
+  // Serving it accepts the same 5-minute staleness the address path already
+  // accepts via freshDisplayHandle — the on-chain holder remains the source of
+  // truth, we just verify it out-of-band instead of on every request.
+  const { data: bound } = await supabase
+    .from("accounts")
+    .select("id, author_id, handle_color, display_handle_checked_at")
+    .eq("active_handle_token_id", h.token_id)
+    .maybeSingle();
+
+  if (bound?.id) {
+    // The bound account's primary wallet is the holder we attribute to.
+    const { data: primary } = await supabase
+      .from("account_addresses")
+      .select("address")
+      .eq("account_id", bound.id)
+      .eq("is_primary", true)
+      .maybeSingle();
+
+    const lastChecked = bound.display_handle_checked_at
+      ? Date.parse(bound.display_handle_checked_at)
+      : 0;
+    const fresh = Date.now() - lastChecked < HOLDER_TTL_MS;
+    if (!fresh) {
+      // Serve the cached binding NOW; re-verify on-chain after the response.
+      after(() => reverifyHandleBinding(bound.id, h.token_id, primary?.address ?? null));
+    }
+
+    const author = bound.author_id ? await authorById(bound.author_id) : null;
+    return {
+      kind: "handle",
+      author,
+      displayHandle: h.handle,
+      handleColor: (bound as { handle_color?: string | null }).handle_color ?? null,
+      identity: `@${h.handle}`,
+      tokenId: h.token_id,
+      holderAddress: primary?.address ? normalizeAddress(primary.address) : null,
+      cardImageUrl: (h as { image_url?: string | null }).image_url ?? null,
+    };
+  }
+
+  // SLOW PATH: no account is bound to this token (e.g. a fresh paid mint that
+  // never logged in). Only here does the request block on Chronik — the current
+  // on-chain holder is the source of truth, independent of any login.
   const holder = await currentTokenHolder(h.token_id); // "ecash:q…" | null (Chronik down)
 
   // Attribute the handle to an author (for their posts) via the holder address.
   // A holder with no author -> handle-only profile (author stays null).
-  let author = holder ? await authorForAddress(holder) : null;
+  const author = holder ? await authorForAddress(holder) : null;
 
   // The byline color follows the current holder's account preference.
-  let handleColor = holder ? await accountColorForAddress(holder) : null;
-
-  // Resilience: if Chronik was unavailable, fall back to whatever account is
-  // currently bound to this token so the profile still resolves during an outage.
-  if (!holder) {
-    const { data: bound } = await supabase
-      .from("accounts")
-      .select("author_id, handle_color")
-      .eq("active_handle_token_id", h.token_id)
-      .maybeSingle();
-    if (bound?.author_id) author = await authorById(bound.author_id);
-    handleColor = (bound as { handle_color?: string | null } | null)?.handle_color ?? null;
-  }
+  const handleColor = holder ? await accountColorForAddress(holder) : null;
 
   return {
     kind: "handle",
@@ -379,17 +444,22 @@ async function resolveAddress(addressRaw: string): Promise<ResolvedProfile | nul
 
 /** Resolve the /@<identifier> segment to a profile, or null if nothing matches.
  *  Tries the address interpretation first (unambiguous, 42-char base32), then
- *  falls back to treating it as a handle. */
-export async function resolveProfileByIdentifier(
-  identifierRaw: string,
-): Promise<ResolvedProfile | null> {
-  const id = (identifierRaw ?? "").trim();
-  if (!id) return null;
+ *  falls back to treating it as a handle.
+ *
+ *  Wrapped in React cache() for request-level dedupe: generateMetadata and the
+ *  page component share ONE resolution per request instead of running the whole
+ *  chain (Chronik included) twice. cache() is per-request — no cross-request
+ *  staleness is introduced. */
+export const resolveProfileByIdentifier = cache(
+  async (identifierRaw: string): Promise<ResolvedProfile | null> => {
+    const id = (identifierRaw ?? "").trim();
+    if (!id) return null;
 
-  // An eCash address can't collide with a handle (handles are ≤15 chars; a bare
-  // address is 42 base32 chars), so classifying by "is it a valid address" is safe.
-  if (normalizeAddress(id)) {
-    return resolveAddress(id);
-  }
-  return resolveHandle(id);
-}
+    // An eCash address can't collide with a handle (handles are ≤15 chars; a bare
+    // address is 42 base32 chars), so classifying by "is it a valid address" is safe.
+    if (normalizeAddress(id)) {
+      return resolveAddress(id);
+    }
+    return resolveHandle(id);
+  },
+);
