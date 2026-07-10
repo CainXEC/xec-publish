@@ -16,8 +16,11 @@ export default async function ProfileSettingsPage() {
   // The display-handle carousel lives on this page. Fetch the held handles + the
   // currently-bound one on the server so it renders with the rest of the page —
   // no client-fetch pop-in.
-  const [heldHandles, { data: accountRow }, blockedAccounts] = await Promise.all([
-    heldHandlesForAddress(acct.address),
+  // Fast data blocks the page render. The held-handles lookup hits Chronik and
+  // can be slow on a busy wallet, so we STREAM it: the page renders immediately
+  // and the handle carousel fills in via <Suspense> instead of blocking the whole
+  // page on the Chronik round-trip.
+  const [{ data: accountRow }, blockedAccounts] = await Promise.all([
     supabase
       .from('accounts')
       .select('active_handle_token_id')
@@ -25,11 +28,9 @@ export default async function ProfileSettingsPage() {
       .maybeSingle(),
     blockedAccountsForViewer(supabase, acct.accountId),
   ])
-  const initialHandles = (heldHandles ?? []).map((h) => ({
-    tokenId: h.tokenId,
-    handle: h.handle,
-    imageUrl: h.imageUrl,
-  }))
+  const handlesPromise = heldHandlesForAddress(acct.address).then((hs) =>
+    (hs ?? []).map((h) => ({ tokenId: h.tokenId, handle: h.handle, imageUrl: h.imageUrl })),
+  )
   const initialActiveTokenId = accountRow?.active_handle_token_id ?? null
 
   // Every account is an author identity, so the bio lives on authors.bio for
@@ -50,7 +51,7 @@ export default async function ProfileSettingsPage() {
     <ProfileSettingsForm
       initialBio={initialBio}
       initialColor={acct.handleColor ?? ''}
-      initialHandles={initialHandles}
+      handlesPromise={handlesPromise}
       handleAddress={acct.address}
       initialActiveTokenId={initialActiveTokenId}
       initialBlocked={blockedAccounts}

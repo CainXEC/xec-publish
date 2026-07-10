@@ -37,10 +37,13 @@ import { hostAsciiCard } from "./nft-art/hostAsciiCard"; // Gen 1 ASCII card, se
 import { findMintPayment, verifyMintTxid } from "./mintPayments";
 import { encodePostIdOpReturnRaw } from "./opReturnEncode";
 import { mintCapSoldOut, recordMintAgainstCap } from "./mintCap";
+import { resolveOfficialAccount } from "./officialAccount";
+import { contentHashHex } from "./feedProtocol";
 
 import { CHRONIK_URLS } from "@/lib/ecash/chronikEndpoints";
 const supabase = createClient((process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 const PROOF_ADDRESS = process.env.MINT_PAYMENT_ADDRESS!;
+const OFFICIAL_HANDLE = "proofofwriting"; // byline for handle-mint feed cards
 const CLAIM_WINDOW_ENDS = process.env.CLAIM_WINDOW_ENDS ? Date.parse(process.env.CLAIM_WINDOW_ENDS) : Infinity;
 const PROOF_MINUTES = 20;
 
@@ -253,6 +256,33 @@ async function runMint(sk: string, grant: any, address: string): Promise<PollRes
       status: "claimed", claimed_address: address, claimed_account_id: accountId,
       claimed_token_id: childTokenId, claimed_at: new Date().toISOString(),
     }).eq("handle_skeleton", sk);
+
+    // Announce the claim as a native feed card, exactly like a paid mint
+    // (mintProcessor) — same card_kind/content so it presents identically.
+    // Best-effort: a feed hiccup must never fail a completed claim.
+    try {
+      const official = await resolveOfficialAccount(supabase);
+      if (official) {
+        const content = `🖊️ @${grant.handle} — a new handle was minted.`;
+        await supabase.from("feed_posts").insert({
+          txid: childTokenId,
+          action: 1,
+          content,
+          content_hash: contentHashHex(content),
+          card_kind: "handle_mint",
+          image_url: imageUrl,
+          card_meta: { handle: grant.handle, tier, priceXec: 0, minterAddress: address },
+          author_account_id: official.accountId,
+          author_identity: `@${OFFICIAL_HANDLE}`,
+          payer_address: official.address,
+          payout_address: official.address,
+          amount_sats: 0,
+          finalized_at: new Date().toISOString(),
+        });
+      }
+    } catch (e) {
+      console.warn("[claimGrant] claim feed-card insert failed (non-fatal):", e instanceof Error ? e.message : e);
+    }
 
     return { ok: true, status: "claimed", handle: grant.handle, childTokenId, imageUrl, address };
   } catch (e: any) {

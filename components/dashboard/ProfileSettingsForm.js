@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, use, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveProfile } from '@/app/dashboard/saveProfile'
 import { saveHandleColor } from '@/app/dashboard/saveHandleColor'
@@ -9,6 +9,13 @@ import FeedTopbar from '@/components/feed/FeedTopbar'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import HandleColorPicker from '@/components/dashboard/HandleColorPicker'
 import DashboardHandleCarousel from '@/components/dashboard/DashboardHandleCarousel'
+
+// Unwraps the streamed held-handles promise (React 19 `use`) inside a Suspense
+// boundary so a slow Chronik lookup never blocks the whole settings page.
+function StreamedHandleCarousel({ promise, ...rest }) {
+  const initialHandles = use(promise)
+  return <DashboardHandleCarousel initialHandles={initialHandles} {...rest} />
+}
 
 // A blocked account's identity is "@handle" or a raw address; shorten a long
 // address for the row while leaving handles intact.
@@ -21,7 +28,7 @@ function blockedLabel(identity) {
 export default function ProfileSettingsForm({
   initialBio,
   initialColor = '',
-  initialHandles = [],
+  handlesPromise,
   handleAddress = null,
   initialActiveTokenId = null,
   initialBlocked = [],
@@ -184,13 +191,17 @@ export default function ProfileSettingsForm({
           <p className="prof-sub">Update how you appear across the site.</p>
         </section>
 
-        <DashboardHandleCarousel
-          initialHandles={initialHandles}
-          initialAddress={handleAddress}
-          value={activeTokenId}
-          onChange={setActiveTokenId}
-          disabled={submitting}
-        />
+        <Suspense
+          fallback={<p style={{ opacity: 0.6, padding: '8px 0' }}>Loading your handles…</p>}
+        >
+          <StreamedHandleCarousel
+            promise={handlesPromise}
+            initialAddress={handleAddress}
+            value={activeTokenId}
+            onChange={setActiveTokenId}
+            disabled={submitting}
+          />
+        </Suspense>
 
         <form onSubmit={handleSubmit}>
           <HandleColorPicker value={color} onChange={setColor} disabled={submitting} />
