@@ -44,6 +44,20 @@ export default function ComposeBox({
     if (autoFocus) textareaRef.current?.focus()
   }, [autoFocus])
 
+  // Auto-grow the composer to fit what you're typing (up to a cap, then scroll),
+  // so long posts stay readable while composing. Runs on every content change,
+  // including the initial prefill and the reset-to-empty after a successful post.
+  const autosize = useCallback(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 360)}px`
+  }, [])
+
+  useEffect(() => {
+    autosize()
+  }, [content, autosize])
+
   const resetToCompose = useCallback(() => {
     setPhase('compose')
     setIntent(null)

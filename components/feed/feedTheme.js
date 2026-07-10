@@ -107,8 +107,9 @@ export const FEED_CSS = `
 /* ---- compose ---- */
 .pow-feed .compose{padding:16px;}
 .pow-feed .compose.compact{padding:12px;}
-.pow-feed .compose textarea{width:100%;resize:vertical;background:transparent;border:none;outline:none;color:var(--text);
-  font:inherit;font-size:15px;line-height:1.55;}
+.pow-feed .compose textarea{width:100%;resize:none;background:transparent;border:none;outline:none;color:var(--text);
+  font:inherit;font-size:15px;line-height:1.55;box-sizing:border-box;min-height:72px;max-height:360px;overflow-y:auto;
+  display:block;}
 .pow-feed .compose textarea::placeholder{color:#37655a;}
 .pow-feed .composebar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;
   border-top:1px solid var(--line);padding-top:12px;}
