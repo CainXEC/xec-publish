@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { normalizeTipXec } from '@/lib/feedPricing'
+import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 
 // Quick-pick tip amounts (XEC) shown in the like menu; the field takes any custom
 // amount. Labels abbreviate the thousands.
@@ -76,6 +77,10 @@ export default function EngagementBar({
       const payWindow =
         typeof window !== 'undefined' ? window.open('about:blank', '_blank') : null
       if (payWindow) payWindow.opener = null
+      // Warm the shared ws and flip the button optimistically so the reaction
+      // feels instant; both are undone below if the payment can't be started.
+      prewarmPaymentWatch()
+      applyReaction(action)
       try {
         const res = await fetch('/api/feed/react/prepare', {
           method: 'POST',
@@ -89,6 +94,7 @@ export default function EngagementBar({
         const data = await res.json()
         if (!res.ok || !data.ok) {
           payWindow?.close()
+          revertReaction(action)
           setNotice(data.error || 'Could not start the payment. Try again.')
           return
         }
@@ -97,26 +103,30 @@ export default function EngagementBar({
         setPending(action)
       } catch {
         payWindow?.close()
+        revertReaction(action)
         setNotice('Network hiccup — try again.')
       } finally {
         startingRef.current = false
       }
     },
-    [pending, liked, reposted, targetTxid],
+    [pending, liked, reposted, targetTxid, applyReaction, revertReaction],
   )
 
-  const applyReacted = useCallback((action) => {
-    if (action === 'like') {
-      setLiked((was) => {
-        if (!was) setLikes((n) => n + 1)
-        return true
-      })
-    } else {
-      setReposted((was) => {
-        if (!was) setReposts((n) => n + 1)
-        return true
-      })
-    }
+  // Optimistic flip: reflect the like/repost the instant you tap, so it feels
+  // immediate. The payment runs in the background; startReaction blocks a second
+  // tap, so this only ever applies once per reaction.
+  const applyReaction = useCallback((action) => {
+    if (action === 'like') { setLiked(true); setLikes((n) => n + 1) }
+    else { setReposted(true); setReposts((n) => n + 1) }
+  }, [])
+  // Undo the optimistic flip when the payment is cancelled or fails to start.
+  const revertReaction = useCallback((action) => {
+    if (action === 'like') { setLiked(false); setLikes((n) => Math.max(0, n - 1)) }
+    else { setReposted(false); setReposts((n) => Math.max(0, n - 1)) }
+  }, [])
+  // Payment confirmed: the button is already flipped, so just clear the pending
+  // payment UI. Neither a like nor a repost has a page of its own — both stay put.
+  const finalizeReacted = useCallback(() => {
     setPending(null)
     setIntent(null)
     setTxidInput('')
@@ -124,9 +134,6 @@ export default function EngagementBar({
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('sessionChanged'))
     }
-    // Neither a like nor a repost has a page of its own to land on — a repost
-    // just surfaces the existing post — so both stay put, the button flipping to
-    // its "on" state in place.
   }, [])
 
   // Poll for the on-chain reaction while a payment is pending.
@@ -149,7 +156,7 @@ export default function EngagementBar({
         if (stopped) return
         if (data.status === 'reacted') {
           stopped = true
-          applyReacted(pending)
+          finalizeReacted()
         } else if (!res.ok) {
           setNotice(data.error || 'Verification failed.')
         }
@@ -158,12 +165,18 @@ export default function EngagementBar({
       }
     }
     check()
-    const id = setInterval(() => !stopped && check(), 2500)
+    const id = setInterval(() => !stopped && check(), 1200)
+    // Chronik ws nudge: confirm the instant the payment touches the payout
+    // address instead of waiting for the next 1.2s tick.
+    const unwatch = watchPaymentAddress(intent.payAddress, () => {
+      if (!stopped) void check()
+    })
     return () => {
       stopped = true
       clearInterval(id)
+      unwatch()
     }
-  }, [pending, intent, targetTxid, applyReacted])
+  }, [pending, intent, targetTxid, finalizeReacted])
 
   const verifyManual = useCallback(async () => {
     const t = txidInput.trim()
@@ -180,7 +193,7 @@ export default function EngagementBar({
       })
       const data = await res.json()
       if (data.status === 'reacted') {
-        applyReacted(pending)
+        finalizeReacted()
       } else if (data.status === 'awaiting_payment') {
         setNotice("That transaction doesn't match this reaction yet.")
       } else {
@@ -189,14 +202,15 @@ export default function EngagementBar({
     } catch {
       setNotice('Network hiccup — try again.')
     }
-  }, [txidInput, pending, targetTxid, applyReacted])
+  }, [txidInput, pending, targetTxid, finalizeReacted])
 
   const cancel = useCallback(() => {
+    if (pending) revertReaction(pending) // undo the optimistic flip
     setPending(null)
     setIntent(null)
     setTxidInput('')
     setNotice('')
-  }, [])
+  }, [pending, revertReaction])
 
   return (
     <div className="engage">

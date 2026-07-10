@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
+import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 
 /**
  * Compose + pay flow for a feed post, reply, or quote. Shared by the top-of-feed
@@ -74,6 +75,9 @@ export default function ComposeBox({
     if (!priced.ok) return
     setSubmitting(true)
     setNotice('')
+    // Warm the shared Chronik ws now (before /prepare + Cashtab approval) so the
+    // payment-address subscription is live the moment the payment lands.
+    prewarmPaymentWatch()
     // Open the tab synchronously inside the click gesture, then point it at
     // Cashtab once /prepare returns. Opening after the await would be swallowed
     // by popup blockers, so we grab the handle now and set its URL later.
@@ -141,10 +145,16 @@ export default function ComposeBox({
       }
     }
     confirm()
-    const id = setInterval(() => !stopped && confirm(), 2500)
+    const id = setInterval(() => !stopped && confirm(), 1200)
+    // Chronik ws nudge: the instant a tx touches the pay address, confirm now
+    // instead of waiting for the next 1.2s tick. Server still verifies + gates.
+    const unwatch = watchPaymentAddress(intent.payAddress, () => {
+      if (!stopped) void confirm()
+    })
     return () => {
       stopped = true
       clearInterval(id)
+      unwatch()
     }
   }, [phase, intent, content, action, parentTxid, quotedTxid, handlePosted])
 
