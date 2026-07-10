@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { heldHandlesForAddress } from '@/lib/heldHandles'
+import { blockedAccountsForViewer } from '@/lib/feedBlocks'
 import ProfileSettingsForm from '@/components/dashboard/ProfileSettingsForm'
 
 export default async function ProfileSettingsPage() {
@@ -15,13 +16,14 @@ export default async function ProfileSettingsPage() {
   // The display-handle carousel lives on this page. Fetch the held handles + the
   // currently-bound one on the server so it renders with the rest of the page —
   // no client-fetch pop-in.
-  const [heldHandles, { data: accountRow }] = await Promise.all([
+  const [heldHandles, { data: accountRow }, blockedAccounts] = await Promise.all([
     heldHandlesForAddress(acct.address),
     supabase
       .from('accounts')
       .select('active_handle_token_id')
       .eq('id', acct.accountId)
       .maybeSingle(),
+    blockedAccountsForViewer(supabase, acct.accountId),
   ])
   const initialHandles = (heldHandles ?? []).map((h) => ({
     tokenId: h.tokenId,
@@ -51,6 +53,7 @@ export default async function ProfileSettingsPage() {
       initialHandles={initialHandles}
       handleAddress={acct.address}
       initialActiveTokenId={initialActiveTokenId}
+      initialBlocked={blockedAccounts}
     />
   )
 }

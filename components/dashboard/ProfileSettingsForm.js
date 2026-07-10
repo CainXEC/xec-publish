@@ -10,12 +10,21 @@ import { FEED_CSS } from '@/components/feed/feedTheme'
 import HandleColorPicker from '@/components/dashboard/HandleColorPicker'
 import DashboardHandleCarousel from '@/components/dashboard/DashboardHandleCarousel'
 
+// A blocked account's identity is "@handle" or a raw address; shorten a long
+// address for the row while leaving handles intact.
+function blockedLabel(identity) {
+  const s = typeof identity === 'string' ? identity : ''
+  if (s.startsWith('@') || s.length <= 20) return s
+  return `${s.slice(0, 12)}…${s.slice(-4)}`
+}
+
 export default function ProfileSettingsForm({
   initialBio,
   initialColor = '',
   initialHandles = [],
   handleAddress = null,
   initialActiveTokenId = null,
+  initialBlocked = [],
 }) {
   const router = useRouter()
   const [bio, setBio] = useState(initialBio ?? '')
@@ -38,6 +47,10 @@ export default function ProfileSettingsForm({
   const [savedMessage, setSavedMessage] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState(null)
+
+  const [blockedList, setBlockedList] = useState(initialBlocked ?? [])
+  const [unblockingId, setUnblockingId] = useState(null)
+  const [unblockError, setUnblockError] = useState(null)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -134,6 +147,30 @@ export default function ProfileSettingsForm({
     }
   }
 
+  // Unblock = the same /api/feed/block toggle; a blocked account flips to unblocked
+  // and drops out of the list. Session-authorized, no payment.
+  async function handleUnblock(accountId) {
+    setUnblockError(null)
+    setUnblockingId(accountId)
+    try {
+      const res = await fetch('/api/feed/block', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ blockedAccountId: accountId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.ok && data.blocked === false) {
+        setBlockedList((prev) => prev.filter((b) => b.accountId !== accountId))
+      } else {
+        setUnblockError(data.error || 'Could not unblock. Try again.')
+      }
+    } catch {
+      setUnblockError('Could not unblock. Try again.')
+    } finally {
+      setUnblockingId(null)
+    }
+  }
+
   return (
     <div className="pow-feed">
       <style>{FEED_CSS}</style>
@@ -196,6 +233,48 @@ export default function ProfileSettingsForm({
             </div>
           </section>
         </form>
+
+        <section className="dashpanel">
+          <h2 className="prof-panel-title">Blocked accounts</h2>
+          {blockedList.length === 0 ? (
+            <p className="prof-panel-sub">You haven’t blocked anyone.</p>
+          ) : (
+            <>
+              <p className="prof-panel-sub">
+                Blocked accounts can’t see your posts or reply to you, and you won’t see theirs.
+              </p>
+              {unblockError ? (
+                <p className="error" style={{ marginTop: '12px' }} role="alert">
+                  {unblockError}
+                </p>
+              ) : null}
+              <ul className="blocklist">
+                {blockedList.map((b) => {
+                  const isHandle = typeof b.identity === 'string' && b.identity.startsWith('@')
+                  return (
+                    <li key={b.accountId} className="blockrow">
+                      <span
+                        className="blockid"
+                        title={b.identity}
+                        style={isHandle && b.color ? { color: b.color } : undefined}
+                      >
+                        {blockedLabel(b.identity)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void handleUnblock(b.accountId)}
+                        disabled={unblockingId === b.accountId}
+                        className="ghost blockunbtn"
+                      >
+                        {unblockingId === b.accountId ? 'Unblocking…' : 'Unblock'}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </>
+          )}
+        </section>
 
         <section className="dashpanel prof-danger">
           <h2 className="prof-danger-title">Danger zone</h2>
@@ -260,6 +339,12 @@ const PROFILE_CSS = `
   background:var(--panel);}
 .pow-feed .prof-radio-name{font-size:14px;font-weight:700;color:var(--text);}
 .pow-feed .prof-radio-addr{font-size:13px;color:var(--dim);}
+/* blocked accounts list */
+.pow-feed .blocklist{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:8px;}
+.pow-feed .blockrow{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel2);}
+.pow-feed .blockid{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:700;color:var(--text);}
+.pow-feed .blockunbtn{flex:none;}
 /* danger zone */
 .pow-feed .prof-danger{border-color:var(--no);}
 .pow-feed .prof-danger-title{margin:0;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--no);}
