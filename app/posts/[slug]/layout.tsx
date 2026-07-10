@@ -17,7 +17,11 @@ export async function generateMetadata({
   if (!data) return {};
 
   const { post, author } = data;
-  const authorUsername = author?.username?.trim() ?? "";
+  // Match the page byline: prefer the account's live display handle
+  // (accounts.display_handle, already resolved in getPublishedPostBySlug),
+  // falling back to the legacy authors.username when none is bound.
+  const authorUsername =
+    author?.display_handle?.trim() || author?.username?.trim() || "";
 
   return articleOpenGraphMetadata({
     post,

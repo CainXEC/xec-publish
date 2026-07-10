@@ -55,7 +55,7 @@ export const metadata: Metadata = {
     siteName: "Proof Of Writing",
     images: [
       {
-        url: "/api/og/site",
+        url: "/og-site.png",
         width: 1200,
         height: 630,
         alt: "Proof Of Writing",
@@ -67,7 +67,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Proof Of Writing",
     description: defaultDescription,
-    images: ["/api/og/site"],
+    images: ["/og-site.png"],
   },
 };
 
