@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import FeedNotifications from '@/components/feed/FeedNotifications'
 import ThemeToggle from '@/components/ThemeToggle'
 
@@ -31,6 +31,20 @@ export default function FeedTopbar({
   const [open, setOpen] = useState(false)
   const rootRef = useRef(null)
   const router = useRouter()
+  const pathname = usePathname()
+
+  // The wordmark links home. If you're ALREADY home, a Link to the same route
+  // is a no-op — so intercept and hard-refresh the feed instead.
+  const onWordmarkClick = useCallback(
+    (e) => {
+      setOpen(false)
+      if (pathname === '/') {
+        e.preventDefault()
+        window.location.reload()
+      }
+    },
+    [pathname],
+  )
 
   // Close the hamburger menu on any outside click.
   useEffect(() => {
@@ -105,7 +119,7 @@ export default function FeedTopbar({
         ) : null}
       </div>
 
-      <Link href="/" className="wordmark">
+      <Link href="/" className="wordmark" onClick={onWordmarkClick}>
         proofofwriting
       </Link>
 

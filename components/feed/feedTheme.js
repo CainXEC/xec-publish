@@ -34,8 +34,8 @@ export const FEED_CSS = `
   background:rgba(7,11,10,.82);backdrop-filter:blur(10px);
   border-bottom:1px solid var(--line);
 }
-.pow-feed .wordmark{font-size:15px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--neon);
-  text-shadow:0 0 8px rgba(0,255,156,.5);}
+.pow-feed .wordmark{font-size:clamp(17px,4vw,20px);font-weight:800;letter-spacing:.17em;text-transform:uppercase;color:var(--neon);
+  text-shadow:0 0 8px rgba(0,255,156,.5);white-space:nowrap;line-height:1;}
 .pow-feed .toplink{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);border:1px solid var(--line);
   border-radius:8px;padding:8px 14px;transition:border-color .15s,box-shadow .15s;}
 .pow-feed .toplink:hover{border-color:var(--cyan);box-shadow:0 0 16px rgba(61,240,255,.22);}
