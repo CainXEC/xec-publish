@@ -8,13 +8,11 @@ import ThemeToggle from '@/components/ThemeToggle'
 
 /**
  * The shared feed-theme header, used by every neon page (feed, thread, profile,
- * articles). Responsive by CSS:
- *  - Desktop: wordmark on the left; text nav links + bell + theme toggle on the right.
- *  - Mobile (≤600px): a hamburger on the left holds the nav links (log in /
- *    dashboard / marketplace), the wordmark is centered, and the bell + theme
- *    toggle stay pinned top-right.
- * The same link set feeds both the desktop row and the mobile menu, so they never
- * drift apart. `signedIn` drives whether "log in" shows; `isAuthor` gates the
+ * articles). One layout at every width (CSS grid): a hamburger on the left holds
+ * the nav links (log in / dashboard / marketplace / log out), the wordmark is
+ * centered, and the notification bell + theme toggle sit on the right.
+ * The same link set feeds both the (now hidden) inline row and the hamburger menu,
+ * so they never drift apart. `signedIn` drives whether "log in" shows; `isAuthor` gates the
  * dashboard link. `showLogout` adds a "log out" action (used on the dashboard and
  * its sub-pages, where log out belongs); it clears the session and returns home.
  */
