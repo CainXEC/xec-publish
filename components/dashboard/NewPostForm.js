@@ -284,7 +284,7 @@ export default function NewPostForm({ existingPost = null }) {
 
       <main className="wrap" style={{ paddingTop: '28px' }}>
         <section className="dashpanel">
-          <h1 className="dashwelcome">{isEditMode ? 'Edit post' : 'New post'}</h1>
+          <h1 className="dashwelcome">{isEditMode ? 'Edit article' : 'New article'}</h1>
 
           <form onSubmit={handleSubmit} className="pf-form">
             <div className="pf-field">

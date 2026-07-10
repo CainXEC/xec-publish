@@ -596,7 +596,7 @@ export default function DashboardClient({
           ) : null}
 
           <div className="dashactions">
-            <Link href="/dashboard/new-post" className="dashbtn">
+            <Link href="/dashboard/new-article" className="dashbtn">
               New Article
             </Link>
             <Link href="/dashboard/profile" className="dashbtn sec">
@@ -703,7 +703,7 @@ export default function DashboardClient({
             <div className="empty">
               <p>Welcome to Proof of Writing! Write articles and put them behind an eCash paywall.</p>
               <p style={{ marginTop: '16px' }}>
-                <Link href="/dashboard/new-post" className="dashbtn">
+                <Link href="/dashboard/new-article" className="dashbtn">
                   Write your first article
                 </Link>
               </p>

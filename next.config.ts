@@ -40,6 +40,12 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        // Article-authoring page renamed from /dashboard/new-post.
+        source: '/dashboard/new-post',
+        destination: '/dashboard/new-article',
+        permanent: true,
+      },
+      {
         source: '/:path*',
         has: [
           {
