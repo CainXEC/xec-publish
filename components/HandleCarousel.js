@@ -15,16 +15,21 @@ const SEARCH_THRESHOLD = 8
 const MAX_RENDER = 100
 
 function HandleCardBody({ handle, imageUrl }) {
+  // With a rendered card, show ONLY the card image — the handle is printed on the
+  // card itself, and the full "@handle" still appears in the hover tooltip. A
+  // handle with no card image falls back to the "@" glyph + name so it's still
+  // identifiable.
+  if (imageUrl) {
+    return (
+      /* eslint-disable-next-line @next/next/no-img-element */
+      <img src={imageUrl} alt={`@${handle}`} loading="lazy" className="dashhandle-img" />
+    )
+  }
   return (
     <>
-      {imageUrl ? (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img src={imageUrl} alt="" loading="lazy" className="dashhandle-img" />
-      ) : (
-        <span className="dashhandle-addr" aria-hidden>
-          @
-        </span>
-      )}
+      <span className="dashhandle-addr" aria-hidden>
+        @
+      </span>
       <span className="dashhandle-name">@{handle}</span>
     </>
   )
@@ -104,7 +109,7 @@ export default function HandleCarousel({
               aria-checked={h.tokenId === activeTokenId}
               onClick={() => onChoose(h.tokenId)}
               disabled={busy}
-              className={`dashhandle${h.tokenId === activeTokenId ? ' active' : ''}`}
+              className={`dashhandle${h.tokenId === activeTokenId ? ' active' : ''}${h.imageUrl ? ' hasimg' : ''}`}
               {...cardProps(label)}
             >
               <HandleCardBody handle={h.handle} imageUrl={h.imageUrl} />
@@ -112,7 +117,7 @@ export default function HandleCarousel({
           ) : (
             <div
               key={h.tokenId ?? h.handle}
-              className="dashhandle static"
+              className={`dashhandle static${h.imageUrl ? ' hasimg' : ''}`}
               tabIndex={0}
               {...cardProps(label)}
             >

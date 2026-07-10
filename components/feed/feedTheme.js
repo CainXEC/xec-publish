@@ -384,7 +384,13 @@ export const FEED_CSS = `
 .pow-feed .dashhandle.static{cursor:default;}
 .pow-feed .dashhandle.static:hover{border-color:var(--line);box-shadow:none;}
 .pow-feed .dashhandle.active{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.28);}
-.pow-feed .dashhandle-img{width:52px;height:52px;border-radius:50%;object-fit:cover;background:var(--panel);border:1px solid var(--line);}
+.pow-feed .dashhandle-img{width:104px;height:104px;border-radius:12px;object-fit:cover;background:var(--panel);border:1px solid var(--line);
+  transition:border-color .15s,box-shadow .15s;}
+/* Handle tiles that have a rendered card: the card IS the tile (no chrome, no label below). */
+.pow-feed .dashhandle.hasimg{width:auto;padding:0;border:none;background:none;box-shadow:none;}
+.pow-feed .dashhandle.hasimg:hover{box-shadow:none;}
+.pow-feed .dashhandle.hasimg:hover .dashhandle-img{border-color:var(--cyan);box-shadow:0 0 14px rgba(61,240,255,.22);}
+.pow-feed .dashhandle.hasimg.active .dashhandle-img{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.28);}
 .pow-feed .dashhandle-addr{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   font-size:18px;font-weight:800;color:var(--neon);background:var(--panel);border:1px solid var(--line);}
 .pow-feed .dashhandle-name{max-width:100%;font-size:12px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
