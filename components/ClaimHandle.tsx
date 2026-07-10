@@ -104,7 +104,7 @@ export default function ClaimHandle() {
     poll();
     // Poll faster than finality settles (~2-3s) so we actually catch the brief
     // "seen but not final" window and show the finalizing state, not skip it.
-    const id = setInterval(() => !stopped && poll(), 1500);
+    const id = setInterval(() => !stopped && poll(), 1200);
     // Live nudge: a Chronik websocket on the proof address fires an immediate
     // poll (with the txid) the moment the proof payment lands, instead of waiting
     // up to 1.5s for the next tick. The server still gates on Avalanche finality.

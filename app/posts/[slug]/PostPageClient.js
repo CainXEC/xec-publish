@@ -9,7 +9,7 @@ import { ARTICLE_CSS } from './articleTheme'
 import { charCounterClassName } from '@/lib/charCounterClassName'
 import { encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
 import { buildPaywallBip21, computePaymentSplit } from '@/lib/paymentSplit'
-import { watchPaymentAddress } from '@/lib/ecash/watchPaymentAddress'
+import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 import { triggerPaymentSuccessEffect } from '@/lib/paymentSuccessEffect'
 import {
   ensureAudioContextRunning,
@@ -416,7 +416,7 @@ export default function PostPageClient({
     pollRef.current = setInterval(() => {
       const wallet = readerWalletAddress.trim()
       void checkUnlock(post.id, wallet || undefined)
-    }, 3000)
+    }, 1200)
 
     // Live nudge: a Chronik websocket on the author's address fires an immediate
     // unlock check the moment the payment lands, instead of waiting up to 3s for
@@ -523,6 +523,9 @@ export default function PostPageClient({
 
   function handlePayToUnlock() {
     if (!cashtabUrl) return
+    // Warm the shared payment socket at the click so it's subscribed before the
+    // unlock payment lands, instead of racing the ~1.7s first-open handshake.
+    prewarmPaymentWatch()
     if (typeof window !== 'undefined') {
       const ctx = getSharedAudioContext()
       unlockAudioContextRef.current = ctx

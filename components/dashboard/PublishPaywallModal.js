@@ -251,7 +251,7 @@ export default function PublishPaywallModal({
     void checkLatest()
     pollRef.current = setInterval(() => {
       void checkLatest()
-    }, 3000)
+    }, 1200)
     // Live nudge: a Chronik websocket on the platform address fires an immediate
     // check the instant a payment lands there, instead of waiting up to 3s for
     // the next tick. checkLatest still baselines + verifies server-side, so an

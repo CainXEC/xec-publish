@@ -95,7 +95,7 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
       } catch { /* keep polling */ }
     };
     poll();
-    const id = setInterval(() => !stopped && poll(), 2500);
+    const id = setInterval(() => !stopped && poll(), 1200);
     // Live nudge: a Chronik websocket on the proof address fires an immediate
     // poll the instant the login payment lands, instead of waiting up to 2.5s
     // for the next tick. The status route still verifies the nonce server-side.
