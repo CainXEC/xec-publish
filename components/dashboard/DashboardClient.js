@@ -597,7 +597,7 @@ export default function DashboardClient({
 
           <div className="dashactions">
             <Link href="/dashboard/new-post" className="dashbtn">
-              Write New Article
+              New Article
             </Link>
             <Link href="/dashboard/profile" className="dashbtn sec">
               Edit Profile
