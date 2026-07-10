@@ -202,6 +202,16 @@ export const FEED_CSS = `
 .pow-feed .menuitem.danger{color:var(--no);}
 .pow-feed .menuitem:disabled{opacity:.6;cursor:default;}
 .pow-feed .body{margin:8px 0 0;white-space:pre-wrap;word-break:break-word;font-size:15px;line-height:1.6;color:var(--text);}
+/* Handle-mint card: native feed card for a freshly minted handle NFT. */
+.pow-feed .mintcard{margin:10px 0 2px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel2);}
+.pow-feed .mintcard-imglink{display:block;}
+.pow-feed .mintcard-img{display:block;width:100%;height:auto;background:#171513;transition:opacity .15s;}
+.pow-feed .mintcard-imglink:hover .mintcard-img{opacity:.92;}
+.pow-feed .mintcard-info{display:flex;flex-direction:column;gap:3px;padding:12px 14px;border-top:1px solid var(--line);}
+.pow-feed .mintcard-kicker{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);}
+.pow-feed .mintcard-handle{font-size:18px;font-weight:700;color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.35);transition:text-shadow .15s;width:fit-content;}
+.pow-feed a.mintcard-handle:hover{text-shadow:0 0 14px rgba(0,255,156,.6);}
+.pow-feed .mintcard-tier{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;}
 /* Inline @handle mention link inside a post/reply/ancestor/focused body. */
 .pow-feed .mention{color:var(--cyan);text-decoration:none;transition:text-shadow .15s;}
 .pow-feed .mention:hover{text-shadow:0 0 10px rgba(61,240,255,.45);}

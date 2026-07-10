@@ -10,8 +10,12 @@ import { priceForHandle } from "./handlePricing";
 import { loadMintWallet, mintHandleChild } from "./mintHandleChild";
 import { hostAsciiCard } from "./nft-art/hostAsciiCard"; // best-effort image host (Gen 1 ASCII card, seed = mint txid)
 import { mintCapSoldOut, recordMintAgainstCap } from "./mintCap";
+import { resolveOfficialAccount } from "./officialAccount";
+import { contentHashHex } from "./feedProtocol";
+import { CHRONIK_URLS } from "./ecash/chronikEndpoints";
 
-const CHRONIK_URLS = ["https://chronik.e.cash", "https://chronik-native.fabien.cash"];
+const OFFICIAL_HANDLE = "proofofwriting"; // byline for handle-mint feed cards
+
 const supabase = createClient((process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 
 const LOCK_HOLDER = () => `${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
@@ -112,6 +116,43 @@ export async function processPaidMint(mintId: string): Promise<{ status: string;
     await supabase.from("pending_mints")
       .update({ status: "minted", child_token_id: res.childTokenId, image_url: imageUrl })
       .eq("id", mintId);
+
+    // Announce the mint as a native feed card. The row's txid IS the token id
+    // (child genesis txid), so every reply/quote/like/repost — all of which
+    // resolve their target by feed_posts.txid — works on it natively, and it
+    // ranks through the normal engagement pipeline. Authored by the mint wallet's
+    // account (the @proofofwriting holder); reactions/tips pay that same wallet.
+    // Best-effort: a feed hiccup must never fail (or refund) a completed mint.
+    try {
+      const official = await resolveOfficialAccount(supabase);
+      if (official) {
+        const content = `🖊️ @${res.handle} — a new handle was minted.`;
+        await supabase.from("feed_posts").insert({
+          txid: res.childTokenId,
+          action: 1,                                   // POST → surfaces in the main timeline
+          content,
+          content_hash: contentHashHex(content),
+          card_kind: "handle_mint",
+          image_url: imageUrl,
+          card_meta: {
+            handle: res.handle,
+            tier,
+            priceXec: Number(m.expected_sats) / 100,
+            minterAddress: m.payer_address,
+          },
+          author_account_id: official.accountId,
+          author_identity: `@${OFFICIAL_HANDLE}`,
+          payer_address: official.address,
+          payout_address: official.address,            // tips on mint cards go to the platform
+          amount_sats: 0,
+          finalized_at: new Date().toISOString(),
+        });
+      } else {
+        console.warn("[mintProcessor] official account not found — skipped mint feed card (run scripts/ensure-official-account.ts)");
+      }
+    } catch (e) {
+      console.warn("[mintProcessor] mint feed-card insert failed (non-fatal):", e instanceof Error ? e.message : e);
+    }
 
     return { status: "minted", childTokenId: res.childTokenId };
   } catch (e: any) {

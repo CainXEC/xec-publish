@@ -63,6 +63,53 @@ function Byline({ identity, color }) {
   )
 }
 
+const TIER_LABEL = { short: 'Short', mid: 'Mid', base: 'Base' }
+
+/**
+ * Handle-mint card body: a native feed card for a freshly minted handle NFT.
+ * Renders the deterministic NFT card image + the new @handle and its tier/price,
+ * both linking to the profile. Backed by a feed_posts row whose txid is the token
+ * id, so the normal EngagementBar (reply/like/repost) works on it unchanged.
+ */
+function MintCard({ post }) {
+  const meta = post.card_meta ?? {}
+  const handle = typeof meta.handle === 'string' ? meta.handle : ''
+  const tier = typeof meta.tier === 'string' ? meta.tier : ''
+  const href = handle ? `/@${handle}` : null
+  const priceLabel =
+    typeof meta.priceXec === 'number' && meta.priceXec > 0
+      ? `${meta.priceXec.toLocaleString()} XEC`
+      : null
+  const tierLabel = TIER_LABEL[tier] ?? tier
+  const alt = handle ? `@${handle} handle NFT card` : 'handle NFT card'
+
+  const Img = post.image_url ? (
+    /* eslint-disable-next-line @next/next/no-img-element */
+    <img className="mintcard-img" src={post.image_url} alt={alt} loading="lazy" />
+  ) : null
+
+  return (
+    <div className="mintcard">
+      {Img ? (href ? <Link href={href} className="mintcard-imglink">{Img}</Link> : Img) : null}
+      <div className="mintcard-info">
+        <span className="mintcard-kicker">🖊️ New handle minted</span>
+        {href ? (
+          <Link href={href} className="mintcard-handle">@{handle}</Link>
+        ) : (
+          <span className="mintcard-handle">@{handle}</span>
+        )}
+        {tierLabel || priceLabel ? (
+          <span className="mintcard-tier">
+            {tierLabel}
+            {tierLabel && priceLabel ? ' · ' : ''}
+            {priceLabel}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
 /**
  * Overflow "···" menu on someone else's post: the single home for the two
  * relationship actions — Follow/Unfollow and Block. Both are session-authorized
@@ -275,6 +322,9 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
     typeof repostedBy?.identity === 'string' ? repostedBy.identity.trim() : ''
   const reposterIsHandle = reposterId.startsWith('@')
 
+  // A handle-mint card replaces the text body/embeds with the NFT card render.
+  const isMintCard = post.card_kind === 'handle_mint' && !post.deleted
+
   return (
     <li className="post" onClick={openThread} style={{ cursor: 'pointer' }}>
       {repostedBy ? (
@@ -328,33 +378,39 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
         ) : null}
       </div>
 
-      {shownBody ? (
-        <p className="body">
-          <FeedBody text={shownBody} />
-          {isLong ? (
-            <button
-              type="button"
-              className="showmore"
-              onClick={() => setExpanded((s) => !s)}
-            >
-              {expanded ? 'Show less' : 'Show more'}
-            </button>
+      {isMintCard ? (
+        <MintCard post={post} />
+      ) : (
+        <>
+          {shownBody ? (
+            <p className="body">
+              <FeedBody text={shownBody} />
+              {isLong ? (
+                <button
+                  type="button"
+                  className="showmore"
+                  onClick={() => setExpanded((s) => !s)}
+                >
+                  {expanded ? 'Show less' : 'Show more'}
+                </button>
+              ) : null}
+            </p>
           ) : null}
-        </p>
-      ) : null}
 
-      {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
+          {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
 
-      {/* A pasted on-site feed-post link (not a native quote) renders the target
-          as a quoted embed below — "as if you'd quoted it". Server posts carry a
-          resolved post.linkedPost; a just-posted one hydrates from the txid. */}
-      {!post.deleted && !post.quoted_txid && extractFeedPostTxid(body) ? (
-        <LinkedPostEmbed linkedPost={post.linkedPost} content={body} />
-      ) : null}
+          {/* A pasted on-site feed-post link (not a native quote) renders the target
+              as a quoted embed below — "as if you'd quoted it". Server posts carry a
+              resolved post.linkedPost; a just-posted one hydrates from the txid. */}
+          {!post.deleted && !post.quoted_txid && extractFeedPostTxid(body) ? (
+            <LinkedPostEmbed linkedPost={post.linkedPost} content={body} />
+          ) : null}
 
-      {!post.deleted ? (
-        <ArticleCard card={post.articleCard ?? null} content={body} />
-      ) : null}
+          {!post.deleted ? (
+            <ArticleCard card={post.articleCard ?? null} content={body} />
+          ) : null}
+        </>
+      )}
 
       <div className="actions">
         <button type="button" onClick={() => setShowReply((s) => !s)} className="replybtn">
