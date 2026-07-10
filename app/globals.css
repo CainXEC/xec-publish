@@ -3,6 +3,25 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Mobile: fire taps immediately. The viewport is width=device-width, but iOS
+   Safari (and some Android cases) still hold a ~300ms double-tap-zoom delay on
+   tappable elements unless touch-action is manipulation. Scoped to interactive
+   elements so pinch/double-tap zoom on page content is unaffected. */
+button,
+a,
+label,
+summary,
+input,
+select,
+textarea,
+[role="button"],
+[role="tab"],
+[role="radio"],
+[role="menuitem"],
+[role="link"] {
+  touch-action: manipulation;
+}
+
 /* -----------------------------------------------------------------------------
    Neon theme (site-wide). Unifies the whole site with the feed/mint aesthetic.
    Strategy: the brand accent was already `emerald`, so the emerald ramp is
