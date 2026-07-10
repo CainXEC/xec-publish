@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import { getAuthedAccount } from '@/lib/authHelpers'
+import { getXecBalanceSats } from '@/lib/xecBalance'
 export default async function DashboardPage() {
   const acct = await getAuthedAccount()
   // Any logged-in wallet reaches its dashboard — including a brand-new address
@@ -11,6 +12,9 @@ export default async function DashboardPage() {
   if (!acct) {
     redirect('/login')
   }
+  // Live wallet balance for the logged-in address — fetched concurrently with the
+  // author queries below so it doesn't add serial latency.
+  const walletBalancePromise = getXecBalanceSats(acct.address)
   const authorId = acct.authorId
   const admin = createSupabaseAdminClient()
   const supabase = admin // all queries below run on the service-role client now
@@ -49,11 +53,7 @@ export default async function DashboardPage() {
       ])
     : [{ data: [], error: null }, { data: null }, { data: [] }, { data: null }]
   const rows = unlockRows ?? []
-  let totalXec = 0
-  for (const r of rows) {
-    const s = Number(r.amount_xec)
-    if (Number.isFinite(s)) totalXec += s
-  }
+  const walletXecRaw = await walletBalancePromise
   // The welcome byline should reflect the LIVE identity (a bound handle if the
   // account holds one, else the raw wallet address) — never the legacy
   // authors.username, which may name a handle the wallet no longer/never held.
@@ -71,7 +71,7 @@ export default async function DashboardPage() {
       initialPosts={posts ?? []}
       loadError={postsError?.message ?? null}
       initialTotalUnlocks={rows.length}
-      initialTotalXecRaw={totalXec}
+      initialWalletXecRaw={walletXecRaw}
     />
   )
 }

@@ -206,7 +206,7 @@ export default function DashboardClient({
   initialPosts,
   loadError,
   initialTotalUnlocks,
-  initialTotalXecRaw,
+  initialWalletXecRaw,
 }) {
   const [posts, setPosts] = useState(initialPosts)
   const [sortMode, setSortMode] = useState('newest')
@@ -226,7 +226,7 @@ export default function DashboardClient({
 
   // Stats come from the server — no loading state needed
   const totalUnlocks = typeof initialTotalUnlocks === 'number' ? initialTotalUnlocks : 0
-  const totalXecEarned = typeof initialTotalXecRaw === 'number' ? initialTotalXecRaw / 100 : 0
+  const walletXec = typeof initialWalletXecRaw === 'number' ? initialWalletXecRaw / 100 : 0
 
   useEffect(() => {
     setPosts(initialPosts)
@@ -499,13 +499,13 @@ export default function DashboardClient({
               </p>
             </div>
             <div className="dashstat">
-              <p className="dashstat-label">Total Earned</p>
+              <p className="dashstat-label">Wallet Balance</p>
               <p
                 className="dashstat-value"
                 style={{ display: 'flex', alignItems: 'center', gap: '7px' }}
               >
-                <EcashIcon size={14} outline />
-                <span>{Math.round(totalXecEarned).toLocaleString('en-US')}</span>
+                <EcashIcon size={14} />
+                <span>{walletXec.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
               </p>
             </div>
           </div>
@@ -576,8 +576,8 @@ export default function DashboardClient({
           ) : null}
 
           <div className="dashactions">
-            <Link href="/?compose=1" className="dashbtn">
-              Write New Post
+            <Link href="/dashboard/new-post" className="dashbtn">
+              Write New Article
             </Link>
             <Link href="/dashboard/profile" className="dashbtn sec">
               Edit Profile
