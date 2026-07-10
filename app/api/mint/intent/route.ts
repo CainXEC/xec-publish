@@ -12,6 +12,7 @@ import { priceForHandle } from "@/lib/handlePricing";
 import { encodeFeedOpReturnRaw, FEED_ACTION } from "@/lib/feedProtocol";
 import { rateLimit, getClientIp } from "@/lib/rateLimit";
 import { mintCapSoldOut } from "@/lib/mintCap";
+import { handleReservedByGrant } from "@/lib/grantReservation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -55,13 +56,15 @@ export async function POST(req: NextRequest) {
   // payment has landed and is being minted — blocks a new intent; unpaid
   // pending rows do not (no free squat).
   const nowIso = new Date().toISOString();
-  const [{ data: taken }, { data: reserved }, { data: paidHold }] = await Promise.all([
+  const [{ data: taken }, { data: reserved }, { data: paidHold }, grantReserved] = await Promise.all([
     supabase.from("handles").select("token_id").eq("handle_skeleton", sk).maybeSingle(),
     supabase.from("reserved_handles").select("reason").eq("handle_skeleton", sk).maybeSingle(),
     supabase.from("pending_mints").select("id").eq("handle_skeleton", sk).eq("status", "paid").gt("expires_at", nowIso).maybeSingle(),
+    handleReservedByGrant(supabase, sk),
   ]);
   if (taken) return NextResponse.json({ ok: false, status: "taken" });
   if (reserved) return NextResponse.json({ ok: false, status: "reserved", reason: reserved.reason });
+  if (grantReserved) return NextResponse.json({ ok: false, status: "reserved", reason: "grandfathered" });
   if (paidHold) return NextResponse.json({ ok: false, status: "pending", reason: "name is being minted right now" });
 
   // Fail fast if the collection is live and sold out — don't take a payment we'd

@@ -10,6 +10,7 @@ import { priceForHandle } from "./handlePricing";
 import { loadMintWallet, mintHandleChild } from "./mintHandleChild";
 import { hostAsciiCard } from "./nft-art/hostAsciiCard"; // best-effort image host (Gen 1 ASCII card, seed = mint txid)
 import { mintCapSoldOut, recordMintAgainstCap } from "./mintCap";
+import { handleReservedByGrant } from "./grantReservation";
 import { resolveOfficialAccount } from "./officialAccount";
 import { contentHashHex } from "./feedProtocol";
 import { CHRONIK_URLS } from "./ecash/chronikEndpoints";
@@ -67,12 +68,13 @@ export async function processPaidMint(mintId: string): Promise<{ status: string;
   try {
     const sk = skeleton(m.handle);
 
-    // defensive re-check: nobody minted/reserved this skeleton meanwhile
-    const [{ data: taken }, { data: reserved }] = await Promise.all([
+    // defensive re-check: nobody minted/reserved/granted this skeleton meanwhile
+    const [{ data: taken }, { data: reserved }, grantReserved] = await Promise.all([
       supabase.from("handles").select("token_id").eq("handle_skeleton", sk).maybeSingle(),
       supabase.from("reserved_handles").select("handle_skeleton").eq("handle_skeleton", sk).maybeSingle(),
+      handleReservedByGrant(supabase, sk),
     ]);
-    if (taken || reserved) {
+    if (taken || reserved || grantReserved) {
       const refundTxid = await refund(await synced(wallet), m.payer_address, Number(m.expected_sats));
       await supabase.from("pending_mints").update({ status: "refunded", refund_txid: refundTxid, error: "unavailable at mint time" }).eq("id", mintId);
       return { status: "refunded", error: "name was no longer available" };

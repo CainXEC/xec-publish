@@ -18,6 +18,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { validateHandleSyntax, skeleton, displayHandle } from "@/lib/handleSkeleton";
 import { priceForHandle } from "@/lib/handlePricing";
+import { handleReservedByGrant } from "@/lib/grantReservation";
 
 // Chronik-style: keep this on the Node runtime, not edge.
 export const runtime = "nodejs";
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest) {
   // Run the three lookups. Any hit means unavailable. A name is only "held"
   // once a payment has landed (status='paid') — unpaid intents don't block, so
   // nobody can squat names for free by spamming intents.
-  const [minted, reserved, pending] = await Promise.all([
+  const [minted, reserved, pending, grantReserved] = await Promise.all([
     supabase.from("handles").select("token_id").eq("handle_skeleton", sk).maybeSingle(),
     supabase.from("reserved_handles").select("reason").eq("handle_skeleton", sk).maybeSingle(),
     supabase
@@ -58,6 +59,7 @@ export async function GET(req: NextRequest) {
       .eq("status", "paid")
       .gt("expires_at", new Date().toISOString())
       .maybeSingle(),
+    handleReservedByGrant(supabase, sk),
   ]);
 
   // surface DB errors rather than silently reporting "available"
@@ -86,6 +88,11 @@ export async function GET(req: NextRequest) {
     } else {
       return NextResponse.json({ ok: true, available: false, status: "reserved", reason });
     }
+  }
+  // 3b. grandfathered: an unclaimed grant reserves the name for its owner until
+  //     they use their claim code (belt-and-suspenders alongside reserved_handles).
+  if (grantReserved) {
+    return NextResponse.json({ ok: true, available: false, status: "reserved", reason: "grandfathered" });
   }
   // 4. held by a paid, in-progress mint
   if (pending.data) {
