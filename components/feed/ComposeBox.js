@@ -147,9 +147,13 @@ export default function ComposeBox({
     confirm()
     const id = setInterval(() => !stopped && confirm(), 1200)
     // Chronik ws nudge: the instant a tx touches the pay address, confirm now
-    // instead of waiting for the next 1.2s tick. Server still verifies + gates.
-    const unwatch = watchPaymentAddress(intent.payAddress, () => {
-      if (!stopped) void confirm()
+    // instead of waiting for the next 1.2s tick. Pass the ws's txid straight
+    // through so the server does a single-tx lookup (verifyFeedTxid) instead of
+    // scanning the busy platform address's recent history — a post/reply/quote
+    // is disambiguated by its content hash, so a cross-fired txid just misses
+    // and polling continues. Server still verifies + gates.
+    const unwatch = watchPaymentAddress(intent.payAddress, (txid) => {
+      if (!stopped) void confirm(txid)
     })
     return () => {
       stopped = true
