@@ -6,9 +6,8 @@ import { useRouter } from 'next/navigation'
 import FeedPost from '@/components/feed/FeedPost'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import HandleCarousel from '@/components/HandleCarousel'
-import UnlockIcon from '@/components/UnlockIcon'
-import EcashIcon from '@/components/EcashIcon'
 import { FEED_CSS } from '@/components/feed/feedTheme'
+import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 
 function truncateAddress(addr) {
   const t = String(addr ?? '').trim()
@@ -173,6 +172,58 @@ function ProfileActionsMenu({
  * feed posts below — Twitter-style. `profileAccountId` is null for a handle held
  * by someone with no proofofwriting account (no posts, no follow).
  */
+// ---- Articles tab: one article row (mirrors app/profile/[identifier]/articles) ----
+function formatArticleXec(amount) {
+  const n = Number(amount)
+  if (!Number.isFinite(n)) return '0'
+  return n.toFixed(8).replace(/\.?0+$/, '')
+}
+function formatArticleDate(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
+function articleUnlockCount(post) {
+  const row = Array.isArray(post.unlocks) ? post.unlocks[0] : post.unlocks
+  const n = Number(row?.count)
+  return Number.isFinite(n) ? n : 0
+}
+function articlePriceLabel(priceXec) {
+  const n = Number(priceXec)
+  if (!Number.isFinite(n) || n <= 0) return 'Free'
+  return `${formatArticleXec(priceXec)} XEC`
+}
+function ArticleRow({ post }) {
+  const href = post.legacy
+    ? `/${encodeURIComponent(post.slug)}`
+    : `/posts/${encodeURIComponent(post.slug)}`
+  const unlocks = articleUnlockCount(post)
+  const readTime = formatReadingTimeLabel(post.reading_time_minutes)
+  const date = formatArticleDate(post.published_at ?? post.created_at)
+  return (
+    <li className="artrow">
+      <Link href={href} className="artrow-title">
+        {post.title || 'Untitled'}
+      </Link>
+      <div className="artrow-meta">
+        {date ? <span>{date}</span> : null}
+        <span className="artrow-sep" aria-hidden>·</span>
+        <span>{articlePriceLabel(post.price_xec)}</span>
+        <span className="artrow-sep" aria-hidden>·</span>
+        <span>🔓 {unlocks.toLocaleString()} {unlocks === 1 ? 'unlock' : 'unlocks'}</span>
+        {readTime ? (
+          <>
+            <span className="artrow-sep" aria-hidden>·</span>
+            <span>{readTime}</span>
+          </>
+        ) : null}
+      </div>
+      {post.teaser ? <p className="artrow-teaser">{post.teaser}</p> : null}
+    </li>
+  )
+}
+
 export default function AuthorProfilePageClient({
   identity,
   isAddressIdentity = false,
@@ -181,8 +232,6 @@ export default function AuthorProfilePageClient({
   holderAddress = null,
   handleCards = [],
   followerCount = 0,
-  totalUnlocks = 0,
-  totalEarnings = 0,
   profileAccountId = null,
   viewerAccountId = null,
   initialFollowing = false,
@@ -190,13 +239,15 @@ export default function AuthorProfilePageClient({
   initialPosts = [],
   initialReplies = [],
   identifier = '',
-  articleCount = 0,
+  initialArticles = [],
   viewerIsAuthor = false,
 }) {
   const router = useRouter()
-  const [tab, setTab] = useState('posts') // 'posts' | 'replies'
+  const [tab, setTab] = useState('posts') // 'posts' | 'replies' | 'articles'
   const [posts, setPosts] = useState(initialPosts)
   const [replies, setReplies] = useState(initialReplies)
+  const articleList = (initialArticles ?? []).filter((p) => !p.legacy)
+  const legacyList = (initialArticles ?? []).filter((p) => p.legacy)
   const [blocked, setBlocked] = useState(Boolean(initialBlocked))
   const [copiedAddress, setCopiedAddress] = useState(false)
   const copyTimeoutRef = useRef(null)
@@ -230,7 +281,6 @@ export default function AuthorProfilePageClient({
   const bioText = bio != null && String(bio).trim() !== '' ? String(bio).trim() : ''
   const canManageAuthor =
     !!profileAccountId && !!viewerAccountId && viewerAccountId !== profileAccountId
-  const earnedXec = Math.round(Number(totalEarnings || 0) / 100)
 
   return (
     <div className="pow-feed">
@@ -276,29 +326,6 @@ export default function AuthorProfilePageClient({
             </span>
           )}
 
-          {articleCount > 0 || totalUnlocks > 0 ? (
-            <div className="profstats">
-              {articleCount > 0 ? (
-                <Link href={`/@${encodeURIComponent(identifier)}/articles`} className="artlink">
-                  📄 {articleCount.toLocaleString()}{' '}
-                  {articleCount === 1 ? 'article' : 'articles'} →
-                </Link>
-              ) : null}
-              {totalUnlocks > 0 ? (
-                <span className="profstat">
-                  <UnlockIcon size={14} />
-                  <strong>{Number(totalUnlocks).toLocaleString()}</strong> unlocks
-                </span>
-              ) : null}
-              {earnedXec > 0 ? (
-                <span className="profstat">
-                  <EcashIcon size={14} />
-                  <strong>{earnedXec.toLocaleString()}</strong> XEC earned
-                </span>
-              ) : null}
-            </div>
-          ) : null}
-
           {bioText ? <p className="profbio">{bioText}</p> : null}
         </header>
 
@@ -323,6 +350,15 @@ export default function AuthorProfilePageClient({
           >
             Replies
           </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'articles'}
+            className={`tab${tab === 'articles' ? ' on' : ''}`}
+            onClick={() => setTab('articles')}
+          >
+            Articles
+          </button>
         </div>
 
         {blocked ? (
@@ -343,20 +379,44 @@ export default function AuthorProfilePageClient({
               ))}
             </ul>
           )
-        ) : replies.length === 0 ? (
-          <p className="empty">No replies yet.</p>
+        ) : tab === 'replies' ? (
+          replies.length === 0 ? (
+            <p className="empty">No replies yet.</p>
+          ) : (
+            <ul className="panel posts">
+              {replies.map((post) => (
+                <FeedPost
+                  key={post.txid}
+                  post={post}
+                  viewerAccountId={viewerAccountId}
+                  onDeleted={removePost}
+                  onQuoted={handleQuoted}
+                />
+              ))}
+            </ul>
+          )
+        ) : articleList.length === 0 && legacyList.length === 0 ? (
+          <p className="empty">No articles published yet.</p>
         ) : (
-          <ul className="panel posts">
-            {replies.map((post) => (
-              <FeedPost
-                key={post.txid}
-                post={post}
-                viewerAccountId={viewerAccountId}
-                onDeleted={removePost}
-                onQuoted={handleQuoted}
-              />
-            ))}
-          </ul>
+          <>
+            {articleList.length > 0 ? (
+              <ul className="panel artlist">
+                {articleList.map((post) => (
+                  <ArticleRow key={post.id} post={post} />
+                ))}
+              </ul>
+            ) : null}
+            {legacyList.length > 0 ? (
+              <details className="artlegacy">
+                <summary>Legacy posts ({legacyList.length})</summary>
+                <ul className="panel artlist">
+                  {legacyList.map((post) => (
+                    <ArticleRow key={post.id} post={post} />
+                  ))}
+                </ul>
+              </details>
+            ) : null}
+          </>
         )}
       </main>
     </div>

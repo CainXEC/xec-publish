@@ -95,8 +95,6 @@ export default async function ProfilePage({ params }) {
     })
   }
 
-  const articleCount = (articleData.posts ?? []).filter((p) => !p.legacy).length
-
   return (
     <AuthorProfilePageClient
       identity={resolved.identity}
@@ -106,8 +104,6 @@ export default async function ProfilePage({ params }) {
       holderAddress={resolved.holderAddress}
       handleCards={handleCards}
       followerCount={followerCount}
-      totalUnlocks={articleData.totalUnlocks}
-      totalEarnings={articleData.totalEarnings}
       profileAccountId={profileAccountId}
       viewerAccountId={viewerAccountId}
       initialFollowing={initialFollowing}
@@ -115,7 +111,7 @@ export default async function ProfilePage({ params }) {
       initialPosts={feed.posts}
       initialReplies={replies.posts}
       identifier={identifier}
-      articleCount={articleCount}
+      initialArticles={articleData.posts ?? []}
       postsErrorMessage={articleData.error || null}
       viewerIsAuthor={viewerIsAuthor}
     />
