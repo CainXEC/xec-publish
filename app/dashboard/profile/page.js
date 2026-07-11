@@ -20,13 +20,21 @@ export default async function ProfileSettingsPage() {
   // can be slow on a busy wallet, so we STREAM it: the page renders immediately
   // and the handle carousel fills in via <Suspense> instead of blocking the whole
   // page on the Chronik round-trip.
-  const [{ data: accountRow }, blockedAccounts] = await Promise.all([
+  const [{ data: accountRow }, blockedAccounts, { data: primaryRow }] = await Promise.all([
     supabase
       .from('accounts')
       .select('active_handle_token_id')
       .eq('id', acct.accountId)
       .maybeSingle(),
     blockedAccountsForViewer(supabase, acct.accountId),
+    // The live primary address (session cookies can lag one swap behind) — shown
+    // and changed in the wallet-address card.
+    supabase
+      .from('account_addresses')
+      .select('address')
+      .eq('account_id', acct.accountId)
+      .eq('is_primary', true)
+      .maybeSingle(),
   ])
   const handlesPromise = heldHandlesForAddress(acct.address).then((hs) =>
     (hs ?? []).map((h) => ({ tokenId: h.tokenId, handle: h.handle, imageUrl: h.imageUrl })),
@@ -55,6 +63,8 @@ export default async function ProfileSettingsPage() {
       handleAddress={acct.address}
       initialActiveTokenId={initialActiveTokenId}
       initialBlocked={blockedAccounts}
+      primaryAddress={primaryRow?.address ?? acct.address}
+      boundHandle={acct.handle}
     />
   )
 }

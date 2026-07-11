@@ -16,6 +16,12 @@ https://ecashskill.vercel.app/skills/SKILL.md
   + app-layer checks via `getAuthedAccount()` / `requireAuthorId()`
   (lib/authHelpers.ts). New tables: enable RLS, no policies, service-role only.
 - RPCs use SECURITY DEFINER with `set search_path = public`.
+- Address change (/api/account/change-address + walletAuth
+  startAddressChange/verifyAddressChange): challenge session REQUIRED + a 5.5
+  XEC nonce payment FROM the new wallet (proof of keys — never a form field).
+  RPC change_primary_address swaps account_addresses / authors.xec_address /
+  feed_posts.payout_address in one transaction; the OLD address stays linked
+  (non-primary) so its unlocks keep working and it can still log in (recovery).
 
 ## Handle NFT identity model (LOCKED)
 - Earnings always follow the account (author_id) and its payout address —

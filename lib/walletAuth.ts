@@ -20,6 +20,10 @@
 //                    read its sender, resolve-or-create the account, delete the
 //                    nonce, issue the session cookie.
 //
+//  A second flow reuses the same challenge machinery to CHANGE an account's
+//  address: startAddressChange() / verifyAddressChange() — see the section at
+//  the bottom of this file and sql/change_primary_address.sql.
+//
 //  Env: AUTH_PROOF_ADDRESS (falls back to MINT_PAYMENT_ADDRESS), COOKIE_SECRET.
 // =============================================================================
 
@@ -29,10 +33,11 @@ import { encodeCashAddress } from "ecashaddrjs";
 import { randomUUID } from "node:crypto";
 import { decodeOpReturnToPostId } from "@/lib/opReturnEncode";
 import { encodeFeedOpReturnRaw, decodeFeedOpReturn, FEED_ACTION } from "@/lib/feedProtocol";
-import { setSessionCookie } from "@/lib/session";
+import { setSessionCookie, type SessionClaim } from "@/lib/session";
 import { signCookieValue, verifyCookieValue } from "@/lib/cookieSigner";
 import { cookies } from "next/headers";
 import { heldHandlesForAddress } from "@/lib/heldHandles";
+import { currentTokenHolder } from "@/lib/resolveProfile";
 import { CHRONIK_URLS } from "@/lib/ecash/chronikEndpoints";
 
 let _chronik: ChronikClient | null = null;
@@ -50,6 +55,11 @@ const AUTH_ADDRESS = process.env.AUTH_PROOF_ADDRESS ?? process.env.MINT_PAYMENT_
 // an attacker who reads the (public, on-chain) nonce from the victim's payment
 // can no longer race the victim's status poll and be handed the victim's session.
 const AUTH_NONCE_COOKIE = "pow_auth_nonce";
+// Same construction, separate cookie, for the CHANGE-ADDRESS challenge. Distinct
+// names mean the login poller can never claim an address-change nonce (each
+// verifier only accepts the nonce carried in its own cookie) even though both
+// flows share the auth_challenges table and the on-chain payment shape.
+const ADDR_NONCE_COOKIE = "pow_addr_nonce";
 const PROOF_XEC = "5.50";               // fixed login amount, below the 6.00 claim floor
 const PROOF_SATS_MIN = 550;             // 5.50 XEC = 550 sats; accept >= this
 const NONCE_TTL_MINUTES = 5;
@@ -104,7 +114,7 @@ export type StartAuthResult = {
   expiresAt: string;
 };
 
-export async function startAuth(): Promise<StartAuthResult> {
+async function issueNonceChallenge(cookieName: string, cookiePurpose: string): Promise<StartAuthResult> {
   // sweep expired nonces (self-cleaning; no cron needed)
   await supabase.from("auth_challenges").delete().lt("expires_at", new Date().toISOString());
 
@@ -112,11 +122,11 @@ export async function startAuth(): Promise<StartAuthResult> {
   const expiresAt = new Date(Date.now() + NONCE_TTL_MINUTES * 60_000).toISOString();
   await supabase.from("auth_challenges").insert({ nonce, expires_at: expiresAt });
 
-  // Bind this challenge to the calling browser. verifyAuth() will only accept the
+  // Bind this challenge to the calling browser. The verifier will only accept the
   // nonce carried in this signed, HttpOnly cookie — so only the browser that
-  // started the login can complete it, even though the nonce is public on-chain.
+  // started the flow can complete it, even though the nonce is public on-chain.
   const store = await cookies();
-  store.set(AUTH_NONCE_COOKIE, signCookieValue("auth_nonce", nonce), {
+  store.set(cookieName, signCookieValue(cookiePurpose, nonce), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -128,6 +138,10 @@ export async function startAuth(): Promise<StartAuthResult> {
   const bip21Url = `${AUTH_ADDRESS}?amount=${PROOF_XEC}&op_return_raw=${opReturnRaw}`;
 
   return { ok: true, proofAddress: AUTH_ADDRESS, amountXec: PROOF_XEC, opReturnRaw, bip21Url, expiresAt };
+}
+
+export async function startAuth(): Promise<StartAuthResult> {
+  return issueNonceChallenge(AUTH_NONCE_COOKIE, "auth_nonce");
 }
 
 // ---------------------------------------------------------------------------
@@ -302,4 +316,190 @@ async function bindDefaultHandle(
     })
     .eq("id", accountId);
   return pick.handle;
+}
+
+// ---------------------------------------------------------------------------
+//  CHANGE ADDRESS — same challenge construction as login, opposite direction.
+//  Login proves "this wallet may act as this account"; the change flow proves
+//  "this account's owner also controls a NEW wallet" and then re-points the
+//  account at it. Two independent proofs are required before anything moves:
+//    1. a challenge-scope session for the account (the caller/route enforces
+//       getChallengeSession() — a weaker pay-minted session can never redirect
+//       earnings), and
+//    2. a nonce payment signed by the NEW wallet (spend authority, exactly like
+//       login — typing an address into a form proves nothing).
+//  The swap itself is one transaction (sql/change_primary_address.sql): demote
+//  the old primary but KEEP it linked (unlock entitlements + the old wallet can
+//  still log in, so a hijacked account's real owner can always switch back),
+//  promote/insert the new address, and re-point authors.xec_address +
+//  feed_posts.payout_address so earnings follow the account.
+// ---------------------------------------------------------------------------
+
+export async function startAddressChange(): Promise<StartAuthResult> {
+  return issueNonceChallenge(ADDR_NONCE_COOKIE, "addr_nonce");
+}
+
+export type VerifyAddressChangeResult =
+  | {
+      ok: true;
+      newAddress: string;
+      oldAddress: string | null;
+      /** the display handle still bound after the swap, or null */
+      handle: string | null;
+      /** false when a bound handle was unbound because its NFT stayed in the old wallet */
+      handleKept: boolean;
+    }
+  | { ok: false; status: "awaiting_payment" | "same_address" | "address_in_use" | "error"; error?: string };
+
+export async function verifyAddressChange(claim: SessionClaim): Promise<VerifyAddressChangeResult> {
+  try {
+    const store = await cookies();
+    const { valid, txid: boundNonce } = verifyCookieValue(
+      "addr_nonce",
+      store.get(ADDR_NONCE_COOKIE)?.value,
+    );
+    if (!valid || !boundNonce) {
+      return { ok: false, status: "awaiting_payment" };
+    }
+
+    // The address being replaced: the account's live primary (the session's
+    // address can be stale if this account already swapped once on another
+    // device — the DB row is the source of truth).
+    const { data: primaryRow } = await supabase
+      .from("account_addresses")
+      .select("address")
+      .eq("account_id", claim.accountId)
+      .eq("is_primary", true)
+      .maybeSingle();
+    const oldAddress = primaryRow?.address ?? claim.address ?? null;
+    const oldBare = String(oldAddress ?? "").toLowerCase().replace(/^ecash:/, "");
+
+    const page = await chronik().address(AUTH_ADDRESS).history(0, 25);
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    // A wrong-wallet payment shouldn't kill the challenge: remember the reason,
+    // keep scanning (and keep the nonce alive), so the user can simply pay again
+    // from the right wallet with the SAME request while the countdown runs.
+    let hint: "same_address" | "address_in_use" | null = null;
+    let hintError = "";
+
+    for (const tx of page.txs ?? []) {
+      const seen = Number(tx.timeFirstSeen ?? 0);
+      if (seen && nowSec - seen > FRESH_SECONDS) continue;
+      if (satsToAddress(tx, AUTH_ADDRESS) < PROOF_SATS_MIN) continue;
+
+      const nonce = nonceOf(tx);
+      if (!nonce || nonce !== boundNonce) continue;
+
+      const candidate = payerOf(tx);
+      if (!candidate) continue;
+      const candidateBare = candidate.toLowerCase().replace(/^ecash:/, "");
+
+      if (candidateBare === oldBare) {
+        hint = "same_address";
+        hintError = "That payment came from your CURRENT wallet. Send it from the new wallet you want to switch to.";
+        continue;
+      }
+
+      // Owned by another account/author? Checked before claiming the nonce so a
+      // conflict leaves the challenge alive (the RPC re-checks inside the
+      // transaction — this early check is only for a friendlier retry).
+      const candidateForms = [candidateBare, `ecash:${candidateBare}`];
+      const { data: taken } = await supabase
+        .from("account_addresses")
+        .select("account_id")
+        .in("address", candidateForms)
+        .neq("account_id", claim.accountId)
+        .limit(1);
+      if (taken?.[0]) {
+        hint = "address_in_use";
+        hintError = "That wallet already has its own account here. Log into it directly, or pay from a different wallet.";
+        continue;
+      }
+
+      // Single-use claim — same atomic conditional DELETE as login.
+      const { data: claimed } = await supabase
+        .from("auth_challenges")
+        .delete()
+        .eq("nonce", nonce)
+        .gte("expires_at", new Date().toISOString())
+        .select("nonce")
+        .maybeSingle();
+      if (!claimed) continue;
+
+      // Atomic three-way swap (account_addresses / authors.xec_address /
+      // feed_posts.payout_address) — see sql/change_primary_address.sql.
+      const { error: rpcError } = await supabase.rpc("change_primary_address", {
+        p_account_id: claim.accountId,
+        p_new_address: candidate,
+      });
+      if (rpcError) {
+        const inUse = String(rpcError.message ?? "").includes("address_in_use");
+        return {
+          ok: false,
+          status: inUse ? "address_in_use" : "error",
+          error: inUse
+            ? "That wallet already belongs to another account here."
+            : rpcError.message ?? "Could not change the address.",
+        };
+      }
+
+      // If a display handle is bound, it survives only if its NFT already sits
+      // in the NEW wallet. Unverifiable (Chronik down) keeps the binding — the
+      // lazy profile-read check reconciles later, same as freshDisplayHandle.
+      const { handle, kept } = await rebindHandleAfterSwap(claim.accountId, candidate);
+
+      // Re-stamp the session for the new address (still challenge scope: the
+      // account was proven by the gating session, the wallet by this payment).
+      await setSessionCookie(claim.accountId, candidate, "challenge");
+      store.set(ADDR_NONCE_COOKIE, "", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 0,
+      });
+
+      return { ok: true, newAddress: candidate, oldAddress, handle, handleKept: kept };
+    }
+
+    if (hint) return { ok: false, status: hint, error: hintError };
+    return { ok: false, status: "awaiting_payment" };
+  } catch (e: any) {
+    return { ok: false, status: "error", error: e?.message ?? "address change verification failed" };
+  }
+}
+
+/** After a swap: keep the bound display handle only if its NFT is already in
+ *  the new wallet; clear it if the NFT verifiably stayed behind. Mirrors
+ *  freshDisplayHandle's cache philosophy — can't verify -> don't churn. */
+async function rebindHandleAfterSwap(
+  accountId: string,
+  newAddress: string,
+): Promise<{ handle: string | null; kept: boolean }> {
+  const { data: acct } = await supabase
+    .from("accounts")
+    .select("active_handle_token_id, display_handle")
+    .eq("id", accountId)
+    .maybeSingle();
+  const tokenId = acct?.active_handle_token_id ?? null;
+  if (!tokenId) return { handle: null, kept: true }; // nothing bound, nothing to lose
+
+  const holder = await currentTokenHolder(tokenId);
+  if (!holder) return { handle: acct?.display_handle ?? null, kept: true };
+
+  const now = new Date().toISOString();
+  if (holder === newAddress) {
+    await supabase
+      .from("accounts")
+      .update({ display_handle_checked_at: now })
+      .eq("id", accountId);
+    return { handle: acct?.display_handle ?? null, kept: true };
+  }
+
+  await supabase
+    .from("accounts")
+    .update({ active_handle_token_id: null, display_handle: null, display_handle_checked_at: now })
+    .eq("id", accountId);
+  return { handle: null, kept: false };
 }

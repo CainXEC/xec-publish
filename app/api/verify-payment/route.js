@@ -66,11 +66,32 @@ export async function POST(request) {
       )
     }
 
+    // Also accept payment to any OTHER address proven to belong to this author's
+    // account: a paywall opened just before the author changed wallets builds
+    // its outputs against the old payout address, and that payment must still
+    // unlock (it paid a wallet the author proved they control).
+    let authorLinkedAddresses = []
+    const { data: authorAccounts } = await supabase
+      .from('accounts')
+      .select('id')
+      .eq('author_id', post.author_id)
+    const accountIds = (authorAccounts ?? []).map((a) => a.id).filter(Boolean)
+    if (accountIds.length > 0) {
+      const { data: addrRows } = await supabase
+        .from('account_addresses')
+        .select('address')
+        .in('account_id', accountIds)
+      authorLinkedAddresses = (addrRows ?? [])
+        .map((r) => String(r.address ?? ''))
+        .filter(Boolean)
+    }
+
     const result = await verifyAndRecordUnlock({
       chronik,
       txid,
       postId,
       authorXecAddress: author.xec_address,
+      authorLinkedAddresses,
       priceXec: post.price_xec,
       options: { logPrefix: '[verify-payment]', verbose: true },
     })

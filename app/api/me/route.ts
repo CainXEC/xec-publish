@@ -35,10 +35,22 @@ export async function GET() {
     return NextResponse.json({ authenticated: false });
   }
 
-  // which posts has this address unlocked? (both stored forms, prefix-agnostic)
-  const forms = claim.address.startsWith("ecash:")
-    ? [claim.address, claim.address.slice("ecash:".length)]
-    : [claim.address, `ecash:${claim.address}`];
+  // which posts has this ACCOUNT unlocked? Unlocks are keyed by payer_address
+  // and the account may have proven several wallets (e.g. after a change-address
+  // swap the old wallet stays linked), so match every linked address in both
+  // stored forms — same pattern as the dashboard library.
+  const { data: addrRows } = await supabase
+    .from("account_addresses")
+    .select("address")
+    .eq("account_id", claim.accountId);
+  const forms = [
+    ...new Set(
+      [claim.address, ...(addrRows ?? []).map((r) => String(r.address ?? ""))]
+        .filter(Boolean)
+        .map((a) => a.toLowerCase().replace(/^ecash:/, ""))
+        .flatMap((bare) => [bare, `ecash:${bare}`]),
+    ),
+  ];
 
   const { data: unlockRows } = await supabase
     .from("unlocks")

@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Query chain the route uses now:
+// Query chains the route uses now:
+//   from('account_addresses').select('address').eq('account_id', …)   (linked wallets)
 //   from('unlocks').select(...).eq('post_id', …).in('payer_address', forms).limit(1).maybeSingle()
+// The first chain stops at .eq(...) and is awaited directly; the mock's plain
+// object is fine there (await of a non-thenable → data undefined → no rows).
 const db = vi.hoisted(() => {
   const maybeSingle = vi.fn()
   const limit = vi.fn(() => ({ maybeSingle }))
@@ -64,7 +67,7 @@ describe('/api/check-unlock/[postId]', () => {
   })
 
   it("returns unlocked true when the logged-in account's own address has an unlock", async () => {
-    getAuthedAccount.mockResolvedValueOnce({ address: 'ecash:qxyz' })
+    getAuthedAccount.mockResolvedValueOnce({ accountId: 'acct-1', address: 'ecash:qxyz' })
     db.maybeSingle.mockResolvedValueOnce({ data: { id: 'u1', txid: 'tx1' }, error: null })
 
     const { GET } = await import('@/app/api/check-unlock/[postId]/route')
@@ -74,8 +77,9 @@ describe('/api/check-unlock/[postId]', () => {
 
     await expect(res.json()).resolves.toEqual({ unlocked: true })
     expect(signCookieValue).toHaveBeenCalledWith('abc', 'tx1')
-    // the lookup was scoped to the session address forms, not a client input
-    expect(db.inFn).toHaveBeenCalledWith('payer_address', ['ecash:qxyz', 'qxyz'])
+    // the lookup was scoped to the account's proven address forms (normalized
+    // bare + prefixed), never a client input
+    expect(db.inFn).toHaveBeenCalledWith('payer_address', ['qxyz', 'ecash:qxyz'])
   })
 
   it('does NOT unlock from a client-supplied ?walletAddress without a session (bypass closed)', async () => {

@@ -9,6 +9,7 @@ import FeedTopbar from '@/components/feed/FeedTopbar'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import HandleColorPicker from '@/components/dashboard/HandleColorPicker'
 import DashboardHandleCarousel from '@/components/dashboard/DashboardHandleCarousel'
+import ChangeAddressCard from '@/components/dashboard/ChangeAddressCard'
 
 // Unwraps the streamed held-handles promise (React 19 `use`) inside a Suspense
 // boundary so a slow Chronik lookup never blocks the whole settings page.
@@ -32,6 +33,8 @@ export default function ProfileSettingsForm({
   handleAddress = null,
   initialActiveTokenId = null,
   initialBlocked = [],
+  primaryAddress = null,
+  boundHandle = null,
 }) {
   const router = useRouter()
   const [bio, setBio] = useState(initialBio ?? '')
@@ -286,6 +289,10 @@ export default function ProfileSettingsForm({
             </>
           )}
         </section>
+
+        {primaryAddress ? (
+          <ChangeAddressCard currentAddress={primaryAddress} handle={boundHandle} />
+        ) : null}
 
         <section className="dashpanel prof-danger">
           <h2 className="prof-danger-title">Danger zone</h2>
