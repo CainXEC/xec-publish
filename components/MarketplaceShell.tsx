@@ -78,7 +78,7 @@ export default function MarketplaceShell({
 
       <div className="mkt-cols">
         <aside className="mkt-rail">
-          <MintHandle />
+          <MintHandle signedIn={signedIn} />
 
           <MarketFilters
             className="railfilters"

@@ -29,7 +29,7 @@ const STATUS_COPY: Record<string, string> = {
   sold_out: "Sold out — all 10,000 handles have been minted.",
 };
 
-export default function MintHandle() {
+export default function MintHandle({ signedIn = false }: { signedIn?: boolean }) {
   const [handle, setHandle] = useState("");
   const [avail, setAvail] = useState<Availability | null>(null);
   const [checking, setChecking] = useState(false);
@@ -420,7 +420,12 @@ export default function MintHandle() {
           <p className="wonsub">The NFT is in the wallet you paid from.</p>
           <div className="links">
             <a href={`https://explorer.e.cash/tx/${result.childTokenId}`} target="_blank" rel="noreferrer">View on explorer</a>
-            <a href={`/@${display}`}>Go to your profile</a>
+            {/* A signed-out minter is sent to the dashboard instead: it routes
+                through the challenge login, which binds the fresh handle to
+                their account — the profile link would dead-end them logged out. */}
+            {signedIn
+              ? <a href={`/@${display}`}>Go to your profile</a>
+              : <a href="/dashboard">Go to your dashboard</a>}
           </div>
           <button className="ghost" onClick={() => { setPhase("choose"); setHandle(""); setAvail(null); setIntent(null); setResult(null); setNotice(""); setPaymentSeen(false); }}>
             Mint another

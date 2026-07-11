@@ -34,7 +34,7 @@ const START_ERROR_COPY: Record<string, string> = {
   taken: "This handle has already been minted.",
 };
 
-export default function ClaimHandle() {
+export default function ClaimHandle({ signedIn = false }: { signedIn?: boolean }) {
   const [handle, setHandle] = useState("");
   const [code, setCode] = useState("");
   const [phase, setPhase] = useState<"enter" | "prove" | "done">("enter");
@@ -224,7 +224,11 @@ export default function ClaimHandle() {
           <p className="wonsub">The NFT is in the wallet you proved from.</p>
           <div className="links">
             <a href={`https://explorer.e.cash/tx/${result.childTokenId}`} target="_blank" rel="noreferrer">View on explorer</a>
-            <a href={`/@${started?.handle ?? display}`}>Go to your profile</a>
+            {/* Signed-out claimers go to the dashboard: it routes through the
+                challenge login, which binds the fresh handle to their account. */}
+            {signedIn
+              ? <a href={`/@${started?.handle ?? display}`}>Go to your profile</a>
+              : <a href="/dashboard">Go to your dashboard</a>}
           </div>
         </div>
       )}
