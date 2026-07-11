@@ -504,6 +504,8 @@ html:not(.dark) .dashhandle-tip{background:#ffffff;border-color:#00b06e;color:#0
 .pow-feed .tmeta{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
 .pow-feed .ttext{margin:6px 0 0;white-space:pre-wrap;word-break:break-word;font-size:15px;line-height:1.55;color:#c8efe1;
   display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden;transition:color .15s;}
+.pow-feed .ttext.expanded{display:block;-webkit-line-clamp:unset;overflow:visible;}
+.pow-feed .tbody > .showmore{margin-top:4px;}
 /* Focused post reads as "the post you're on": no rail indent (full width, content
    flush-left with the dot), and its dot sits inline at the head of the byline row
    rather than out in the rail gutter. */

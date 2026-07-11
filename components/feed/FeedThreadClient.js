@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ComposeBox from '@/components/feed/ComposeBox'
@@ -68,6 +68,19 @@ function ThreadByline({ identity }) {
  */
 function AncestorNode({ post, top = false }) {
   const router = useRouter()
+  const textRef = useRef(null)
+  const [expanded, setExpanded] = useState(false)
+  const [clamped, setClamped] = useState(false)
+
+  // The body is capped at 6 lines by CSS (.ttext). Detect when that cap is
+  // actually hiding text so "Show more" only appears on a genuinely long parent
+  // — letting you expand it in place instead of having to open its thread.
+  useEffect(() => {
+    const el = textRef.current
+    if (!el || expanded) return
+    setClamped(el.scrollHeight > el.clientHeight + 1)
+  }, [expanded, post.content])
+
   const go = (e) => {
     if (e.target.closest('a, button')) return
     router.push(`/feed/${post.txid}`)
@@ -91,13 +104,22 @@ function AncestorNode({ post, top = false }) {
           </span>
           <span className="time">{timeAgo(post.created_at)}</span>
         </div>
-        <p className="ttext">
+        <p ref={textRef} className={`ttext${expanded ? ' expanded' : ''}`}>
           {post.deleted ? (
             <span className="tombstone">This post was deleted.</span>
           ) : (
             <FeedBody text={displayTextFor(post.content)} />
           )}
         </p>
+        {!post.deleted && (clamped || expanded) ? (
+          <button
+            type="button"
+            className="showmore"
+            onClick={() => setExpanded((s) => !s)}
+          >
+            {expanded ? 'Show less' : 'Show more'}
+          </button>
+        ) : null}
         {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
         {!post.deleted && !post.quoted_txid && extractFeedPostTxid(post.content) ? (
           <LinkedPostEmbed linkedPost={post.linkedPost} content={post.content} />
