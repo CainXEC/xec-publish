@@ -235,7 +235,7 @@ export default function ArticleRail({ minWidth = 1400, currentSlug = null, onOpe
       )}
 
       <div className="np-foot">
-        Your story belongs here — <Link href="/dashboard">publish for 100 XEC</Link>
+        Write your story. <Link href="/dashboard">Publish for 100 XEC</Link>.
       </div>
     </div>
   )
