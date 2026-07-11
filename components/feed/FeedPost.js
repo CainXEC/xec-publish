@@ -57,10 +57,13 @@ function Byline({ identity, color }) {
       </Link>
     )
   }
+  // A raw address is a real profile too (/@<address> resolves to the account),
+  // so link it like a handle. Strip the ecash: prefix for the pretty URL — the
+  // resolver re-adds it.
   return (
-    <span className="addr" title={id}>
+    <Link href={`/@${id.replace(/^ecash:/i, '')}`} className="addr" title={id}>
       {truncateAddress(id)}
-    </span>
+    </Link>
   )
 }
 
@@ -293,7 +296,12 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
               {reposterId}
             </Link>
           ) : (
-            <span className="repostedby-who">{truncateAddress(reposterId)}</span>
+            <Link
+              href={`/@${reposterId.replace(/^ecash:/i, '')}`}
+              className="repostedby-who"
+            >
+              {truncateAddress(reposterId)}
+            </Link>
           )}
         </div>
       ) : null}
