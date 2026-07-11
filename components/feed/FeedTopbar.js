@@ -96,8 +96,11 @@ export default function FeedTopbar({
 
   return (
     <div className="topbar">
-      {/* Hamburger — visible only on mobile (CSS), holds the nav links. */}
-      <div className="topnav" ref={rootRef}>
+      {/* Hamburger holds the nav links at every width. The menu is always in the
+          DOM so CSS can reveal it on hover for pointer devices (see feedTheme
+          `.topnav:hover`); the click toggles an `open` class that pins it open
+          (and is the sole path on touch, where there's no hover). */}
+      <div className={`topnav${open ? ' open' : ''}`} ref={rootRef}>
         <button
           type="button"
           className="hamburger"
@@ -110,11 +113,9 @@ export default function FeedTopbar({
             ☰
           </span>
         </button>
-        {open ? (
-          <div className="hammenu" role="menu">
-            {renderLinks('hammenu-item', true)}
-          </div>
-        ) : null}
+        <div className="hammenu" role="menu">
+          {renderLinks('hammenu-item', true)}
+        </div>
       </div>
 
       <Link href="/" className="wordmark" onClick={onWordmarkClick}>

@@ -54,7 +54,17 @@ export const FEED_CSS = `
 .pow-feed .hamicon{font-size:17px;line-height:1;}
 .pow-feed .hammenu{position:absolute;top:calc(100% + 8px);left:0;z-index:60;width:max-content;min-width:120px;
   background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px;
-  box-shadow:0 12px 32px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:2px;}
+  box-shadow:0 12px 32px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:2px;
+  opacity:0;visibility:hidden;pointer-events:none;transition:opacity .12s ease;}
+/* Transparent bridge over the 8px gap so a hover doesn't drop between the
+   hamburger and the menu on the way down. */
+.pow-feed .hammenu::before{content:"";position:absolute;top:-8px;left:0;right:0;height:8px;}
+/* Click-pinned open (the only path on touch, where there's no hover). */
+.pow-feed .topnav.open .hammenu{opacity:1;visibility:visible;pointer-events:auto;}
+/* Desktop / any pointer that can hover: open the menu on hover, no click needed. */
+@media (hover:hover){
+  .pow-feed .topnav:hover .hammenu{opacity:1;visibility:visible;pointer-events:auto;}
+}
 .pow-feed .hammenu-item{display:block;width:100%;text-align:left;background:none;border:none;font:inherit;
   font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--text);padding:11px 12px;border-radius:8px;
   cursor:pointer;transition:background .12s,color .12s;}
