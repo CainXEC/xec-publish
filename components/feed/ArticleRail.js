@@ -75,12 +75,20 @@ function Meta({ story }) {
   )
 }
 
-function PeekButtons({ story }) {
+function PeekButtons({ story, onOpen }) {
   const paid = story.priceXec != null && story.priceXec > 0
   return (
     <div className="np-btns">
-      <Link className="np-btn" href={`/posts/${story.slug}`}>Read →</Link>
+      <Link
+        className="np-btn"
+        href={`/posts/${story.slug}`}
+        onClick={onOpen ? (e) => onOpen(e, story.slug) : undefined}
+      >
+        Read →
+      </Link>
       {paid ? (
+        // Unlock always goes to the story's own page — the payment flow
+        // lives there, and a reading pane can't finish a Cashtab round-trip.
         <Link className="np-btn unlock" href={`/posts/${story.slug}`}>
           Unlock · {Number(story.priceXec).toLocaleString()} XEC
         </Link>
@@ -89,7 +97,7 @@ function PeekButtons({ story }) {
   )
 }
 
-function Entry({ story, open, now, onToggle }) {
+function Entry({ story, open, now, onToggle, onOpen }) {
   return (
     <div
       className={`np-entry${open ? ' open' : ''}${now ? ' now' : ''}`}
@@ -99,7 +107,11 @@ function Entry({ story, open, now, onToggle }) {
         onToggle()
       }}
     >
-      <Link className="np-hl" href={`/posts/${story.slug}`}>
+      <Link
+        className="np-hl"
+        href={`/posts/${story.slug}`}
+        onClick={onOpen ? (e) => onOpen(e, story.slug) : undefined}
+      >
         <span className="np-serif np-entry-h">
           {isFresh(story.at) ? <span className="np-dot" aria-hidden /> : null}
           {story.title}
@@ -108,7 +120,7 @@ function Entry({ story, open, now, onToggle }) {
       {open ? (
         <>
           {story.teaser ? <p className="np-teaser">{story.teaser}</p> : null}
-          <PeekButtons story={story} />
+          <PeekButtons story={story} onOpen={onOpen} />
         </>
       ) : (
         <Meta story={story} />
@@ -117,7 +129,7 @@ function Entry({ story, open, now, onToggle }) {
   )
 }
 
-export default function ArticleRail({ minWidth = 1400, currentSlug = null }) {
+export default function ArticleRail({ minWidth = 1400, currentSlug = null, onOpenStory = null }) {
   const [data, setData] = useState(null)
   const [openId, setOpenId] = useState(null)
   // The front page only exists above the host page's breakpoint — don't
@@ -134,6 +146,16 @@ export default function ArticleRail({ minWidth = 1400, currentSlug = null }) {
 
   // On an article page, mark the story being read wherever it appears.
   const isNow = (s) => Boolean(currentSlug) && s.slug === currentSlug
+
+  // Home page: stories open in the center reading pane instead of navigating.
+  // Modifier clicks (new tab, etc.) fall through to the real /posts/… URL.
+  const interceptOpen = onOpenStory
+    ? (e, slug) => {
+        if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1) return
+        e.preventDefault()
+        onOpenStory(slug)
+      }
+    : null
 
   useEffect(() => {
     if (!active) return
@@ -179,7 +201,12 @@ export default function ArticleRail({ minWidth = 1400, currentSlug = null }) {
               <div className="np-sec np-first">Most read · 7 days</div>
               <div className="np-ranks">
                 {mostRead.map((s, i) => (
-                  <Link className={`np-rank${isNow(s) ? ' now' : ''}`} key={s.id} href={`/posts/${s.slug}`}>
+                  <Link
+                    className={`np-rank${isNow(s) ? ' now' : ''}`}
+                    key={s.id}
+                    href={`/posts/${s.slug}`}
+                    onClick={interceptOpen ? (e) => interceptOpen(e, s.slug) : undefined}
+                  >
                     <span className="np-rank-n">{i + 1}</span>
                     <span className="np-serif np-rank-h">{s.title}</span>
                     <span className="np-rank-c">{s.readers7d}</span>
@@ -199,6 +226,7 @@ export default function ArticleRail({ minWidth = 1400, currentSlug = null }) {
                   open={openId === s.id}
                   now={isNow(s)}
                   onToggle={() => toggle(s.id)}
+                  onOpen={interceptOpen}
                 />
               ))}
             </>

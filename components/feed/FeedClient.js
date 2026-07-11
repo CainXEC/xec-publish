@@ -1,11 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import ActivityRail from '@/components/feed/ActivityRail'
 import ArticleRail from '@/components/feed/ArticleRail'
 import ComposeBox from '@/components/feed/ComposeBox'
 import FeedPost from '@/components/feed/FeedPost'
 import FeedTopbar from '@/components/feed/FeedTopbar'
+import HomeReader from '@/components/feed/HomeReader'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 
 export default function FeedClient({
@@ -18,6 +19,45 @@ export default function FeedClient({
   focusCompose = false,
 }) {
   const [scope, setScope] = useState('foryou') // 'foryou' | 'following'
+  // The reading pane: a front-page story open in the center column, as pure
+  // client state — the URL stays put (no history games; the App Router
+  // treats pushState as a navigation and fights the scroll restore). The
+  // feed below stays MOUNTED (hidden), so tabs/posts/scroll all survive the
+  // detour; the pane's "Open full page ↗" link is the shareable URL.
+  const [readerSlug, setReaderSlug] = useState(null)
+  const feedScrollRef = useRef(0)
+
+  const openStory = useCallback((slug) => {
+    if (!slug) return
+    feedScrollRef.current = window.scrollY
+    setReaderSlug(slug)
+    window.scrollTo(0, 0)
+  }, [])
+
+  const closeReader = useCallback(() => {
+    setReaderSlug(null)
+    // Two restore attempts: the rAF can fire before the feed is back in the
+    // DOM (the short reader clamps any scroll to ~0), so a second assert
+    // runs after the swap has definitely laid out. No-op when the first won.
+    const y = feedScrollRef.current
+    requestAnimationFrame(() => window.scrollTo(0, y))
+    setTimeout(() => window.scrollTo(0, y), 200)
+  }, [])
+
+  // While reading, the PROOFOFWRITING banner means "back to the feed" — catch
+  // it before the topbar's own handler (which would reload at the story URL).
+  useEffect(() => {
+    if (!readerSlug) return
+    const onCapture = (e) => {
+      if (e.target.closest?.('.wordmark')) {
+        e.preventDefault()
+        e.stopPropagation()
+        closeReader()
+      }
+    }
+    document.addEventListener('click', onCapture, true)
+    return () => document.removeEventListener('click', onCapture, true)
+  }, [readerSlug, closeReader])
   // Paying to post mints a session; if we didn't have one at SSR time, the post
   // we just made proves who we are — adopt its account so delete shows at once.
   const [viewerAccountId, setViewerAccountId] = useState(initialViewerAccountId)
@@ -236,9 +276,11 @@ export default function FeedClient({
           render exactly as before. */}
       <div className="feed-cols">
       <aside className="feed-left" aria-label="The front page — long-form writing">
-        <ArticleRail />
+        <ArticleRail currentSlug={readerSlug} onOpenStory={openStory} />
       </aside>
       <main className="wrap" style={{ paddingTop: '28px' }}>
+        {readerSlug ? <HomeReader slug={readerSlug} onClose={closeReader} /> : null}
+        <div style={readerSlug ? { display: 'none' } : undefined}>
         <ComposeBox
           action="post"
           onPosted={prependPost}
@@ -301,6 +343,7 @@ export default function FeedClient({
             </button>
           </div>
         ) : null}
+        </div>
       </main>
 
       <aside className="feed-rail" aria-label="Live on-chain activity">

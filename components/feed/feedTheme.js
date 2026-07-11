@@ -649,6 +649,28 @@ html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
   box-shadow:0 0 8px rgba(0,255,156,.8);margin-right:6px;vertical-align:2px;}
 /* the story currently being read (article page keeps this rail beside it) */
 .pow-feed .np-now,.pow-feed .np-entry.now .np-entry-h,.pow-feed .np-rank.now .np-rank-h{color:var(--neon);}
+
+/* ---- the reading pane: a front-page story open in the feed's center column.
+   Article typography rides in a neutralized .pow-article scope host. ---- */
+.pow-feed .hr-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 20px;}
+.pow-feed .hr-back{background:transparent;border:1px solid var(--line);color:var(--cyan);border-radius:9px;
+  padding:9px 16px;font:inherit;font-size:12px;letter-spacing:.06em;cursor:pointer;
+  transition:border-color .15s,box-shadow .15s;}
+.pow-feed .hr-back:hover{border-color:var(--cyan);box-shadow:0 0 14px rgba(61,240,255,.2);}
+.pow-feed .hr-open{font-size:11.5px;color:var(--dim);border-bottom:1px solid transparent;transition:color .15s,border-color .15s;}
+.pow-feed .hr-open:hover{color:var(--cyan);border-color:var(--cyan);}
+.pow-feed .hr-state{color:var(--dim);font-size:13px;margin:48px 0;text-align:center;}
+.pow-feed .readerhost.pow-article{width:auto;margin:0;min-height:0;background:none;padding:0;}
+.pow-feed .hr-title{font-size:30px;line-height:1.22;color:var(--text);margin:4px 0 10px;font-weight:700;}
+.pow-feed .hr-meta{font-size:11.5px;color:var(--dim);margin:0 0 24px;}
+.pow-feed .hr-author{font-weight:700;}
+.pow-feed .hr-paywall{border:1px solid var(--line);border-radius:12px;padding:20px 16px;margin-top:26px;text-align:center;}
+.pow-feed .hr-lockline{font-size:12.5px;color:var(--dim);margin:0 0 12px;}
+.pow-feed .hr-unlock{display:inline-block;border:1px solid var(--neon);color:var(--neon);border-radius:9px;
+  padding:11px 24px;font-size:13px;font-weight:700;letter-spacing:.05em;
+  transition:background .15s,color .15s,box-shadow .15s;}
+.pow-feed .hr-unlock:hover{background:var(--neon);color:#04120c;box-shadow:0 0 22px rgba(0,255,156,.4);}
+.pow-feed .hr-note{font-size:10.5px;color:var(--dim);margin:11px 0 0;line-height:1.5;}
 html:not(.dark) .pow-feed .np-entry{border-bottom-color:rgba(191,230,213,.85);}
 html:not(.dark) .pow-feed .np-mast{text-shadow:none;}
 
