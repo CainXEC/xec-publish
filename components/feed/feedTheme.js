@@ -300,7 +300,8 @@ export const FEED_CSS = `
 .pow-feed .quoted[role="link"]:hover{border-color:var(--cyan);box-shadow:0 0 16px rgba(61,240,255,.12);}
 .pow-feed .quoted .qmeta{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
 .pow-feed .qbyline{font-weight:700;color:var(--hc,var(--neon));font-size:12px;text-shadow:0 0 8px rgba(0,255,156,.3);}
-.pow-feed .qaddr{font-size:12px;color:var(--cyan);}
+.pow-feed .qaddr{font-size:12px;color:var(--cyan);text-decoration:none;}
+.pow-feed a.qaddr:hover{text-decoration:underline;}
 .pow-feed .qbody{margin:6px 0 0;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.5;color:#b9e6d8;}
 .pow-feed .quoted-gone{color:var(--dim);font-style:italic;font-size:13px;}
 

@@ -18,10 +18,11 @@ function QuotedByline({ identity, color }) {
       </Link>
     )
   }
+  // A handle-less author still has a profile at /@<address> — link it too.
   return (
-    <span className="qaddr" title={id}>
+    <Link href={`/@${id.replace(/^ecash:/i, '')}`} className="qaddr" title={id}>
       {truncateAddress(id)}
-    </span>
+    </Link>
   )
 }
 

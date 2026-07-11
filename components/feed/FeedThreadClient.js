@@ -54,10 +54,11 @@ function ThreadByline({ identity }) {
       </Link>
     )
   }
+  // A handle-less author still has a profile at /@<address> — link it too.
   return (
-    <span className="addr" title={id}>
+    <Link href={`/@${id.replace(/^ecash:/i, '')}`} className="addr" title={id}>
       {truncateAddress(id)}
-    </span>
+    </Link>
   )
 }
 
