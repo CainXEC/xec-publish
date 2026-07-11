@@ -697,6 +697,30 @@ html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
   transition:background .15s,color .15s,box-shadow .15s;}
 .pow-feed .hr-unlock:hover{background:var(--neon);color:#04120c;box-shadow:0 0 22px rgba(0,255,156,.4);}
 .pow-feed .hr-note{font-size:10.5px;color:var(--dim);margin:11px 0 0;line-height:1.5;}
+/* comments inside the reading pane (entitled readers only) */
+.pow-feed .hr-comments{border-top:1px solid var(--line);margin-top:30px;padding-top:18px;text-align:left;}
+.pow-feed .hr-comments-title{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--neon);margin:0;}
+.pow-feed .hr-comments-count{font-size:11px;color:var(--dim);margin:6px 0 14px;}
+.pow-feed .hr-comment{border:1px solid var(--line);border-radius:10px;background:var(--panel2);
+  padding:10px 13px;margin:0 0 10px;}
+.pow-feed .hr-comment-meta{font-size:10.5px;color:var(--dim);margin:0 0 5px;}
+.pow-feed .hr-comment-who{color:var(--cyan);}
+.pow-feed .hr-comment-body{font-size:13px;line-height:1.6;color:var(--text);margin:0;white-space:pre-wrap;word-break:break-word;}
+.pow-feed .hr-commentform{margin-top:14px;}
+.pow-feed .hr-commentarea{width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);
+  border-radius:10px;padding:11px 13px;color:var(--text);font:inherit;font-size:13px;line-height:1.55;
+  outline:none;resize:vertical;}
+.pow-feed .hr-commentarea:focus{border-color:var(--cyan);}
+.pow-feed .hr-commentarea::placeholder{color:#37655a;}
+.pow-feed .hr-commentrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;}
+.pow-feed .hr-commentcount{font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums;}
+.pow-feed .hr-commentbtn{background:transparent;border:1px solid var(--cyan);color:var(--cyan);border-radius:8px;
+  padding:9px 18px;font:inherit;font-size:12px;font-weight:700;letter-spacing:.04em;cursor:pointer;
+  transition:background .15s,color .15s;}
+.pow-feed .hr-commentbtn:hover{background:var(--cyan);color:#04120c;}
+.pow-feed .hr-commentbtn:disabled{border-color:var(--line);color:var(--dim);background:none;cursor:default;}
+.pow-feed .hr-commenterr{font-size:11.5px;color:var(--no);margin:8px 0 0;}
+html:not(.dark) .pow-feed .hr-commentarea::placeholder{color:#8fb3a6;}
 .pow-feed .hr-watching{font-size:13px;color:var(--cyan);margin:2px 0 0;animation:arail-pulse 1.4s ease-in-out infinite;}
 .pow-feed .hr-cancelwait{background:none;border:none;font:inherit;font-size:10.5px;color:var(--dim);
   cursor:pointer;margin-top:10px;border-bottom:1px solid transparent;padding:0;}

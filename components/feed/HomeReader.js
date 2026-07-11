@@ -21,6 +21,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import PaneComments from '@/components/feed/PaneComments'
 import PaneUnlock from '@/components/feed/PaneUnlock'
 import { ARTICLE_CSS } from '@/app/posts/[slug]/articleTheme'
 
@@ -133,6 +134,11 @@ export default function HomeReader({ slug, onClose }) {
               onUnlocked={() => load({ quiet: true })}
             />
           ) : null}
+
+          {/* Same rule as the article page: entitled readers (an unlock, or
+              the author/admin — the server folds those into `unlocked`) get
+              the comment section right in the pane. */}
+          {d.unlocked && d.postId ? <PaneComments postId={d.postId} /> : null}
         </div>
       )}
     </div>
