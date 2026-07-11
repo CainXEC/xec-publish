@@ -69,16 +69,24 @@ export async function recordMintAgainstCap(): Promise<void> {
 }
 
 /**
- * Public read of mint progress for display (the mint-page counter). `minted` is
- * the ACTUAL number of handle NFTs minted — a live count of the `handles` table —
- * not the cap counter (nft_mint_counter.minted only counts post-launch mints and
- * would sit at 0 during pre-launch testing). This moves as handles mint and resets
- * cleanly with the launch DB wipe. `cap` still comes from the counter row.
+ * Public read of mint progress for display (the mint-page counter). Once the
+ * collection is LIVE, `minted` is the cap counter (nft_mint_counter.minted) — the
+ * true consumption of the 10K supply. Unlike a count of the public `handles`
+ * table, the counter includes the official @proofofwriting (minted from the same
+ * group but deliberately kept out of that table), so the on-page "X / 10,000"
+ * matches EXACTLY what the cap gate (mintCapSoldOut) enforces.
+ *
+ * Pre-launch the counter sits at 0 (rehearsal mints run uncounted), so fall back
+ * to a live count of the `handles` table then. Take the higher of the two so a
+ * mid-mint snapshot — where the counter and the handles row land a beat apart —
+ * never shows a dip. `cap` comes from the counter row.
  */
 export async function getMintCount(): Promise<{ minted: number; cap: number }> {
   const [handles, counter] = await Promise.all([
     supabase.from("handles").select("*", { count: "exact", head: true }),
     readCounter(),
   ]);
-  return { minted: handles.count ?? 0, cap: counter?.cap ?? 10000 };
+  const handleCount = handles.count ?? 0;
+  const minted = Math.max(counter?.live ? counter.minted : 0, handleCount);
+  return { minted, cap: counter?.cap ?? 10000 };
 }
