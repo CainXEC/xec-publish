@@ -15,36 +15,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { verifyMintTxid, findMintPayment } from "@/lib/mintPayments";
 import { processPaidMint } from "@/lib/mintProcessor";
-import { resolveOrCreateAccount } from "@/lib/walletAuth";
-import { setSessionCookie, verifySession, SESSION_COOKIE } from "@/lib/session";
+import { autoLoginByPayment } from "@/lib/payAutoLogin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const supabase = createClient((process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 const MINT_ADDRESS = process.env.MINT_PAYMENT_ADDRESS!;
-
-// Paying for a mint from your own wallet proves control of that address — the
-// same class of proof as pay-to-unlock's 'pay' session (see app/api/verify-payment).
-// So once the mint completes, log the minter in automatically: no separate login
-// challenge just to use the handle you just bought. This is a 'pay'-scope session
-// only, so payout / author-mutation routes still require a full challenge login
-// (getChallengeSession). resolveOrCreateAccount also binds the freshly-minted
-// handle, so the byline lights up. Two guards mirror verify-payment: never fail
-// the mint if session-minting throws, and never downgrade an existing session for
-// the same account (e.g. an author already logged in via challenge who mints).
-async function autoLoginMinter(req: NextRequest, payerAddress?: string | null) {
-  const addr = typeof payerAddress === "string" ? payerAddress.trim() : "";
-  if (!addr) return;
-  try {
-    const resolved = await resolveOrCreateAccount(addr);
-    const existing = verifySession(req.cookies.get(SESSION_COOKIE)?.value);
-    if (existing && existing.accountId === resolved.accountId) return; // already this account (incl. stronger challenge) — leave it
-    await setSessionCookie(resolved.accountId, addr, "pay");
-  } catch (e) {
-    console.warn("[mint/status] auto-login after mint failed (non-fatal):", e instanceof Error ? e.message : e);
-  }
-}
 
 export async function GET(req: NextRequest) {
   const mintId = req.nextUrl.searchParams.get("mintId");
@@ -56,7 +33,7 @@ export async function GET(req: NextRequest) {
 
   // terminal states — just report (log the minter in on a completed mint)
   if (["minted", "refunded", "failed"].includes(m.status)) {
-    if (m.status === "minted") await autoLoginMinter(req, m.payer_address);
+    if (m.status === "minted") await autoLoginByPayment(req, m.payer_address);
     return NextResponse.json({ ok: true, status: m.status, childTokenId: m.child_token_id, imageUrl: m.image_url, error: m.error });
   }
 
@@ -95,6 +72,6 @@ export async function GET(req: NextRequest) {
   // paid -> run the serialized processor (mints, records, or auto-refunds)
   const result = await processPaidMint(mintId);
   // Mint done: paying from your wallet doubles as login (see autoLoginMinter).
-  if (result.status === "minted") await autoLoginMinter(req, m.payer_address);
+  if (result.status === "minted") await autoLoginByPayment(req, m.payer_address);
   return NextResponse.json({ ok: true, ...result });
 }
