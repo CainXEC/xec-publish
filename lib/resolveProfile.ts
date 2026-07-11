@@ -193,7 +193,7 @@ function scriptToAddress(outputScriptHex: string): string | null {
   return null;
 }
 
-async function currentTokenHolder(tokenId: string): Promise<string | null> {
+export async function currentTokenHolder(tokenId: string): Promise<string | null> {
   try {
     const res: any = await chronik().tokenId(tokenId).utxos();
     const utxos: any[] = res?.utxos ?? [];

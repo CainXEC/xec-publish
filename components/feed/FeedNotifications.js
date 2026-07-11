@@ -39,12 +39,26 @@ const VERB = {
   follow: 'followed you',
 }
 
+// An offer names the handle it courts (decorated server-side onto the row).
+function notifText(n) {
+  if (n.type === 'offer') {
+    return n.handle ? `made an offer on @${n.handle}` : 'made an offer on your handle'
+  }
+  return VERB[n.type] ?? 'interacted with your post'
+}
+
 // Reply/quote/like/repost open the target post's thread; a follow opens the
-// follower's profile (identifier resolves a handle or a bare address).
+// follower's profile (identifier resolves a handle or a bare address); an
+// offer opens the gallery on that handle's card, where the amounts live.
 function targetHref(n) {
   if (n.type === 'follow') {
     const id = String(n.actor_identity ?? '').replace(/^@/, '').trim()
     return id ? `/@${encodeURIComponent(id)}` : '#'
+  }
+  if (n.type === 'offer') {
+    return n.handle
+      ? `/marketplace?view=all&q=${encodeURIComponent(n.handle)}`
+      : '/marketplace?view=all'
   }
   return n.post_txid ? `/feed/${n.post_txid}` : '#'
 }
@@ -142,7 +156,7 @@ export default function FeedNotifications({ signedIn = false }) {
                     >
                       <span className="notifmsg">
                         <strong>{actorLabel(n.actor_identity)}</strong>{' '}
-                        {VERB[n.type] ?? 'interacted with your post'}
+                        {notifText(n)}
                       </span>
                       <span className="notiftime">{timeAgo(n.created_at)}</span>
                     </Link>
