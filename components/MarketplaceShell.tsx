@@ -171,8 +171,12 @@ const SHELL_CSS = `
 }
 
 /* The shared topbar spans the full page; neutralize .pow-feed's own
-   full-bleed + viewport chrome (this shell already owns both). */
-.pow-mkt .topbar-host.pow-feed{width:auto;margin:0 0 26px;min-height:0;background:none;}
+   full-bleed + viewport chrome (this shell already owns both). The HOST is
+   the sticky element: the inner .topbar's own sticky can't escape this
+   wrapper's box (sticky pins only within its parent), so pinning must
+   happen at this level for the bar to survive scrolling — same behavior
+   as the feed, where the bar's parent is the full-height page. */
+.pow-mkt .topbar-host.pow-feed{position:sticky;top:0;z-index:50;width:auto;margin:0 0 26px;min-height:0;background:none;}
 
 /* ---- phone-first: one centered column, mint flow then gallery ---- */
 .pow-mkt .mkt-cols{padding:0 20px;}
