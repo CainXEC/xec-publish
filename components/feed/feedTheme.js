@@ -608,10 +608,9 @@ html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
 .pow-feed .npaper{border:1px solid var(--line);border-radius:14px;background:var(--panel2);
   padding:16px 16px 12px;margin-top:21px;}
 .pow-feed .np-serif{font-family:Georgia,'Iowan Old Style','Times New Roman',serif;}
-.pow-feed .np-mast{position:relative;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
-  padding:7px 0 6px;text-align:center;font-size:12px;letter-spacing:.24em;text-transform:uppercase;
+.pow-feed .np-mast{border-bottom:1px solid var(--line);
+  padding:0 0 7px;text-align:center;font-size:12px;letter-spacing:.24em;text-transform:uppercase;
   color:var(--neon);text-shadow:0 0 10px rgba(0,255,156,.3);}
-.pow-feed .np-mast::before{content:"";position:absolute;left:0;right:0;top:2px;border-bottom:1px solid var(--line);}
 .pow-feed .np-date{font-size:10px;color:var(--dim);text-align:center;margin:7px 0 14px;
   letter-spacing:.05em;text-transform:uppercase;font-variant-numeric:tabular-nums;}
 .pow-feed .np-empty{color:var(--dim);font-size:12px;line-height:1.6;margin:16px 0;text-align:center;}
