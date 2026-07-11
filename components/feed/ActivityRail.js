@@ -24,8 +24,11 @@ import { FEED_LOKAD_HEX } from '@/lib/feedProtocol'
 
 const POLL_MS = 45_000
 // A ws push means the tx just hit the mempool; the server records the action
-// a moment later (client confirm + verify). Refetch after this beat.
-const NUDGE_DELAY_MS = 2_500
+// a moment later (client confirm + verify). Refetch after this beat…
+const NUDGE_DELAY_MS = 1_200
+// …and once more shortly after: catches slow records and flips the row's
+// "finalizing…" to ✓ right after Chronik's TX_FINALIZED push (~2s).
+const NUDGE_FOLLOWUP_MS = 6_500
 
 const VERB = {
   post: 'posted',
@@ -74,6 +77,7 @@ export default function ActivityRail({ minWidth = 1100 }) {
   const knownIds = useRef(new Set())
   const freshIds = useRef(new Set())
   const nudgeTimer = useRef(null)
+  const followupTimer = useRef(null)
 
   useEffect(() => {
     const mq = window.matchMedia(`(min-width: ${minWidth}px)`)
@@ -113,7 +117,9 @@ export default function ActivityRail({ minWidth = 1100 }) {
       FEED_LOKAD_HEX,
       () => {
         if (nudgeTimer.current) clearTimeout(nudgeTimer.current)
+        if (followupTimer.current) clearTimeout(followupTimer.current)
         nudgeTimer.current = setTimeout(() => void refresh(), NUDGE_DELAY_MS)
+        followupTimer.current = setTimeout(() => void refresh(), NUDGE_FOLLOWUP_MS)
       },
       () => void refresh(), // tab foregrounded / socket reconnected
     )
@@ -121,6 +127,7 @@ export default function ActivityRail({ minWidth = 1100 }) {
       clearInterval(interval)
       stopWatch()
       if (nudgeTimer.current) clearTimeout(nudgeTimer.current)
+      if (followupTimer.current) clearTimeout(followupTimer.current)
     }
   }, [active, refresh])
 

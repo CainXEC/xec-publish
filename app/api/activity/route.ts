@@ -21,6 +21,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { priceForHandle } from "@/lib/handlePricing";
+import { isTxFinal } from "@/lib/ecash/finality";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -273,10 +274,27 @@ export async function GET() {
   }
 
   items.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+  const page = items.slice(0, MAX_ITEMS);
+
+  // Avalanche finalizes in ~2s but finalized_at is stamped by the once-a-minute
+  // reconcile sweep — don't make the rail wear "finalizing…" for a minute of
+  // display lag. For the handful of still-pending rows on the page, ask
+  // Chronik directly (read-only; reconcile still owns the DB write).
+  const pending = page.filter((i) => !i.final && i.txid).slice(0, 8);
+  await Promise.all(
+    pending.map(async (i) => {
+      try {
+        if (await isTxFinal(i.txid as string)) i.final = true;
+      } catch {
+        /* Chronik down — the row just keeps its provisional state */
+      }
+    })
+  );
 
   return NextResponse.json(
-    { ok: true, items: items.slice(0, MAX_ITEMS) },
-    // Let the CDN absorb rail polling across visitors; 5s is still "live".
-    { headers: { "Cache-Control": "public, s-maxage=5, stale-while-revalidate=30" } }
+    { ok: true, items: page },
+    // Just enough CDN cache to absorb a crowd's polling without making a
+    // fresh action wait a poll cycle to appear (the old 30s SWR did).
+    { headers: { "Cache-Control": "public, s-maxage=2, stale-while-revalidate=8" } }
   );
 }
