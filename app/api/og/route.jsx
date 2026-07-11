@@ -4,104 +4,128 @@ import { join } from 'node:path'
 
 export const runtime = 'nodejs'
 
+// Live dark-mode article tokens: the reading view is #070b0a with a neon-green
+// (#00ff9c) `.arttitle` headline in JetBrains Mono 800 (globals.css / verified
+// on-page), so the share card is the same neon-on-black identity — not a light
+// serif card. Matches app/api/og/feed + the site banner.
+const NEON = '#00ff9c'
+const BG = '#070b0a'
+const DIM = '#5f8a7e'
+const CYAN = '#3df0ff'
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
-  const title = searchParams.get('title') || 'Proof of Writing'
+  let title = searchParams.get('title') || 'Proof of Writing'
   const author = searchParams.get('author') || ''
   const readTime = searchParams.get('readTime') || ''
   const price = searchParams.get('price') || ''
 
-  let fonts = []
+  if (title.length > 120) title = title.slice(0, 119).trimEnd() + '…'
 
+  // Scale the headline to its length so short titles fill the card and long
+  // ones still fit. (Mono runs wide, so sizes stay modest.)
+  const tLen = title.length
+  const titleSize = tLen > 90 ? 92 : tLen > 60 ? 116 : tLen > 30 ? 144 : 172
+
+  let fonts = []
   try {
-    const [newsreaderFont, jetbrainsRegular, jetbrainsExtraBold] = await Promise.all([
-      readFile(join(process.cwd(), 'public/fonts/newsreader-500.ttf')),
+    const [monoRegular, monoBold] = await Promise.all([
       readFile(join(process.cwd(), 'public/fonts/jetbrains-mono-400.ttf')),
       readFile(join(process.cwd(), 'public/fonts/jetbrains-mono-800.ttf')),
     ])
-
     fonts = [
-      { name: 'Newsreader', data: newsreaderFont, style: 'normal', weight: 500 },
-      { name: 'JetBrains Mono', data: jetbrainsRegular, style: 'normal', weight: 400 },
-      { name: 'JetBrains Mono', data: jetbrainsExtraBold, style: 'normal', weight: 800 },
+      { name: 'JetBrains Mono', data: monoRegular, style: 'normal', weight: 400 },
+      { name: 'JetBrains Mono', data: monoBold, style: 'normal', weight: 800 },
     ]
   } catch (err) {
     console.error('[og] Font loading failed:', err)
   }
 
-  const titleFont = fonts.length > 0 ? 'Newsreader' : 'Georgia'
-  const wordmarkFont = fonts.length > 0 ? 'JetBrains Mono' : 'monospace'
+  const mono = fonts.length > 0 ? 'JetBrains Mono' : 'monospace'
 
   try {
     const imageResponse = new ImageResponse(
       (
+        // Outer div = the neon frame wrapping all four sides (padding, not a CSS
+        // border, so it shows on every edge). Inner div = the dark reading panel
+        // with the site's neon bloom + inset glow.
         <div
           style={{
             width: '2400px',
             height: '1260px',
-            background: '#ffffff',
             display: 'flex',
-            flexDirection: 'column',
-            padding: '120px 128px',
-            borderLeft: '16px solid #059669',
+            padding: '30px',
+            backgroundColor: NEON,
           }}
         >
-          <div
-            style={{
-              fontFamily: wordmarkFont,
-              fontWeight: 800,
-              fontSize: '52px',
-              letterSpacing: '0.14em',
-              color: '#059669',
-              textTransform: 'uppercase',
-              flexShrink: 0,
-            }}
-          >
-            PROOF of WRITING
-          </div>
-
           <div
             style={{
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
-              justifyContent: 'center',
+              padding: '96px 112px',
+              backgroundColor: BG,
+              backgroundImage:
+                'radial-gradient(1500px 820px at 50% 0%, rgba(0,255,156,0.10), rgba(7,11,10,0) 68%)',
+              boxShadow: 'inset 0 0 120px rgba(0,255,156,0.12)',
             }}
           >
             <div
               style={{
-                fontFamily: titleFont,
-                fontSize:
-                  title.length > 100 ? '108px' : title.length > 80 ? '128px' : '152px',
-                lineHeight: 1.15,
-                color: '#18181b',
-                fontWeight: 500,
-                maxWidth: '2000px',
+                fontFamily: mono,
+                fontWeight: 800,
+                fontSize: '50px',
+                letterSpacing: '0.18em',
+                textTransform: 'uppercase',
+                color: NEON,
+                textShadow: '0 0 26px rgba(0,255,156,0.55)',
+                flexShrink: 0,
+              }}
+            >
+              proofofwriting
+            </div>
+
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
                 overflow: 'hidden',
               }}
             >
-              {title}
+              <div
+                style={{
+                  fontFamily: mono,
+                  fontWeight: 800,
+                  fontSize: `${titleSize}px`,
+                  lineHeight: 1.15,
+                  color: NEON,
+                  textShadow: '0 0 28px rgba(0,255,156,0.40)',
+                  maxWidth: '2040px',
+                  overflow: 'hidden',
+                }}
+              >
+                {title}
+              </div>
             </div>
 
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '40px',
-                fontSize: '64px',
-                color: '#059669',
-                fontFamily: wordmarkFont,
-                fontWeight: 400,
+                gap: '22px',
+                fontFamily: mono,
+                fontSize: '44px',
                 flexShrink: 0,
-                marginTop: '72px',
               }}
             >
-              {author ? <span>@{author}</span> : null}
-              {readTime ? <span style={{ margin: '0 8px' }}>·</span> : null}
-              {readTime ? <span>{readTime} min read</span> : null}
-              {price ? <span style={{ margin: '0 8px' }}>·</span> : null}
+              {author ? <span style={{ color: NEON, fontWeight: 800 }}>{`@${author}`}</span> : null}
+              {author && readTime ? <span style={{ color: DIM }}>·</span> : null}
+              {readTime ? <span style={{ color: DIM }}>{`${readTime} min read`}</span> : null}
+              {price ? <span style={{ color: DIM }}>·</span> : null}
               {price ? (
-                <span>{Number(price).toLocaleString()} XEC to unlock</span>
+                <span style={{ color: CYAN }}>{`${Number(price).toLocaleString()} XEC to unlock`}</span>
               ) : null}
             </div>
           </div>
@@ -111,18 +135,17 @@ export async function GET(request) {
         width: 2400,
         height: 1260,
         fonts: fonts.length > 0 ? fonts : undefined,
+        emoji: 'twemoji',
       },
     )
 
-    const response = new Response(imageResponse.body, {
+    return new Response(imageResponse.body, {
       headers: {
         ...Object.fromEntries(imageResponse.headers.entries()),
         'Cache-Control': 'public, max-age=31536000, immutable',
         'CDN-Cache-Control': 'public, max-age=31536000',
       },
     })
-
-    return response
   } catch (err) {
     console.error('[og] ImageResponse failed:', err)
     return new Response('Failed to generate image', {
