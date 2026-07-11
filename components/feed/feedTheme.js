@@ -650,6 +650,15 @@ html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
 /* the story currently being read (article page keeps this rail beside it) */
 .pow-feed .np-now,.pow-feed .np-entry.now .np-entry-h,.pow-feed .np-rank.now .np-rank-h{color:var(--neon);}
 
+/* ---- dashboard desktop: fill the screen. The dashboard is chrome, not a
+   reading column — wide rows scan fine, and the stat cards spread into one
+   band. Phones keep the standard 640px stack. ---- */
+@media (min-width:1100px){
+  .pow-feed.dash-wide .topbar{max-width:1320px;}
+  .pow-feed.dash-wide .wrap{max-width:1320px;}
+  .pow-feed.dash-wide .dashstats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));flex-direction:unset;}
+}
+
 /* ---- the reading pane: a front-page story open in the feed's center column.
    Article typography rides in a neutralized .pow-article scope host. ---- */
 .pow-feed .hr-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 20px;}

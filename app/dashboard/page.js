@@ -71,6 +71,94 @@ export default async function DashboardPage() {
       ])
     : [{ data: [], error: null }, { data: null }, { data: [] }, { data: null }]
   const rows = unlockRows ?? []
+
+  // ---- Library (articles this account has paid for), follower counts ----
+  // Unlocks are keyed by payer_address; the account may have proven several
+  // wallets, so match on all of them (both prefixed and bare forms).
+  const { data: addrRows } = await supabase
+    .from('account_addresses')
+    .select('address')
+    .eq('account_id', acct.accountId)
+  const addressForms = [
+    ...new Set(
+      (addrRows ?? [])
+        .map((r) => String(r.address ?? '').replace(/^ecash:/, '').toLowerCase())
+        .filter(Boolean)
+        .flatMap((bare) => [bare, `ecash:${bare}`]),
+    ),
+  ]
+
+  const [libraryQ, followersQ, followingQ] = await Promise.all([
+    addressForms.length > 0
+      ? supabase
+          .from('unlocks')
+          .select(
+            'txid, amount_xec, unlocked_at, posts(id, title, slug, legacy, price_xec, reading_time_minutes, author_id)',
+          )
+          .in('payer_address', addressForms)
+          .order('unlocked_at', { ascending: false })
+          .limit(200)
+      : Promise.resolve({ data: [] }),
+    supabase
+      .from('feed_follows')
+      .select('follower_account_id', { count: 'exact', head: true })
+      .eq('followee_account_id', acct.accountId),
+    supabase
+      .from('feed_follows')
+      .select('followee_account_id', { count: 'exact', head: true })
+      .eq('follower_account_id', acct.accountId),
+  ])
+
+  // Byline for each library entry: the author's display handle, else their
+  // payout address, shortened — same convention as everywhere else.
+  const libRows = (libraryQ.data ?? []).filter((r) => {
+    const p = Array.isArray(r.posts) ? r.posts[0] : r.posts
+    return p?.slug && p?.title
+  })
+  const libAuthorIds = [
+    ...new Set(
+      libRows
+        .map((r) => (Array.isArray(r.posts) ? r.posts[0] : r.posts)?.author_id)
+        .filter(Boolean),
+    ),
+  ]
+  const libByline = new Map()
+  if (libAuthorIds.length > 0) {
+    const [{ data: libAuthors }, { data: libAccounts }] = await Promise.all([
+      supabase.from('authors').select('id, xec_address').in('id', libAuthorIds),
+      supabase.from('accounts').select('author_id, display_handle').in('author_id', libAuthorIds),
+    ])
+    for (const a of libAuthors ?? []) {
+      if (a.xec_address) {
+        const bare = String(a.xec_address).replace(/^ecash:/, '')
+        libByline.set(a.id, `${bare.slice(0, 8)}…${bare.slice(-4)}`)
+      }
+    }
+    for (const a of libAccounts ?? []) {
+      if (a.display_handle) libByline.set(a.author_id, `@${a.display_handle}`)
+    }
+  }
+  // Dedupe by post (an account could hold several unlock rows for one post
+  // across wallets); keep the earliest-listed = most recent unlock.
+  const seenLibPosts = new Set()
+  const library = []
+  for (const r of libRows) {
+    const p = Array.isArray(r.posts) ? r.posts[0] : r.posts
+    if (seenLibPosts.has(p.id)) continue
+    seenLibPosts.add(p.id)
+    library.push({
+      txid: r.txid,
+      unlockedAt: r.unlocked_at,
+      postId: p.id,
+      title: p.title,
+      slug: p.slug,
+      legacy: p.legacy === true,
+      priceXec: p.price_xec ?? null,
+      readMinutes: p.reading_time_minutes ?? null,
+      author: (p.author_id ? libByline.get(p.author_id) : null) ?? 'an author',
+    })
+  }
+
   const feedPage = await feedTabsPromise
   // The welcome byline should reflect the LIVE identity (a bound handle if the
   // account holds one, else the raw wallet address) — never the legacy
@@ -96,6 +184,9 @@ export default async function DashboardPage() {
       }
       viewerAccountId={acct.accountId}
       initialFeedPosts={feedPage.posts}
+      library={library}
+      followerCount={followersQ.count ?? 0}
+      followingCount={followingQ.count ?? 0}
     />
   )
 }

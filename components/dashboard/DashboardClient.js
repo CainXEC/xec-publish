@@ -36,8 +36,55 @@ const DASHBOARD_SORT_OPTIONS = [
   { value: 'drafts', label: 'Drafts' },
 ]
 
+const LIBRARY_SORT_OPTIONS = [
+  { value: 'recent', label: 'Recently unlocked' },
+  { value: 'spent', label: 'Highest price' },
+  { value: 'az', label: 'A–Z' },
+]
+
 const MENU_SORT = 'dashboard-posts-sort'
+const MENU_LIBRARY_SORT = 'dashboard-library-sort'
 const SORT_PILL_MIN_WIDTH = '15ch'
+
+/** One unlocked article in the Library tab: read-only — the reader owns the
+ *  entitlement, not the piece, so there are no edit/delete controls. */
+function LibraryCard({ item }) {
+  const href = item.legacy
+    ? `/${encodeURIComponent(item.slug)}`
+    : `/posts/${encodeURIComponent(item.slug)}`
+  const readTime = formatReadingTimeLabel(item.readMinutes)
+  const unlockedLabel = item.unlockedAt
+    ? new Date(item.unlockedAt).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : null
+  return (
+    <li className="dashpost">
+      <div className="dashpost-row">
+        <div className="dashpost-main">
+          <div className="dashpost-titlerow">
+            <Link href={href} target="_blank" rel="noopener noreferrer" className="dashpost-title">
+              {item.title}
+            </Link>
+          </div>
+          <p className="dashpost-meta">
+            <span className="dashpost-price">{formatXec(item.priceXec)} XEC</span>
+            <span>by {item.author}</span>
+            {readTime ? <span>{readTime}</span> : null}
+            {unlockedLabel ? <span>unlocked {unlockedLabel}</span> : null}
+          </p>
+        </div>
+        <div className="dashpost-btns">
+          <Link href={href} target="_blank" rel="noopener noreferrer" className="dashmini">
+            Read
+          </Link>
+        </div>
+      </div>
+    </li>
+  )
+}
 
 function unlockCountFromPost(post) {
   const u = post.unlocks
@@ -225,9 +272,26 @@ export default function DashboardClient({
   viewerAccountId = null,
   initialFeedPosts = [],
   initialFeedReplies = null,
+  library = [],
+  followerCount = 0,
+  followingCount = 0,
 }) {
   const [posts, setPosts] = useState(initialPosts)
   const [sortMode, setSortMode] = useState('newest')
+  const [librarySort, setLibrarySort] = useState('recent')
+  const sortedLibrary = useMemo(() => {
+    const rows = [...library]
+    if (librarySort === 'spent') {
+      rows.sort((a, b) => (Number(b.priceXec) || 0) - (Number(a.priceXec) || 0))
+    } else if (librarySort === 'az') {
+      rows.sort((a, b) => String(a.title).localeCompare(String(b.title)))
+    } else {
+      rows.sort(
+        (a, b) => new Date(b.unlockedAt ?? 0).getTime() - new Date(a.unlockedAt ?? 0).getTime(),
+      )
+    }
+    return rows
+  }, [library, librarySort])
   const [unlockCountMap, setUnlockCountMap] = useState({})
   const [earningsMap, setEarningsMap] = useState({})
   const [deleteError, setDeleteError] = useState(null)
@@ -549,7 +613,7 @@ export default function DashboardClient({
 
   if (loadError) {
     return (
-      <div className="pow-feed">
+      <div className="pow-feed dash-wide">
         <style>{FEED_CSS}</style>
         <FeedTopbar signedIn isAuthor showLogout showDashboard={false} />
         <main className="wrap" style={{ paddingTop: '28px' }}>
@@ -565,7 +629,7 @@ export default function DashboardClient({
   }
 
   return (
-    <div className="pow-feed">
+    <div className="pow-feed dash-wide">
       <style>{FEED_CSS}</style>
 
       <FeedTopbar signedIn isAuthor showLogout showDashboard={false} />
@@ -623,6 +687,14 @@ export default function DashboardClient({
                   <span>{walletXec.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
                 )}
               </p>
+            </div>
+            <div className="dashstat">
+              <p className="dashstat-label">Followers</p>
+              <p className="dashstat-value">{Number(followerCount).toLocaleString()}</p>
+            </div>
+            <div className="dashstat">
+              <p className="dashstat-label">Following</p>
+              <p className="dashstat-value">{Number(followingCount).toLocaleString()}</p>
             </div>
           </div>
 
@@ -730,6 +802,15 @@ export default function DashboardClient({
           >
             Articles
           </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'library'}
+            className={`tab${tab === 'library' ? ' on' : ''}`}
+            onClick={() => setTab('library')}
+          >
+            Library
+          </button>
         </div>
 
         {tab === 'posts' ? (
@@ -773,6 +854,40 @@ export default function DashboardClient({
               ))}
             </ul>
           )
+        ) : tab === 'library' ? (
+          <section className="dashpanel">
+            <div className="dashsection-head">
+              <h2 className="dashsection-title">Your Library</h2>
+              {sortedLibrary.length > 0 ? (
+                <FilterDropdown
+                  menuId={MENU_LIBRARY_SORT}
+                  openMenu={openMenu}
+                  setOpenMenu={setOpenMenu}
+                  value={librarySort}
+                  options={LIBRARY_SORT_OPTIONS}
+                  ariaLabel="Sort library"
+                  onChange={(v) => setLibrarySort(v)}
+                  minWidth={SORT_PILL_MIN_WIDTH}
+                />
+              ) : null}
+            </div>
+            {sortedLibrary.length === 0 ? (
+              <div className="empty">
+                <p>Articles you pay to unlock live here — yours to reread anytime.</p>
+                <p style={{ marginTop: '16px' }}>
+                  <Link href="/" className="dashbtn">
+                    Find something to read
+                  </Link>
+                </p>
+              </div>
+            ) : (
+              <ul className="dashlist">
+                {sortedLibrary.map((item) => (
+                  <LibraryCard key={item.postId} item={item} />
+                ))}
+              </ul>
+            )}
+          </section>
         ) : (
           <>
         <section className="dashpanel">
