@@ -1,12 +1,12 @@
 // =============================================================================
 //  app/marketplace/page.tsx  —  the public handle page (/marketplace)
-//  Thin server component: metadata + mounts the combined mint + marketplace
-//  flow. Mint a one-of-one @handle up top; browse handles listed for sale on
-//  Agora below. This is the sole handle page — there is no separate /mint route.
+//  Thin server component: metadata + mounts MarketplaceShell, which lays out
+//  the mint flow + gallery (one column on phones, mint rail + wide filtered
+//  gallery on desktop). This is the sole handle page — no separate /mint route.
 // =============================================================================
 
 import type { Metadata } from "next";
-import MintHandle from "@/components/MintHandle";
+import MarketplaceShell from "@/components/MarketplaceShell";
 import { getAuthedAccount } from "@/lib/authHelpers";
 
 export const metadata: Metadata = {
@@ -25,5 +25,5 @@ export const metadata: Metadata = {
 export default async function MarketplacePage() {
   // Auth drives the shared header chrome only (dashboard link + notifications).
   const acct = await getAuthedAccount();
-  return <MintHandle signedIn={acct != null} isAuthor={acct?.authorId != null} />;
+  return <MarketplaceShell signedIn={acct != null} isAuthor={acct?.authorId != null} />;
 }

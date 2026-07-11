@@ -1,7 +1,9 @@
 "use client";
 // =============================================================================
-//  MintHandle.tsx  —  public handle-minting page (client component)
-//  Cypherpunk-neon restyle (scoped to .pow-mint; does not touch the site theme).
+//  MintHandle.tsx  —  the handle mint flow (client component)
+//  Cypherpunk-neon (scoped to .pow-mint). Rendered inside MarketplaceShell,
+//  which owns the page backdrop, the shared topbar, and the gallery beside/
+//  below this flow — this component is JUST the mint column.
 //  Blind reveal: a covered "mystery" card shows until the mint clears, then the
 //  real card is revealed (seeded from the mint tx id).
 //
@@ -13,9 +15,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { renderMysteryCard } from "@/lib/renderHandleCard";
 import { watchPaymentAddress, prewarmPaymentWatch } from "@/lib/ecash/watchPaymentAddress";
-import FeedTopbar from "@/components/feed/FeedTopbar";
-import { FEED_CSS } from "@/components/feed/feedTheme";
-import MarketplaceClient from "@/components/MarketplaceClient";
 import MintCounter from "@/components/MintCounter";
 
 type Availability = { available?: boolean; status: string; priceXec?: number; tier?: string; auctionOnly?: boolean; reason?: string };
@@ -30,13 +29,7 @@ const STATUS_COPY: Record<string, string> = {
   sold_out: "Sold out — all 10,000 handles have been minted.",
 };
 
-export default function MintHandle({
-  signedIn = false,
-  isAuthor = false,
-}: {
-  signedIn?: boolean;
-  isAuthor?: boolean;
-}) {
+export default function MintHandle() {
   const [handle, setHandle] = useState("");
   const [avail, setAvail] = useState<Availability | null>(null);
   const [checking, setChecking] = useState(false);
@@ -293,23 +286,15 @@ export default function MintHandle({
     <div className="pow-mint">
       <style>{CSS}</style>
 
-      {/* Shared feed header (wordmark + hamburger on mobile, links + bell +
-          theme toggle). Hosted in its own .pow-feed scope so it renders
-          identically to the homepage without the feed theme taking over the
-          mint page's own background. */}
-      <div className="pow-feed topbar-host">
-        <style>{FEED_CSS}</style>
-        <FeedTopbar signedIn={signedIn} isAuthor={isAuthor} showMarketplace={false} />
-      </div>
-
-      <h1 className="title">Mint a handle</h1>
-      <p className="sub">A one-of-one name on Proof of Writing.</p>
+      <h1 className="title">Mint</h1>
 
       <MintCounter />
 
-      {/* mystery card — the reveal stays hidden until after payment */}
+      {/* mystery card — the reveal stays hidden until after payment. The
+          "stage-idle" marker (no name typed yet) lets the desktop rail hide
+          the big card until the visitor starts minting. */}
       {phase !== "done" && (
-        <div className="stage">
+        <div className={`stage${phase === "choose" && !display ? " stage-idle" : ""}`}>
           <div className="card mystery" dangerouslySetInnerHTML={{ __html: mysterySvg }} />
         </div>
       )}
@@ -442,8 +427,6 @@ export default function MintHandle({
           </button>
         </div>
       )}
-
-      <MarketplaceClient embedded />
     </div>
   );
 }
@@ -454,32 +437,20 @@ const CSS = `
 .pow-mint{
   --bg:#070b0a; --panel:#0d1513; --line:#173a33; --text:#d6fff0; --dim:#5f8a7e;
   --neon:#00ff9c; --cyan:#3df0ff; --no:#ff5c6c;
-  width:100vw; margin-left:calc(50% - 50vw); min-height:100vh; box-sizing:border-box;
-  background-color:var(--bg);
-  background-image:
-    radial-gradient(1200px 480px at 50% -8%, rgba(0,255,156,.12), transparent 62%),
-    repeating-linear-gradient(0deg, rgba(0,255,156,.035) 0 1px, transparent 1px 3px);
+  box-sizing:border-box;
   color:var(--text);
   font-family:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   display:flex; flex-direction:column; align-items:center; text-align:center;
-  padding:0 20px 110px;
+  padding:0;
 }
-/* Match the feed: one 640px column for the whole page — topbar, mint flow, and
-   the marketplace grid all share the feed's width so nothing spills wider. */
+/* Match the feed: children self-cap at the feed's 640px column width (in the
+   desktop rail the container is narrower, so this is simply inert there). */
 .pow-mint > *{max-width:640px;width:100%;}
-/* The embedded marketplace sits below the mint flow behind a hairline separator,
-   at the same 640px width as everything else. */
-.pow-mint > .pow-market.embed{max-width:640px;margin-top:32px;padding-top:28px;border-top:1px solid var(--line);}
-/* Header is the shared FeedTopbar, hosted in its own .pow-feed scope. Constrain
-   that host to the 640px column and stop the feed theme from taking over the
-   viewport (min-height/background) — the mint page owns its own backdrop. */
-.pow-mint .topbar-host.pow-feed{align-self:stretch;width:auto;max-width:none;margin:0 -20px 30px;
-  min-height:0;background:none;}
-.pow-mint .title{font-size:42px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--neon);margin:0 0 12px;
+/* Same size as the gallery's heading — the two panes read as equals. */
+.pow-mint .title{font-size:40px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--neon);margin:0 0 16px;
   text-shadow:0 0 8px rgba(0,255,156,.55),0 0 26px rgba(0,255,156,.28);}
-.pow-mint .sub{color:#a6d8c9;font-size:14.5px;line-height:1.55;margin:0 0 30px;}
 /* live "X / 10,000 minted" progress */
-.pow-mint .mintcount{margin:-14px auto 30px;max-width:320px;width:100%;}
+.pow-mint .mintcount{margin:0 auto 30px;max-width:320px;width:100%;}
 .pow-mint .mintcount-row{font-size:13px;letter-spacing:.03em;color:var(--dim);font-variant-numeric:tabular-nums;}
 .pow-mint .mintcount-num{color:var(--neon);font-weight:800;font-size:16px;text-shadow:0 0 8px rgba(0,255,156,.4);}
 .pow-mint .mintcount-bar{margin-top:8px;height:5px;border-radius:3px;background:rgba(0,255,156,.1);border:1px solid var(--line);overflow:hidden;}
@@ -570,18 +541,13 @@ const CSS = `
 .pow-mint .ghost:hover{border-color:var(--neon);color:var(--neon);}
 
 @media (prefers-reduced-motion:reduce){.pow-mint *{transition:none!important;animation:none!important;}}
-@media (max-width:480px){.pow-mint .title{font-size:32px;}.pow-mint .card{width:230px;height:230px;}.pow-mint .card.won{width:260px;height:260px;}}
+@media (max-width:520px){.pow-mint .title{font-size:30px;}}
+@media (max-width:480px){.pow-mint .card{width:230px;height:230px;}.pow-mint .card.won{width:260px;height:260px;}}
 
-/* Daylight neon: keep the electric palette on a bright ground — the terminal
-   glowing under fluorescent light. Grounds flip light, neon deepens just enough
-   to stay legible on white; the rgba glow halos stay bright so text still lights. */
+/* Daylight neon: keep the electric palette on a bright ground. The page
+   backdrop itself belongs to MarketplaceShell; only the vars flip here. */
 html:not(.dark) .pow-mint{
   --bg:#e9faf2; --panel:#ffffff; --panel2:#f0f9f4; --line:#bfe6d5; --text:#07271d;
   --dim:#5c8578; --neon:#00b06e; --cyan:#0898b4; --no:#e23b4d;
-  background-color:var(--bg);
-  background-image:
-    radial-gradient(1200px 480px at 50% -8%, rgba(0,255,156,.28), transparent 62%),
-    repeating-linear-gradient(0deg, rgba(0,180,110,.055) 0 1px, transparent 1px 3px);
 }
-html:not(.dark) .pow-mint .sub{color:#3f6b5d;}
 `;

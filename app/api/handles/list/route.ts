@@ -1,7 +1,8 @@
 // =============================================================================
 //  app/api/handles/list/route.ts
-//  Public, read-only listing of minted handles for the /collection gallery.
-//  Paginated (offset), searchable (?q=), sortable (?sort=new|old|az).
+//  Public, read-only listing of minted handles for the marketplace gallery.
+//  Paginated (offset), searchable (?q=), sortable (?sort=new|old|az),
+//  filterable by pricing tier (?tier=short|mid|base).
 //  Returns ONLY public-safe fields — no payer addresses, no account ids.
 //
 //  Uses the service-role client like the other handlers (so it can also read
@@ -27,6 +28,7 @@ const LIMIT_MAX = 48;
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const q = (sp.get("q") ?? "").trim();
+  const tier = sp.get("tier") ?? "";
   const sort = sp.get("sort") ?? "new";
   const limit = Math.min(LIMIT_MAX, Math.max(1, parseInt(sp.get("limit") ?? "24", 10) || 24));
   const offset = Math.max(0, parseInt(sp.get("offset") ?? "0", 10) || 0);
@@ -36,6 +38,7 @@ export async function GET(req: NextRequest) {
     .select("token_id, handle, tier, origin, created_at, image_url", { count: "exact" });
 
   if (q) query = query.ilike("handle", `%${q.replace(/[%_\\]/g, "")}%`); // strip LIKE wildcards
+  if (tier === "short" || tier === "mid" || tier === "base") query = query.eq("tier", tier);
   if (sort === "old") query = query.order("created_at", { ascending: true });
   else if (sort === "az") query = query.order("handle_skeleton", { ascending: true });
   else query = query.order("created_at", { ascending: false });
