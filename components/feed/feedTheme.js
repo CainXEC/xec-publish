@@ -588,9 +588,13 @@ html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
     max-height:calc(100dvh - 96px);overflow-y:auto;scrollbar-width:thin;}
 }
 
-/* the ticker card */
+/* the ticker card. margin-top is 21px, not the column's 28px, on purpose:
+   the sticky rail is pinned at top:76px — 7px past the grid's natural top
+   under the topbar (69px) — so 76 + 21 = 97px puts this card's top edge
+   exactly level with the compose card (69 + 28) from the very first paint,
+   and keeps it there while scrolling. */
 .pow-feed .arail{border:1px solid var(--line);border-radius:14px;background:var(--panel2);
-  padding:16px 16px 8px;margin-top:28px;}
+  padding:16px 16px 8px;margin-top:21px;}
 .pow-feed .arail-head{display:flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.22em;
   text-transform:uppercase;color:var(--neon);text-shadow:0 0 10px rgba(0,255,156,.35);}
 .pow-feed .arail-dot{width:7px;height:7px;border-radius:50%;background:var(--neon);
