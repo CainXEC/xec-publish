@@ -80,8 +80,19 @@ export default function FeedNotifications({ signedIn = false }) {
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState([])
   const [unread, setUnread] = useState(0)
+  const [cursor, setCursor] = useState(null) // next-page cursor, null = no more
+  const [loadingMore, setLoadingMore] = useState(false)
   const rootRef = useRef(null)
 
+  // The polling refresh reloads page 1 (and resets the cursor), which would
+  // collapse any "Load more" pages the user has opened. Track open state in a
+  // ref so the interval can skip the refresh while the dropdown is open.
+  const openRef = useRef(open)
+  useEffect(() => {
+    openRef.current = open
+  }, [open])
+
+  // Load (or reload) the first page: newest notifications + unread count.
   const refresh = useCallback(async () => {
     try {
       const res = await fetch('/api/feed/notifications', { cache: 'no-store' })
@@ -89,16 +100,45 @@ export default function FeedNotifications({ signedIn = false }) {
       const data = await res.json()
       setItems(Array.isArray(data.notifications) ? data.notifications : [])
       setUnread(Number(data.unreadCount) || 0)
+      setCursor(data.nextCursor ?? null)
     } catch {
       /* best-effort; the bell just won't update this cycle */
     }
   }, [])
 
-  // Initial load + polling while signed in.
+  // Append the next page of older notifications (Load more).
+  const loadMore = useCallback(async () => {
+    if (!cursor || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const res = await fetch(
+        `/api/feed/notifications?before=${encodeURIComponent(cursor)}`,
+        { cache: 'no-store' },
+      )
+      if (res.ok) {
+        const data = await res.json()
+        const more = Array.isArray(data.notifications) ? data.notifications : []
+        setItems((prev) => {
+          const seen = new Set(prev.map((n) => n.id))
+          return [...prev, ...more.filter((n) => !seen.has(n.id))]
+        })
+        setCursor(data.nextCursor ?? null)
+      }
+    } catch {
+      /* best-effort; leave the button so the user can retry */
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [cursor, loadingMore])
+
+  // Initial load + polling while signed in. The poll skips the reload while the
+  // dropdown is open so it can't clobber loaded "Load more" pages.
   useEffect(() => {
     if (!signedIn) return
     void refresh()
-    const id = setInterval(() => void refresh(), POLL_MS)
+    const id = setInterval(() => {
+      if (!openRef.current) void refresh()
+    }, POLL_MS)
     return () => clearInterval(id)
   }, [signedIn, refresh])
 
@@ -140,7 +180,7 @@ export default function FeedNotifications({ signedIn = false }) {
       >
         <BellIcon />
         {unread > 0 ? (
-          <span className="notifbadge">{unread > 9 ? '9+' : unread}</span>
+          <span className="notifbadge">{unread > 99 ? '99+' : unread}</span>
         ) : null}
       </button>
       {open ? (
@@ -170,6 +210,16 @@ export default function FeedNotifications({ signedIn = false }) {
               })}
             </ul>
           )}
+          {cursor ? (
+            <button
+              type="button"
+              className="notifmore"
+              onClick={loadMore}
+              disabled={loadingMore}
+            >
+              {loadingMore ? 'Loading…' : 'Load more'}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </span>

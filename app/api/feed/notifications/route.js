@@ -10,14 +10,22 @@ import { getFeedNotifications } from '@/lib/feedNotifications'
  * header bell. Account-keyed (not author-keyed), so reader-only accounts get
  * their replies/likes/reposts/quotes/follows too. Empty for a signed-out viewer.
  */
-export async function GET() {
+export async function GET(request) {
   const acct = await getAuthedAccount()
   if (!acct) {
-    return NextResponse.json({ notifications: [], unreadCount: 0 })
+    return NextResponse.json({ notifications: [], unreadCount: 0, nextCursor: null })
   }
 
-  const supabase = createServerSupabase()
-  const { notifications, unreadCount } = await getFeedNotifications(supabase, acct.accountId)
+  // `before` (ISO timestamp) drives "Load more": page back through older
+  // notifications from the oldest one already shown.
+  const before = request.nextUrl.searchParams.get('before') || null
 
-  return NextResponse.json({ notifications, unreadCount })
+  const supabase = createServerSupabase()
+  const { notifications, unreadCount, nextCursor } = await getFeedNotifications(
+    supabase,
+    acct.accountId,
+    { before },
+  )
+
+  return NextResponse.json({ notifications, unreadCount, nextCursor })
 }

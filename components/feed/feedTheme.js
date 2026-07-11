@@ -99,6 +99,10 @@ export const FEED_CSS = `
 .pow-feed .notifitem:hover{background:rgba(0,255,156,.06);}
 .pow-feed .notifitem.unread{background:rgba(0,255,156,.08);}
 .pow-feed .notifitem.unread:hover{background:rgba(0,255,156,.12);}
+.pow-feed .notifmore{display:block;width:100%;background:none;border:none;border-top:1px solid var(--line);
+  padding:11px 14px;font:inherit;font-size:13px;color:var(--cyan);cursor:pointer;text-align:center;transition:background .12s;}
+.pow-feed .notifmore:hover{background:rgba(61,240,255,.08);}
+.pow-feed .notifmore:disabled{color:var(--dim);cursor:default;}
 .pow-feed .notifmsg{font-size:13px;line-height:1.5;color:var(--text);}
 .pow-feed .notifmsg strong{color:var(--cyan);font-weight:700;}
 .pow-feed .notiftime{flex:none;font-size:11px;color:var(--dim);}
