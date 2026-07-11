@@ -92,15 +92,21 @@ export default function HomeReader({ slug, onClose }) {
             {d.author?.name ? (
               <>
                 by{' '}
-                {d.author.handle || d.author.username ? (
+                {d.author.handle || d.author.username || d.author.xecAddress ? (
                   // Same routing as the article page's byline: the live
-                  // handle when one is held, else the legacy username path.
+                  // handle when one is held, else the legacy username path,
+                  // else the wallet address (/@identifier resolves both
+                  // handles and bare addresses).
                   <Link
                     className="hr-author"
                     href={
                       d.author.handle
                         ? `/@${encodeURIComponent(d.author.handle)}`
-                        : `/u/${encodeURIComponent(d.author.username)}`
+                        : d.author.username
+                          ? `/u/${encodeURIComponent(d.author.username)}`
+                          : `/@${encodeURIComponent(
+                              d.author.xecAddress.toLowerCase().replace(/^ecash:/, ''),
+                            )}`
                     }
                     style={d.author.color ? { color: d.author.color } : undefined}
                   >

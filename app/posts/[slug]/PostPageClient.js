@@ -791,22 +791,35 @@ export default function PostPageClient({
           <h1 className="arttitle">{post.title}</h1>
           <p className="artbyline">
             <span>By</span>
-            {author?.display_handle?.trim() || author?.username?.trim() ? (
+            {/* Byline = the account's live display identity: bound handle, else
+                legacy username, else the raw eCash address (shortened) — a
+                wallet-native author with no handle is never "Unknown". The
+                /@identifier route resolves handles AND bare addresses. */}
+            {author?.display_handle?.trim() || author?.username?.trim() || authorXecAddress ? (
               <>
                 <Link
                   href={
                     author?.display_handle?.trim()
                       ? `/@${encodeURIComponent(author.display_handle.trim())}`
-                      : `/u/${encodeURIComponent(author.username.trim())}`
+                      : author?.username?.trim()
+                        ? `/u/${encodeURIComponent(author.username.trim())}`
+                        : `/@${encodeURIComponent(authorXecAddress)}`
                   }
                   className="bylink"
+                  title={
+                    !author?.display_handle?.trim() && !author?.username?.trim() && authorXecAddress
+                      ? `ecash:${authorXecAddress}`
+                      : undefined
+                  }
                   style={
                     author?.display_handle?.trim() && author?.handle_color
                       ? { color: author.handle_color }
                       : undefined
                   }
                 >
-                  {author.display_handle?.trim() || author.username.trim()}
+                  {author?.display_handle?.trim() ||
+                    author?.username?.trim() ||
+                    `${authorXecAddress.slice(0, 8)}…${authorXecAddress.slice(-4)}`}
                 </Link>
                 {readerWalletAddress.trim() && post.author_id && !isAuthorSession ? (
                   <button

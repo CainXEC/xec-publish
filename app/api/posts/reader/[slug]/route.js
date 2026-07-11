@@ -34,6 +34,14 @@ export async function GET(_req, { params }) {
   const cookieStore = await cookies()
   const p = await preparePublicPostPageData(data, cookieStore)
 
+  // Byline fallback for wallet-native authors with no handle and no legacy
+  // username: the shortened eCash address (mirrors the article page + rail).
+  const bareAddr = (p.initialAuthor?.xec_address ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/^ecash:/, '')
+  const shortAddr = bareAddr ? `${bareAddr.slice(0, 8)}…${bareAddr.slice(-4)}` : null
+
   return NextResponse.json(
     {
       ok: true,
@@ -54,7 +62,7 @@ export async function GET(_req, { params }) {
         name:
           p.initialAuthor?.display_handle?.trim() ||
           p.initialAuthor?.username?.trim() ||
-          null,
+          shortAddr,
         color: p.initialAuthor?.handle_color ?? null,
         // Payout address for the in-pane unlock's BIP21 — public by nature
         // (it's in every unlock tx and on the author's profile).
