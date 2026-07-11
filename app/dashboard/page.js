@@ -59,7 +59,6 @@ export default async function DashboardPage() {
           .from('notifications')
           .select('id, message, post_id, comment_id, read, created_at, posts(slug, title, legacy)')
           .eq('author_id', authorId)
-          .eq('read', false)
           .order('created_at', { ascending: false })
           .limit(20),
         admin

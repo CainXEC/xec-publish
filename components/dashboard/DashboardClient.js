@@ -223,13 +223,14 @@ export default function DashboardClient({
   const [openMenu, setOpenMenu] = useState(/** @type {string | null} */ (null))
   const [copiedAddress, setCopiedAddress] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [unreadNotifications, setUnreadNotifications] = useState(
+  const [notifItems, setNotifItems] = useState(
     () => (notifications ?? []).map((n) => ({ ...n, read: Boolean(n.read) })),
   )
   // "Load more" pagination for the bell (mirrors the feed bell): the server prop
-  // is only the first 20 unread. cursor = oldest shown timestamp (null once a
-  // short page proves there are no more); unreadCount is the TRUE total for the
-  // badge (the prop's array caps at 20, so we can't count it locally).
+  // is only the first 20 (read + unread history). cursor = oldest shown
+  // timestamp (null once a short page proves there are no more); unreadCount is
+  // the TRUE unread total for the badge (the prop's array caps at 20, so we
+  // can't count it locally).
   const NOTIF_PAGE = 20
   const [notifCursor, setNotifCursor] = useState(() => {
     const arr = notifications ?? []
@@ -304,7 +305,7 @@ export default function DashboardClient({
     }
   }, [])
 
-  // Append the next page of older unread notifications.
+  // Append the next page of older notifications (read + unread).
   const loadMoreNotifs = useCallback(async () => {
     if (!notifCursor || loadingMoreNotifs) return
     setLoadingMoreNotifs(true)
@@ -316,7 +317,7 @@ export default function DashboardClient({
       if (res.ok) {
         const data = await res.json()
         const more = Array.isArray(data.notifications) ? data.notifications : []
-        setUnreadNotifications((prev) => {
+        setNotifItems((prev) => {
           const seen = new Set(prev.map((n) => n.id))
           return [
             ...prev,
@@ -342,7 +343,7 @@ export default function DashboardClient({
         body: JSON.stringify({}),
       })
       if (!res.ok) return
-      setUnreadNotifications((prev) =>
+      setNotifItems((prev) =>
         prev.map((n) => ({ ...n, read: true })),
       )
       setUnreadCount(0)
@@ -638,11 +639,11 @@ export default function DashboardClient({
                   </button>
                 ) : null}
               </div>
-              {unreadNotifications.length === 0 ? (
-                <p className="dashnotif-msg">No new notifications</p>
+              {notifItems.length === 0 ? (
+                <p className="dashnotif-msg">Nothing yet.</p>
               ) : (
                 <ul className="dashnotifs-list">
-                  {unreadNotifications.map((n) => {
+                  {notifItems.map((n) => {
                     const postRel = Array.isArray(n.posts) ? n.posts[0] : n.posts
                     const slug = postRel?.slug ?? ''
                     const isLegacy = postRel?.legacy === true

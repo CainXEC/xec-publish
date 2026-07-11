@@ -4,11 +4,12 @@ import { NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { getAuthedAccount } from '@/lib/authHelpers'
 
-// The author's unread notifications, newest first, with keyset pagination for
-// the dashboard bell's "Load more" — mirrors /api/feed/notifications so a big
-// overnight batch isn't capped at the first 20. Unread-only (the dashboard is an
-// inbox: "Mark all read" clears it); `before` (an ISO timestamp) pages back
-// through older unread ones from the oldest already shown.
+// The author's notifications (read + unread history), newest first, with keyset
+// pagination for the dashboard bell's "Load more" — mirrors
+// /api/feed/notifications so a big overnight batch isn't capped at the first 20
+// and read ones stay reachable. The list is NOT filtered by read status; only
+// the badge total counts unread. `before` (an ISO timestamp) pages back through
+// history from the oldest already shown.
 const PAGE = 20
 const COLS =
   'id, message, post_id, comment_id, read, created_at, posts(slug, title, legacy)'
@@ -30,7 +31,6 @@ export async function GET(request) {
     .from('notifications')
     .select(COLS)
     .eq('author_id', acct.authorId)
-    .eq('read', false)
     .order('created_at', { ascending: false })
     .limit(PAGE)
   if (before) listQuery = listQuery.lt('created_at', before)
