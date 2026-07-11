@@ -57,9 +57,9 @@ export async function POST(req: NextRequest) {
   // pending rows do not (no free squat).
   const nowIso = new Date().toISOString();
   const [{ data: taken }, { data: reserved }, { data: paidHold }, grantReserved] = await Promise.all([
-    supabase.from("handles").select("token_id").eq("handle_skeleton", sk).maybeSingle(),
-    supabase.from("reserved_handles").select("reason").eq("handle_skeleton", sk).maybeSingle(),
-    supabase.from("pending_mints").select("id").eq("handle_skeleton", sk).eq("status", "paid").gt("expires_at", nowIso).maybeSingle(),
+    supabase.from("handles").select("token_id").eq("handle_skeleton", sk).limit(1).maybeSingle(),
+    supabase.from("reserved_handles").select("reason").eq("handle_skeleton", sk).limit(1).maybeSingle(),
+    supabase.from("pending_mints").select("id").eq("handle_skeleton", sk).eq("status", "paid").gt("expires_at", nowIso).limit(1).maybeSingle(),
     handleReservedByGrant(supabase, sk),
   ]);
   if (taken) return NextResponse.json({ ok: false, status: "taken" });

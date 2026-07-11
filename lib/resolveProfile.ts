@@ -33,7 +33,7 @@
 import { cache } from "react";
 import { after } from "next/server";
 import { createServerSupabase } from "@/lib/supabase-server";
-import { skeleton } from "@/lib/handleSkeleton";
+import { skeleton, displayHandle } from "@/lib/handleSkeleton";
 import { ChronikClient } from "chronik-client";
 import { encodeCashAddress, decodeCashAddress } from "ecashaddrjs";
 import { CHRONIK_URLS } from "@/lib/ecash/chronikEndpoints";
@@ -301,11 +301,24 @@ async function resolveHandle(handleRaw: string): Promise<ResolvedProfile | null>
   const supabase = createServerSupabase();
   const sk = skeleton(handleRaw);
 
-  const { data: h } = await supabase
+  // Normally a skeleton maps to exactly one handle. The grandfathered
+  // @indonesia / @Indonesia pair is the one exception (shared skeleton), so we
+  // fetch all matches and disambiguate by exact spelling: /@indonesia and
+  // /@Indonesia each resolve to their own row; any other casing falls back to
+  // a case-insensitive match, then to the first row.
+  const disp = displayHandle(handleRaw);
+  const { data: rows } = await supabase
     .from("handles")
     .select("token_id, handle, image_url")
     .eq("handle_skeleton", sk)
-    .maybeSingle();
+    .limit(5);
+  const matches = rows ?? [];
+  const h =
+    matches.length <= 1
+      ? matches[0]
+      : matches.find((r) => r.handle === disp) ??
+        matches.find((r) => r.handle?.toLowerCase() === disp.toLowerCase()) ??
+        matches[0];
   if (!h?.token_id) return null;
 
   // FAST PATH: the account currently bound to this token (set at login / mint).

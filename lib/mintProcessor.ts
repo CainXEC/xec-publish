@@ -70,8 +70,8 @@ export async function processPaidMint(mintId: string): Promise<{ status: string;
 
     // defensive re-check: nobody minted/reserved/granted this skeleton meanwhile
     const [{ data: taken }, { data: reserved }, grantReserved] = await Promise.all([
-      supabase.from("handles").select("token_id").eq("handle_skeleton", sk).maybeSingle(),
-      supabase.from("reserved_handles").select("handle_skeleton").eq("handle_skeleton", sk).maybeSingle(),
+      supabase.from("handles").select("token_id").eq("handle_skeleton", sk).limit(1).maybeSingle(),
+      supabase.from("reserved_handles").select("handle_skeleton").eq("handle_skeleton", sk).limit(1).maybeSingle(),
       handleReservedByGrant(supabase, sk),
     ]);
     if (taken || reserved || grantReserved) {

@@ -110,7 +110,7 @@ export async function startClaim(input: { handle: string; code: string }): Promi
   if (grant.status === "claimed") return { ok: false, code: "already_claimed", error: "This handle has already been claimed." };
   if (!codeMatches((input.code ?? "").trim(), grant.code_hash)) return { ok: false, code: "bad_code", error: "That claim code doesn’t match this handle." };
 
-  const { data: taken } = await supabase.from("handles").select("token_id").eq("handle_skeleton", sk).maybeSingle();
+  const { data: taken } = await supabase.from("handles").select("token_id").eq("handle_skeleton", sk).limit(1).maybeSingle();
   if (taken) return { ok: false, code: "taken", error: "This handle has already been minted." };
 
   const proofSats = await assignProofSats();
@@ -211,7 +211,7 @@ async function runMint(sk: string, grant: any, address: string): Promise<PollRes
   try {
     // re-check under the lock
     const [{ data: taken2 }, grant2] = await Promise.all([
-      supabase.from("handles").select("token_id").eq("handle_skeleton", sk).maybeSingle(),
+      supabase.from("handles").select("token_id").eq("handle_skeleton", sk).limit(1).maybeSingle(),
       loadGrant(sk),
     ]);
     // Our own claim already completed (this or a concurrent poll finished it).

@@ -50,14 +50,15 @@ export async function GET(req: NextRequest) {
   // once a payment has landed (status='paid') — unpaid intents don't block, so
   // nobody can squat names for free by spamming intents.
   const [minted, reserved, pending, grantReserved] = await Promise.all([
-    supabase.from("handles").select("token_id").eq("handle_skeleton", sk).maybeSingle(),
-    supabase.from("reserved_handles").select("reason").eq("handle_skeleton", sk).maybeSingle(),
+    supabase.from("handles").select("token_id").eq("handle_skeleton", sk).limit(1).maybeSingle(),
+    supabase.from("reserved_handles").select("reason").eq("handle_skeleton", sk).limit(1).maybeSingle(),
     supabase
       .from("pending_mints")
       .select("id")
       .eq("handle_skeleton", sk)
       .eq("status", "paid")
       .gt("expires_at", new Date().toISOString())
+      .limit(1)
       .maybeSingle(),
     handleReservedByGrant(supabase, sk),
   ]);

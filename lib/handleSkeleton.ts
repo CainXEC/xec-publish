@@ -10,13 +10,20 @@
 //  minting. The DB unique index on handle_skeleton is the backstop; this is the
 //  gate.
 //
-//  Confusable rule: among letters + digits the indistinguishable bare-vertical
-//  set is { capital I, lowercase l, digit 1 } -> folded to 'l' BEFORE lowercasing
-//  (so capital I joins the family while dotted lowercase i stays distinct).
-//  Result: simon / s1mon / sim0n stay distinct; allen / a11en / AIlen collide.
-//  0/o and leetspeak pairs are intentionally left distinct. Multi-char homoglyphs
-//  (rn≈m, vv≈w, cl≈d) are not folded — add only for maximum strictness, and only
-//  BEFORE launch, never after names exist.
+//  Confusable rule: the indistinguishable bare-vertical family is
+//  { i, I, lowercase l, digit 1 } -> ALL folded to 'l'. Folding both cases of i
+//  keeps two promises at once: case-insensitivity ("Indonesia" == "indonesia")
+//  AND look-alike protection (nobody registers "AIlen" to impersonate "Allen").
+//  Result: simon / s1mon / slmon COLLIDE (all -> "slmon"); allen / a11en / AIlen
+//  collide. 0/o and other leetspeak pairs are intentionally left distinct.
+//  Multi-char homoglyphs (rn≈m, vv≈w, cl≈d) are not folded — add only for maximum
+//  strictness, and only BEFORE names exist, never after.
+//
+//  HISTORICAL NOTE: an earlier rule folded only { I, l, 1 } and left lowercase i
+//  distinct, which leaked case-sensitivity through the letter i — so @indonesia
+//  and @Indonesia both minted (different skeletons). That pair is grandfathered
+//  in the DB via handles.skeleton_exempt + a partial unique index; it is a
+//  frozen one-time artifact and cannot recur under this rule.
 // =============================================================================
 
 const HANDLE_RE = /^[A-Za-z0-9_]{1,15}$/;
@@ -47,18 +54,20 @@ export function validateHandleSyntax(raw: string): string | null {
 /** Uniqueness skeleton. Assumes validateHandleSyntax() has passed. */
 export function skeleton(raw: string): string {
   let s = displayHandle(raw);
-  // fold the bare-vertical family BEFORE lowercasing: capital I, lowercase l,
-  // digit 1 -> 'l'. (Dotted lowercase i is NOT in the class, so it stays distinct.)
-  s = s.replace(/[Il1]/g, "l");
+  // fold the entire bare-vertical family to 'l': lowercase i, capital I,
+  // lowercase l, digit 1. Case no longer leaks (both i and I fold the same way).
+  s = s.replace(/[Iil1]/g, "l");
   // lowercase the rest -> case-insensitive uniqueness. 0 and leet pairs untouched.
   return s.toLowerCase();
 }
 
 // Examples:
-//   skeleton("SimonCain") -> "simoncain"
-//   skeleton("simoncain") -> "simoncain"  (same handle — case-insensitive)
-//   skeleton("s1mon")     -> "slmon"       (distinct from Simon/simon — claimable)
-//   skeleton("sim0n")     -> "sim0n"       (distinct — claimable)
+//   skeleton("SimonCain") -> "slmoncaln"
+//   skeleton("simoncain") -> "slmoncaln"   (same handle — case-insensitive)
+//   skeleton("Indonesia") -> "lndonesla"
+//   skeleton("indonesia") -> "lndonesla"   (same handle — the old rule leaked this)
+//   skeleton("s1mon")     -> "slmon"        (collides with simon/slmon — blocked)
+//   skeleton("sim0n")     -> "slm0n"        (0 stays distinct — claimable)
 //   skeleton("Allen")     -> "allen"
 //   skeleton("a11en")     -> "allen"        (collision — blocked)
 //   skeleton("AIlen")     -> "allen"        (collision — capital-I homoglyph blocked)
