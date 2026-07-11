@@ -22,18 +22,12 @@ import FeedTopbar from "@/components/feed/FeedTopbar";
 import { FEED_CSS } from "@/components/feed/feedTheme";
 import MintHandle from "@/components/MintHandle";
 import MarketplaceClient, {
+  MarketFilters,
   sortOptionsFor,
   type GallerySort,
   type GalleryView,
   type TierFilter,
 } from "@/components/MarketplaceClient";
-
-const TIER_CHIPS: Array<{ value: TierFilter; label: string; hint: string }> = [
-  { value: "all", label: "All", hint: "" },
-  { value: "short", label: "1–5", hint: "1M XEC" },
-  { value: "mid", label: "6–10", hint: "100K XEC" },
-  { value: "base", label: "11–15", hint: "10K XEC" },
-];
 
 export default function MarketplaceShell({
   signedIn = false,
@@ -86,59 +80,17 @@ export default function MarketplaceShell({
         <aside className="mkt-rail">
           <MintHandle />
 
-          <section className="railfilters" aria-label="Gallery filters">
-            <p className="fhead">Browse</p>
-            <div className="fchips">
-              <button
-                className={`fchip${view === "forsale" ? " on" : ""}`}
-                onClick={() => switchView("forsale")}
-              >
-                For sale
-              </button>
-              <button
-                className={`fchip${view === "all" ? " on" : ""}`}
-                onClick={() => switchView("all")}
-              >
-                All minted
-              </button>
-            </div>
-
-            <p className="fhead">Name length</p>
-            <div className="fchips">
-              {TIER_CHIPS.map((t) => (
-                <button
-                  key={t.value}
-                  className={`fchip${tier === t.value ? " on" : ""}`}
-                  title={t.hint}
-                  onClick={() => setTier(t.value)}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-
-            <p className="fhead">Search</p>
-            <input
-              className="fsearch"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="find a name…"
-              aria-label="Search handles"
-              spellCheck={false}
-            />
-
-            <p className="fhead">Sort</p>
-            <select
-              className="fsel"
-              value={sort}
-              onChange={(e) => setSort(e.target.value as GallerySort)}
-              aria-label="Sort gallery"
-            >
-              {sortOptionsFor(view).map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          </section>
+          <MarketFilters
+            className="railfilters"
+            view={view}
+            tier={tier}
+            query={query}
+            sort={sort}
+            onViewChange={switchView}
+            onTierChange={setTier}
+            onQueryChange={setQuery}
+            onSortChange={setSort}
+          />
         </aside>
 
         <main className="mkt-main">
@@ -148,6 +100,9 @@ export default function MarketplaceShell({
             query={query}
             sort={sort}
             signedIn={signedIn}
+            onViewChange={switchView}
+            onTierChange={setTier}
+            onQueryChange={setQuery}
             onSortChange={setSort}
           />
         </main>

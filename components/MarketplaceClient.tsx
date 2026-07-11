@@ -102,6 +102,96 @@ export function sortOptionsFor(view: GalleryView): Array<{ value: GallerySort; l
   ];
 }
 
+const TIER_CHIPS: Array<{ value: TierFilter; label: string; hint: string }> = [
+  { value: "all", label: "All", hint: "" },
+  { value: "short", label: "1–5", hint: "1M XEC" },
+  { value: "mid", label: "6–10", hint: "100K XEC" },
+  { value: "base", label: "11–15", hint: "10K XEC" },
+];
+
+/** The gallery's filter controls — ONE component, two placements: the shell
+ *  renders it as the desktop rail panel (className "railfilters"), and the
+ *  gallery renders it inline above the grid for phones ("mkfilters-inline").
+ *  Both instances are controlled by the same shell-owned state, so they can
+ *  never disagree. Control styling lives in the shell's .pow-mkt scope. */
+export function MarketFilters({
+  className,
+  view,
+  tier,
+  query,
+  sort,
+  onViewChange,
+  onTierChange,
+  onQueryChange,
+  onSortChange,
+}: {
+  className: string;
+  view: GalleryView;
+  tier: TierFilter;
+  query: string;
+  sort: GallerySort;
+  onViewChange: (v: GalleryView) => void;
+  onTierChange: (t: TierFilter) => void;
+  onQueryChange: (q: string) => void;
+  onSortChange: (s: GallerySort) => void;
+}) {
+  return (
+    <section className={className} aria-label="Gallery filters">
+      <p className="fhead">Browse</p>
+      <div className="fchips">
+        <button
+          className={`fchip${view === "forsale" ? " on" : ""}`}
+          onClick={() => onViewChange("forsale")}
+        >
+          For sale
+        </button>
+        <button
+          className={`fchip${view === "all" ? " on" : ""}`}
+          onClick={() => onViewChange("all")}
+        >
+          All minted
+        </button>
+      </div>
+
+      <p className="fhead">Name length</p>
+      <div className="fchips">
+        {TIER_CHIPS.map((t) => (
+          <button
+            key={t.value}
+            className={`fchip${tier === t.value ? " on" : ""}`}
+            title={t.hint}
+            onClick={() => onTierChange(t.value)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <p className="fhead">Search</p>
+      <input
+        className="fsearch"
+        value={query}
+        onChange={(e) => onQueryChange(e.target.value)}
+        placeholder="find a name…"
+        aria-label="Search handles"
+        spellCheck={false}
+      />
+
+      <p className="fhead">Sort</p>
+      <select
+        className="fsel"
+        value={sort}
+        onChange={(e) => onSortChange(e.target.value as GallerySort)}
+        aria-label="Sort gallery"
+      >
+        {sortOptionsFor(view).map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    </section>
+  );
+}
+
 // Cashtab shows the Agora sell offer + a Buy control on the token page.
 const cashtabTokenUrl = (tokenId: string) => `https://cashtab.com/#/token/${tokenId}`;
 
@@ -437,6 +527,9 @@ export default function MarketplaceClient({
   query = "",
   sort = "price-asc",
   signedIn = false,
+  onViewChange,
+  onTierChange,
+  onQueryChange,
   onSortChange,
 }: {
   view?: GalleryView;
@@ -444,6 +537,9 @@ export default function MarketplaceClient({
   query?: string;
   sort?: GallerySort;
   signedIn?: boolean;
+  onViewChange?: (v: GalleryView) => void;
+  onTierChange?: (t: TierFilter) => void;
+  onQueryChange?: (q: string) => void;
   onSortChange?: (s: GallerySort) => void;
 }) {
   // ---- listings (Agora) — one live fetch; small set, sorted/filtered here ----
@@ -606,22 +702,21 @@ export default function MarketplaceClient({
         </p>
       </header>
 
-      {/* Phone-width control strip (the desktop filter rail replaces it). */}
-      <div className="mkbar">
-        <div className="sortgroup">
-          <label className="sortlabel" htmlFor="mk-sort">Sort</label>
-          <select
-            id="mk-sort"
-            className="sortsel"
-            value={sort}
-            onChange={(e) => onSortChange?.(e.target.value as GallerySort)}
-          >
-            {sortOptionsFor(view).map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+      {/* Phone-width filter panel — the desktop rail renders the same
+          component; CSS shows exactly one of the two instances. */}
+      {onViewChange && onTierChange && onQueryChange && onSortChange ? (
+        <MarketFilters
+          className="mkfilters-inline"
+          view={view}
+          tier={tier}
+          query={query}
+          sort={sort}
+          onViewChange={onViewChange}
+          onTierChange={onTierChange}
+          onQueryChange={onQueryChange}
+          onSortChange={onSortChange}
+        />
+      ) : null}
 
       {loading ? (
         <p className="state">{view === "forsale" ? "Loading listings…" : "Loading the collection…"}</p>
@@ -686,12 +781,11 @@ const CSS = `
 .pow-market .inlink,.pow-market .sublist .inlink{color:var(--cyan);text-decoration:none;border-bottom:1px solid transparent;transition:border-color .15s;}
 .pow-market .inlink:hover{border-color:var(--cyan);}
 
-.pow-market .mkbar{margin:0 0 18px;display:flex;justify-content:flex-end;align-items:center;gap:14px;}
-.pow-market .sortgroup{display:inline-flex;align-items:center;gap:10px;}
-.pow-market .sortlabel{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);}
-.pow-market .sortsel{background:var(--panel);border:1px solid var(--line);color:var(--text);
-  font:inherit;font-size:13px;padding:8px 12px;border-radius:8px;outline:none;cursor:pointer;}
-.pow-market .sortsel:focus{border-color:var(--cyan);}
+/* Phone placement of the shared filter panel: a compact card between the
+   gallery header and the grid. Hidden on desktop, where the rail instance
+   takes over (control styling itself lives in the shell's .pow-mkt scope). */
+.pow-market .mkfilters-inline{display:flex;flex-direction:column;gap:10px;margin:0 0 18px;
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 16px 18px;text-align:left;}
 
 .pow-market .state{max-width:760px;margin:60px auto;text-align:center;color:var(--dim);font-size:14.5px;line-height:1.6;}
 .pow-market .state.err{color:var(--no);}
@@ -760,7 +854,7 @@ const CSS = `
 .pow-market .mkmore:disabled{color:var(--dim);border-color:var(--line);cursor:default;}
 
 @media (min-width:1100px){
-  .pow-market .mkbar{display:none;}
+  .pow-market .mkfilters-inline{display:none;}
   .pow-market .mkgrid{gap:18px;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));}
   .pow-market .mkhead{margin-bottom:30px;}
 }
