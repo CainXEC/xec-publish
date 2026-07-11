@@ -38,6 +38,7 @@ export async function GET(_req, { params }) {
     {
       ok: true,
       slug,
+      postId: p.initialPost?.id ?? null,
       title: p.initialPost?.title ?? '',
       bodyHtml: p.initialBodyHtml ?? '',
       unlocked: Boolean(p.initialUnlocked),
@@ -52,6 +53,9 @@ export async function GET(_req, { params }) {
           p.initialAuthor?.username?.trim() ||
           null,
         color: p.initialAuthor?.handle_color ?? null,
+        // Payout address for the in-pane unlock's BIP21 — public by nature
+        // (it's in every unlock tx and on the author's profile).
+        xecAddress: p.initialAuthor?.xec_address?.trim() || null,
       },
     },
     { headers: { 'Cache-Control': 'no-store' } }

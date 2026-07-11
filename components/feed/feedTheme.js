@@ -667,10 +667,15 @@ html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
 .pow-feed .hr-paywall{border:1px solid var(--line);border-radius:12px;padding:20px 16px;margin-top:26px;text-align:center;}
 .pow-feed .hr-lockline{font-size:12.5px;color:var(--dim);margin:0 0 12px;}
 .pow-feed .hr-unlock{display:inline-block;border:1px solid var(--neon);color:var(--neon);border-radius:9px;
-  padding:11px 24px;font-size:13px;font-weight:700;letter-spacing:.05em;
+  padding:11px 24px;font-size:13px;font-weight:700;letter-spacing:.05em;background:transparent;
+  font-family:inherit;cursor:pointer;
   transition:background .15s,color .15s,box-shadow .15s;}
 .pow-feed .hr-unlock:hover{background:var(--neon);color:#04120c;box-shadow:0 0 22px rgba(0,255,156,.4);}
 .pow-feed .hr-note{font-size:10.5px;color:var(--dim);margin:11px 0 0;line-height:1.5;}
+.pow-feed .hr-watching{font-size:13px;color:var(--cyan);margin:2px 0 0;animation:arail-pulse 1.4s ease-in-out infinite;}
+.pow-feed .hr-cancelwait{background:none;border:none;font:inherit;font-size:10.5px;color:var(--dim);
+  cursor:pointer;margin-top:10px;border-bottom:1px solid transparent;padding:0;}
+.pow-feed .hr-cancelwait:hover{color:var(--no);border-color:var(--no);}
 html:not(.dark) .pow-feed .np-entry{border-bottom-color:rgba(191,230,213,.85);}
 html:not(.dark) .pow-feed .np-mast{text-shadow:none;}
 

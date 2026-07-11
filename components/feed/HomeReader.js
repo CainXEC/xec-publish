@@ -19,8 +19,9 @@
 //  same trick the topbar uses for its .pow-feed scope.
 // =============================================================================
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import PaneUnlock from '@/components/feed/PaneUnlock'
 import { ARTICLE_CSS } from '@/app/posts/[slug]/articleTheme'
 
 const fmtDate = (iso) => {
@@ -38,25 +39,27 @@ const fmtDate = (iso) => {
 export default function HomeReader({ slug, onClose }) {
   const [state, setState] = useState({ loading: true })
 
-  useEffect(() => {
-    let alive = true
-    setState({ loading: true })
-    ;(async () => {
+  // Reusable so an in-pane unlock can refetch: the server, now seeing the
+  // entitlement, returns the FULL story and the paywall block melts away.
+  const load = useCallback(
+    async ({ quiet = false } = {}) => {
+      if (!quiet) setState({ loading: true })
       try {
         const res = await fetch(`/api/posts/reader/${encodeURIComponent(slug)}`, {
           cache: 'no-store',
         })
         const j = await res.json()
-        if (!alive) return
         setState(j.ok ? { loading: false, data: j } : { loading: false, error: j.error || 'Story unavailable.' })
       } catch {
-        if (alive) setState({ loading: false, error: 'Story unavailable — try again.' })
+        setState((cur) => (cur.data ? cur : { loading: false, error: 'Story unavailable — try again.' }))
       }
-    })()
-    return () => {
-      alive = false
-    }
-  }, [slug])
+    },
+    [slug],
+  )
+
+  useEffect(() => {
+    void load()
+  }, [load])
 
   // Esc turns back to the feed.
   useEffect(() => {
@@ -106,15 +109,13 @@ export default function HomeReader({ slug, onClose }) {
           <div className="prose" dangerouslySetInnerHTML={{ __html: d.bodyHtml }} />
 
           {d.hasPaywall && !d.unlocked ? (
-            <div className="hr-paywall">
-              <p className="hr-lockline">The rest is for readers.</p>
-              <Link className="hr-unlock" href={`/posts/${slug}`}>
-                Unlock · {Number(d.priceXec ?? 0).toLocaleString()} XEC
-              </Link>
-              <p className="hr-note">
-                Unlocking finishes on the story's own page — one payment, and you're back in seconds.
-              </p>
-            </div>
+            <PaneUnlock
+              postId={d.postId}
+              priceXec={d.priceXec}
+              authorAddress={d.author?.xecAddress}
+              slug={slug}
+              onUnlocked={() => load({ quiet: true })}
+            />
           ) : null}
         </div>
       )}
