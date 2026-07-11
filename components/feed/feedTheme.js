@@ -581,17 +581,17 @@ html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
 .pow-feed .feed-rail{display:none;}
 .pow-feed .feed-left{display:none;}
 @media (min-width:1100px){
-  .pow-feed.has-rail .topbar{max-width:1046px;}
+  .pow-feed.has-rail .topbar{max-width:1028px;}
   .pow-feed.has-rail .feed-cols{display:grid;grid-template-columns:minmax(0,640px) 330px;
-    gap:36px;justify-content:center;padding:0 20px;}
+    gap:18px;justify-content:center;padding:0 20px;}
   .pow-feed.has-rail .feed-cols .wrap{max-width:none;width:100%;margin:0;padding-left:0;padding-right:0;}
   .pow-feed .feed-rail{display:block;position:sticky;top:76px;align-self:start;
     max-height:calc(100dvh - 96px);overflow-y:auto;}
 }
-/* Wide desktop: the front page joins on the left. 300+640+330 + gaps + page
-   padding = 1382, so a 1440 laptop qualifies and a 1280 one keeps two panes. */
+/* Wide desktop: the front page joins on the left. 300+640+330 + 18px gaps +
+   page padding = 1346, so a 1440 laptop qualifies and a 1280 keeps two panes. */
 @media (min-width:1400px){
-  .pow-feed.has-rail .topbar{max-width:1382px;}
+  .pow-feed.has-rail .topbar{max-width:1346px;}
   .pow-feed.has-rail .feed-cols{grid-template-columns:300px minmax(0,640px) 330px;}
   .pow-feed .feed-left{display:block;position:sticky;top:76px;align-self:start;
     max-height:calc(100dvh - 96px);overflow-y:auto;}
