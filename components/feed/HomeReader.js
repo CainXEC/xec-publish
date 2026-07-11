@@ -119,6 +119,8 @@ export default function HomeReader({ slug, onClose }) {
             ) : null}
             {d.readMinutes ? `${d.readMinutes} min · ` : ''}
             {d.publishedAt ? fmtDate(d.publishedAt) : ''}
+            {` · ${Number(d.unlockCount ?? 0)} unlock${d.unlockCount === 1 ? '' : 's'}`}
+            {` · ${Number(d.commentCount ?? 0)} comment${d.commentCount === 1 ? '' : 's'}`}
           </p>
 
           {/* Server-prepared HTML: public part only unless this viewer is

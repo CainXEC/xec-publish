@@ -46,6 +46,8 @@ export async function GET(_req, { params }) {
       priceXec: p.initialPost?.price_xec ?? null,
       readMinutes: p.initialPost?.reading_time_minutes ?? null,
       publishedAt: p.initialPost?.published_at ?? p.initialPost?.created_at ?? null,
+      unlockCount: Number(p.initialUnlockCount) || 0,
+      commentCount: Number(p.initialCommentCount) || 0,
       author: {
         handle: p.initialAuthor?.display_handle?.trim() || null,
         username: p.initialAuthor?.username?.trim() || null,
