@@ -134,6 +134,16 @@ function DashboardPostCard({
   const unlockStat = n === 1 ? '🔓 1 unlock' : `🔓 ${n} unlocks`
   const readTime = formatReadingTimeLabel(post.reading_time_minutes)
   const priceLabel = formatXec(post.price_xec)
+  // Published pieces show when they went live (paid-flow posts keep that in
+  // created_at); drafts show when they were started.
+  const wentLiveIso = post.published_at ?? post.created_at
+  const dateLabel = wentLiveIso
+    ? new Date(wentLiveIso).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : null
   const publicHref =
     post.slug && post.legacy
       ? `/${encodeURIComponent(post.slug)}`
@@ -166,6 +176,9 @@ function DashboardPostCard({
             <span className="dashpost-price">{priceLabel} XEC</span>
             <span>{unlockStat}</span>
             {readTime ? <span>{readTime}</span> : null}
+            {dateLabel ? (
+              <span>{post.published ? dateLabel : `started ${dateLabel}`}</span>
+            ) : null}
           </p>
         </div>
         <div className="dashpost-btns">
