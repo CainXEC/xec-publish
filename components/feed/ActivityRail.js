@@ -67,9 +67,20 @@ function targetNode(it) {
 
 export default function ActivityRail() {
   const [items, setItems] = useState(null)
+  // The rail only exists at ≥1100px — don't spend fetches or a websocket
+  // subscription on phones where it's display:none.
+  const [active, setActive] = useState(false)
   const knownIds = useRef(new Set())
   const freshIds = useRef(new Set())
   const nudgeTimer = useRef(null)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1100px)')
+    const update = () => setActive(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
 
   const refresh = useCallback(async () => {
     try {
@@ -92,6 +103,7 @@ export default function ActivityRail() {
   }, [])
 
   useEffect(() => {
+    if (!active) return
     void refresh()
     const interval = setInterval(() => void refresh(), POLL_MS)
     // The doorbell: any POWR tx on the network → one delayed refetch. Repeated
@@ -109,7 +121,7 @@ export default function ActivityRail() {
       stopWatch()
       if (nudgeTimer.current) clearTimeout(nudgeTimer.current)
     }
-  }, [refresh])
+  }, [active, refresh])
 
   return (
     <div className="arail">

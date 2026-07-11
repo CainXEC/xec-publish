@@ -579,6 +579,7 @@ html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
    below 1100px the rail is gone and .feed-cols is a plain block, so phones
    and tablets render exactly the pre-shell page. */
 .pow-feed .feed-rail{display:none;}
+.pow-feed .feed-left{display:none;}
 @media (min-width:1100px){
   .pow-feed.has-rail .topbar{max-width:1046px;}
   .pow-feed.has-rail .feed-cols{display:grid;grid-template-columns:minmax(0,640px) 330px;
@@ -587,6 +588,62 @@ html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
   .pow-feed .feed-rail{display:block;position:sticky;top:76px;align-self:start;
     max-height:calc(100dvh - 96px);overflow-y:auto;scrollbar-width:thin;}
 }
+/* Wide desktop: the front page joins on the left. 300+640+330 + gaps + page
+   padding = 1382, so a 1440 laptop qualifies and a 1280 one keeps two panes. */
+@media (min-width:1400px){
+  .pow-feed.has-rail .topbar{max-width:1382px;}
+  .pow-feed.has-rail .feed-cols{grid-template-columns:300px minmax(0,640px) 330px;}
+  .pow-feed .feed-left{display:block;position:sticky;top:76px;align-self:start;
+    max-height:calc(100dvh - 96px);overflow-y:auto;scrollbar-width:thin;}
+}
+
+/* ---- the front page (left rail): newspaper structure, terminal skin.
+   Type rule: serif = writing, mono = machinery, neon = money. Same 21px
+   top margin arithmetic as .arail so all three column tops align. ---- */
+.pow-feed .npaper{border:1px solid var(--line);border-radius:14px;background:var(--panel2);
+  padding:16px 16px 12px;margin-top:21px;}
+.pow-feed .np-serif{font-family:Georgia,'Iowan Old Style','Times New Roman',serif;}
+.pow-feed .np-mast{position:relative;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  padding:7px 0 6px;text-align:center;font-size:12px;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--neon);text-shadow:0 0 10px rgba(0,255,156,.3);}
+.pow-feed .np-mast::before{content:"";position:absolute;left:0;right:0;top:2px;border-bottom:1px solid var(--line);}
+.pow-feed .np-date{font-size:10px;color:var(--dim);text-align:center;margin:7px 0 14px;
+  letter-spacing:.05em;text-transform:uppercase;font-variant-numeric:tabular-nums;}
+.pow-feed .np-empty{color:var(--dim);font-size:12px;line-height:1.6;margin:16px 0;text-align:center;}
+.pow-feed .np-kick{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--neon);margin:0 0 6px;}
+.pow-feed .np-hl{display:block;}
+.pow-feed .np-hl:hover .np-serif{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
+.pow-feed .np-lead-h{display:block;font-size:19px;line-height:1.28;color:var(--text);margin:0 0 7px;}
+.pow-feed .np-teaser{font-size:11.5px;line-height:1.55;color:var(--dim);margin:0 0 8px;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.pow-feed .np-meta{font-size:10.5px;color:var(--dim);line-height:1.5;}
+.pow-feed .np-price{color:var(--neon);}
+.pow-feed .np-sec{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);
+  border-bottom:1px solid var(--line);padding:16px 0 5px;}
+.pow-feed .np-entry{padding:10px 0;border-bottom:1px solid rgba(23,58,51,.55);cursor:pointer;}
+.pow-feed .np-entry-h{display:block;font-size:14.5px;line-height:1.3;color:var(--text);}
+.pow-feed .np-entry .np-meta{margin-top:3px;}
+.pow-feed .np-entry.open{background:var(--panel);border-radius:8px;margin:2px -10px;padding:10px 10px 12px;}
+.pow-feed .np-entry.open .np-teaser{margin:6px 0 0;}
+.pow-feed .np-btns{display:flex;gap:8px;margin-top:9px;}
+.pow-feed .np-btn{flex:1;font-size:11px;text-align:center;border:1px solid var(--line);border-radius:7px;
+  padding:7px 0;color:var(--cyan);transition:border-color .15s,color .15s,background .15s;}
+.pow-feed .np-btn:hover{border-color:var(--cyan);}
+.pow-feed .np-btn.unlock{flex:1.4;border-color:var(--neon);color:var(--neon);}
+.pow-feed .np-btn.unlock:hover{background:var(--neon);color:#04120c;}
+.pow-feed .np-ranks{padding:7px 0 2px;}
+.pow-feed .np-rank{display:flex;gap:9px;padding:4px 0;align-items:baseline;}
+.pow-feed .np-rank-n{color:var(--neon);font-size:12px;font-variant-numeric:tabular-nums;}
+.pow-feed .np-rank-h{font-size:13.5px;line-height:1.35;color:var(--text);flex:1;}
+.pow-feed .np-rank-c{font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums;}
+.pow-feed .np-foot{border-top:1px solid var(--line);margin-top:12px;padding-top:10px;
+  font-size:10.5px;color:var(--dim);text-align:center;line-height:1.5;}
+.pow-feed .np-foot a{color:var(--cyan);}
+.pow-feed .np-foot a:hover{border-bottom:1px solid var(--cyan);}
+.pow-feed .np-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--neon);
+  box-shadow:0 0 8px rgba(0,255,156,.8);margin-right:6px;vertical-align:2px;}
+html:not(.dark) .pow-feed .np-entry{border-bottom-color:rgba(191,230,213,.85);}
+html:not(.dark) .pow-feed .np-mast{text-shadow:none;}
 
 /* the ticker card. margin-top is 21px, not the column's 28px, on purpose:
    the sticky rail is pinned at top:76px — 7px past the grid's natural top

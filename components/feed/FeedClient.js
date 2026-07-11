@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import ActivityRail from '@/components/feed/ActivityRail'
+import ArticleRail from '@/components/feed/ArticleRail'
 import ComposeBox from '@/components/feed/ComposeBox'
 import FeedPost from '@/components/feed/FeedPost'
 import FeedTopbar from '@/components/feed/FeedTopbar'
@@ -228,10 +229,15 @@ export default function FeedClient({
 
       <FeedTopbar signedIn={signedIn} isAuthor={isAuthor} />
 
-      {/* Desktop shell: one grid, feed column at its usual 640px + the live
-          activity rail beside it. Below 1100px the rail is display:none and
-          this wrapper is a plain block — phones render exactly as before. */}
+      {/* Desktop shell: one grid — the front page (≥1400px) on the left, the
+          feed column at its usual 640px, the live activity rail (≥1100px) on
+          the right. Hidden rails aren't grid items, so each tier lays out
+          cleanly; below 1100px this wrapper is a plain block and phones
+          render exactly as before. */}
       <div className="feed-cols">
+      <aside className="feed-left" aria-label="The front page — long-form writing">
+        <ArticleRail />
+      </aside>
       <main className="wrap" style={{ paddingTop: '28px' }}>
         <ComposeBox
           action="post"
