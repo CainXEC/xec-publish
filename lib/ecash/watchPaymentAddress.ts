@@ -51,6 +51,8 @@ const _wakeListeners = new Set<WakeListener>();
 // Ref-count subscriptions per address so overlapping watches on the same
 // address don't unsubscribe each other.
 const _subCounts = new Map<string, number>();
+// Same ref-counting for LOKAD-ID subscriptions (the activity rail's doorbell).
+const _lokadSubCounts = new Map<string, number>();
 
 // "Wake" = a moment the tab may have MISSED a push and should run one immediate
 // status check instead of waiting for the next poll tick:
@@ -172,5 +174,53 @@ export function watchPaymentAddress(
       _subCounts.set(address, c - 1);
     }
     // Intentionally leave the socket OPEN — keeping it warm is the whole point.
+  };
+}
+
+/**
+ * Watch a LOKAD ID (4-byte protocol tag, lowercase hex) on the SAME shared
+ * socket and call `onTx(txid, msgType)` the moment Chronik sees any tx
+ * carrying it — every POWR action anywhere on the network, by anyone. This is
+ * the activity rail's doorbell: a push means "something on-chain just
+ * happened, refetch /api/activity", never a displayable fact by itself (the
+ * DB is what renders; rows appear only after the server has verified them).
+ *
+ * Same nudge semantics as watchPaymentAddress: `onWake` fires on tab
+ * re-foreground / socket reconnect, msgType distinguishes mempool vs
+ * TX_FINALIZED, and if the socket never opens the caller's interval poll
+ * still covers the rail unchanged.
+ */
+export function watchLokadId(
+  lokadIdHex: string | null | undefined,
+  onTx: Listener,
+  onWake?: WakeListener,
+): () => void {
+  const lokad = (lokadIdHex ?? "").trim().toLowerCase();
+  if (!/^[0-9a-f]{8}$/.test(lokad) || typeof window === "undefined") return () => {};
+
+  _listeners.add(onTx);
+  if (onWake) _wakeListeners.add(onWake);
+  hookVisibility();
+  const ws = ensureSocket();
+  const n = _lokadSubCounts.get(lokad) ?? 0;
+  if (ws && n === 0) {
+    // Queued by chronik-client until the socket opens; re-sent on reconnect.
+    try { ws.subscribeToLokadId(lokad); } catch { /* poll covers it */ }
+  }
+  _lokadSubCounts.set(lokad, n + 1);
+
+  let disposed = false;
+  return () => {
+    if (disposed) return;
+    disposed = true;
+    _listeners.delete(onTx);
+    if (onWake) _wakeListeners.delete(onWake);
+    const c = _lokadSubCounts.get(lokad) ?? 0;
+    if (c <= 1) {
+      _lokadSubCounts.delete(lokad);
+      try { _ws?.unsubscribeFromLokadId(lokad); } catch { /* ignore */ }
+    } else {
+      _lokadSubCounts.set(lokad, c - 1);
+    }
   };
 }

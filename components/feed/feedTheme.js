@@ -573,4 +573,49 @@ html:not(.dark) .pow-feed .byline:hover{text-shadow:none;filter:brightness(.88);
 html:not(.dark) .pow-feed .compose textarea::placeholder{color:#8fb8ab;}
 /* sticky topbar tint matches the daylight ground (dark default is set inline above) */
 html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
+
+/* ---- desktop shell: 640px feed column + live activity rail ----
+   Only pages that render .feed-cols/.feed-rail (the home feed) are affected;
+   below 1100px the rail is gone and .feed-cols is a plain block, so phones
+   and tablets render exactly the pre-shell page. */
+.pow-feed .feed-rail{display:none;}
+@media (min-width:1100px){
+  .pow-feed.has-rail .topbar{max-width:1046px;}
+  .pow-feed.has-rail .feed-cols{display:grid;grid-template-columns:minmax(0,640px) 330px;
+    gap:36px;justify-content:center;padding:0 20px;}
+  .pow-feed.has-rail .feed-cols .wrap{max-width:none;width:100%;margin:0;padding-left:0;padding-right:0;}
+  .pow-feed .feed-rail{display:block;position:sticky;top:76px;align-self:start;
+    max-height:calc(100dvh - 96px);overflow-y:auto;scrollbar-width:thin;}
+}
+
+/* the ticker card */
+.pow-feed .arail{border:1px solid var(--line);border-radius:14px;background:var(--panel2);
+  padding:16px 16px 8px;margin-top:28px;}
+.pow-feed .arail-head{display:flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--neon);text-shadow:0 0 10px rgba(0,255,156,.35);}
+.pow-feed .arail-dot{width:7px;height:7px;border-radius:50%;background:var(--neon);
+  box-shadow:0 0 10px rgba(0,255,156,.8);animation:arail-pulse 2.2s ease-in-out infinite;}
+@keyframes arail-pulse{50%{opacity:.35;}}
+.pow-feed .arail-sub{margin:9px 0 4px;font-size:11px;color:var(--dim);line-height:1.55;}
+.pow-feed .arail-empty{color:var(--dim);font-size:12.5px;margin:14px 0;line-height:1.55;}
+.pow-feed .arail-list{list-style:none;margin:6px 0 0;padding:0;}
+.pow-feed .arow{padding:10px 2px;border-top:1px solid rgba(23,58,51,.55);}
+.pow-feed .arail-list .arow:first-child{border-top:none;}
+.pow-feed .arow.fresh{animation:arow-in 1.1s ease;}
+@keyframes arow-in{0%{background:rgba(0,255,156,.16);}100%{background:transparent;}}
+.pow-feed .arow-main{display:block;font-size:12.5px;line-height:1.5;color:var(--text);word-break:break-word;}
+.pow-feed .arow-main:hover .arow-actor{color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.4);}
+.pow-feed .arow-actor{font-weight:700;transition:color .15s;}
+.pow-feed .arow-target{color:#a6d8c9;}
+.pow-feed .arow-meta{display:flex;align-items:center;gap:10px;margin-top:3px;font-size:11px;
+  color:var(--dim);font-variant-numeric:tabular-nums;}
+.pow-feed .arow-amt{color:var(--neon);font-weight:700;}
+.pow-feed .arow-final{color:var(--neon);}
+.pow-feed .arow-pending{color:var(--cyan);animation:arail-pulse 1.4s ease-in-out infinite;}
+.pow-feed .arow-tx{margin-left:auto;color:var(--dim);border-bottom:1px solid transparent;transition:color .15s,border-color .15s;}
+.pow-feed .arow-tx:hover{color:var(--cyan);border-color:var(--cyan);}
+html:not(.dark) .pow-feed .arow-target{color:#3f6b5d;}
+html:not(.dark) .pow-feed .arow{border-top-color:rgba(191,230,213,.85);}
+html:not(.dark) .pow-feed .arow.fresh{animation-name:arow-in-light;}
+@keyframes arow-in-light{0%{background:rgba(0,176,110,.14);}100%{background:transparent;}}
 `

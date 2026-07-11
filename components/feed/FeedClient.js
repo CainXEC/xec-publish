@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import ActivityRail from '@/components/feed/ActivityRail'
 import ComposeBox from '@/components/feed/ComposeBox'
 import FeedPost from '@/components/feed/FeedPost'
 import FeedTopbar from '@/components/feed/FeedTopbar'
@@ -222,11 +223,15 @@ export default function FeedClient({
   }, [loading, active, scope, fetchScope, patchTab])
 
   return (
-    <div className="pow-feed">
+    <div className="pow-feed has-rail">
       <style>{FEED_CSS}</style>
 
       <FeedTopbar signedIn={signedIn} isAuthor={isAuthor} />
 
+      {/* Desktop shell: one grid, feed column at its usual 640px + the live
+          activity rail beside it. Below 1100px the rail is display:none and
+          this wrapper is a plain block — phones render exactly as before. */}
+      <div className="feed-cols">
       <main className="wrap" style={{ paddingTop: '28px' }}>
         <ComposeBox
           action="post"
@@ -291,6 +296,11 @@ export default function FeedClient({
           </div>
         ) : null}
       </main>
+
+      <aside className="feed-rail" aria-label="Live on-chain activity">
+        <ActivityRail />
+      </aside>
+      </div>
     </div>
   )
 }
