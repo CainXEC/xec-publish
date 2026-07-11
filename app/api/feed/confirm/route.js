@@ -9,6 +9,7 @@ import { priceFeedPost } from '@/lib/feedPricing'
 import { contentHashHex, FEED_ACTION } from '@/lib/feedProtocol'
 import { findFeedPayment, verifyFeedTxid } from '@/lib/verifyFeedPost'
 import { resolveOrCreateAccount } from '@/lib/walletAuth'
+import { displayHandlesByAccountId } from '@/lib/authorDisplayHandles'
 import { isBlockedPair } from '@/lib/feedBlocks'
 import { recordFeedNotification } from '@/lib/feedNotifications'
 import {
@@ -31,6 +32,25 @@ function normalizeAction(action) {
 function identityFor(address, handle) {
   const h = typeof handle === 'string' ? handle.trim() : ''
   return h ? `@${h}` : address
+}
+
+/**
+ * The live byline fields the feed renders server-side (attachLiveIdentity in
+ * getFeed): the account's current "@handle" + its handle color, or the raw
+ * address (no color) if it holds no handle. Attaching these to the returned post
+ * lets a client optimistically prepend it with the RIGHT color instead of the
+ * default neon — otherwise a purple-handle poster's fresh post shows green until
+ * the next server render.
+ */
+async function liveDisplayFields(supabase, row) {
+  const fallback = row?.payer_address || row?.author_identity || null
+  if (!row?.author_account_id) return { displayIdentity: fallback, displayColor: null }
+  const map = await displayHandlesByAccountId([row.author_account_id], supabase)
+  const entry = map[row.author_account_id]
+  return {
+    displayIdentity: entry?.handle ? `@${entry.handle}` : fallback,
+    displayColor: entry?.color ?? null,
+  }
 }
 
 /**
@@ -149,7 +169,8 @@ export async function POST(request) {
     .eq('txid', match.txid)
     .maybeSingle()
   if (already) {
-    return NextResponse.json({ ok: true, status: 'posted', post: { ...already, replyCount: 0 } })
+    const display = await liveDisplayFields(supabase, already)
+    return NextResponse.json({ ok: true, status: 'posted', post: { ...already, replyCount: 0, ...display } })
   }
 
   const resolved = await resolveOrCreateAccount(match.payerAddress)
@@ -197,7 +218,8 @@ export async function POST(request) {
         .eq('txid', match.txid)
         .maybeSingle()
       if (raced) {
-        return NextResponse.json({ ok: true, status: 'posted', post: { ...raced, replyCount: 0 } })
+        const display = await liveDisplayFields(supabase, raced)
+        return NextResponse.json({ ok: true, status: 'posted', post: { ...raced, replyCount: 0, ...display } })
       }
     }
     return NextResponse.json({ error: insertError.message }, { status: 500 })
@@ -228,10 +250,11 @@ export async function POST(request) {
   // feed writes are payment-gated, so this can't thrash the cache.
   revalidateTag(FEED_CACHE_TAG)
 
+  const display = await liveDisplayFields(supabase, inserted)
   const response = NextResponse.json({
     ok: true,
     status: 'posted',
-    post: { ...inserted, replyCount: 0 },
+    post: { ...inserted, replyCount: 0, ...display },
   })
 
   // Pay doubles as login: mint a 'pay'-scope session for the payer (never
