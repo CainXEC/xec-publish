@@ -280,16 +280,27 @@ export async function GET() {
   // reconcile sweep — don't make the rail wear "finalizing…" for a minute of
   // display lag. For the handful of still-pending rows on the page, ask
   // Chronik directly (read-only; reconcile still owns the DB write).
+  //
+  // This must never slow the rail down: rows are pending only in the short
+  // window between a 0-conf action and the next sweep, so this set is almost
+  // always EMPTY (zero Chronik calls, zero added latency) — and when it isn't,
+  // the whole batch races a hard 500ms budget. Chronik slow? The response
+  // returns anyway and the rows simply stay provisional until the sweep.
   const pending = page.filter((i) => !i.final && i.txid).slice(0, 8);
-  await Promise.all(
-    pending.map(async (i) => {
-      try {
-        if (await isTxFinal(i.txid as string)) i.final = true;
-      } catch {
-        /* Chronik down — the row just keeps its provisional state */
-      }
-    })
-  );
+  if (pending.length > 0) {
+    await Promise.race([
+      Promise.all(
+        pending.map(async (i) => {
+          try {
+            if (await isTxFinal(i.txid as string)) i.final = true;
+          } catch {
+            /* Chronik down — the row just keeps its provisional state */
+          }
+        })
+      ),
+      new Promise((resolve) => setTimeout(resolve, 500)),
+    ]);
+  }
 
   return NextResponse.json(
     { ok: true, items: page },
