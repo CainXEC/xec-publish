@@ -39,10 +39,15 @@ const VERB = {
   follow: 'followed you',
 }
 
-// An offer names the handle it courts (decorated server-side onto the row).
+// An offer names the handle it courts and, when the bidder named a price,
+// the amount (both decorated server-side onto the row). The bell is only
+// ever the HOLDER's view, so the amount is theirs to see.
 function notifText(n) {
   if (n.type === 'offer') {
-    return n.handle ? `made an offer on @${n.handle}` : 'made an offer on your handle'
+    const name = n.handle ? `@${n.handle}` : 'your handle'
+    return n.offerAmountXec != null
+      ? `offered ${Number(n.offerAmountXec).toLocaleString()} XEC for ${name}`
+      : `made an offer on ${name}`
   }
   return VERB[n.type] ?? 'interacted with your post'
 }
