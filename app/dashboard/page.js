@@ -101,13 +101,58 @@ export default async function DashboardPage() {
       : Promise.resolve({ data: [] }),
     supabase
       .from('feed_follows')
-      .select('follower_account_id', { count: 'exact', head: true })
-      .eq('followee_account_id', acct.accountId),
+      .select('follower_account_id, created_at')
+      .eq('followee_account_id', acct.accountId)
+      .order('created_at', { ascending: false })
+      .limit(500),
     supabase
       .from('feed_follows')
-      .select('followee_account_id', { count: 'exact', head: true })
-      .eq('follower_account_id', acct.accountId),
+      .select('followee_account_id, created_at')
+      .eq('follower_account_id', acct.accountId)
+      .order('created_at', { ascending: false })
+      .limit(500),
   ])
+
+  // Resolve each followed/following account to its display identity: the
+  // handle it presents (with its chosen color) or its primary address —
+  // both link to the /@<identifier> profile, which resolves either form.
+  const followerIds = (followersQ.data ?? []).map((r) => r.follower_account_id)
+  const followingIds = (followingQ.data ?? []).map((r) => r.followee_account_id)
+  const followAccountIds = [...new Set([...followerIds, ...followingIds])]
+  const accountCard = new Map()
+  if (followAccountIds.length > 0) {
+    const [{ data: followAccounts }, { data: followAddrs }] = await Promise.all([
+      supabase
+        .from('accounts')
+        .select('id, display_handle, handle_color')
+        .in('id', followAccountIds),
+      supabase
+        .from('account_addresses')
+        .select('account_id, address')
+        .in('account_id', followAccountIds)
+        .eq('is_primary', true),
+    ])
+    const primaryByAccount = new Map(
+      (followAddrs ?? []).map((a) => [a.account_id, String(a.address ?? '')]),
+    )
+    for (const a of followAccounts ?? []) {
+      const address = primaryByAccount.get(a.id) ?? ''
+      const bare = address.replace(/^ecash:/, '')
+      const handle = a.display_handle?.trim() || null
+      accountCard.set(a.id, {
+        id: a.id,
+        display: handle ? `@${handle}` : bare ? `${bare.slice(0, 10)}…${bare.slice(-4)}` : 'a reader',
+        color: handle ? (a.handle_color ?? null) : null,
+        href: handle
+          ? `/@${encodeURIComponent(handle)}`
+          : address
+            ? `/@${encodeURIComponent(address)}`
+            : null,
+      })
+    }
+  }
+  const followers = followerIds.map((id) => accountCard.get(id)).filter(Boolean)
+  const following = followingIds.map((id) => accountCard.get(id)).filter(Boolean)
 
   // Byline for each library entry: the author's display handle, else their
   // payout address, shortened — same convention as everywhere else.
@@ -185,8 +230,8 @@ export default async function DashboardPage() {
       viewerAccountId={acct.accountId}
       initialFeedPosts={feedPage.posts}
       library={library}
-      followerCount={followersQ.count ?? 0}
-      followingCount={followingQ.count ?? 0}
+      followers={followers}
+      following={following}
     />
   )
 }

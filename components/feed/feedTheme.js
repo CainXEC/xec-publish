@@ -659,6 +659,21 @@ html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
   .pow-feed.dash-wide .dashstats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));flex-direction:unset;}
 }
 
+/* follower/following stat cards double as toggles for the account lists */
+.pow-feed .dashstat-btn{cursor:pointer;text-align:left;font-family:inherit;width:100%;
+  transition:border-color .15s,box-shadow .15s;}
+.pow-feed .dashstat-btn:hover{border-color:var(--neon);}
+.pow-feed .dashstat-btn.on{border-color:var(--neon);box-shadow:0 0 14px rgba(0,255,156,.18);}
+.pow-feed .dashstat-btn .dashstat-label,.pow-feed .dashstat-btn .dashstat-value{display:block;}
+.pow-feed .dashstat-btn .dashstat-value{margin-top:6px;}
+.pow-feed .dashfollows{margin-top:12px;border:1px solid var(--line);border-radius:12px;
+  background:var(--panel2);padding:14px 16px;}
+.pow-feed .dashfollows-title{margin:0 0 9px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);}
+.pow-feed .dashfollows-empty{margin:4px 0 0;font-size:13px;color:var(--dim);line-height:1.5;}
+.pow-feed .dashfollows-list{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px 18px;}
+.pow-feed .dashfollow{font-size:13.5px;font-weight:700;color:var(--text);word-break:break-all;}
+.pow-feed a.dashfollow:hover{color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.35);}
+
 /* ---- the reading pane: a front-page story open in the feed's center column.
    Article typography rides in a neutralized .pow-article scope host. ---- */
 .pow-feed .hr-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 20px;}

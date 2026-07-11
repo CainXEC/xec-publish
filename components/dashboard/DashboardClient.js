@@ -273,12 +273,14 @@ export default function DashboardClient({
   initialFeedPosts = [],
   initialFeedReplies = null,
   library = [],
-  followerCount = 0,
-  followingCount = 0,
+  followers = [],
+  following = [],
 }) {
   const [posts, setPosts] = useState(initialPosts)
   const [sortMode, setSortMode] = useState('newest')
   const [librarySort, setLibrarySort] = useState('recent')
+  // Which follow list is open under the stat band: null | 'followers' | 'following'
+  const [followsOpen, setFollowsOpen] = useState(null)
   const sortedLibrary = useMemo(() => {
     const rows = [...library]
     if (librarySort === 'spent') {
@@ -688,15 +690,58 @@ export default function DashboardClient({
                 )}
               </p>
             </div>
-            <div className="dashstat">
-              <p className="dashstat-label">Followers</p>
-              <p className="dashstat-value">{Number(followerCount).toLocaleString()}</p>
-            </div>
-            <div className="dashstat">
-              <p className="dashstat-label">Following</p>
-              <p className="dashstat-value">{Number(followingCount).toLocaleString()}</p>
-            </div>
+            <button
+              type="button"
+              className={`dashstat dashstat-btn${followsOpen === 'followers' ? ' on' : ''}`}
+              aria-expanded={followsOpen === 'followers'}
+              onClick={() => setFollowsOpen((cur) => (cur === 'followers' ? null : 'followers'))}
+            >
+              <span className="dashstat-label">Followers</span>
+              <span className="dashstat-value">{followers.length.toLocaleString()}</span>
+            </button>
+            <button
+              type="button"
+              className={`dashstat dashstat-btn${followsOpen === 'following' ? ' on' : ''}`}
+              aria-expanded={followsOpen === 'following'}
+              onClick={() => setFollowsOpen((cur) => (cur === 'following' ? null : 'following'))}
+            >
+              <span className="dashstat-label">Following</span>
+              <span className="dashstat-value">{following.length.toLocaleString()}</span>
+            </button>
           </div>
+
+          {followsOpen ? (
+            <div className="dashfollows">
+              <p className="dashfollows-title">
+                {followsOpen === 'followers' ? 'Followers' : 'Following'}
+              </p>
+              {(followsOpen === 'followers' ? followers : following).length === 0 ? (
+                <p className="dashfollows-empty">
+                  {followsOpen === 'followers'
+                    ? 'No followers yet — post something worth following.'
+                    : 'Not following anyone yet.'}
+                </p>
+              ) : (
+                <ul className="dashfollows-list">
+                  {(followsOpen === 'followers' ? followers : following).map((a) => (
+                    <li key={a.id}>
+                      {a.href ? (
+                        <Link
+                          href={a.href}
+                          className="dashfollow"
+                          style={a.color ? { color: a.color } : undefined}
+                        >
+                          {a.display}
+                        </Link>
+                      ) : (
+                        <span className="dashfollow">{a.display}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : null}
 
           {bio ? <p className="dashbio">{bio}</p> : null}
           {xecAddress ? (
