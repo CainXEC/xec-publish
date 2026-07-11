@@ -15,5 +15,5 @@ export default async function PublicPostPage({ params }) {
   const cookieStore = await cookies()
   const pageProps = await preparePublicPostPageData(data, cookieStore)
 
-  return <PostPageClient {...pageProps} />
+  return <PostPageClient {...pageProps} slug={slug} />
 }

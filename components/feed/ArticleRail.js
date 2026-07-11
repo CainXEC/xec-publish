@@ -90,10 +90,10 @@ function PeekButtons({ story }) {
   )
 }
 
-function Entry({ story, open, onToggle }) {
+function Entry({ story, open, now, onToggle }) {
   return (
     <div
-      className={`np-entry${open ? ' open' : ''}`}
+      className={`np-entry${open ? ' open' : ''}${now ? ' now' : ''}`}
       onClick={(e) => {
         // The headline navigates; the rest of the entry toggles the peek.
         if (e.target.closest('a')) return
@@ -118,19 +118,23 @@ function Entry({ story, open, onToggle }) {
   )
 }
 
-export default function ArticleRail() {
+export default function ArticleRail({ minWidth = 1400, currentSlug = null }) {
   const [data, setData] = useState(null)
   const [openId, setOpenId] = useState(null)
-  // The front page only exists at ≥1400px — don't fetch where it can't show.
+  // The front page only exists above the host page's breakpoint — don't
+  // fetch where it can't show.
   const [active, setActive] = useState(false)
 
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1400px)')
+    const mq = window.matchMedia(`(min-width: ${minWidth}px)`)
     const update = () => setActive(mq.matches)
     update()
     mq.addEventListener('change', update)
     return () => mq.removeEventListener('change', update)
-  }, [])
+  }, [minWidth])
+
+  // On an article page, mark the story being read wherever it appears.
+  const isNow = (s) => Boolean(currentSlug) && s.slug === currentSlug
 
   useEffect(() => {
     if (!active) return
@@ -174,7 +178,7 @@ export default function ArticleRail() {
         <>
           <div className="np-kick">Lead story</div>
           <Link className="np-hl" href={`/posts/${lead.slug}`}>
-            <span className="np-serif np-lead-h">
+            <span className={`np-serif np-lead-h${isNow(lead) ? ' np-now' : ''}`}>
               {isFresh(lead.at) ? <span className="np-dot" aria-hidden /> : null}
               {lead.title}
             </span>
@@ -186,7 +190,13 @@ export default function ArticleRail() {
             <>
               <div className="np-sec">Latest</div>
               {latest.map((s) => (
-                <Entry key={s.id} story={s} open={openId === s.id} onToggle={() => toggle(s.id)} />
+                <Entry
+                  key={s.id}
+                  story={s}
+                  open={openId === s.id}
+                  now={isNow(s)}
+                  onToggle={() => toggle(s.id)}
+                />
               ))}
             </>
           ) : null}
@@ -196,7 +206,7 @@ export default function ArticleRail() {
               <div className="np-sec">Most read · 7 days</div>
               <div className="np-ranks">
                 {mostRead.map((s, i) => (
-                  <Link className="np-rank" key={s.id} href={`/posts/${s.slug}`}>
+                  <Link className={`np-rank${isNow(s) ? ' now' : ''}`} key={s.id} href={`/posts/${s.slug}`}>
                     <span className="np-rank-n">{i + 1}</span>
                     <span className="np-serif np-rank-h">{s.title}</span>
                     <span className="np-rank-c">{s.readers7d}</span>

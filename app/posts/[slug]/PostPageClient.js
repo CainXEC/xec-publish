@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import ActivityRail from '@/components/feed/ActivityRail'
+import ArticleRail from '@/components/feed/ArticleRail'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import { ARTICLE_CSS } from './articleTheme'
@@ -61,6 +63,7 @@ export default function PostPageClient({
   initialAuthor,
   initialUnlockCount,
   initialCommentCount,
+  slug = '',
 }) {
   const router = useRouter()
   const [post] = useState(initialPost)
@@ -772,6 +775,17 @@ export default function PostPageClient({
         <FeedTopbar signedIn={me?.accountId != null} isAuthor={me?.authorId != null} />
       </div>
 
+      {/* Desktop: the story keeps the shell — the front page stays on the
+          left (current story highlighted), the live ticker on the right.
+          The rails are .pow-feed-scoped cards, so each rides in its own
+          scope host; below the tier widths the asides are display:none and
+          the article renders exactly as before. */}
+      <div className="art-cols">
+      <aside className="art-left" aria-label="The front page — long-form writing">
+        <div className="pow-feed railhost">
+          <ArticleRail minWidth={1520} currentSlug={slug} />
+        </div>
+      </aside>
       <main className="wrap">
         <article className="article">
           <h1 className="arttitle">{post.title}</h1>
@@ -1111,6 +1125,13 @@ export default function PostPageClient({
           ) : null}
         </article>
       </main>
+
+      <aside className="art-right" aria-label="Live on-chain activity">
+        <div className="pow-feed railhost">
+          <ActivityRail minWidth={1240} />
+        </div>
+      </aside>
+      </div>
     </div>
   )
 }

@@ -30,7 +30,7 @@ export const ARTICLE_CSS = `
    that host to the article column and stop the feed theme from taking over the
    viewport (min-height/background) — the article page owns its own backdrop. */
 .pow-article .topbar-host.pow-feed{width:100%;max-width:760px;margin:0 auto;
-  min-height:0;background:none;}
+  min-height:0;background:none;position:sticky;top:0;z-index:50;}
 .pow-article .topbar-host .topbar{max-width:760px;}
 
 /* ---- column ---- */
@@ -182,4 +182,31 @@ html:not(.dark) .pow-article{
 }
 html:not(.dark) .pow-article .prose blockquote{color:#2f5b4e;}
 html:not(.dark) .pow-article .commentarea::placeholder{color:#8fb8ab;}
+
+/* ---- desktop shell: the story keeps the newspaper spread ----
+   The article column is 760px (wider than the feed's 640), so the tiers sit
+   higher than the feed page's: ticker joins at ≥1240 (760+36+330+40=1166),
+   the front page at ≥1520 (300+36+760+36+330+40=1502). Below 1240 the
+   asides are display:none and this is exactly the old standalone page.
+   Rail cards are .pow-feed-scoped; each aside carries its own scope host,
+   neutralized the same way the topbar host is. */
+.pow-article .art-left,.pow-article .art-right{display:none;}
+.pow-article .railhost.pow-feed{width:auto;margin:0;min-height:0;background:none;}
+@media (min-width:1240px){
+  .pow-article .topbar-host.pow-feed{max-width:1166px;}
+  .pow-article .topbar-host .topbar{max-width:1166px;}
+  .pow-article .art-cols{display:grid;grid-template-columns:minmax(0,760px) 330px;
+    gap:36px;justify-content:center;padding:0 20px;}
+  .pow-article .art-cols .wrap{max-width:none;width:100%;margin:0;padding-left:0;padding-right:0;}
+  .pow-article .art-right{display:block;position:sticky;top:76px;align-self:start;
+    max-height:calc(100dvh - 96px);overflow-y:auto;scrollbar-width:none;}
+}
+@media (min-width:1520px){
+  .pow-article .topbar-host.pow-feed{max-width:1502px;}
+  .pow-article .topbar-host .topbar{max-width:1502px;}
+  .pow-article .art-cols{grid-template-columns:300px minmax(0,760px) 330px;}
+  .pow-article .art-left{display:block;position:sticky;top:76px;align-self:start;
+    max-height:calc(100dvh - 96px);overflow-y:auto;scrollbar-width:none;}
+}
+.pow-article .art-left::-webkit-scrollbar,.pow-article .art-right::-webkit-scrollbar{display:none;}
 `

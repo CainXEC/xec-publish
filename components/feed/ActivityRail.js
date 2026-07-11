@@ -65,22 +65,23 @@ function targetNode(it) {
   return <span className="arow-target">{it.target}</span>
 }
 
-export default function ActivityRail() {
+export default function ActivityRail({ minWidth = 1100 }) {
   const [items, setItems] = useState(null)
-  // The rail only exists at ≥1100px — don't spend fetches or a websocket
-  // subscription on phones where it's display:none.
+  // The rail only exists above the host page's breakpoint (1100px on the
+  // feed, wider on the article page) — don't spend fetches or a websocket
+  // subscription where it's display:none.
   const [active, setActive] = useState(false)
   const knownIds = useRef(new Set())
   const freshIds = useRef(new Set())
   const nudgeTimer = useRef(null)
 
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1100px)')
+    const mq = window.matchMedia(`(min-width: ${minWidth}px)`)
     const update = () => setActive(mq.matches)
     update()
     mq.addEventListener('change', update)
     return () => mq.removeEventListener('change', update)
-  }, [])
+  }, [minWidth])
 
   const refresh = useCallback(async () => {
     try {

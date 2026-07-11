@@ -646,6 +646,8 @@ html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
 .pow-feed .np-foot a:hover{border-bottom:1px solid var(--cyan);}
 .pow-feed .np-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--neon);
   box-shadow:0 0 8px rgba(0,255,156,.8);margin-right:6px;vertical-align:2px;}
+/* the story currently being read (article page keeps this rail beside it) */
+.pow-feed .np-now,.pow-feed .np-entry.now .np-entry-h,.pow-feed .np-rank.now .np-rank-h{color:var(--neon);}
 html:not(.dark) .pow-feed .np-entry{border-bottom-color:rgba(191,230,213,.85);}
 html:not(.dark) .pow-feed .np-mast{text-shadow:none;}
 
