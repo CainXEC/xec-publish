@@ -145,8 +145,9 @@ const SHELL_CSS = `
   .pow-mkt .mkt-cols{display:grid;grid-template-columns:390px minmax(0,1fr);gap:40px;
     max-width:1560px;margin:0 auto;padding:0 28px;align-items:start;}
   .pow-mkt .mkt-rail{position:sticky;top:76px;max-width:none;margin:0;
-    max-height:calc(100dvh - 96px);overflow-y:auto;scrollbar-width:thin;
+    max-height:calc(100dvh - 96px);overflow-y:auto;scrollbar-width:none;
     display:flex;flex-direction:column;gap:26px;padding-right:4px;}
+  .pow-mkt .mkt-rail::-webkit-scrollbar{display:none;}
   .pow-mkt .mkt-main{max-width:none;margin:0;padding-top:0;border-top:none;}
 
   /* Keep the rail lean: hide the big mystery card until a name is typed (it

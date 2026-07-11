@@ -586,7 +586,7 @@ html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
     gap:36px;justify-content:center;padding:0 20px;}
   .pow-feed.has-rail .feed-cols .wrap{max-width:none;width:100%;margin:0;padding-left:0;padding-right:0;}
   .pow-feed .feed-rail{display:block;position:sticky;top:76px;align-self:start;
-    max-height:calc(100dvh - 96px);overflow-y:auto;scrollbar-width:thin;}
+    max-height:calc(100dvh - 96px);overflow-y:auto;}
 }
 /* Wide desktop: the front page joins on the left. 300+640+330 + gaps + page
    padding = 1382, so a 1440 laptop qualifies and a 1280 one keeps two panes. */
@@ -594,8 +594,13 @@ html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
   .pow-feed.has-rail .topbar{max-width:1382px;}
   .pow-feed.has-rail .feed-cols{grid-template-columns:300px minmax(0,640px) 330px;}
   .pow-feed .feed-left{display:block;position:sticky;top:76px;align-self:start;
-    max-height:calc(100dvh - 96px);overflow-y:auto;scrollbar-width:thin;}
+    max-height:calc(100dvh - 96px);overflow-y:auto;}
 }
+/* The rails scroll independently but never show a scrollbar — on systems set
+   to "always show scrollbars" (macOS with a mouse plugged in), the default
+   gray gutter would slice between the columns. Wheel/trackpad still scrolls. */
+.pow-feed .feed-left,.pow-feed .feed-rail{scrollbar-width:none;}
+.pow-feed .feed-left::-webkit-scrollbar,.pow-feed .feed-rail::-webkit-scrollbar{display:none;}
 
 /* ---- the front page (left rail): newspaper structure, terminal skin.
    Type rule: serif = writing, mono = machinery, neon = money. Same 21px
