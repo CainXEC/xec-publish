@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ComposeBox from '@/components/feed/ComposeBox'
@@ -175,7 +175,7 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
   )
 }
 
-export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = null, onDeleted, onBlocked }) {
+export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = null, onDeleted, onBlocked, mintVariant = 'full' }) {
   const router = useRouter()
   const [showReply, setShowReply] = useState(false)
   const [showQuote, setShowQuote] = useState(false)
@@ -279,11 +279,16 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
     typeof repostedBy?.identity === 'string' ? repostedBy.identity.trim() : ''
   const reposterIsHandle = reposterId.startsWith('@')
 
-  // A handle-mint card replaces the text body/embeds with the NFT card render.
+  // A handle-mint card replaces the text body/embeds with the NFT card render —
+  // except in timelines (mintVariant="compact"), where announcements ride as
+  // quiet one-line text rows: the art lives on the profile gallery, the thread
+  // page, and quote embeds. The row is still a real post (reply/quote/like all
+  // work), so the buyer's "that's me!" quote flow is untouched.
   const isMintCard = post.card_kind === 'handle_mint' && !post.deleted
+  const compactMint = isMintCard && mintVariant === 'compact'
 
   return (
-    <li className="post" onClick={openThread} style={{ cursor: 'pointer' }}>
+    <li className={`post${compactMint ? ' mintline' : ''}`} onClick={openThread} style={{ cursor: 'pointer' }}>
       {repostedBy ? (
         <div className="repostedby">
           <span aria-hidden className="reposticon">🔁</span> Reposted by{' '}
@@ -340,7 +345,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
         ) : null}
       </div>
 
-      {isMintCard ? (
+      {isMintCard && !compactMint ? (
         <MintCard post={post} />
       ) : (
         <>
@@ -438,6 +443,59 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
           ))}
         </ul>
       ) : null}
+    </li>
+  )
+}
+
+/**
+ * A collapsed run of mint announcements: when a page's time span holds more
+ * than a few mints, the server sends ONE synthetic digest entry instead of the
+ * individual rows (see buildMintEntries in lib/getFeed.js) so a mint rush reads
+ * as a single pulse line. Each named handle links to its new profile; the
+ * "+N more" overflow links to the announcer's profile — the full card gallery.
+ */
+export function MintDigestRow({ digest }) {
+  const count = Number(digest?.count) || 0
+  const named = (digest?.handles ?? []).filter((h) => h?.handle)
+  const more = Math.max(0, count - named.length)
+  const announcer =
+    typeof digest?.authorIdentity === 'string' && digest.authorIdentity.startsWith('@')
+      ? digest.authorIdentity.slice(1)
+      : null
+
+  return (
+    <li className="post mintdigest">
+      <span aria-hidden className="mintdigest-icon">🖊️</span>
+      <span className="mintdigest-text">
+        {count} handles minted
+        {named.length > 0 ? (
+          <>
+            {' — '}
+            {named.map((h, i) => (
+              <Fragment key={h.txid ?? h.handle}>
+                {i > 0 ? ', ' : ''}
+                <Link href={`/@${h.handle}`} className="mention">
+                  @{h.handle}
+                </Link>
+              </Fragment>
+            ))}
+          </>
+        ) : null}
+        {more > 0 ? (
+          announcer ? (
+            <Link href={`/@${announcer}`} className="mintdigest-more">
+              {' '}
+              +{more} more
+            </Link>
+          ) : (
+            <span className="mintdigest-more"> +{more} more</span>
+          )
+        ) : null}
+      </span>
+      <span aria-hidden className="dot">
+        ·
+      </span>
+      <span className="time">{timeAgo(digest?.created_at)}</span>
     </li>
   )
 }

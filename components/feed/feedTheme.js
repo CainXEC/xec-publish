@@ -228,6 +228,22 @@ export const FEED_CSS = `
 /* Inline @handle mention link inside a post/reply/ancestor/focused body. */
 .pow-feed .mention{color:var(--cyan);text-decoration:none;transition:text-shadow .15s;}
 .pow-feed .mention:hover{text-shadow:0 0 10px rgba(61,240,255,.45);}
+/* Mint announcements riding the timeline as quiet pulse lines: .mintline is a
+   real post rendered one-line-quiet (dim body, tighter spacing, no card art —
+   the art lives on the profile gallery, thread page, and quote embeds);
+   .mintdigest is the ONE synthetic row a busy span collapses into. */
+.pow-feed .post.mintline{padding:12px 16px;}
+.pow-feed .post.mintline .body{margin-top:4px;font-size:13px;line-height:1.5;color:var(--dim);}
+.pow-feed .post.mintline .actions{margin-top:8px;}
+.pow-feed .post.mintdigest{display:flex;align-items:baseline;gap:6px;padding:12px 16px;
+  font-size:13px;color:var(--dim);cursor:default;}
+.pow-feed .mintdigest-icon{flex:none;}
+.pow-feed .mintdigest-text{min-width:0;}
+.pow-feed .mintdigest-more{color:var(--dim);font-weight:600;text-decoration:none;transition:color .15s;}
+.pow-feed a.mintdigest-more:hover{color:var(--cyan);}
+/* Mint-card art inside a quote embed (the buyer's "that's me!" post). */
+.pow-feed .qmint-img{display:block;max-width:240px;width:100%;height:auto;margin-top:8px;
+  border:1px solid var(--line);border-radius:10px;background:#171513;}
 .pow-feed .showmore{display:inline;background:none;border:none;color:var(--cyan);font:inherit;font-size:14px;cursor:pointer;
   padding:0;margin-left:6px;transition:text-shadow .15s;}
 .pow-feed .showmore:hover{text-shadow:0 0 10px rgba(61,240,255,.5);}

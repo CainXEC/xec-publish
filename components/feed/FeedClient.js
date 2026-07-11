@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import ActivityRail from '@/components/feed/ActivityRail'
 import ArticleRail from '@/components/feed/ArticleRail'
 import ComposeBox from '@/components/feed/ComposeBox'
-import FeedPost from '@/components/feed/FeedPost'
+import FeedPost, { MintDigestRow } from '@/components/feed/FeedPost'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import HomeReader from '@/components/feed/HomeReader'
 import { FEED_CSS } from '@/components/feed/feedTheme'
@@ -110,8 +110,11 @@ export default function FeedClient({
   useEffect(() => {
     if (!signedIn || foryouPosts.length === 0) return
     let cancelled = false
-    const txids = foryouPosts.map((p) => p.txid).filter(Boolean)
-    const authorIds = [...new Set(foryouPosts.map((p) => p.author_account_id).filter(Boolean))]
+    // The mint digest is a synthetic row (its txid is a made-up stable key, and
+    // it has no author) — skip it; the server has no state to report for it.
+    const realPosts = foryouPosts.filter((p) => !p.mintDigest)
+    const txids = realPosts.map((p) => p.txid).filter(Boolean)
+    const authorIds = [...new Set(realPosts.map((p) => p.author_account_id).filter(Boolean))]
     ;(async () => {
       try {
         const res = await fetch('/api/feed/viewer-state', {
@@ -323,16 +326,21 @@ export default function FeedClient({
           </div>
         ) : (
           <ul className="panel posts">
-            {active.posts.map((post) => (
-              <FeedPost
-                key={post.txid}
-                post={post}
-                viewerAccountId={viewerAccountId}
-                onDeleted={removePost}
-                onQuoted={prependPost}
-                onBlocked={removeByAuthor}
-              />
-            ))}
+            {active.posts.map((post) =>
+              post.mintDigest ? (
+                <MintDigestRow key={post.txid} digest={post} />
+              ) : (
+                <FeedPost
+                  key={post.txid}
+                  post={post}
+                  viewerAccountId={viewerAccountId}
+                  onDeleted={removePost}
+                  onQuoted={prependPost}
+                  onBlocked={removeByAuthor}
+                  mintVariant="compact"
+                />
+              ),
+            )}
           </ul>
         )}
 

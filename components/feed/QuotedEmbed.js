@@ -71,6 +71,22 @@ export default function QuotedEmbed({ post, interactive = true }) {
           shown
         )}
       </p>
+      {/* Quoting a mint announcement is the buyer's "that's me!" moment — the
+          card art shows here (and on the thread page) even though timeline
+          rows render announcements as compact text. */}
+      {!post.deleted && post.card_kind === 'handle_mint' && post.image_url ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          className="qmint-img"
+          src={post.image_url}
+          alt={
+            typeof post.card_meta?.handle === 'string'
+              ? `@${post.card_meta.handle} handle NFT card`
+              : 'handle NFT card'
+          }
+          loading="lazy"
+        />
+      ) : null}
     </div>
   )
 }
