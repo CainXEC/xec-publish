@@ -226,6 +226,19 @@ export default function DashboardClient({
   const [unreadNotifications, setUnreadNotifications] = useState(
     () => (notifications ?? []).map((n) => ({ ...n, read: Boolean(n.read) })),
   )
+  // "Load more" pagination for the bell (mirrors the feed bell): the server prop
+  // is only the first 20 unread. cursor = oldest shown timestamp (null once a
+  // short page proves there are no more); unreadCount is the TRUE total for the
+  // badge (the prop's array caps at 20, so we can't count it locally).
+  const NOTIF_PAGE = 20
+  const [notifCursor, setNotifCursor] = useState(() => {
+    const arr = notifications ?? []
+    return arr.length >= NOTIF_PAGE ? arr[arr.length - 1]?.created_at ?? null : null
+  })
+  const [loadingMoreNotifs, setLoadingMoreNotifs] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(
+    () => (notifications ?? []).filter((n) => !n.read).length,
+  )
   const [legacySectionOpen, setLegacySectionOpen] = useState(false)
   const copyTimeoutRef = useRef(null)
 
@@ -276,10 +289,50 @@ export default function DashboardClient({
     setPosts(initialPosts)
   }, [initialPosts])
 
-  const unreadNotificationCount = useMemo(
-    () => unreadNotifications.filter((n) => !n.read).length,
-    [unreadNotifications],
-  )
+  // The badge shows the TRUE unread total, not the (≤20) loaded array. Fetch it
+  // once on mount so a 100-notification overnight batch reads "100", not "20".
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/notifications/unread-count', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && !cancelled) setUnreadCount(Number(d.count) || 0)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Append the next page of older unread notifications.
+  const loadMoreNotifs = useCallback(async () => {
+    if (!notifCursor || loadingMoreNotifs) return
+    setLoadingMoreNotifs(true)
+    try {
+      const res = await fetch(
+        `/api/notifications?before=${encodeURIComponent(notifCursor)}`,
+        { cache: 'no-store' },
+      )
+      if (res.ok) {
+        const data = await res.json()
+        const more = Array.isArray(data.notifications) ? data.notifications : []
+        setUnreadNotifications((prev) => {
+          const seen = new Set(prev.map((n) => n.id))
+          return [
+            ...prev,
+            ...more
+              .filter((n) => !seen.has(n.id))
+              .map((n) => ({ ...n, read: Boolean(n.read) })),
+          ]
+        })
+        setNotifCursor(data.nextCursor ?? null)
+      }
+    } catch {
+      /* best-effort; leave the button so the user can retry */
+    } finally {
+      setLoadingMoreNotifs(false)
+    }
+  }, [notifCursor, loadingMoreNotifs])
 
   const handleMarkAllRead = useCallback(async () => {
     try {
@@ -292,6 +345,7 @@ export default function DashboardClient({
       setUnreadNotifications((prev) =>
         prev.map((n) => ({ ...n, read: true })),
       )
+      setUnreadCount(0)
     } catch {
       /* ignore */
     }
@@ -525,8 +579,8 @@ export default function DashboardClient({
               aria-expanded={notificationsOpen}
             >
               <BellIcon size={17} />
-              {unreadNotificationCount > 0 ? (
-                <span className="dashbadge">{unreadNotificationCount}</span>
+              {unreadCount > 0 ? (
+                <span className="dashbadge">{unreadCount > 99 ? '99+' : unreadCount}</span>
               ) : null}
             </button>
           </div>
@@ -574,7 +628,7 @@ export default function DashboardClient({
             <div className="dashnotifs">
               <div className="dashnotifs-head">
                 <p className="dashnotifs-title">Notifications</p>
-                {unreadNotificationCount > 0 ? (
+                {unreadCount > 0 ? (
                   <button
                     type="button"
                     onClick={() => void handleMarkAllRead()}
@@ -618,6 +672,16 @@ export default function DashboardClient({
                   })}
                 </ul>
               )}
+              {notifCursor ? (
+                <button
+                  type="button"
+                  className="dashnotif-more"
+                  onClick={() => void loadMoreNotifs()}
+                  disabled={loadingMoreNotifs}
+                >
+                  {loadingMoreNotifs ? 'Loading…' : 'Load more'}
+                </button>
+              ) : null}
             </div>
           ) : null}
 
