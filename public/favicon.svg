@@ -1,13 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#0f1621"/>
-  <g transform="translate(256 256) rotate(45)" fill="#00ff9c">
-    <!-- rounded top cap -->
-    <circle cx="0" cy="-108" r="66"/>
-    <!-- body -->
-    <rect x="-66" y="-108" width="132" height="176"/>
-    <!-- sharpened tip -->
-    <path d="M -66 68 L 66 68 L 0 180 Z"/>
-    <!-- graphite band near the point -->
-    <path fill="#0f1621" d="M -48 98 L 48 98 L 34 122 L -34 122 Z"/>
+  <rect width="512" height="512" rx="110" fill="#0e1621"/>
+  <g transform="translate(256 256) rotate(45)">
+    <g fill="#00ff9c">
+      <circle cx="0" cy="-90" r="58"/>
+      <rect x="-58" y="-90" width="116" height="155"/>
+      <path d="M -58 65 L 58 65 L 0 150 Z"/>
+    </g>
+    <path fill="#0e1621" d="M -38 94 L 38 94 L 23 116 L -23 116 Z"/>
   </g>
 </svg>
