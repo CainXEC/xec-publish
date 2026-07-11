@@ -349,18 +349,55 @@ async function resolveHandle(handleRaw: string): Promise<ResolvedProfile | null>
     };
   }
 
-  // SLOW PATH: no account is bound to this token (e.g. a fresh paid mint that
-  // never logged in). Only here does the request block on Chronik — the current
-  // on-chain holder is the source of truth, independent of any login.
+  // SLOW PATH: no account currently DISPLAYS this handle (its token is not any
+  // account's active_handle_token_id). The on-chain holder is the source of
+  // truth. Only here does the request block on Chronik.
   const holder = await currentTokenHolder(h.token_id); // "ecash:q…" | null (Chronik down)
 
-  // Attribute the handle to an author (for their posts) via the holder address.
-  // A holder with no author -> handle-only profile (author stays null).
+  // If the holder has an account, the profile is that PERSON — show their live
+  // display identity (their active handle, or their address), NOT this URL
+  // handle. Otherwise a mint card for someone's SECOND handle would relabel them:
+  // e.g. @alice mints @bob, and clicking the @bob card would mislabel her profile
+  // "@bob" even though she presents as @alice. (@bob still appears in her handle
+  // carousel; the byline is who she is.) This mirrors the address path and the
+  // locked "byline = account's live display identity" rule.
+  const bare = holder ? normalizeAddress(holder) : null;
+  if (bare) {
+    const { data: links } = await supabase
+      .from("account_addresses")
+      .select("account_id")
+      .in("address", addressForms(bare))
+      .limit(1);
+    const accountId = links?.[0]?.account_id as string | undefined;
+    if (accountId) {
+      const { data: account } = await supabase
+        .from("accounts")
+        .select("id, author_id, display_handle, handle_color, active_handle_token_id, display_handle_checked_at")
+        .eq("id", accountId)
+        .maybeSingle();
+      if (account) {
+        // The holder's CURRENT display handle (lazily re-verified on-chain), or
+        // null if they don't present a handle -> fall back to their address.
+        const liveDisplay = await freshDisplayHandle(account as any);
+        const author = account.author_id ? await authorById(account.author_id) : null;
+        return {
+          kind: "handle",
+          author,
+          displayHandle: h.handle, // the clicked handle's card = instant carousel fallback
+          handleColor: (account as { handle_color?: string | null }).handle_color ?? null,
+          identity: liveDisplay ? `@${liveDisplay}` : bare,
+          tokenId: h.token_id,
+          holderAddress: bare,
+          cardImageUrl: (h as { image_url?: string | null }).image_url ?? null,
+        };
+      }
+    }
+  }
+
+  // No account for the holder (a fresh paid mint that never logged in), or
+  // Chronik is down: a handle-only profile whose byline IS the URL handle.
   const author = holder ? await authorForAddress(holder) : null;
-
-  // The byline color follows the current holder's account preference.
   const handleColor = holder ? await accountColorForAddress(holder) : null;
-
   return {
     kind: "handle",
     author,
@@ -368,7 +405,7 @@ async function resolveHandle(handleRaw: string): Promise<ResolvedProfile | null>
     handleColor,
     identity: `@${h.handle}`,
     tokenId: h.token_id,
-    holderAddress: holder ? normalizeAddress(holder) : null,
+    holderAddress: bare,
     cardImageUrl: (h as { image_url?: string | null }).image_url ?? null,
   };
 }
