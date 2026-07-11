@@ -335,22 +335,24 @@ export default function DashboardClient({
     }
   }, [notifCursor, loadingMoreNotifs])
 
-  const handleMarkAllRead = useCallback(async () => {
-    try {
-      const res = await fetch('/api/notifications/mark-read', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      })
-      if (!res.ok) return
-      setNotifItems((prev) =>
-        prev.map((n) => ({ ...n, read: true })),
-      )
-      setUnreadCount(0)
-    } catch {
-      /* ignore */
-    }
-  }, [])
+  // Opening the bell clears unread — auto mark-all-read, for parity with the feed
+  // bell. Optimistic (drop the badge + dim loaded items immediately), then
+  // fire-and-forget the POST; the just-read items stay visible as read history.
+  const toggleNotifications = useCallback(() => {
+    setNotificationsOpen((wasOpen) => {
+      const next = !wasOpen
+      if (next && unreadCount > 0) {
+        setUnreadCount(0)
+        setNotifItems((prev) => prev.map((n) => ({ ...n, read: true })))
+        fetch('/api/notifications/mark-read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        }).catch(() => {})
+      }
+      return next
+    })
+  }, [unreadCount])
 
   useEffect(() => {
     setCurrentPage(1)
@@ -574,7 +576,7 @@ export default function DashboardClient({
             </h1>
             <button
               type="button"
-              onClick={() => setNotificationsOpen((open) => !open)}
+              onClick={toggleNotifications}
               className="dashbell"
               aria-label="Toggle notifications"
               aria-expanded={notificationsOpen}
@@ -629,15 +631,6 @@ export default function DashboardClient({
             <div className="dashnotifs">
               <div className="dashnotifs-head">
                 <p className="dashnotifs-title">Notifications</p>
-                {unreadCount > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => void handleMarkAllRead()}
-                    className="linkbtn"
-                  >
-                    Mark all read
-                  </button>
-                ) : null}
               </div>
               {notifItems.length === 0 ? (
                 <p className="dashnotif-msg">Nothing yet.</p>
