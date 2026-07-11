@@ -48,6 +48,7 @@ export async function GET(_req, { params }) {
       publishedAt: p.initialPost?.published_at ?? p.initialPost?.created_at ?? null,
       author: {
         handle: p.initialAuthor?.display_handle?.trim() || null,
+        username: p.initialAuthor?.username?.trim() || null,
         name:
           p.initialAuthor?.display_handle?.trim() ||
           p.initialAuthor?.username?.trim() ||

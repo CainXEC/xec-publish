@@ -664,6 +664,7 @@ html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
 .pow-feed .hr-title{font-size:30px;line-height:1.22;color:var(--text);margin:4px 0 10px;font-weight:700;}
 .pow-feed .hr-meta{font-size:11.5px;color:var(--dim);margin:0 0 24px;}
 .pow-feed .hr-author{font-weight:700;}
+.pow-feed a.hr-author:hover{text-decoration:underline;text-underline-offset:2px;}
 .pow-feed .hr-paywall{border:1px solid var(--line);border-radius:12px;padding:20px 16px;margin-top:26px;text-align:center;}
 .pow-feed .hr-lockline{font-size:12.5px;color:var(--dim);margin:0 0 12px;}
 .pow-feed .hr-unlock{display:inline-block;border:1px solid var(--neon);color:var(--neon);border-radius:9px;

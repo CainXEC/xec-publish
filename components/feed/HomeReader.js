@@ -91,12 +91,28 @@ export default function HomeReader({ slug, onClose }) {
             {d.author?.name ? (
               <>
                 by{' '}
-                <span
-                  className="hr-author"
-                  style={d.author.color ? { color: d.author.color } : undefined}
-                >
-                  {d.author.handle ? `@${d.author.handle}` : d.author.name}
-                </span>
+                {d.author.handle || d.author.username ? (
+                  // Same routing as the article page's byline: the live
+                  // handle when one is held, else the legacy username path.
+                  <Link
+                    className="hr-author"
+                    href={
+                      d.author.handle
+                        ? `/@${encodeURIComponent(d.author.handle)}`
+                        : `/u/${encodeURIComponent(d.author.username)}`
+                    }
+                    style={d.author.color ? { color: d.author.color } : undefined}
+                  >
+                    {d.author.handle ? `@${d.author.handle}` : d.author.name}
+                  </Link>
+                ) : (
+                  <span
+                    className="hr-author"
+                    style={d.author.color ? { color: d.author.color } : undefined}
+                  >
+                    {d.author.name}
+                  </span>
+                )}
                 {' · '}
               </>
             ) : null}
