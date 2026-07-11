@@ -5,18 +5,20 @@ import { skeleton, validateHandleSyntax, displayHandle } from '@/lib/handleSkele
 // the confusable-folding and case rules so a silent change can't corrupt which
 // names are mintable.
 describe('skeleton', () => {
-  it('is case-insensitive (for chars outside the confusable set)', () => {
-    expect(skeleton('SimonCain')).toBe('simoncain')
-    expect(skeleton('simoncain')).toBe('simoncain')
-    // No I/l/1 here, so pure case folding: HELLO == Hello == hello.
+  it('is case-insensitive (including through the confusable set)', () => {
+    // i folds to l like I does, so case can't leak through the letter i.
+    expect(skeleton('SimonCain')).toBe('slmoncaln')
+    expect(skeleton('simoncain')).toBe('slmoncaln')
     expect(skeleton('HELLO')).toBe('hello')
     expect(skeleton('Hello')).toBe('hello')
   })
 
-  it('treats capital I and dotted lowercase i as DISTINCT (I is a bare vertical)', () => {
-    // "SIMONCAIN" has capital I -> folds to l; "SimonCain" has lowercase i -> stays.
+  it('folds capital I and dotted lowercase i TOGETHER (Option 3)', () => {
+    // The old rule kept dotted i distinct, leaking case through the letter i
+    // (the @indonesia/@Indonesia artifact). Now both fold to l and collide.
     expect(skeleton('SIMONCAIN')).toBe('slmoncaln')
-    expect(skeleton('SIMONCAIN')).not.toBe(skeleton('SimonCain'))
+    expect(skeleton('SIMONCAIN')).toBe(skeleton('SimonCain'))
+    expect(skeleton('Indonesia')).toBe(skeleton('indonesia'))
   })
 
   it('folds the bare-vertical family (capital I, lowercase l, digit 1) to one', () => {
@@ -27,16 +29,16 @@ describe('skeleton', () => {
     expect(target).toBe('allen')
   })
 
-  it('keeps leet pairs that are NOT bare-vertical distinct (0, dotted i)', () => {
-    expect(skeleton('sim0n')).toBe('sim0n') // zero is left alone
+  it('keeps leet pairs that are NOT bare-vertical distinct (0 stays 0)', () => {
+    expect(skeleton('sim0n')).toBe('slm0n') // zero is left alone; the i still folds
     expect(skeleton('sim0n')).not.toBe(skeleton('simon'))
-    // s1mon folds 1->l => "slmon", distinct from "simon"
+    // 1 IS bare-vertical: s1mon and simon both fold to "slmon" and collide.
     expect(skeleton('s1mon')).toBe('slmon')
-    expect(skeleton('s1mon')).not.toBe(skeleton('simon'))
+    expect(skeleton('s1mon')).toBe(skeleton('simon'))
   })
 
   it('strips zero-width characters before folding', () => {
-    expect(skeleton('sim\u200Bon')).toBe('simon')
+    expect(skeleton('sim\u200Bon')).toBe('slmon')
   })
 })
 
