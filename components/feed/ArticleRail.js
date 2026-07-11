@@ -54,16 +54,15 @@ function datelineToday() {
 
 // Meta line: byline · price · (readers, else recency). Readers = verified
 // on-chain unlocks — circulation, not views.
-function metaLine(s, { withLength = false } = {}) {
+function metaLine(s) {
   const parts = [s.author]
-  if (withLength && s.readMinutes) parts.push(`${s.readMinutes} min`)
   parts.push(fmtPrice(s.priceXec))
   parts.push(s.readers > 0 ? `${s.readers} reader${s.readers === 1 ? '' : 's'}` : timeAgo(s.at))
   return parts
 }
 
-function Meta({ story, withLength }) {
-  const parts = metaLine(story, { withLength })
+function Meta({ story }) {
+  const parts = metaLine(story)
   return (
     <div className="np-meta">
       {parts.map((p, i) => (
@@ -158,7 +157,6 @@ export default function ArticleRail({ minWidth = 1400, currentSlug = null }) {
 
   const toggle = (id) => setOpenId((cur) => (cur === id ? null : id))
 
-  const lead = data?.lead ?? null
   const latest = data?.latest ?? []
   const mostRead = data?.mostRead ?? []
 
@@ -172,38 +170,13 @@ export default function ArticleRail({ minWidth = 1400, currentSlug = null }) {
 
       {data === null ? (
         <p className="np-empty">Setting the type…</p>
-      ) : !lead ? (
+      ) : mostRead.length === 0 && latest.length === 0 ? (
         <p className="np-empty">The presses are warm and the front page is blank.</p>
       ) : (
         <>
-          <div className="np-kick">Lead story</div>
-          <Link className="np-hl" href={`/posts/${lead.slug}`}>
-            <span className={`np-serif np-lead-h${isNow(lead) ? ' np-now' : ''}`}>
-              {isFresh(lead.at) ? <span className="np-dot" aria-hidden /> : null}
-              {lead.title}
-            </span>
-          </Link>
-          {lead.teaser ? <p className="np-teaser np-lead-t">{lead.teaser}</p> : null}
-          <Meta story={lead} withLength />
-
-          {latest.length > 0 ? (
-            <>
-              <div className="np-sec">Latest</div>
-              {latest.map((s) => (
-                <Entry
-                  key={s.id}
-                  story={s}
-                  open={openId === s.id}
-                  now={isNow(s)}
-                  onToggle={() => toggle(s.id)}
-                />
-              ))}
-            </>
-          ) : null}
-
           {mostRead.length > 0 ? (
             <>
-              <div className="np-sec">Most read · 7 days</div>
+              <div className="np-sec np-first">Most read · 7 days</div>
               <div className="np-ranks">
                 {mostRead.map((s, i) => (
                   <Link className={`np-rank${isNow(s) ? ' now' : ''}`} key={s.id} href={`/posts/${s.slug}`}>
@@ -213,6 +186,21 @@ export default function ArticleRail({ minWidth = 1400, currentSlug = null }) {
                   </Link>
                 ))}
               </div>
+            </>
+          ) : null}
+
+          {latest.length > 0 ? (
+            <>
+              <div className={`np-sec${mostRead.length === 0 ? ' np-first' : ''}`}>Latest</div>
+              {latest.map((s) => (
+                <Entry
+                  key={s.id}
+                  story={s}
+                  open={openId === s.id}
+                  now={isNow(s)}
+                  onToggle={() => toggle(s.id)}
+                />
+              ))}
             </>
           ) : null}
         </>

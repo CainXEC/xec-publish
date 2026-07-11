@@ -29,7 +29,7 @@ const supabase = createClient(
 );
 
 const CANDIDATES = 40;
-const LATEST_N = 5;
+const LATEST_N = 6;
 const MOST_READ_N = 3;
 
 type RailStory = {
@@ -115,29 +115,25 @@ export async function GET() {
     readers7d: readers7d.get(p.id) ?? 0,
   }));
 
-  // ---- the legible ranking ----
-  const score = (s: RailStory) => {
-    const ageDays = Math.max(0, (Date.now() - Date.parse(s.at)) / 86_400_000);
-    return (1 + s.readers7d) * Math.exp(-ageDays / 3);
-  };
-  const lead = stories.length > 0 ? [...stories].sort((a, b) => score(b) - score(a))[0] : null;
-
-  const latest = stories
-    .filter((s) => s.id !== lead?.id)
-    .sort((a, b) => (a.at < b.at ? 1 : -1))
-    .slice(0, LATEST_N);
-
+  // ---- the legible ranking: MOST READ leads the page, LATEST follows,
+  //      deduped downward so a story never appears twice. (A "lead story"
+  //      slot may return later — for now readers ARE the front page.) ----
   const mostRead = stories
-    .filter((s) => s.id !== lead?.id && s.readers7d > 0)
+    .filter((s) => s.readers7d > 0)
     .sort((a, b) => b.readers7d - a.readers7d)
     .slice(0, MOST_READ_N);
+  const shown = new Set(mostRead.map((s) => s.id));
+
+  const latest = stories
+    .filter((s) => !shown.has(s.id))
+    .sort((a, b) => (a.at < b.at ? 1 : -1))
+    .slice(0, LATEST_N);
 
   return NextResponse.json(
     {
       ok: true,
       stories: storiesQ.count ?? stories.length,
       minted: mintedQ.count ?? 0,
-      lead,
       latest,
       mostRead,
     },
