@@ -72,14 +72,6 @@ export async function savePost(input = {}) {
   const priceNum = Number(input.priceXec)
   const safePrice = Number.isFinite(priceNum) ? priceNum : 100
 
-  // Same rule as the old client: explicit publish -> true; otherwise an edit
-  // preserves its checkbox state, a new draft stays false.
-  const publishedForPayload = nextPublished
-    ? true
-    : isEditMode
-      ? checkboxPublished
-      : false
-
   const payload = {
     author_id: acct.authorId,
     title,
@@ -88,7 +80,21 @@ export async function savePost(input = {}) {
     body: bodyTrimmed,
     reading_time_minutes: calculateReadingTimeMinutes(bodyTrimmed),
     price_xec: safePrice,
-    published: publishedForPayload,
+  }
+
+  // `published` is written ONLY on an intentional state change: an explicit
+  // publish, or the edit-mode checkbox (which is how an author unpublishes).
+  // A new-mode UPDATE (autosave / re-save) must not carry it at all: the
+  // editor's autosave can fire — or land, if already in flight — AFTER the
+  // publish write during the post-publish navigation window, and when it
+  // carried published:false it silently unpublished the just-published post
+  // (published_at set + published=false was the telltale row state).
+  if (nextPublished) {
+    payload.published = true
+  } else if (isEditMode) {
+    payload.published = checkboxPublished
+  } else if (!targetId) {
+    payload.published = false // fresh draft insert
   }
 
   // Server-enforced publish gate: going live requires a paid, owned draft.
