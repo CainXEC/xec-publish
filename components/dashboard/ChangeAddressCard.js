@@ -147,6 +147,12 @@ export default function ChangeAddressCard({ currentAddress, handle = null }) {
             Logins, article sales, replies and tips now use this wallet. Your old wallet stays
             linked: everything it unlocked is still yours, and it can still log in to this account.
           </p>
+          {result.absorbed ? (
+            <p className="prof-panel-sub">
+              The new wallet had an unused account here (from logging in with it once) — it was
+              folded into this one, and anything it unlocked came along.
+            </p>
+          ) : null}
           {result.handleKept && result.handle ? (
             <p className="prof-panel-sub">
               Your handle <strong>@{result.handle}</strong> came along — its NFT is already in the

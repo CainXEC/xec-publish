@@ -348,6 +348,8 @@ export type VerifyAddressChangeResult =
       handle: string | null;
       /** false when a bound handle was unbound because its NFT stayed in the old wallet */
       handleKept: boolean;
+      /** true when the new wallet's unused shell account was folded into this one */
+      absorbed: boolean;
     }
   | { ok: false; status: "awaiting_payment" | "same_address" | "address_in_use" | "error"; error?: string };
 
@@ -401,9 +403,12 @@ export async function verifyAddressChange(claim: SessionClaim): Promise<VerifyAd
         continue;
       }
 
-      // Owned by another account/author? Checked before claiming the nonce so a
-      // conflict leaves the challenge alive (the RPC re-checks inside the
-      // transaction — this early check is only for a friendlier retry).
+      // Owned by another account? An EMPTY shell (minted by a stray login with
+      // the new wallet — no posts, no paid reactions, no follows) is absorbed
+      // by the RPC, so only accounts with real activity block. Checked before
+      // claiming the nonce so a hard conflict leaves the challenge alive (the
+      // RPC re-checks transactionally — this early check is only for a
+      // friendlier retry).
       const candidateForms = [candidateBare, `ecash:${candidateBare}`];
       const { data: taken } = await supabase
         .from("account_addresses")
@@ -411,9 +416,9 @@ export async function verifyAddressChange(claim: SessionClaim): Promise<VerifyAd
         .in("address", candidateForms)
         .neq("account_id", claim.accountId)
         .limit(1);
-      if (taken?.[0]) {
+      if (taken?.[0] && !(await isAbsorbableShell(taken[0].account_id))) {
         hint = "address_in_use";
-        hintError = "That wallet already has its own account here. Log into it directly, or pay from a different wallet.";
+        hintError = "That wallet already has an account with activity on it. Log into that account and delete it if you want to reuse the wallet — or pay from a different wallet.";
         continue;
       }
 
@@ -428,8 +433,9 @@ export async function verifyAddressChange(claim: SessionClaim): Promise<VerifyAd
       if (!claimed) continue;
 
       // Atomic three-way swap (account_addresses / authors.xec_address /
-      // feed_posts.payout_address) — see sql/change_primary_address.sql.
-      const { error: rpcError } = await supabase.rpc("change_primary_address", {
+      // feed_posts.payout_address), absorbing an empty shell account when the
+      // new wallet has one — see sql/change_primary_address.sql.
+      const { data: swapResult, error: rpcError } = await supabase.rpc("change_primary_address", {
         p_account_id: claim.accountId,
         p_new_address: candidate,
       });
@@ -439,10 +445,11 @@ export async function verifyAddressChange(claim: SessionClaim): Promise<VerifyAd
           ok: false,
           status: inUse ? "address_in_use" : "error",
           error: inUse
-            ? "That wallet already belongs to another account here."
+            ? "That wallet already has an account with activity on it. Log into that account and delete it if you want to reuse the wallet."
             : rpcError.message ?? "Could not change the address.",
         };
       }
+      const absorbed = (swapResult as any)?.absorbed === true;
 
       // If a display handle is bound, it survives only if its NFT already sits
       // in the NEW wallet. Unverifiable (Chronik down) keeps the binding — the
@@ -460,7 +467,7 @@ export async function verifyAddressChange(claim: SessionClaim): Promise<VerifyAd
         maxAge: 0,
       });
 
-      return { ok: true, newAddress: candidate, oldAddress, handle, handleKept: kept };
+      return { ok: true, newAddress: candidate, oldAddress, handle, handleKept: kept, absorbed };
     }
 
     if (hint) return { ok: false, status: hint, error: hintError };
@@ -468,6 +475,37 @@ export async function verifyAddressChange(claim: SessionClaim): Promise<VerifyAd
   } catch (e: any) {
     return { ok: false, status: "error", error: e?.message ?? "address change verification failed" };
   }
+}
+
+/** True when the account currently owning the candidate wallet is an empty
+ *  shell the swap RPC will absorb: no articles, no feed posts, no paid
+ *  reactions, no follows in either direction. Advisory only — the RPC re-checks
+ *  the same conditions inside the transaction; this pre-check just keeps the
+ *  challenge alive (recoverable hint) when the account has real activity. */
+async function isAbsorbableShell(accountId: string): Promise<boolean> {
+  const { data: acct } = await supabase
+    .from("accounts")
+    .select("author_id")
+    .eq("id", accountId)
+    .maybeSingle();
+  if (!acct) return true; // vanished already — nothing to block on
+
+  const [feedPosts, feedEvents, followsOut, followsIn, posts] = await Promise.all([
+    supabase.from("feed_posts").select("id", { count: "exact", head: true }).eq("author_account_id", accountId),
+    supabase.from("feed_events").select("actor_account_id", { count: "exact", head: true }).eq("actor_account_id", accountId),
+    supabase.from("feed_follows").select("follower_account_id", { count: "exact", head: true }).eq("follower_account_id", accountId),
+    supabase.from("feed_follows").select("followee_account_id", { count: "exact", head: true }).eq("followee_account_id", accountId),
+    acct.author_id
+      ? supabase.from("posts").select("id", { count: "exact", head: true }).eq("author_id", acct.author_id)
+      : Promise.resolve({ count: 0 } as { count: number | null }),
+  ]);
+  return !(
+    (feedPosts.count ?? 0) ||
+    (feedEvents.count ?? 0) ||
+    (followsOut.count ?? 0) ||
+    (followsIn.count ?? 0) ||
+    (posts.count ?? 0)
+  );
 }
 
 /** After a swap: keep the bound display handle only if its NFT is already in

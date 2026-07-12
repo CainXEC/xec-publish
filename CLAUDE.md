@@ -22,6 +22,10 @@ https://ecashskill.vercel.app/skills/SKILL.md
   RPC change_primary_address swaps account_addresses / authors.xec_address /
   feed_posts.payout_address in one transaction; the OLD address stays linked
   (non-primary) so its unlocks keep working and it can still log in (recovery).
+  If the new wallet owns an EMPTY shell account (stray login), the RPC absorbs
+  it (addresses re-pointed, shell deleted); accounts with activity hard-block.
+  Identity (welcome/byline) always resolves from the DB primary, never the
+  session cookie's address — the cookie can lag after a swap.
 
 ## Handle NFT identity model (LOCKED)
 - Earnings always follow the account (author_id) and its payout address —
