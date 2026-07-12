@@ -394,8 +394,14 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
       )}
 
       <div className="actions">
-        <button type="button" onClick={() => setShowReply((s) => !s)} className="replybtn">
-          💬 {replyCount > 0 ? replyCount : ''} Reply
+        <button
+          type="button"
+          onClick={() => setShowReply((s) => !s)}
+          className="replybtn"
+          aria-label="Reply"
+          title="Reply"
+        >
+          💬 {replyCount > 0 ? replyCount : ''}
         </button>
         {!post.deleted ? (
           <EngagementBar

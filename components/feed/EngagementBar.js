@@ -238,9 +238,10 @@ export default function EngagementBar({
             disabled={Boolean(pending)}
             aria-pressed={liked}
             aria-haspopup="menu"
+            aria-label={liked ? 'Liked' : 'Like'}
             title={liked ? 'You liked this' : 'Tip the author'}
           >
-            {liked ? '♥' : '♡'} {likes > 0 ? likes : ''} Like
+            {liked ? '♥' : '♡'} {likes > 0 ? likes : ''}
           </button>
           {!liked && !pending ? (
             <div className="tipmenu" role="menu">
@@ -292,9 +293,10 @@ export default function EngagementBar({
           onClick={() => void startReaction('repost')}
           disabled={Boolean(pending)}
           aria-pressed={reposted}
+          aria-label="Repost"
           title={reposted ? 'You reposted this' : 'Repost · 100 XEC to the author'}
         >
-          🔁 {reposts > 0 ? reposts : ''} Repost
+          🔁 {reposts > 0 ? reposts : ''}
         </button>
 
         {canQuote ? (
@@ -302,9 +304,10 @@ export default function EngagementBar({
             type="button"
             className="quotebtn"
             onClick={() => onQuote?.()}
+            aria-label="Quote"
             title="Quote this post"
           >
-            <span aria-hidden className="qico">❝</span> {quoteCount > 0 ? quoteCount : ''} Quote
+            <span aria-hidden className="qico">❝</span> {quoteCount > 0 ? quoteCount : ''}
           </button>
         ) : null}
       </div>

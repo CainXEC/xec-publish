@@ -98,12 +98,15 @@ export default function TranslateButton({
   return (
     <span className={`tb ${className}`} ref={rootRef}>
       {active ? (
-        <>
-          <button type="button" className="tb-btn tb-on" onClick={showOriginal}>
-            Show original
-          </button>
-          <span className="tb-note">AI translation</span>
-        </>
+        <button
+          type="button"
+          className="tb-btn tb-on"
+          onClick={showOriginal}
+          aria-label="Show original"
+          title="AI translation — show original"
+        >
+          ↩
+        </button>
       ) : (
         <button
           type="button"
@@ -112,8 +115,10 @@ export default function TranslateButton({
           onClick={() => setOpen((o) => !o)}
           aria-haspopup="menu"
           aria-expanded={open}
+          aria-label="Translate"
+          title="Translate"
         >
-          {busy ? 'Translating…' : '🌐 Translate'}
+          {busy ? '🌐…' : '🌐'}
         </button>
       )}
 
@@ -141,8 +146,8 @@ export default function TranslateButton({
 
 const TB_CSS = `
 .tb{position:relative;display:inline-flex;align-items:center;gap:8px;}
-.tb-btn{background:transparent;border:none;color:inherit;font:inherit;font-size:12px;
-  cursor:pointer;opacity:.72;padding:0;white-space:nowrap;transition:opacity .12s;}
+.tb-btn{background:transparent;border:none;color:inherit;font:inherit;font-size:13px;
+  cursor:pointer;opacity:.72;padding:2px 0;white-space:nowrap;transition:opacity .12s;line-height:1.2;}
 .tb-btn:hover{opacity:1;}
 .tb-btn:disabled{opacity:.5;cursor:default;}
 .tb-on{opacity:.85;}
