@@ -4,6 +4,7 @@ import FeedTopbar from '@/components/feed/FeedTopbar'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { getAuthedAccount } from '@/lib/authHelpers'
+import { getWriteSidebarData } from '@/lib/getWriteSidebarData'
 
 // A neon shell matching the editor's pow-feed theme, for the not-found / error
 // states that render instead of the form.
@@ -63,5 +64,18 @@ export default async function EditPostPage({ params }) {
     )
   }
 
-  return <NewPostForm existingPost={post} />
+  const sidebar = await getWriteSidebarData({
+    authorId: acct.authorId,
+    accountId: acct.accountId,
+  })
+  const identity = acct.handle ? `@${acct.handle}` : acct.address
+
+  return (
+    <NewPostForm
+      existingPost={post}
+      sidebar={sidebar}
+      identity={identity}
+      handleColor={acct.handle ? acct.handleColor : null}
+    />
+  )
 }

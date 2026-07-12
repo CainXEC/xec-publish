@@ -4,6 +4,8 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import PublishPaywallModal from '@/components/dashboard/PublishPaywallModal'
+import WriteReaderPreview from '@/components/dashboard/WriteReaderPreview'
+import WriteContextRail from '@/components/dashboard/WriteContextRail'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import { warmOgImageForPost } from '@/app/dashboard/warmOgImage'
@@ -25,8 +27,21 @@ const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), {
 const DEFAULT_NEW_POST_BODY =
   '<p></p><div data-paywall-break="true"></div><p></p>'
 
-/** @param {{ existingPost?: object | null }} [props] Optional server-loaded post to edit (must include `id`). */
-export default function NewPostForm({ existingPost = null }) {
+/**
+ * @param {{
+ *   existingPost?: object | null,
+ *   sidebar?: { drafts?: Array<object>, stats?: object } | null,
+ *   identity?: string,
+ *   handleColor?: string | null,
+ * }} [props] existingPost = server-loaded post to edit (must include `id`);
+ *   sidebar/identity/handleColor feed the desktop write rails.
+ */
+export default function NewPostForm({
+  existingPost = null,
+  sidebar = null,
+  identity = '',
+  handleColor = null,
+}) {
   const router = useRouter()
   const bodyLabelId = useId()
   const editingPostId = existingPost?.id ?? null
@@ -65,6 +80,8 @@ export default function NewPostForm({ existingPost = null }) {
   )
   const [showPublishPaywall, setShowPublishPaywall] = useState(false)
   const [publishPaywallPostId, setPublishPaywallPostId] = useState(null)
+  // Focus mode collapses both desktop rails for distraction-free writing.
+  const [focusMode, setFocusMode] = useState(false)
 
   const [submitting, setSubmitting] = useState(false)
   const [publishPaymentWaiting, setPublishPaymentWaiting] = useState(false)
@@ -276,15 +293,35 @@ export default function NewPostForm({ existingPost = null }) {
   }
 
   return (
-    <div className="pow-feed">
+    <div className={`pow-feed has-rail${focusMode ? ' write-focus' : ''}`}>
       <style>{FEED_CSS}</style>
       <style>{FORM_CSS}</style>
 
       <FeedTopbar signedIn isAuthor showLogout marketplaceMobileOnly />
 
-      <main className="wrap" style={{ paddingTop: '28px' }}>
+      <div className="feed-cols">
+        <aside className="feed-left">
+          <WriteContextRail
+            drafts={sidebar?.drafts ?? []}
+            stats={sidebar?.stats ?? { unlocks: 0, earnedXec: 0, followers: 0 }}
+            body={body}
+            currentPostId={editingPostId}
+          />
+        </aside>
+
+        <main className="wrap" style={{ paddingTop: '28px' }}>
         <section className="dashpanel">
-          <h1 className="dashwelcome">{isEditMode ? 'Edit article' : 'New article'}</h1>
+          <div className="pf-head">
+            <h1 className="dashwelcome">{isEditMode ? 'Edit article' : 'New article'}</h1>
+            <button
+              type="button"
+              className="pf-focus"
+              aria-pressed={focusMode}
+              onClick={() => setFocusMode((v) => !v)}
+            >
+              {focusMode ? 'Exit focus' : 'Focus'}
+            </button>
+          </div>
 
           <form onSubmit={handleSubmit} className="pf-form">
             <div className="pf-field">
@@ -420,7 +457,18 @@ export default function NewPostForm({ existingPost = null }) {
             )}
           </form>
         </section>
-      </main>
+        </main>
+
+        <aside className="feed-rail">
+          <WriteReaderPreview
+            title={title}
+            body={body}
+            priceXec={priceXec}
+            identity={identity}
+            handleColor={handleColor}
+          />
+        </aside>
+      </div>
 
       <PublishPaywallModal
         isOpen={showPublishPaywall}
@@ -477,4 +525,64 @@ const FORM_CSS = `
 .pow-feed .pf-editor .rich-text-editor{border-color:var(--line)!important;background:var(--panel2)!important;}
 .pow-feed .pf-editor [role="toolbar"]{background:var(--panel)!important;border-color:var(--line)!important;}
 @media (prefers-reduced-motion:reduce){.pow-feed .pf-spinner{animation:none!important;}}
+
+/* panel header row: title + focus toggle */
+.pow-feed .pf-head{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.pow-feed .pf-focus{background:transparent;border:1px solid var(--line);color:var(--dim);border-radius:8px;
+  padding:5px 12px;font:inherit;font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;
+  transition:border-color .15s,color .15s;}
+.pow-feed .pf-focus:hover{border-color:var(--cyan);color:var(--cyan);}
+.pow-feed .pf-focus[aria-pressed="true"]{border-color:var(--neon);color:var(--neon);}
+/* Focus mode: the rail CONTENTS vanish but their grid tracks stay, so only the
+   sides disappear — the writing column doesn't move a pixel. (display:none would
+   collapse the tracks and shift the center, since the 300/330 rails aren't
+   symmetric.) */
+.pow-feed.write-focus .feed-left,.pow-feed.write-focus .feed-rail{visibility:hidden;}
+
+/* ---- right rail: live reader preview (WriteReaderPreview) ---- */
+.pow-feed .wp{padding-top:28px;display:flex;flex-direction:column;gap:12px;}
+.pow-feed .wp-eyebrow{margin:0;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);}
+.pow-feed .wp-card{display:flex;flex-direction:column;gap:6px;padding:14px 16px;border:1px solid var(--line);
+  border-radius:12px;background:var(--panel);}
+.pow-feed .wp-card-tag{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--neon);}
+.pow-feed .wp-card-title{font-size:16px;font-weight:700;line-height:1.35;color:var(--text);}
+.pow-feed .wp-card-teaser{font-size:13px;line-height:1.5;color:var(--dim);}
+.pow-feed .wp-card-meta{margin-top:2px;font-size:12px;color:var(--dim);}
+.pow-feed .wp-card-price{color:var(--cyan);}
+.pow-feed .wp-dim{opacity:.7;}
+.pow-feed .wp-lock{display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:10px;
+  border:1px solid var(--line);background:rgba(0,255,156,.07);font-size:12px;line-height:1.45;color:var(--neon);}
+.pow-feed .wp-lock-icon{flex:none;}
+.pow-feed .wp-lock-warn{background:rgba(255,92,108,.08);color:var(--no);}
+.pow-feed .wp-lock-free{background:transparent;color:var(--dim);}
+.pow-feed .wp-money{border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:12px 14px;
+  display:flex;flex-direction:column;gap:6px;}
+.pow-feed .wp-money-row{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--dim);}
+.pow-feed .wp-money-row strong{color:var(--text);font-weight:700;font-variant-numeric:tabular-nums;}
+.pow-feed .wp-money-proj{margin-top:6px;padding-top:8px;border-top:1px solid var(--line);
+  display:flex;flex-direction:column;gap:6px;}
+.pow-feed .wp-money-proj strong{color:var(--neon);}
+
+/* ---- left rail: author context (WriteContextRail) ---- */
+.pow-feed .wc{padding-top:28px;display:flex;flex-direction:column;gap:16px;}
+.pow-feed .wc-eyebrow{margin:0;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);}
+.pow-feed .wc-drafts{display:flex;flex-direction:column;gap:2px;}
+.pow-feed .wc-draft{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;font-size:13px;
+  color:var(--dim);text-decoration:none;transition:background .12s,color .12s;}
+.pow-feed a.wc-draft:hover{background:rgba(0,255,156,.06);color:var(--text);}
+.pow-feed .wc-draft.is-current{background:rgba(0,255,156,.08);color:var(--neon);}
+.pow-feed .wc-draft-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pow-feed .wc-draft-state{flex:none;font-size:11px;color:var(--dim);}
+.pow-feed .wc-empty{color:var(--dim);font-size:12px;}
+.pow-feed .wc-dot{flex:none;width:7px;height:7px;border-radius:50%;background:var(--dim);}
+.pow-feed .wc-dot-pub{background:var(--neon);}
+.pow-feed .wc-dot-draft{background:var(--dim);}
+.pow-feed .wc-dot-new{background:var(--cyan);}
+.pow-feed .wc-stats{display:flex;flex-direction:column;gap:10px;padding-top:14px;border-top:1px solid var(--line);}
+.pow-feed .wc-stat{display:flex;flex-direction:column;gap:2px;}
+.pow-feed .wc-stat-label{font-size:11px;color:var(--dim);}
+.pow-feed .wc-stat-val{font-size:17px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;}
+.pow-feed .wc-stat-unit{font-size:11px;font-weight:400;color:var(--dim);}
+.pow-feed .wc-writing{display:flex;justify-content:space-between;padding-top:14px;border-top:1px solid var(--line);
+  font-size:11px;color:var(--dim);}
 `
