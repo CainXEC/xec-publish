@@ -27,7 +27,7 @@ export async function GET() {
 
   const { data: account } = await supabase
     .from("accounts")
-    .select("id, author_id, display_handle, handle_color, active_handle_token_id")
+    .select("id, author_id, display_handle, handle_color, active_handle_token_id, account_addresses(address, is_primary)")
     .eq("id", claim.accountId)
     .maybeSingle();
 
@@ -35,17 +35,21 @@ export async function GET() {
     return NextResponse.json({ authenticated: false });
   }
 
+  // The account's LIVE primary address — the cookie's address can lag after a
+  // change-address swap (an in-flight rolling refresh re-signs the old claim),
+  // and a login from a still-linked old wallet carries that wallet's address.
+  // Identity follows the DB, matching getAuthedAccount.
+  const addrRows = Array.isArray(account.account_addresses) ? account.account_addresses : [];
+  const primaryAddress =
+    addrRows.find((r: any) => r?.is_primary === true)?.address ?? claim.address;
+
   // which posts has this ACCOUNT unlocked? Unlocks are keyed by payer_address
   // and the account may have proven several wallets (e.g. after a change-address
   // swap the old wallet stays linked), so match every linked address in both
   // stored forms — same pattern as the dashboard library.
-  const { data: addrRows } = await supabase
-    .from("account_addresses")
-    .select("address")
-    .eq("account_id", claim.accountId);
   const forms = [
     ...new Set(
-      [claim.address, ...(addrRows ?? []).map((r) => String(r.address ?? ""))]
+      [claim.address, ...addrRows.map((r: any) => String(r?.address ?? ""))]
         .filter(Boolean)
         .map((a) => a.toLowerCase().replace(/^ecash:/, ""))
         .flatMap((bare) => [bare, `ecash:${bare}`]),
@@ -77,10 +81,10 @@ export async function GET() {
     accountId: account.id,
     authorId: account.author_id ?? null,
     isAdmin,
-    address: claim.address,
+    address: primaryAddress,
     handle: account.display_handle ?? null,
     handleColor: account.handle_color ?? null,
-    identity: account.display_handle ? `@${account.display_handle}` : claim.address,
+    identity: account.display_handle ? `@${account.display_handle}` : primaryAddress,
     unlockedPostIds,
   });
 }

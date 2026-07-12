@@ -45,10 +45,11 @@ export async function getAuthedAccount(): Promise<AuthedAccount | null> {
   if (!claim) return null;
 
   // One round-trip: the author's is_admin comes embedded via the
-  // accounts.author_id -> authors FK instead of a second sequential query.
+  // accounts.author_id -> authors FK, and the linked addresses via the
+  // account_addresses FK, instead of extra sequential queries.
   const { data: account } = await supabase
     .from("accounts")
-    .select("id, author_id, display_handle, handle_color, authors(is_admin)")
+    .select("id, author_id, display_handle, handle_color, authors(is_admin), account_addresses(address, is_primary)")
     .eq("id", claim.accountId)
     .maybeSingle();
   if (!account) return null;
@@ -58,14 +59,23 @@ export async function getAuthedAccount(): Promise<AuthedAccount | null> {
 
   const handle = account.display_handle ?? null;
 
+  // The account's LIVE primary address, not the one baked into the cookie at
+  // issue time. After a change-address swap the cookie can lag (a rolling
+  // refresh that was in flight during the swap re-signs the old claim), and a
+  // login from a still-linked old wallet carries that wallet's address — in
+  // both cases the account's identity/payout wallet is the DB primary.
+  const addrRows = Array.isArray(account.account_addresses) ? account.account_addresses : [];
+  const primary = addrRows.find((r: any) => r?.is_primary === true)?.address ?? null;
+  const address = primary ?? claim.address;
+
   return {
     accountId: account.id,
     authorId: account.author_id ?? null,
-    address: claim.address,
+    address,
     isAdmin,
     handle,
     handleColor: account.handle_color ?? null,
-    identity: handle ? `@${handle}` : claim.address,
+    identity: handle ? `@${handle}` : address,
   };
 }
 
