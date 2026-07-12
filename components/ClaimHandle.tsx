@@ -15,6 +15,7 @@ import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { renderMysteryCard } from "@/lib/renderHandleCard";
 import { watchPaymentAddress, prewarmPaymentWatch } from "@/lib/ecash/watchPaymentAddress";
+import { payWithCashtab } from "@/lib/ecash/cashtabPay";
 
 type Started = {
   ok: true;
@@ -56,6 +57,13 @@ export default function ClaimHandle({ signedIn = false }: { signedIn?: boolean }
 
   // Cashtab web deep link — RAW bip21 (no encodeURIComponent), same as the mint page.
   const cashtabUrl = started ? `https://cashtab.com/#/send?bip21=${started.bip21}` : "#";
+
+  // Cashtab extension if the claimant has it (in-page popup, no tab), else a
+  // Cashtab web tab — exactly one, never both. QR/address below is the fallback.
+  const openCashtab = () => {
+    if (!started) return;
+    void payWithCashtab({ bip21: started.bip21, cashtabUrl });
+  };
 
   const copyAddr = async () => {
     if (!started) return;
@@ -188,7 +196,7 @@ export default function ClaimHandle({ signedIn = false }: { signedIn?: boolean }
               <p className="payhead">Send <strong>{started.amountXec} XEC</strong> to prove you hold <strong>@{started.handle}</strong></p>
               <p className="warnline">Send from <strong>Cashtab</strong> — the wallet you send from is where your NFT lands. Don’t use Electrum ABC (it can’t hold NFTs safely).</p>
               <div className="qr"><QRCodeSVG value={started.bip21} size={188} bgColor="#dffff2" fgColor="#05130d" /></div>
-              <a className="cta" href={cashtabUrl} target="_blank" rel="noreferrer">Open in Cashtab</a>
+              <button type="button" className="cta" onClick={openCashtab}>Open in Cashtab</button>
               <p className="addr" title={started.proofAddress}>{started.proofAddress}</p>
               <button className="copybtn" onClick={copyAddr}>{copied ? "copied \u2713" : "copy address"}</button>
               <p className="poll">{statusMsg}{secondsLeft != null && secondsLeft > 0 && <span className="timer"> · expires in {mm}:{ss}</span>}</p>

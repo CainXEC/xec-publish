@@ -17,6 +17,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { QRCodeSVG } from 'qrcode.react'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
+import { payWithCashtab } from '@/lib/ecash/cashtabPay'
 
 export default function ChangeAddressCard({ currentAddress, handle = null }) {
   const router = useRouter()
@@ -29,6 +30,13 @@ export default function ChangeAddressCard({ currentAddress, handle = null }) {
 
   // RAW bip21 (no encodeURIComponent), same as WalletLogin — carries the nonce.
   const cashtabUrl = started ? `https://cashtab.com/#/send?bip21=${started.bip21Url}` : '#'
+
+  // Cashtab extension if present (in-page popup, no tab), else a Cashtab web tab
+  // — exactly one, never both. The QR/address below is the fallback.
+  const openCashtab = () => {
+    if (!started) return
+    void payWithCashtab({ bip21: started.bip21Url, cashtabUrl })
+  }
 
   const begin = useCallback(async () => {
     setNotice('')
@@ -201,9 +209,9 @@ export default function ChangeAddressCard({ currentAddress, handle = null }) {
                 ) : null}
               </p>
               <div className="addrx-actions">
-                <a className="dashbtn" href={cashtabUrl} target="_blank" rel="noreferrer">
+                <button type="button" className="dashbtn" onClick={openCashtab}>
                   Open Cashtab
-                </a>
+                </button>
                 <button type="button" className="ghost" onClick={copyAddr}>
                   {copied ? 'copied ✓' : 'copy address'}
                 </button>

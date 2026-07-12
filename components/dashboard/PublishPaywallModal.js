@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { triggerPaymentSuccessEffect } from '@/lib/paymentSuccessEffect'
 import { buildPublishFeeBip21 } from '@/lib/paymentSplit'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
+import { payWithCashtab } from '@/lib/ecash/cashtabPay'
 import {
   getSharedAudioContext,
   primeAudioContextOnUserGesture,
@@ -266,14 +267,30 @@ export default function PublishPaywallModal({
     )
   }, [platformAddressForLatestTx, postId, stopPublishFeePolling])
 
-  function openPublishCashtab(url) {
-    if (!url || typeof window === 'undefined') return
+  function openPublishCashtab() {
+    if (!publishFeeCashtabUrl || typeof window === 'undefined') return
     try {
       sessionStorage.setItem('pollingActive', 'true')
     } catch {
       /* ignore */
     }
-    window.open(url, '_blank', 'noopener,noreferrer')
+    // Cashtab extension if the author has it (in-page popup, no tab), else a
+    // Cashtab web tab — exactly one. Rejecting in the extension popup drops
+    // back out of the waiting state.
+    void payWithCashtab({
+      bip21: publishFeeBip21Url,
+      cashtabUrl: publishFeeCashtabUrl,
+    }).then((res) => {
+      if (!res.ok && res.reason === 'denied') {
+        stopPublishFeePolling()
+        setWaiting(false)
+        try {
+          sessionStorage.removeItem('pollingActive')
+        } catch {
+          /* ignore */
+        }
+      }
+    })
     onCashtabOpened?.()
   }
 
@@ -297,7 +314,7 @@ export default function PublishPaywallModal({
         void primeAudioContextOnUserGesture(ctx)
       }
     }
-    openPublishCashtab(publishFeeCashtabUrl)
+    openPublishCashtab()
     startPublishFeePolling()
     setWaiting(true)
   }

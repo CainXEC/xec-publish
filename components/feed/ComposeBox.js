@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
+import { beginCashtabPayment, completeCashtabPayment, abortCashtabPayment } from '@/lib/ecash/cashtabPay'
 
 /**
  * Compose + pay flow for a feed post, reply, or quote. Shared by the top-of-feed
@@ -92,14 +93,10 @@ export default function ComposeBox({
     // Warm the shared Chronik ws now (before /prepare + Cashtab approval) so the
     // payment-address subscription is live the moment the payment lands.
     prewarmPaymentWatch()
-    // Open the tab synchronously inside the click gesture, then point it at
-    // Cashtab once /prepare returns. Opening after the await would be swallowed
-    // by popup blockers, so we grab the handle now and set its URL later.
-    // NOTE: no 'noopener' feature here — with it, window.open returns null and
-    // we'd lose the handle. We sever the opener link manually once it's open.
-    const payWindow =
-      typeof window !== 'undefined' ? window.open('about:blank', '_blank') : null
-    if (payWindow) payWindow.opener = null
+    // Decide extension-vs-tab AT the click gesture (never both). With the
+    // Cashtab extension this opens nothing; without it, it pre-opens about:blank
+    // so the deep link survives popup blockers once /prepare returns.
+    const gesture = beginCashtabPayment()
     try {
       const res = await fetch('/api/feed/prepare', {
         method: 'POST',
@@ -108,17 +105,25 @@ export default function ComposeBox({
       })
       const data = await res.json()
       if (!res.ok || !data.ok) {
-        payWindow?.close()
+        abortCashtabPayment(gesture)
         setNotice(data.error || 'Could not start the payment. Try again.')
         return
       }
-      if (payWindow) {
-        payWindow.location.href = data.cashtabUrl
-      }
+      // Extension popup or the pre-opened tab — exactly one. A rejected popup
+      // drops back to the composer with the draft intact.
+      void completeCashtabPayment(gesture, {
+        bip21: data.bip21Url,
+        cashtabUrl: data.cashtabUrl,
+      }).then((r) => {
+        if (!r.ok && r.reason === 'denied') {
+          resetToCompose()
+          setNotice('Payment cancelled — your draft is safe.')
+        }
+      })
       setIntent(data)
       setPhase('paying')
     } catch {
-      payWindow?.close()
+      abortCashtabPayment(gesture)
       setNotice('Network hiccup — try again.')
     } finally {
       setSubmitting(false)

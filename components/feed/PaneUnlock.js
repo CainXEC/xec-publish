@@ -22,6 +22,7 @@ import Link from 'next/link'
 import { buildPaywallBip21, computePaymentSplit } from '@/lib/paymentSplit'
 import { encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
+import { payWithCashtab } from '@/lib/ecash/cashtabPay'
 import { triggerPaymentSuccessEffect } from '@/lib/paymentSuccessEffect'
 
 export default function PaneUnlock({ postId, priceXec, authorAddress, slug, onUnlocked }) {
@@ -132,7 +133,15 @@ export default function PaneUnlock({ postId, priceXec, authorAddress, slug, onUn
     // can't outrun the watcher's handshake.
     prewarmPaymentWatch()
     setPhase('watching')
-    window.open(cashtabUrl, '_blank', 'noopener,noreferrer')
+    // Cashtab extension if the reader has it (in-page popup, no tab), else a
+    // Cashtab web tab — exactly one. If they reject in the extension popup,
+    // drop back to idle instead of waiting forever.
+    void payWithCashtab({ bip21, cashtabUrl }).then((res) => {
+      if (!res.ok && res.reason === 'denied' && !doneRef.current) {
+        stop()
+        setPhase('idle')
+      }
+    })
 
     stop()
     doneRef.current = false

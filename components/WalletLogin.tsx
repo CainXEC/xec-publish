@@ -11,6 +11,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { watchPaymentAddress, prewarmPaymentWatch } from "@/lib/ecash/watchPaymentAddress";
+import { payWithCashtab } from "@/lib/ecash/cashtabPay";
 
 type Started = {
   ok: true;
@@ -36,7 +37,10 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
   const openCashtab = useCallback(() => {
     if (!started || typeof window === "undefined") return;
     cashtabOpenedRef.current = true;
-    window.open(cashtabUrl, "_blank", "noopener,noreferrer");
+    // Cashtab extension if present (in-page popup, no tab), else a Cashtab web
+    // tab — exactly one, never both. The QR/address fallback below covers a
+    // rejected extension popup, so no extra reset is needed here.
+    void payWithCashtab({ bip21: started.bip21Url, cashtabUrl });
   }, [started, cashtabUrl]);
 
   const copyAddr = async () => {
@@ -148,7 +152,7 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
       {phase === "proving" && started && (
         <div className="pay">
           <p className="poll">Waiting for your {started.amountXec} XEC login payment{secondsLeft != null && secondsLeft > 0 && <span className="timer"> · expires in {mm}:{ss}</span>}</p>
-          <a className="cta" href={cashtabUrl} target="_blank" rel="noreferrer" onClick={() => { cashtabOpenedRef.current = true; }}>Open Cashtab</a>
+          <button type="button" className="cta" onClick={openCashtab}>Open Cashtab</button>
           <p className="fallback">Cashtab didn’t open? Scan the code or use the address below.</p>
           <div className="qr"><QRCodeSVG value={started.bip21Url} size={188} bgColor="#dffff2" fgColor="#05130d" /></div>
           <p className="addr" title={started.proofAddress}>{started.proofAddress}</p>

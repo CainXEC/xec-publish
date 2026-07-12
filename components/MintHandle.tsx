@@ -15,6 +15,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { renderMysteryCard } from "@/lib/renderHandleCard";
 import { watchPaymentAddress, prewarmPaymentWatch } from "@/lib/ecash/watchPaymentAddress";
+import { payWithCashtab, beginCashtabPayment, completeCashtabPayment, abortCashtabPayment } from "@/lib/ecash/cashtabPay";
 import MintCounter from "@/components/MintCounter";
 
 type Availability = { available?: boolean; status: string; priceXec?: number; tier?: string; auctionOnly?: boolean; reason?: string };
@@ -117,12 +118,11 @@ export default function MintHandle({ signedIn = false }: { signedIn?: boolean })
         void audioCtxRef.current.resume();
       }
     } catch { /* no audio — reveal is still silent-safe */ }
-    // Open the Cashtab tab synchronously inside the click gesture so popup
-    // blockers don't eat it, then redirect it once the intent (and its bip21)
-    // lands. Opening with a handle (no noopener) is what lets us set its URL
-    // later; we null the opener before navigating to a trusted external site.
-    const cashtabWindow =
-      typeof window !== "undefined" ? window.open("about:blank", "_blank") : null;
+    // Decide extension-vs-tab AT the click gesture (never both). With the
+    // Cashtab extension this opens nothing; without it, it pre-opens about:blank
+    // so the deep link survives popup blockers once the intent (and its bip21)
+    // lands.
+    const gesture = beginCashtabPayment();
     try {
       const r = await fetch("/api/mint/intent", {
         method: "POST",
@@ -131,22 +131,33 @@ export default function MintHandle({ signedIn = false }: { signedIn?: boolean })
       });
       const j = await r.json();
       if (!j.ok) {
-        cashtabWindow?.close();
+        abortCashtabPayment(gesture);
         setNotice(STATUS_COPY[j.status] ?? j.reason ?? j.error ?? "Couldn't start the mint. Try again.");
         return;
       }
       setIntent(j);
       setPhase("pay");
       const url = `https://cashtab.com/#/send?bip21=${j.bip21Url}`;
-      if (cashtabWindow) {
-        cashtabWindow.opener = null;
-        cashtabWindow.location.href = url;
-      }
+      // Extension popup or the pre-opened tab — exactly one. On a rejected popup
+      // we stay on the pay screen; the QR and "Open in Cashtab" below let them
+      // retry against the already-locked handle.
+      void completeCashtabPayment(gesture, { bip21: j.bip21Url, cashtabUrl: url }).then((res) => {
+        if (!res.ok && res.reason === "denied") {
+          setNotice("Mint payment cancelled — use “Open in Cashtab” or the QR code to try again.");
+        }
+      });
     } catch {
-      cashtabWindow?.close();
+      abortCashtabPayment(gesture);
       setNotice("Network hiccup — try again.");
     }
   }, [display]);
+
+  // Re-open Cashtab from the pay screen (intent already in hand): extension if
+  // present, else a web tab — exactly one, never both.
+  const openCashtab = () => {
+    if (!intent) return;
+    void payWithCashtab({ bip21: intent.bip21Url, cashtabUrl });
+  };
 
   // ---- poll status while paying ----
   useEffect(() => {
@@ -384,7 +395,7 @@ export default function MintHandle({ signedIn = false }: { signedIn?: boolean })
             <>
               <p className="payhead">Send <strong>{intent.amountXec} XEC</strong> to mint <strong>@{intent.handle}</strong></p>
               <div className="qr"><QRCodeSVG value={intent.bip21Url} size={188} bgColor="#dffff2" fgColor="#05130d" /></div>
-              <a className="cta" href={cashtabUrl} target="_blank" rel="noreferrer">Open in Cashtab</a>
+              <button type="button" className="cta" onClick={openCashtab}>Open in Cashtab</button>
               <p className="addr" title={intent.address}>{intent.address}</p>
               <button className="copybtn" onClick={copyAddr}>{copied ? "copied \u2713" : "copy address"}</button>
               <p className="poll">{statusMsg}{secondsLeft != null && secondsLeft > 0 && <span className="timer"> · pay within {mm}:{ss}</span>}</p>

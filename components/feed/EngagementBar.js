@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { normalizeTipXec } from '@/lib/feedPricing'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
+import { beginCashtabPayment, completeCashtabPayment, abortCashtabPayment } from '@/lib/ecash/cashtabPay'
 
 // Quick-pick tip amounts (XEC) shown in the like menu; the field takes any custom
 // amount. Labels abbreviate the thousands.
@@ -95,12 +96,11 @@ export default function EngagementBar({
       startingRef.current = true
       setNotice('')
       setTipError('')
-      // Open the tab synchronously inside the click gesture (popup blockers
-      // swallow a window.open that happens after an await), then point it at
-      // Cashtab once /prepare returns.
-      const payWindow =
-        typeof window !== 'undefined' ? window.open('about:blank', '_blank') : null
-      if (payWindow) payWindow.opener = null
+      // Decide extension-vs-tab AT the click gesture (never both). With the
+      // Cashtab extension this opens nothing; without it, it pre-opens
+      // about:blank so the deep link survives popup blockers once /prepare
+      // returns.
+      const gesture = beginCashtabPayment()
       // Warm the shared ws and flip the button optimistically so the reaction
       // feels instant; both are undone below if the payment can't be started.
       prewarmPaymentWatch()
@@ -117,16 +117,28 @@ export default function EngagementBar({
         })
         const data = await res.json()
         if (!res.ok || !data.ok) {
-          payWindow?.close()
+          abortCashtabPayment(gesture)
           revertReaction(action)
           setNotice(data.error || 'Could not start the payment. Try again.')
           return
         }
-        if (payWindow) payWindow.location.href = data.cashtabUrl
+        // Extension popup or the pre-opened tab — exactly one. A rejected popup
+        // undoes the optimistic flip.
+        void completeCashtabPayment(gesture, {
+          bip21: data.bip21Url,
+          cashtabUrl: data.cashtabUrl,
+        }).then((r) => {
+          if (!r.ok && r.reason === 'denied') {
+            revertReaction(action)
+            setPending(null)
+            setIntent(null)
+            setNotice('Payment cancelled.')
+          }
+        })
         setIntent(data)
         setPending(action)
       } catch {
-        payWindow?.close()
+        abortCashtabPayment(gesture)
         revertReaction(action)
         setNotice('Network hiccup — try again.')
       } finally {

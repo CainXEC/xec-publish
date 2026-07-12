@@ -12,6 +12,7 @@ import { charCounterClassName } from '@/lib/charCounterClassName'
 import { encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
 import { buildPaywallBip21, computePaymentSplit } from '@/lib/paymentSplit'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
+import { payWithCashtab } from '@/lib/ecash/cashtabPay'
 import { triggerPaymentSuccessEffect } from '@/lib/paymentSuccessEffect'
 import {
   ensureAudioContextRunning,
@@ -508,14 +509,36 @@ export default function PostPageClient({
     : ''
   const unlockPriceLabel = formatXec(priceXec)
 
-  function openCashtab(url) {
-    if (!url || typeof window === 'undefined') return
+  function openCashtab() {
+    if (!cashtabUrl || typeof window === 'undefined') return
     try {
       sessionStorage.setItem('pollingActive', 'true')
     } catch {
       /* ignore */
     }
-    window.open(url, '_blank', 'noopener,noreferrer')
+    // Cashtab extension if the reader has it (in-page popup, no tab), else a
+    // Cashtab web tab — exactly one, never both. Rejecting in the extension
+    // popup drops back out of the waiting state.
+    void payWithCashtab({ bip21: bip21Url, cashtabUrl }).then((res) => {
+      if (!res.ok && res.reason === 'denied') {
+        if (payTxPollRef.current) {
+          clearInterval(payTxPollRef.current)
+          payTxPollRef.current = null
+        }
+        if (payWatchRef.current) {
+          payWatchRef.current()
+          payWatchRef.current = null
+        }
+        setPaymentInitiated(false)
+        setPaymentFinalizing(false)
+        setPollingActive(false)
+        try {
+          sessionStorage.removeItem('pollingActive')
+        } catch {
+          /* ignore */
+        }
+      }
+    })
   }
 
   function handlePayToUnlock() {
@@ -534,7 +557,7 @@ export default function PostPageClient({
     setPaymentFinalizing(false)
     setPollingActive(true)
     setPayBusy(true)
-    openCashtab(cashtabUrl)
+    openCashtab()
     void startPayTxAutoVerify()
     setPayBusy(false)
   }
