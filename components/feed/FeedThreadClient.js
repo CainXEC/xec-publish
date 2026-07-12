@@ -67,7 +67,7 @@ function ThreadByline({ identity }) {
  * rail with a node dot and a connecting line down to the next post. The whole
  * card navigates to that post's own thread.
  */
-function AncestorNode({ post, top = false }) {
+function AncestorNode({ post, top = false, onOpenThread = null }) {
   const router = useRouter()
   const textRef = useRef(null)
   const [expanded, setExpanded] = useState(false)
@@ -84,6 +84,10 @@ function AncestorNode({ post, top = false }) {
 
   const go = (e) => {
     if (e.target.closest('a, button')) return
+    if (onOpenThread) {
+      onOpenThread(post.txid)
+      return
+    }
     router.push(`/feed/${post.txid}`)
   }
   return (
@@ -139,6 +143,11 @@ export default function FeedThreadClient({
   initialReplies = [],
   viewerAccountId: initialViewerAccountId = null,
   isAuthor = false,
+  // Reading-pane hosting: embedded=true renders just the thread (no page
+  // chrome — the host owns the shell), and onOpenThread swaps the pane to
+  // another thread instead of navigating (ancestors, replies, quote-jumps).
+  embedded = false,
+  onOpenThread = null,
 }) {
   const router = useRouter()
   const [replies, setReplies] = useState(initialReplies)
@@ -174,9 +183,11 @@ export default function FeedThreadClient({
   const handleQuoted = useCallback(
     (quote) => {
       setShowQuote(false)
-      if (quote?.txid) router.push(`/feed/${quote.txid}`)
+      if (!quote?.txid) return
+      if (onOpenThread) onOpenThread(quote.txid)
+      else router.push(`/feed/${quote.txid}`)
     },
-    [router],
+    [router, onOpenThread],
   )
 
   const post = initialPost
@@ -213,16 +224,11 @@ export default function FeedThreadClient({
       })
     : ''
 
-  return (
-    <div className="pow-feed">
-      <style>{FEED_CSS}</style>
-
-      <FeedTopbar signedIn={viewerAccountId != null} isAuthor={isAuthor} />
-
-      <main className="wrap" style={{ paddingTop: '28px' }}>
+  const content = (
+    <>
         <div className="thread">
           {ancestors.map((a, i) => (
-            <AncestorNode key={a.txid} post={a} top={i === 0} />
+            <AncestorNode key={a.txid} post={a} top={i === 0} onOpenThread={onOpenThread} />
           ))}
 
           {/* Focused post: emphasized, X-style — pulled out of the rail indent so
@@ -342,10 +348,28 @@ export default function FeedThreadClient({
                 onDeleted={removeReply}
                 onQuoted={handleQuoted}
                 onBlocked={removeReplyAuthor}
+                onOpenThread={onOpenThread ?? undefined}
               />
             ))}
           </ul>
         )}
+    </>
+  )
+
+  // Reading-pane hosting: the host (home feed center column) already provides
+  // the .pow-feed scope, topbar and column — render just the thread.
+  if (embedded) {
+    return <div className="threadpane">{content}</div>
+  }
+
+  return (
+    <div className="pow-feed">
+      <style>{FEED_CSS}</style>
+
+      <FeedTopbar signedIn={viewerAccountId != null} isAuthor={isAuthor} />
+
+      <main className="wrap" style={{ paddingTop: '28px' }}>
+        {content}
       </main>
     </div>
   )

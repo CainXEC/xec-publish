@@ -77,6 +77,9 @@ export default function ActivityRail({
   // events touching one author (their posts, value they received, their
   // articles' unlocks/publishes). Null = the site-wide firehose.
   scope = null,
+  // Host pages with a center reading pane (the home feed): thread rows open
+  // in place instead of navigating. Modifier clicks still open the page.
+  onOpenThread = null,
 }) {
   const [items, setItems] = useState(null)
   // The rail only exists above the host page's breakpoint (1100px on the
@@ -158,9 +161,25 @@ export default function ActivityRail({
         <p className="arail-empty">{emptyText}</p>
       ) : (
         <ul className="arail-list">
-          {items.map((it) => (
+          {items.map((it) => {
+            const threadTxid =
+              onOpenThread && it.href?.startsWith('/feed/') ? it.href.slice('/feed/'.length) : null
+            return (
             <li key={it.id} className={`arow${freshIds.current.has(it.id) ? ' fresh' : ''}`}>
-              <Link href={it.href} className="arow-main">
+              <Link
+                href={it.href}
+                className="arow-main"
+                onClick={
+                  threadTxid
+                    ? (e) => {
+                        if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1) return
+                        e.preventDefault()
+                        onOpenThread(threadTxid)
+                      }
+                    : undefined
+                }
+                data-no-navprogress={threadTxid ? true : undefined}
+              >
                 <strong className="arow-actor">{it.actor}</strong> {VERB[it.kind] ?? it.kind}{' '}
                 {targetNode(it)}
               </Link>
@@ -185,7 +204,8 @@ export default function ActivityRail({
                 ) : null}
               </span>
             </li>
-          ))}
+            )
+          })}
         </ul>
       )}
     </div>

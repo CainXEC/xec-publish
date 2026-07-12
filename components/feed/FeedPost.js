@@ -175,7 +175,7 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
   )
 }
 
-export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = null, onDeleted, onBlocked, mintVariant = 'full' }) {
+export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = null, onDeleted, onBlocked, mintVariant = 'full', onOpenThread = null }) {
   const router = useRouter()
   const [showReply, setShowReply] = useState(false)
   const [showQuote, setShowQuote] = useState(false)
@@ -260,6 +260,12 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
     }
     // Stop here so a click on a nested reply opens ITS thread, not the ancestor's.
     e.stopPropagation()
+    // Host pages with a center reading pane (the home feed) open the thread
+    // in place; everywhere else navigates to the thread page as before.
+    if (onOpenThread) {
+      onOpenThread(post.txid)
+      return
+    }
     router.push(`/feed/${post.txid}`)
   }
 

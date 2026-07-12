@@ -7,6 +7,7 @@ import ComposeBox from '@/components/feed/ComposeBox'
 import FeedPost, { MintDigestRow } from '@/components/feed/FeedPost'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import HomeReader from '@/components/feed/HomeReader'
+import ThreadPane from '@/components/feed/ThreadPane'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 
 export default function FeedClient({
@@ -19,23 +20,54 @@ export default function FeedClient({
   focusCompose = false,
 }) {
   const [scope, setScope] = useState('foryou') // 'foryou' | 'following'
-  // The reading pane: a front-page story open in the center column, as pure
-  // client state — the URL stays put (no history games; the App Router
-  // treats pushState as a navigation and fights the scroll restore). The
-  // feed below stays MOUNTED (hidden), so tabs/posts/scroll all survive the
-  // detour; the pane's "Open full page ↗" link is the shareable URL.
-  const [readerSlug, setReaderSlug] = useState(null)
+  // The reading pane: a front-page story OR a feed thread open in the center
+  // column, as pure client state — the URL stays put (no history games; the
+  // App Router treats pushState as a navigation and fights the scroll
+  // restore). The feed below stays MOUNTED (hidden), so tabs/posts/scroll
+  // all survive the detour; each pane's "Open full page ↗" link is the
+  // shareable URL.
+  const [pane, setPane] = useState(null) // {kind:'article',slug} | {kind:'thread',txid} | null
+  const paneOpenRef = useRef(false)
   const feedScrollRef = useRef(0)
+  // The pane is a WIDE-SHELL behavior: on phones a post click must keep
+  // navigating to the thread page, where the browser back gesture works as
+  // people expect. Same matchMedia gate the rails use.
+  const [wideShell, setWideShell] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1100px)')
+    const update = () => setWideShell(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
 
-  const openStory = useCallback((slug) => {
-    if (!slug) return
-    feedScrollRef.current = window.scrollY
-    setReaderSlug(slug)
+  const openPane = useCallback((next) => {
+    // Only remember the feed position on the FIRST open — swapping content
+    // inside an already-open pane (thread → thread) must not clobber it.
+    if (!paneOpenRef.current) feedScrollRef.current = window.scrollY
+    paneOpenRef.current = true
+    setPane(next)
     window.scrollTo(0, 0)
   }, [])
 
+  const openStory = useCallback(
+    (slug) => {
+      if (slug) openPane({ kind: 'article', slug })
+    },
+    [openPane],
+  )
+
+  const openThread = useCallback(
+    (txid) => {
+      const t = String(txid ?? '').trim().toLowerCase()
+      if (/^[0-9a-f]{64}$/.test(t)) openPane({ kind: 'thread', txid: t })
+    },
+    [openPane],
+  )
+
   const closeReader = useCallback(() => {
-    setReaderSlug(null)
+    paneOpenRef.current = false
+    setPane(null)
     // Two restore attempts: the rAF can fire before the feed is back in the
     // DOM (the short reader clamps any scroll to ~0), so a second assert
     // runs after the swap has definitely laid out. No-op when the first won.
@@ -45,9 +77,9 @@ export default function FeedClient({
   }, [])
 
   // While reading, the PROOFOFWRITING banner means "back to the feed" — catch
-  // it before the topbar's own handler (which would reload at the story URL).
+  // it before the topbar's own handler (which would reload the page).
   useEffect(() => {
-    if (!readerSlug) return
+    if (!pane) return
     const onCapture = (e) => {
       if (e.target.closest?.('.wordmark')) {
         e.preventDefault()
@@ -57,7 +89,7 @@ export default function FeedClient({
     }
     document.addEventListener('click', onCapture, true)
     return () => document.removeEventListener('click', onCapture, true)
-  }, [readerSlug, closeReader])
+  }, [pane, closeReader])
   // Paying to post mints a session; if we didn't have one at SSR time, the post
   // we just made proves who we are — adopt its account so delete shows at once.
   const [viewerAccountId, setViewerAccountId] = useState(initialViewerAccountId)
@@ -279,11 +311,17 @@ export default function FeedClient({
           render exactly as before. */}
       <div className="feed-cols">
       <aside className="feed-left" aria-label="The front page — long-form writing">
-        <ArticleRail currentSlug={readerSlug} onOpenStory={openStory} />
+        <ArticleRail
+          currentSlug={pane?.kind === 'article' ? pane.slug : null}
+          onOpenStory={openStory}
+        />
       </aside>
       <main className="wrap" style={{ paddingTop: '28px' }}>
-        {readerSlug ? <HomeReader slug={readerSlug} onClose={closeReader} /> : null}
-        <div style={readerSlug ? { display: 'none' } : undefined}>
+        {pane?.kind === 'article' ? <HomeReader slug={pane.slug} onClose={closeReader} /> : null}
+        {pane?.kind === 'thread' ? (
+          <ThreadPane txid={pane.txid} onClose={closeReader} onOpenThread={wideShell ? openThread : undefined} />
+        ) : null}
+        <div style={pane ? { display: 'none' } : undefined}>
         <ComposeBox
           action="post"
           onPosted={prependPost}
@@ -338,6 +376,7 @@ export default function FeedClient({
                   onQuoted={prependPost}
                   onBlocked={removeByAuthor}
                   mintVariant="compact"
+                  onOpenThread={wideShell ? openThread : undefined}
                 />
               ),
             )}
@@ -355,7 +394,7 @@ export default function FeedClient({
       </main>
 
       <aside className="feed-rail" aria-label="Live on-chain activity">
-        <ActivityRail />
+        <ActivityRail onOpenThread={wideShell ? openThread : undefined} />
       </aside>
       </div>
     </div>
