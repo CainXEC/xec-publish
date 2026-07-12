@@ -12,6 +12,7 @@ import LinkedPostEmbed from '@/components/feed/LinkedPostEmbed'
 import ArticleCard from '@/components/feed/ArticleCard'
 import FeedBody from '@/components/feed/FeedBody'
 import MintCard from '@/components/feed/MintCard'
+import TranslateButton from '@/components/TranslateButton'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
 import { FEED_CSS } from '@/components/feed/feedTheme'
@@ -162,6 +163,7 @@ export default function FeedThreadClient({
   const [deletingRoot, setDeletingRoot] = useState(false)
   const [showReply, setShowReply] = useState(false)
   const [showQuote, setShowQuote] = useState(false)
+  const [translated, setTranslated] = useState(null)
 
   const addReply = useCallback((reply) => {
     if (!reply?.txid) return
@@ -271,7 +273,7 @@ export default function FeedThreadClient({
                     const focusText = displayTextFor(post.content)
                     return focusText ? (
                       <p className="focusbody">
-                        <FeedBody text={focusText} />
+                        <FeedBody text={translated ?? focusText} />
                       </p>
                     ) : null
                   })()}
@@ -289,8 +291,14 @@ export default function FeedThreadClient({
                 </>
               )}
               <div className="actions">
-                <button type="button" onClick={() => setShowReply((s) => !s)} className="replybtn">
-                  💬 {replies.length > 0 ? replies.length : ''} Reply
+                <button
+                  type="button"
+                  onClick={() => setShowReply((s) => !s)}
+                  className="replybtn"
+                  aria-label="Reply"
+                  title="Reply"
+                >
+                  💬 {replies.length > 0 ? replies.length : ''}
                 </button>
                 {!rootDeleted ? (
                   <EngagementBar
@@ -301,6 +309,16 @@ export default function FeedThreadClient({
                     likedByViewer={Boolean(post.likedByViewer)}
                     repostedByViewer={Boolean(post.repostedByViewer)}
                     onQuote={() => setShowQuote((s) => !s)}
+                  />
+                ) : null}
+                {!rootDeleted &&
+                post.card_kind !== 'handle_mint' &&
+                displayTextFor(post.content) ? (
+                  <TranslateButton
+                    kind="feed"
+                    id={post.txid}
+                    onTranslated={(d) => setTranslated(d.translated)}
+                    onShowOriginal={() => setTranslated(null)}
                   />
                 ) : null}
                 {isOwnRoot ? (
