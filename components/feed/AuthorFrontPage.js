@@ -71,6 +71,7 @@ function Entry({ story, open, onToggle, onOpen }) {
         className="np-hl"
         href={hrefOf(story)}
         onClick={onOpen ? (e) => onOpen(e, story) : undefined}
+        data-no-navprogress={onOpen && !story.legacy ? true : undefined}
       >
         <span className="np-serif np-entry-h">{story.title}</span>
       </Link>
@@ -82,6 +83,7 @@ function Entry({ story, open, onToggle, onOpen }) {
               className="np-btn"
               href={hrefOf(story)}
               onClick={onOpen ? (e) => onOpen(e, story) : undefined}
+              data-no-navprogress={onOpen && !story.legacy ? true : undefined}
             >
               Read →
             </Link>
@@ -157,6 +159,7 @@ export default function AuthorFrontPage({ identity, stories = [], onOpenStory = 
                 key={p.id}
                 href={hrefOf(p)}
                 onClick={interceptOpen ? (e) => interceptOpen(e, p) : undefined}
+                data-no-navprogress={interceptOpen && !p.legacy ? true : undefined}
               >
                 <span className="np-rank-n">{i + 1}</span>
                 <span className="np-serif np-rank-h">{p.title}</span>
