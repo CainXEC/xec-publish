@@ -408,7 +408,10 @@ export const FEED_CSS = `
   font:inherit;font-size:12px;color:var(--text);min-width:160px;transition:border-color .15s,box-shadow .15s;}
 .pow-feed .dashhandles-search:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 12px rgba(61,240,255,.16);}
 .pow-feed .dashhandles-track{display:flex;align-items:flex-start;gap:10px;margin-top:12px;overflow-x:auto;padding:4px 2px 12px;
-  scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;}
+  scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;
+  /* scrolls by wheel/swipe, never shows the gray gutter (macOS always-show) */
+  scrollbar-width:none;}
+.pow-feed .dashhandles-track::-webkit-scrollbar{display:none;}
 .pow-feed .dashhandle{flex:0 0 auto;width:88px;display:flex;flex-direction:column;align-items:center;gap:8px;
   background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 8px;cursor:pointer;
   font:inherit;color:var(--text);scroll-snap-align:start;transition:border-color .15s,box-shadow .15s,transform .1s;}
