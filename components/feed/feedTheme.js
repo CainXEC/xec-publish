@@ -711,8 +711,10 @@ html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
   padding:9px 16px;font:inherit;font-size:12px;letter-spacing:.06em;cursor:pointer;
   transition:border-color .15s,box-shadow .15s;}
 .pow-feed .hr-back:hover{border-color:var(--cyan);box-shadow:0 0 14px rgba(61,240,255,.2);}
-.pow-feed .hr-open{font-size:11.5px;color:var(--dim);border-bottom:1px solid transparent;transition:color .15s,border-color .15s;}
-.pow-feed .hr-open:hover{color:var(--cyan);border-color:var(--cyan);}
+.pow-feed .hr-open{font-size:11.5px;color:var(--dim);border-bottom:1px solid transparent;transition:color .15s,border-color .15s;
+  background:none;border-top:none;border-left:none;border-right:none;font-family:inherit;cursor:pointer;padding:0;}
+.pow-feed .hr-open:hover{color:var(--cyan);border-bottom-color:var(--cyan);}
+.pow-feed .hr-open.copied{color:var(--neon);border-bottom-color:transparent;}
 .pow-feed .hr-state{color:var(--dim);font-size:13px;margin:48px 0;text-align:center;}
 .pow-feed .readerhost.pow-article{width:auto;margin:0;min-height:0;background:none;padding:0;}
 .pow-feed .hr-title{font-size:30px;line-height:1.22;color:var(--text);margin:4px 0 10px;font-weight:700;}

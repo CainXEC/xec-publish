@@ -21,6 +21,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import CopyLinkButton from '@/components/feed/CopyLinkButton'
 import PaneComments from '@/components/feed/PaneComments'
 import PaneUnlock from '@/components/feed/PaneUnlock'
 import { ARTICLE_CSS } from '@/app/posts/[slug]/articleTheme'
@@ -77,7 +78,7 @@ export default function HomeReader({ slug, onClose, backLabel = '← The feed' }
     <div className="homereader">
       <div className="hr-bar">
         <button type="button" className="hr-back" onClick={onClose}>{backLabel}</button>
-        <Link className="hr-open" href={`/posts/${slug}`}>Open full page ↗</Link>
+        <CopyLinkButton path={`/posts/${encodeURIComponent(slug)}`} />
       </div>
 
       {state.loading ? (

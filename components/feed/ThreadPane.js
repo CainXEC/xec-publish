@@ -11,7 +11,7 @@
 // =============================================================================
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import CopyLinkButton from '@/components/feed/CopyLinkButton'
 import FeedThreadClient from '@/components/feed/FeedThreadClient'
 
 export default function ThreadPane({ txid, onClose, onOpenThread }) {
@@ -52,7 +52,7 @@ export default function ThreadPane({ txid, onClose, onOpenThread }) {
     <div className="homereader">
       <div className="hr-bar">
         <button type="button" className="hr-back" onClick={onClose}>← The feed</button>
-        <Link className="hr-open" href={`/feed/${txid}`}>Open full page ↗</Link>
+        <CopyLinkButton path={`/feed/${txid}`} />
       </div>
 
       {state.loading ? (
