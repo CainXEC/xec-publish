@@ -391,15 +391,6 @@ export default function PostPageClient({
   }, [refetchMe, router])
 
   useEffect(() => {
-    if (!isAuthorSession || !post?.id) return
-    void fetch('/api/notifications/mark-read', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ post_id: post.id }),
-    })
-  }, [isAuthorSession, post?.id])
-
-  useEffect(() => {
     if (!post?.id || (!unlocked && !isAuthorSession)) return
     void fetchComments(post.id)
   }, [post?.id, unlocked, isAuthorSession, fetchComments])

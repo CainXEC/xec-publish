@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { verifyCookieValue } from '@/lib/cookieSigner'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { getAuthedAccount } from '@/lib/authHelpers'
+import { recordArticleNotification } from '@/lib/feedNotifications'
 
 const supabase = createServerSupabase()
 
@@ -146,6 +147,18 @@ export async function POST(request, { params }) {
   if (insertError) {
     return NextResponse.json({ error: insertError.message }, { status: 500 })
   }
+
+  // Tell the author they got a comment. Best-effort — never fails the comment.
+  // A logged-in commenter gives us their account directly; the logged-out cookie
+  // path gives only the proven address, which we resolve. The author commenting
+  // on their own post is skipped (recipient === actor).
+  await recordArticleNotification(supabase, {
+    postId,
+    type: 'comment',
+    actorAccountId: acct?.accountId ?? null,
+    actorIdentity: acct?.identity ?? null,
+    actorAddress: acct ? null : payerAddress,
+  })
 
   return NextResponse.json({ comment: inserted })
 }

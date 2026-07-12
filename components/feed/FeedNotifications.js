@@ -37,6 +37,8 @@ const VERB = {
   like: 'liked your post',
   repost: 'reposted your post',
   follow: 'followed you',
+  unlock: 'unlocked your article',
+  comment: 'commented on your article',
 }
 
 // An offer names the handle it courts and, when the bidder named a price,
@@ -48,6 +50,15 @@ function notifText(n) {
     return n.offerAmountXec != null
       ? `offered ${Number(n.offerAmountXec).toLocaleString()} XEC for ${name}`
       : `made an offer on ${name}`
+  }
+  // Unlock/comment name the article when we resolved its title, else fall back
+  // to the generic verb ("unlocked your article").
+  if (n.type === 'unlock' || n.type === 'comment') {
+    if (n.articleTitle) {
+      const verb = n.type === 'unlock' ? 'unlocked' : 'commented on'
+      return `${verb} “${n.articleTitle}”`
+    }
+    return VERB[n.type]
   }
   return VERB[n.type] ?? 'interacted with your post'
 }
@@ -64,6 +75,10 @@ function targetHref(n) {
     return n.handle
       ? `/marketplace?view=all&q=${encodeURIComponent(n.handle)}`
       : '/marketplace?view=all'
+  }
+  // Unlock/comment link straight to the article (resolved server-side).
+  if (n.type === 'unlock' || n.type === 'comment') {
+    return n.articleHref ?? '#'
   }
   return n.post_txid ? `/feed/${n.post_txid}` : '#'
 }

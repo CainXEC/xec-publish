@@ -40,7 +40,6 @@ export default async function DashboardPage() {
   const [
     { data: posts, error: postsError },
     { data: author },
-    { data: notifications },
     { data: unlockRows },
   ] = authorId
     ? await Promise.all([
@@ -55,12 +54,6 @@ export default async function DashboardPage() {
           .select('username, bio, xec_address')
           .eq('id', authorId)
           .maybeSingle(),
-        supabase
-          .from('notifications')
-          .select('id, message, post_id, comment_id, read, created_at, posts(slug, title, legacy)')
-          .eq('author_id', authorId)
-          .order('created_at', { ascending: false })
-          .limit(20),
         admin
           ? admin
               .from('unlocks')
@@ -69,7 +62,7 @@ export default async function DashboardPage() {
               .eq('posts.published', true)
           : Promise.resolve({ data: null }),
       ])
-    : [{ data: [], error: null }, { data: null }, { data: [] }, { data: null }]
+    : [{ data: [], error: null }, { data: null }, { data: null }]
   const rows = unlockRows ?? []
 
   // ---- Library (articles this account has paid for), follower counts ----
@@ -218,7 +211,6 @@ export default async function DashboardPage() {
       profileHref={profileHref}
       bio={author?.bio ?? ''}
       xecAddress={author?.xec_address ?? ''}
-      notifications={notifications ?? []}
       initialPosts={posts ?? []}
       loadError={postsError?.message ?? null}
       initialTotalUnlocks={rows.length}

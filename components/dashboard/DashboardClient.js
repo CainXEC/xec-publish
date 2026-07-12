@@ -6,7 +6,6 @@ import FilterDropdown from '@/components/FilterDropdown'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import FeedPost from '@/components/feed/FeedPost'
-import BellIcon from '@/components/BellIcon'
 import UnlockIcon from '@/components/UnlockIcon'
 import EcashIcon from '@/components/EcashIcon'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
@@ -157,21 +156,6 @@ function sortPostsByEarned(rows) {
   return sortRowsWithZeroTail(rows, earnedPrimaryValue)
 }
 
-function formatRelativeTime(iso) {
-  if (!iso) return ''
-  const t = new Date(iso).getTime()
-  if (Number.isNaN(t)) return ''
-  const diffMs = Date.now() - t
-  const diffSec = Math.max(1, Math.floor(diffMs / 1000))
-  if (diffSec < 60) return 'just now'
-  const diffMin = Math.floor(diffSec / 60)
-  if (diffMin < 60) return diffMin === 1 ? '1 minute ago' : `${diffMin} minutes ago`
-  const diffHour = Math.floor(diffMin / 60)
-  if (diffHour < 24) return diffHour === 1 ? '1 hour ago' : `${diffHour} hours ago`
-  const diffDay = Math.floor(diffHour / 24)
-  return diffDay === 1 ? '1 day ago' : `${diffDay} days ago`
-}
-
 function DashboardPostCard({
   post,
   deletingId,
@@ -263,7 +247,6 @@ export default function DashboardClient({
   profileHref,
   bio,
   xecAddress,
-  notifications,
   initialPosts,
   loadError,
   initialTotalUnlocks,
@@ -301,24 +284,6 @@ export default function DashboardClient({
   const [currentPage, setCurrentPage] = useState(1)
   const [openMenu, setOpenMenu] = useState(/** @type {string | null} */ (null))
   const [copiedAddress, setCopiedAddress] = useState(false)
-  const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [notifItems, setNotifItems] = useState(
-    () => (notifications ?? []).map((n) => ({ ...n, read: Boolean(n.read) })),
-  )
-  // "Load more" pagination for the bell (mirrors the feed bell): the server prop
-  // is only the first 20 (read + unread history). cursor = oldest shown
-  // timestamp (null once a short page proves there are no more); unreadCount is
-  // the TRUE unread total for the badge (the prop's array caps at 20, so we
-  // can't count it locally).
-  const NOTIF_PAGE = 20
-  const [notifCursor, setNotifCursor] = useState(() => {
-    const arr = notifications ?? []
-    return arr.length >= NOTIF_PAGE ? arr[arr.length - 1]?.created_at ?? null : null
-  })
-  const [loadingMoreNotifs, setLoadingMoreNotifs] = useState(false)
-  const [unreadCount, setUnreadCount] = useState(
-    () => (notifications ?? []).filter((n) => !n.read).length,
-  )
   const [legacySectionOpen, setLegacySectionOpen] = useState(false)
   const copyTimeoutRef = useRef(null)
 
@@ -368,70 +333,6 @@ export default function DashboardClient({
   useEffect(() => {
     setPosts(initialPosts)
   }, [initialPosts])
-
-  // The badge shows the TRUE unread total, not the (≤20) loaded array. Fetch it
-  // once on mount so a 100-notification overnight batch reads "100", not "20".
-  useEffect(() => {
-    let cancelled = false
-    fetch('/api/notifications/unread-count', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d && !cancelled) setUnreadCount(Number(d.count) || 0)
-      })
-      .catch(() => {})
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  // Append the next page of older notifications (read + unread).
-  const loadMoreNotifs = useCallback(async () => {
-    if (!notifCursor || loadingMoreNotifs) return
-    setLoadingMoreNotifs(true)
-    try {
-      const res = await fetch(
-        `/api/notifications?before=${encodeURIComponent(notifCursor)}`,
-        { cache: 'no-store' },
-      )
-      if (res.ok) {
-        const data = await res.json()
-        const more = Array.isArray(data.notifications) ? data.notifications : []
-        setNotifItems((prev) => {
-          const seen = new Set(prev.map((n) => n.id))
-          return [
-            ...prev,
-            ...more
-              .filter((n) => !seen.has(n.id))
-              .map((n) => ({ ...n, read: Boolean(n.read) })),
-          ]
-        })
-        setNotifCursor(data.nextCursor ?? null)
-      }
-    } catch {
-      /* best-effort; leave the button so the user can retry */
-    } finally {
-      setLoadingMoreNotifs(false)
-    }
-  }, [notifCursor, loadingMoreNotifs])
-
-  // Opening the bell clears unread — auto mark-all-read, for parity with the feed
-  // bell. Optimistic (drop the badge + dim loaded items immediately), then
-  // fire-and-forget the POST; the just-read items stay visible as read history.
-  const toggleNotifications = useCallback(() => {
-    setNotificationsOpen((wasOpen) => {
-      const next = !wasOpen
-      if (next && unreadCount > 0) {
-        setUnreadCount(0)
-        setNotifItems((prev) => prev.map((n) => ({ ...n, read: true })))
-        fetch('/api/notifications/mark-read', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
-        }).catch(() => {})
-      }
-      return next
-    })
-  }, [unreadCount])
 
   useEffect(() => {
     setCurrentPage(1)
@@ -653,18 +554,6 @@ export default function DashboardClient({
               </Link>
               !
             </h1>
-            <button
-              type="button"
-              onClick={toggleNotifications}
-              className="dashbell"
-              aria-label="Toggle notifications"
-              aria-expanded={notificationsOpen}
-            >
-              <BellIcon size={17} />
-              {unreadCount > 0 ? (
-                <span className="dashbadge">{unreadCount > 99 ? '99+' : unreadCount}</span>
-              ) : null}
-            </button>
           </div>
 
           <div className="dashstats">
@@ -755,58 +644,6 @@ export default function DashboardClient({
               </p>
               {copiedAddress ? <p className="dashcopied">Copied!</p> : null}
             </>
-          ) : null}
-
-          {notificationsOpen ? (
-            <div className="dashnotifs">
-              <div className="dashnotifs-head">
-                <p className="dashnotifs-title">Notifications</p>
-              </div>
-              {notifItems.length === 0 ? (
-                <p className="dashnotif-msg">Nothing yet.</p>
-              ) : (
-                <ul className="dashnotifs-list">
-                  {notifItems.map((n) => {
-                    const postRel = Array.isArray(n.posts) ? n.posts[0] : n.posts
-                    const slug = postRel?.slug ?? ''
-                    const isLegacy = postRel?.legacy === true
-                    const href = slug
-                      ? isLegacy
-                        ? `/${encodeURIComponent(slug)}`
-                        : `/posts/${encodeURIComponent(slug)}`
-                      : '#'
-                    const title = postRel?.title ?? 'Post'
-                    const message = n.message || `New comment on '${title}'`
-                    const highlight =
-                      message.toLowerCase().includes('comment') ||
-                      message.toLowerCase().includes('follow')
-                    return (
-                      <li key={n.id}>
-                        <Link
-                          href={href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`dashnotif${highlight ? ' hl' : ''}${n.read ? ' read' : ''}`}
-                        >
-                          <p className="dashnotif-msg">{message}</p>
-                          <p className="dashnotif-time">{formatRelativeTime(n.created_at)}</p>
-                        </Link>
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-              {notifCursor ? (
-                <button
-                  type="button"
-                  className="dashnotif-more"
-                  onClick={() => void loadMoreNotifs()}
-                  disabled={loadingMoreNotifs}
-                >
-                  {loadingMoreNotifs ? 'Loading…' : 'Load more'}
-                </button>
-              ) : null}
-            </div>
           ) : null}
 
           <div className="dashactions">

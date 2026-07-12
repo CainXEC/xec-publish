@@ -2,6 +2,7 @@ export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { recordFeedNotification, resolveAccountByAddress } from '@/lib/feedNotifications'
 
 function isNonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0
@@ -124,14 +125,27 @@ export async function POST(request) {
     return NextResponse.json({ error: insertError.message }, { status: 500 })
   }
 
+  // Surface the follow in the account's unified bell (feed_notifications), the
+  // single notification store — the legacy author-keyed `notifications` table is
+  // retired. Best-effort: resolve the author to its account (recipient) and the
+  // reader wallet to its account + byline (actor). If the reader has no account
+  // (a stray wallet that never logged in), we can't attribute it, so we skip —
+  // same silent no-op the feed bell already tolerates.
   try {
-    await admin.from('notifications').insert({
-      author_id: authorId,
-      message: 'Someone followed you',
-      read: false,
-    })
+    const [{ data: recipientAcct }, actor] = await Promise.all([
+      admin.from('accounts').select('id').eq('author_id', authorId).maybeSingle(),
+      resolveAccountByAddress(admin, walletAddress),
+    ])
+    if (recipientAcct?.id && actor) {
+      await recordFeedNotification(admin, {
+        recipientAccountId: recipientAcct.id,
+        actorAccountId: actor.accountId,
+        actorIdentity: actor.identity,
+        type: 'follow',
+      })
+    }
   } catch {
-    /* ignore notification insertion errors */
+    /* best-effort; the follow itself already succeeded */
   }
 
   const { followerCount, error: countError } = await fetchFollowerCount(admin, authorId)
