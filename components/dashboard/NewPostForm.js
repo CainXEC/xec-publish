@@ -431,7 +431,7 @@ export default function NewPostForm({
                 onChange={(e) => setPublished(e.target.checked)}
               />
               <label htmlFor="published">
-                Published{' '}
+                Publish{' '}
                 <span className="pf-sub">(live when checked; draft when unchecked)</span>
               </label>
             </div>
@@ -452,7 +452,13 @@ export default function NewPostForm({
               </div>
             ) : (
               <button type="submit" disabled={submitting} className="btn pf-submit">
-                {submitting ? 'Saving…' : isEditMode ? 'Save changes' : 'Create post'}
+                {submitting
+                  ? 'Saving…'
+                  : isEditMode
+                    ? 'Save changes'
+                    : published
+                      ? 'Create post'
+                      : 'Save draft'}
               </button>
             )}
           </form>
@@ -562,6 +568,7 @@ const FORM_CSS = `
 .pow-feed .wp-money-proj{margin-top:6px;padding-top:8px;border-top:1px solid var(--line);
   display:flex;flex-direction:column;gap:6px;}
 .pow-feed .wp-money-proj strong{color:var(--neon);}
+.pow-feed .wp-usd{color:var(--dim);font-weight:400;}
 
 /* ---- left rail: author context (WriteContextRail) ---- */
 .pow-feed .wc{padding-top:28px;display:flex;flex-direction:column;gap:16px;}

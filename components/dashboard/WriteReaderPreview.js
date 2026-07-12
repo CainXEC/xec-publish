@@ -8,7 +8,7 @@
 //  author types, so the paywall placement and the money are never a guess.
 // =============================================================================
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { splitPostBodyAtPaywall } from '@/lib/splitPostBodyAtPaywall'
 import { calculateReadingTimeMinutes, } from '@/lib/calculateReadingTimeMinutes'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
@@ -29,6 +29,17 @@ function htmlToText(html) {
     .replace(/&gt;/gi, '>')
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+// Format a USD amount. XEC trades in millionths of a dollar, so most values here
+// are sub-cent — show ~2 significant figures for those instead of rounding to $0.00.
+function formatUsd(v) {
+  if (!Number.isFinite(v) || v <= 0) return null
+  if (v >= 1) {
+    return `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  }
+  const digits = Math.max(2, 1 - Math.floor(Math.log10(v)))
+  return `$${v.toFixed(digits)}`
 }
 
 function shortenIdentity(identity) {
@@ -58,10 +69,29 @@ export default function WriteReaderPreview({
     }
   }, [body])
 
+  // Live XEC→USD from /api/xec-price (cached 60s server-side). Null until it
+  // loads or if it fails — the $ values just don't show in that case.
+  const [usdPerXec, setUsdPerXec] = useState(null)
+  useEffect(() => {
+    let alive = true
+    fetch('/api/xec-price')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (alive && j?.ok && Number.isFinite(j.usd)) setUsdPerXec(j.usd)
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [])
+
   const priceNum = Number(priceXec)
   const validPrice = Number.isFinite(priceNum) && priceNum > 0
   const split = validPrice ? computePaymentSplit(priceNum) : null
   const priceText = validPrice ? `${priceNum.toLocaleString()} XEC` : 'Free'
+
+  // ` ($0.14)` for an XEC amount, or '' when the price isn't loaded.
+  const usd = (xec) => (usdPerXec ? formatUsd(xec * usdPerXec) : null)
 
   const bylineDisplay = shortenIdentity(identity)
   const isHandle = bylineDisplay.startsWith('@')
@@ -108,7 +138,10 @@ export default function WriteReaderPreview({
         <div className="wp-money">
           <div className="wp-money-row">
             <span>You keep 94%</span>
-            <strong>{split.authorAmount.toLocaleString()} XEC</strong>
+            <strong>
+              {split.authorAmount.toLocaleString()} XEC
+              {usd(split.authorAmount) ? <span className="wp-usd"> ({usd(split.authorAmount)})</span> : null}
+            </strong>
           </div>
           <div className="wp-money-row wp-dim">
             <span>Platform 6%</span>
@@ -117,11 +150,17 @@ export default function WriteReaderPreview({
           <div className="wp-money-proj">
             <div className="wp-money-row">
               <span>10 unlocks →</span>
-              <strong>{(split.authorAmount * 10).toLocaleString()} XEC</strong>
+              <strong>
+                {(split.authorAmount * 10).toLocaleString()} XEC
+                {usd(split.authorAmount * 10) ? <span className="wp-usd"> ({usd(split.authorAmount * 10)})</span> : null}
+              </strong>
             </div>
             <div className="wp-money-row">
               <span>100 unlocks →</span>
-              <strong>{(split.authorAmount * 100).toLocaleString()} XEC</strong>
+              <strong>
+                {(split.authorAmount * 100).toLocaleString()} XEC
+                {usd(split.authorAmount * 100) ? <span className="wp-usd"> ({usd(split.authorAmount * 100)})</span> : null}
+              </strong>
             </div>
           </div>
         </div>
