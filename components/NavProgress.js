@@ -68,6 +68,12 @@ export default function NavProgress() {
       if (anchor.target && anchor.target !== '_self') return
       if (anchor.hasAttribute('download')) return
       if ((anchor.getAttribute('rel') || '').includes('external')) return
+      // Links that open IN PLACE (e.g. the home rail's reading pane) carry a
+      // real href for new-tab clicks but preventDefault a plain click in their
+      // own (bubble-phase) handler — which runs AFTER this capture listener, so
+      // we can't see it. They opt out explicitly; without this the bar starts,
+      // no route ever commits, and it crawls until the safety timeout.
+      if (anchor.hasAttribute('data-no-navprogress')) return
       let url
       try {
         url = new URL(anchor.href, window.location.href)

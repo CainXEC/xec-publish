@@ -83,6 +83,7 @@ function PeekButtons({ story, onOpen }) {
         className="np-btn"
         href={`/posts/${story.slug}`}
         onClick={onOpen ? (e) => onOpen(e, story.slug) : undefined}
+        data-no-navprogress={onOpen ? '' : undefined}
       >
         Read →
       </Link>
@@ -111,6 +112,7 @@ function Entry({ story, open, now, onToggle, onOpen }) {
         className="np-hl"
         href={`/posts/${story.slug}`}
         onClick={onOpen ? (e) => onOpen(e, story.slug) : undefined}
+        data-no-navprogress={onOpen ? '' : undefined}
       >
         <span className="np-serif np-entry-h">
           {isFresh(story.at) ? <span className="np-dot" aria-hidden /> : null}
@@ -206,6 +208,7 @@ export default function ArticleRail({ minWidth = 1400, currentSlug = null, onOpe
                     key={s.id}
                     href={`/posts/${s.slug}`}
                     onClick={interceptOpen ? (e) => interceptOpen(e, s.slug) : undefined}
+                    data-no-navprogress={interceptOpen ? '' : undefined}
                   >
                     <span className="np-rank-n">{i + 1}</span>
                     <span className="np-serif np-rank-h">{s.title}</span>
