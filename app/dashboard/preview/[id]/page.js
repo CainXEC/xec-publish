@@ -14,12 +14,15 @@ function authorFromPost(post) {
   return Array.isArray(a) ? a[0] ?? null : a
 }
 
-export default async function DraftPreviewPage({ params }) {
+export default async function DraftPreviewPage({ params, searchParams }) {
   const { id: rawId } = await params
   const id = typeof rawId === 'string' ? rawId.trim() : ''
   if (!id) {
     notFound()
   }
+
+  const sp = (await searchParams) ?? {}
+  const paymentBlocked = sp.needsPayment === '1'
 
   const acct = await getAuthedAccount()
   if (!acct?.authorId) {
@@ -30,7 +33,7 @@ export default async function DraftPreviewPage({ params }) {
   const { data: post, error } = await supabase
     .from('posts')
     .select(
-      'id, title, slug, teaser, body, created_at, author_id, published, authors(username)',
+      'id, title, slug, teaser, body, created_at, author_id, published, publish_paid, authors(username)',
     )
     .eq('id', id)
     .eq('author_id', acct.authorId)
@@ -68,13 +71,31 @@ export default async function DraftPreviewPage({ params }) {
         <span className="previewbar-label">
           <span aria-hidden>●</span> Preview — not yet published
         </span>
-        <form action={publishDraftPost}>
-          <input type="hidden" name="postId" value={post.id} />
-          <button type="submit" className="publishbtn">
-            Publish
-          </button>
-        </form>
+        {post.publish_paid === true ? (
+          <form action={publishDraftPost}>
+            <input type="hidden" name="postId" value={post.id} />
+            <button type="submit" className="publishbtn">
+              Publish
+            </button>
+          </form>
+        ) : (
+          <Link
+            href={`/dashboard/edit/${encodeURIComponent(post.id)}`}
+            className="publishbtn publishlink"
+          >
+            Pay &amp; publish in editor
+          </Link>
+        )}
       </div>
+
+      {post.publish_paid !== true ? (
+        <p className="feenote" role={paymentBlocked ? 'alert' : undefined}>
+          {paymentBlocked
+            ? 'Publishing was blocked: the 100 XEC publish fee has not been paid for this draft. '
+            : 'Publishing costs a one-time 100 XEC fee. '}
+          Open the draft in the editor to pay and go live.
+        </p>
+      ) : null}
 
       <main className="wrap">
         <article className="article">
@@ -124,4 +145,6 @@ const PREVIEW_CSS = `
   box-shadow:0 0 16px rgba(0,255,156,.14),inset 0 0 12px rgba(0,255,156,.05);
   transition:background .15s,color .15s,box-shadow .15s;}
 .pow-article .publishbtn:hover{background:var(--neon);color:#04120c;box-shadow:0 0 26px rgba(0,255,156,.5);}
+.pow-article .publishlink{display:inline-block;text-decoration:none;}
+.pow-article .feenote{max-width:760px;margin:10px auto 0;padding:0 16px;font-size:13px;line-height:1.5;color:#f0c04b;}
 `

@@ -19,9 +19,38 @@ export async function publishDraftPost(formData) {
   }
 
   const supabase = createSupabaseAdminClient()
+  if (!supabase) {
+    redirect('/dashboard')
+  }
+
+  // Same server-side gate as savePost's nextPublished branch: going live
+  // requires a paid, owned draft. Without this the preview button was a
+  // publish-fee bypass — it flipped published=true for any unpaid draft.
+  const { data: existing, error: exErr } = await supabase
+    .from('posts')
+    .select('id, publish_paid, published_at')
+    .eq('id', postId)
+    .eq('author_id', acct.authorId)
+    .maybeSingle()
+
+  if (exErr || !existing) {
+    redirect('/dashboard')
+  }
+
+  if (existing.publish_paid !== true) {
+    // Plain <form action> — there's no client handler to hand a needsPayment
+    // result to, so the outcome rides back to the preview page as a flag.
+    redirect(`/dashboard/preview/${encodeURIComponent(postId)}?needsPayment=1`)
+  }
+
+  const payload = { published: true }
+  if (!existing.published_at) {
+    payload.published_at = new Date().toISOString()
+  }
+
   const { data, error } = await supabase
     .from('posts')
-    .update({ published: true })
+    .update(payload)
     .eq('id', postId)
     .eq('author_id', acct.authorId)
     .select('id')
