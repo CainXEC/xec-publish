@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { fetchActiveHandleOffers } from "@/lib/agoraMarketplace";
+import { chronikBudget } from "@/lib/ecash/chronikBudget";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,14 +30,13 @@ const supabase = createClient(
 export async function GET(req: NextRequest) {
   const sort = req.nextUrl.searchParams.get("sort") ?? "price-asc";
 
-  let offers;
-  try {
-    offers = await fetchActiveHandleOffers();
-  } catch (e) {
-    // Chronik/Agora down or misconfigured — tell the client it's the market,
-    // not an empty result, so it can show a "try again" state.
+  // Budgeted chain read: Chronik/Agora down, misconfigured, OR merely hanging
+  // — past the deadline the client gets its clean "try again" state instead
+  // of a page held hostage by a stalled indexer.
+  const offers = await chronikBudget(fetchActiveHandleOffers(), 2500, null);
+  if (offers === null) {
     return NextResponse.json(
-      { ok: false, error: e instanceof Error ? e.message : "marketplace unavailable" },
+      { ok: false, error: "the market is refreshing — try again in a moment" },
       { status: 503 }
     );
   }

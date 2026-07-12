@@ -21,6 +21,7 @@
 import { createServerSupabase } from "@/lib/supabase-server";
 import { ChronikClient } from "chronik-client";
 import { CHRONIK_URLS } from "@/lib/ecash/chronikEndpoints";
+import { chronikBudget } from "@/lib/ecash/chronikBudget";
 
 let _chronik: ChronikClient | null = null;
 const chronik = () => (_chronik ??= new ChronikClient(CHRONIK_URLS));
@@ -57,9 +58,12 @@ async function tokenIdsAtAddress(address: string): Promise<string[]> {
   }
 }
 
-/** Our handles that this address currently holds, newest mint first. */
+/** Our handles that this address currently holds, newest mint first.
+ *  Display path (profile carousel) — budgeted: a hung Chronik endpoint yields
+ *  an empty strip instead of a 30s stall. addressHoldsToken below stays
+ *  UNBUDGETED: it authorizes handle binding, and security checks wait. */
 export async function heldHandlesForAddress(address: string): Promise<HeldHandle[]> {
-  const tokenIds = await tokenIdsAtAddress(address);
+  const tokenIds = await chronikBudget(tokenIdsAtAddress(address), 2500, [] as string[]);
   if (tokenIds.length === 0) return [];
 
   const supabase = createServerSupabase();

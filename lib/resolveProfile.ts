@@ -37,6 +37,12 @@ import { skeleton, displayHandle } from "@/lib/handleSkeleton";
 import { ChronikClient } from "chronik-client";
 import { encodeCashAddress, decodeCashAddress } from "ecashaddrjs";
 import { CHRONIK_URLS } from "@/lib/ecash/chronikEndpoints";
+import { chronikBudget } from "@/lib/ecash/chronikBudget";
+
+// Display-path budget: a hung Chronik endpoint must not hold a profile page
+// hostage — past this deadline the caller falls back to the cached binding,
+// exactly as it already does when Chronik errors outright.
+const HOLDER_BUDGET_MS = 1500;
 
 let _chronik: ChronikClient | null = null;
 const chronik = () => (_chronik ??= new ChronikClient(CHRONIK_URLS));
@@ -195,7 +201,12 @@ function scriptToAddress(outputScriptHex: string): string | null {
 
 export async function currentTokenHolder(tokenId: string): Promise<string | null> {
   try {
-    const res: any = await chronik().tokenId(tokenId).utxos();
+    const res: any = await chronikBudget(
+      chronik().tokenId(tokenId).utxos(),
+      HOLDER_BUDGET_MS,
+      null,
+    );
+    if (!res) return null; // budget elapsed or Chronik down -> cached fallback
     const utxos: any[] = res?.utxos ?? [];
     // An NFT1 child has supply 1: exactly one live UTXO carries it.
     for (const u of utxos) {

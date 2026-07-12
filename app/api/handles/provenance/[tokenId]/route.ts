@@ -20,6 +20,7 @@ import { createClient } from "@supabase/supabase-js";
 import { ChronikClient } from "chronik-client";
 import { encodeCashAddress } from "ecashaddrjs";
 import { CHRONIK_URLS } from "@/lib/ecash/chronikEndpoints";
+import { chronikBudget } from "@/lib/ecash/chronikBudget";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,10 +63,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
   }
 
   // ---- on-chain move count (genesis excluded) ----
+  // Budgeted: a hover card degrades field-by-field; it never stalls.
   let transferCount: number | null = null;
   try {
-    const page = await chronik().tokenId(tokenId).history(0, 1);
-    transferCount = Math.max(0, (page.numTxs ?? 0) - 1);
+    const page = await chronikBudget(chronik().tokenId(tokenId).history(0, 1), 2500, null);
+    if (page) transferCount = Math.max(0, (page.numTxs ?? 0) - 1);
   } catch {
     /* Chronik down — leave null */
   }
@@ -74,7 +76,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
   let holderAddress: string | null = null;
   let escrow = false;
   try {
-    const res = await chronik().tokenId(tokenId).utxos();
+    const res = await chronikBudget(chronik().tokenId(tokenId).utxos(), 2500, null);
     for (const u of res?.utxos ?? []) {
       const script = (u as { script?: string; outputScript?: string }).script
         ?? (u as { outputScript?: string }).outputScript;
