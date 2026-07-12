@@ -37,7 +37,7 @@ const fmtDate = (iso) => {
   }
 }
 
-export default function HomeReader({ slug, onClose }) {
+export default function HomeReader({ slug, onClose, backLabel = '← The feed' }) {
   const [state, setState] = useState({ loading: true })
 
   // Reusable so an in-pane unlock can refetch: the server, now seeing the
@@ -76,7 +76,7 @@ export default function HomeReader({ slug, onClose }) {
   return (
     <div className="homereader">
       <div className="hr-bar">
-        <button type="button" className="hr-back" onClick={onClose}>← The feed</button>
+        <button type="button" className="hr-back" onClick={onClose}>{backLabel}</button>
         <Link className="hr-open" href={`/posts/${slug}`}>Open full page ↗</Link>
       </div>
 

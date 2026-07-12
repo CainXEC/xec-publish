@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ActivityRail from '@/components/feed/ActivityRail'
 import AuthorFrontPage from '@/components/feed/AuthorFrontPage'
+import HomeReader from '@/components/feed/HomeReader'
 import FeedPost from '@/components/feed/FeedPost'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import HandleCarousel from '@/components/HandleCarousel'
@@ -248,6 +249,41 @@ export default function AuthorProfilePageClient({
 }) {
   const router = useRouter()
   const [tab, setTab] = useState('posts') // 'posts' | 'replies' | 'articles'
+  // The reading pane, same pattern as the home feed: pure client state (no
+  // history games — the router fights the scroll restore), profile stays
+  // MOUNTED underneath so tabs/scroll survive the detour.
+  const [readerSlug, setReaderSlug] = useState(null)
+  const profScrollRef = useRef(0)
+
+  const openStory = useCallback((slug) => {
+    if (!slug) return
+    profScrollRef.current = window.scrollY
+    setReaderSlug(slug)
+    window.scrollTo(0, 0)
+  }, [])
+
+  const closeReader = useCallback(() => {
+    setReaderSlug(null)
+    const y = profScrollRef.current
+    requestAnimationFrame(() => window.scrollTo(0, y))
+    setTimeout(() => window.scrollTo(0, y), 200)
+  }, [])
+
+  // While reading, the banner means "back to this profile" — catch it before
+  // the topbar's Link navigates home.
+  useEffect(() => {
+    if (!readerSlug) return
+    const onCapture = (e) => {
+      if (e.target.closest?.('.wordmark')) {
+        e.preventDefault()
+        e.stopPropagation()
+        closeReader()
+      }
+    }
+    document.addEventListener('click', onCapture, true)
+    return () => document.removeEventListener('click', onCapture, true)
+  }, [readerSlug, closeReader])
+
   const [posts, setPosts] = useState(initialPosts)
   // Replies load ON DEMAND: null = not fetched yet. The server no longer renders
   // them into every profile visit; the first switch to the Replies tab fetches
@@ -322,7 +358,7 @@ export default function AuthorProfilePageClient({
           uses; phones render the untouched single column. */}
       <div className="feed-cols">
       <aside className="feed-left" aria-label="This author's front page">
-        <AuthorFrontPage identity={identity} stories={initialArticles} />
+        <AuthorFrontPage identity={identity} stories={initialArticles} onOpenStory={openStory} />
         {handleCardsSlot ? (
           <div className="prof-handles-rail">
             {handleCardsSlot}
@@ -340,6 +376,10 @@ export default function AuthorProfilePageClient({
         ) : null}
       </aside>
       <main className="wrap" style={{ paddingTop: '28px' }}>
+        {readerSlug ? (
+          <HomeReader slug={readerSlug} onClose={closeReader} backLabel="← The profile" />
+        ) : null}
+        <div style={readerSlug ? { display: 'none' } : undefined}>
         <header className="profhead">
           <h1
             className={`profname${isAddressIdentity ? ' isaddr' : ''}`}
@@ -473,6 +513,7 @@ export default function AuthorProfilePageClient({
             ) : null}
           </>
         )}
+        </div>
       </main>
 
       <aside className="feed-rail" aria-label="This author's on-chain activity">

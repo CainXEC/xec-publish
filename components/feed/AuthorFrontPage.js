@@ -58,7 +58,7 @@ function Meta({ story }) {
   )
 }
 
-function Entry({ story, open, onToggle }) {
+function Entry({ story, open, onToggle, onOpen }) {
   return (
     <div
       className={`np-entry${open ? ' open' : ''}`}
@@ -67,15 +67,27 @@ function Entry({ story, open, onToggle }) {
         onToggle()
       }}
     >
-      <Link className="np-hl" href={hrefOf(story)}>
+      <Link
+        className="np-hl"
+        href={hrefOf(story)}
+        onClick={onOpen ? (e) => onOpen(e, story) : undefined}
+      >
         <span className="np-serif np-entry-h">{story.title}</span>
       </Link>
       {open ? (
         <>
           {story.teaser ? <p className="np-teaser">{story.teaser}</p> : null}
           <div className="np-btns">
-            <Link className="np-btn" href={hrefOf(story)}>Read →</Link>
+            <Link
+              className="np-btn"
+              href={hrefOf(story)}
+              onClick={onOpen ? (e) => onOpen(e, story) : undefined}
+            >
+              Read →
+            </Link>
             {story.price_xec > 0 ? (
+              // Unlock always goes to the story's page (the pane hosts its
+              // own unlock too, but the button promises the full flow).
               <Link className="np-btn unlock" href={hrefOf(story)}>
                 Unlock · {Number(story.price_xec).toLocaleString()} XEC
               </Link>
@@ -89,9 +101,21 @@ function Entry({ story, open, onToggle }) {
   )
 }
 
-export default function AuthorFrontPage({ identity, stories = [] }) {
+export default function AuthorFrontPage({ identity, stories = [], onOpenStory = null }) {
   const [openId, setOpenId] = useState(null)
   const toggle = (id) => setOpenId((cur) => (cur === id ? null : id))
+
+  // Host page provides a reading pane: intercept plain clicks and open the
+  // story in place. Legacy imports live on a different route/renderer, and
+  // modifier clicks (new tab etc.) always fall through to real navigation.
+  const interceptOpen = onOpenStory
+    ? (e, story) => {
+        if (story.legacy) return
+        if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1) return
+        e.preventDefault()
+        onOpenStory(story.slug)
+      }
+    : null
 
   const usable = stories.filter((p) => p?.slug && p?.title)
   if (usable.length === 0) return null
@@ -128,7 +152,12 @@ export default function AuthorFrontPage({ identity, stories = [] }) {
           <div className="np-sec np-first">Most read</div>
           <div className="np-ranks">
             {mostRead.map((p, i) => (
-              <Link className="np-rank" key={p.id} href={hrefOf(p)}>
+              <Link
+                className="np-rank"
+                key={p.id}
+                href={hrefOf(p)}
+                onClick={interceptOpen ? (e) => interceptOpen(e, p) : undefined}
+              >
                 <span className="np-rank-n">{i + 1}</span>
                 <span className="np-serif np-rank-h">{p.title}</span>
                 <span className="np-rank-c">{readersOf(p)}</span>
@@ -142,7 +171,13 @@ export default function AuthorFrontPage({ identity, stories = [] }) {
         <>
           <div className={`np-sec${mostRead.length === 0 ? ' np-first' : ''}`}>Latest</div>
           {latest.map((p) => (
-            <Entry key={p.id} story={p} open={openId === p.id} onToggle={() => toggle(p.id)} />
+            <Entry
+              key={p.id}
+              story={p}
+              open={openId === p.id}
+              onToggle={() => toggle(p.id)}
+              onOpen={interceptOpen}
+            />
           ))}
         </>
       ) : null}
