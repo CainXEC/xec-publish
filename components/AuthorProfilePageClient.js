@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import ActivityRail from '@/components/feed/ActivityRail'
+import AuthorFrontPage from '@/components/feed/AuthorFrontPage'
 import FeedPost from '@/components/feed/FeedPost'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import HandleCarousel from '@/components/HandleCarousel'
@@ -242,6 +244,7 @@ export default function AuthorProfilePageClient({
   identifier = '',
   initialArticles = [],
   viewerIsAuthor = false,
+  authorId = null,
 }) {
   const router = useRouter()
   const [tab, setTab] = useState('posts') // 'posts' | 'replies' | 'articles'
@@ -309,11 +312,33 @@ export default function AuthorProfilePageClient({
     !!profileAccountId && !!viewerAccountId && viewerAccountId !== profileAccountId
 
   return (
-    <div className="pow-feed">
+    <div className="pow-feed has-rail">
       <style>{FEED_CSS}</style>
 
       <FeedTopbar signedIn={viewerAccountId != null} isAuthor={viewerIsAuthor} />
 
+      {/* The author's spread: their own paper + handles on the left (≥1400px),
+          their live economy on the right (≥1100px). Same grid the home feed
+          uses; phones render the untouched single column. */}
+      <div className="feed-cols">
+      <aside className="feed-left" aria-label="This author's front page">
+        <AuthorFrontPage identity={identity} stories={initialArticles} />
+        {handleCardsSlot ? (
+          <div className="prof-handles-rail">
+            {handleCardsSlot}
+            <Link
+              className="prof-offerlink"
+              href={
+                !isAddressIdentity
+                  ? `/marketplace?view=all&q=${encodeURIComponent(String(identity).replace(/^@/, ''))}`
+                  : '/marketplace?view=all'
+              }
+            >
+              Make an offer on a handle →
+            </Link>
+          </div>
+        ) : null}
+      </aside>
       <main className="wrap" style={{ paddingTop: '28px' }}>
         <header className="profhead">
           <h1
@@ -355,7 +380,9 @@ export default function AuthorProfilePageClient({
           {bioText ? <p className="profbio">{bioText}</p> : null}
         </header>
 
-        {handleCardsSlot ?? <HandleCarousel handles={handleCards} title="Handles" />}
+        <div className="prof-handles-center">
+          {handleCardsSlot ?? <HandleCarousel handles={handleCards} title="Handles" />}
+        </div>
 
         <div className="tabs" role="tablist">
           <button
@@ -447,6 +474,16 @@ export default function AuthorProfilePageClient({
           </>
         )}
       </main>
+
+      <aside className="feed-rail" aria-label="This author's on-chain activity">
+        <ActivityRail
+          heading={!isAddressIdentity ? `${identity}'s economy` : "This author's economy"}
+          sub="Unlocks, tips and posts touching this author — every line is an on-chain transaction."
+          emptyText="Quiet so far — this author's first sale lands here."
+          scope={{ authorId, address: holderAddress }}
+        />
+      </aside>
+      </div>
     </div>
   )
 }

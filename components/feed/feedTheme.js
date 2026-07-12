@@ -666,6 +666,17 @@ html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
 /* the story currently being read (article page keeps this rail beside it) */
 .pow-feed .np-now,.pow-feed .np-entry.now .np-entry-h,.pow-feed .np-rank.now .np-rank-h{color:var(--neon);}
 
+/* author profile spread: the handle carousel lives in the CENTER column
+   below 1400px (unchanged mobile) and moves into the left rail on wide
+   desktop, where it gets room + the make-an-offer link. */
+@media (min-width:1400px){
+  .pow-feed.has-rail .prof-handles-center{display:none;}
+}
+.pow-feed .prof-handles-rail{margin-top:14px;}
+.pow-feed .prof-offerlink{display:block;margin-top:8px;font-size:11px;color:var(--cyan);
+  letter-spacing:.03em;border-bottom:1px solid transparent;width:fit-content;transition:border-color .15s;}
+.pow-feed .prof-offerlink:hover{border-color:var(--cyan);}
+
 /* ---- dashboard desktop: fill the screen. The dashboard is chrome, not a
    reading column — wide rows scan fine, and the stat cards spread into one
    band. Phones keep the standard 640px stack. ---- */

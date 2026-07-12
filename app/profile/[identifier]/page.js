@@ -135,6 +135,7 @@ export default async function ProfilePage({ params }) {
       initialArticles={articleData.posts ?? []}
       postsErrorMessage={articleData.error || null}
       viewerIsAuthor={viewerIsAuthor}
+      authorId={resolved.author?.id ?? null}
     />
   )
 }

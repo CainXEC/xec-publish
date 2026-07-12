@@ -18,7 +18,7 @@
 //  construction, so they're always final here.
 // =============================================================================
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { priceForHandle } from "@/lib/handlePricing";
 import { isTxFinal } from "@/lib/ecash/finality";
@@ -75,34 +75,91 @@ const displayIdentity = (identity: string | null | undefined, fallback: string) 
   return id.startsWith("@") ? id : shortAddr(id);
 };
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  // Optional author scoping (profile pages): ?authorId=<uuid>&address=<ecash>
+  // narrows the stream to one author's economy — their feed posts, value
+  // received on their content, and their articles' unlocks/publishes. Mints
+  // aren't attributable to an author (the handles table has no owner column),
+  // so that source is skipped when scoped.
+  const sp = req.nextUrl.searchParams;
+  const authorIdRaw = (sp.get("authorId") ?? "").trim();
+  const authorId = /^[0-9a-f-]{36}$/i.test(authorIdRaw) ? authorIdRaw : null;
+  const addressRaw = (sp.get("address") ?? "").trim().toLowerCase().replace(/^ecash:/, "");
+  const address = /^[a-z0-9]{42}$/.test(addressRaw) ? addressRaw : null;
+  const scoped = Boolean(authorId || address);
+  const addressForms = address ? [address, `ecash:${address}`] : [];
+
+  // The scoped feed_posts filter needs the address's ACCOUNT (posts are keyed
+  // by author_account_id, not payout address).
+  let scopedAccountId: string | null = null;
+  if (address) {
+    const { data: links } = await supabase
+      .from("account_addresses")
+      .select("account_id")
+      .in("address", addressForms)
+      .limit(1);
+    scopedAccountId = (links?.[0]?.account_id as string | undefined) ?? null;
+  }
+
+  let postsQuery = supabase
+    .from("feed_posts")
+    .select("txid, action, author_identity, amount_sats, content, created_at, finalized_at, card_kind")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(PER_SOURCE);
+  if (scoped) {
+    postsQuery = scopedAccountId
+      ? postsQuery.eq("author_account_id", scopedAccountId)
+      : postsQuery.eq("author_account_id", "00000000-0000-0000-0000-000000000000"); // no account → no feed posts
+  }
+
+  let eventsQuery = supabase
+    .from("feed_events")
+    .select("txid, action, actor_identity, amount_sats, target_txid, created_at, finalized_at")
+    .order("created_at", { ascending: false })
+    .limit(PER_SOURCE);
+  if (scoped) {
+    // payout_address = who the reaction PAID, i.e. the author of the target
+    // post — exactly "value this author received".
+    eventsQuery = addressForms.length > 0
+      ? eventsQuery.in("payout_address", addressForms)
+      : eventsQuery.eq("txid", "-"); // unmatchable → empty source
+  }
+
+  let unlocksQuery = supabase
+    .from("unlocks")
+    .select("txid, payer_address, unlocked_at, posts!inner(title, slug, price_xec, author_id)")
+    .order("unlocked_at", { ascending: false })
+    .limit(PER_SOURCE);
+  if (scoped) {
+    unlocksQuery = authorId
+      ? unlocksQuery.eq("posts.author_id", authorId)
+      : unlocksQuery.eq("txid", "-");
+  }
+
+  let publishesQuery = supabase
+    .from("publishes")
+    .select("txid, amount_sats, paid_at, author_id, posts(title, slug)")
+    .order("paid_at", { ascending: false })
+    .limit(PER_SOURCE);
+  if (scoped) {
+    publishesQuery = authorId
+      ? publishesQuery.eq("author_id", authorId)
+      : publishesQuery.eq("txid", "-");
+  }
+
   const [postsQ, eventsQ, unlocksQ, publishesQ, mintsQ] = await Promise.all([
-    supabase
-      .from("feed_posts")
-      .select("txid, action, author_identity, amount_sats, content, created_at, finalized_at, card_kind")
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(PER_SOURCE),
-    supabase
-      .from("feed_events")
-      .select("txid, action, actor_identity, amount_sats, target_txid, created_at, finalized_at")
-      .order("created_at", { ascending: false })
-      .limit(PER_SOURCE),
-    supabase
-      .from("unlocks")
-      .select("txid, payer_address, unlocked_at, posts(title, slug, price_xec)")
-      .order("unlocked_at", { ascending: false })
-      .limit(PER_SOURCE),
-    supabase
-      .from("publishes")
-      .select("txid, amount_sats, paid_at, author_id, posts(title, slug)")
-      .order("paid_at", { ascending: false })
-      .limit(PER_SOURCE),
-    supabase
-      .from("handles")
-      .select("token_id, handle, tier, created_at")
-      .order("created_at", { ascending: false })
-      .limit(PER_SOURCE),
+    postsQuery,
+    eventsQuery,
+    unlocksQuery,
+    publishesQuery,
+    scoped
+      ? Promise.resolve({ data: [] as Array<never> })
+      : supabase
+          .from("handles")
+          .select("token_id, handle, tier, created_at")
+          .order("created_at", { ascending: false })
+          .limit(PER_SOURCE),
   ]);
 
   const items: ActivityItem[] = [];

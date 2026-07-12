@@ -68,7 +68,16 @@ function targetNode(it) {
   return <span className="arow-target">{it.target}</span>
 }
 
-export default function ActivityRail({ minWidth = 1100 }) {
+export default function ActivityRail({
+  minWidth = 1100,
+  heading = 'Live on eCash',
+  sub = 'Real economic activity — every line links to its on-chain transaction.',
+  emptyText = 'Quiet for now — the next post, unlock or mint lands here.',
+  // Author-profile scoping: { authorId, address } narrows the stream to
+  // events touching one author (their posts, value they received, their
+  // articles' unlocks/publishes). Null = the site-wide firehose.
+  scope = null,
+}) {
   const [items, setItems] = useState(null)
   // The rail only exists above the host page's breakpoint (1100px on the
   // feed, wider on the article page) — don't spend fetches or a websocket
@@ -89,7 +98,11 @@ export default function ActivityRail({ minWidth = 1100 }) {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch('/api/activity', { cache: 'no-store' })
+      const params = new URLSearchParams()
+      if (scope?.authorId) params.set('authorId', scope.authorId)
+      if (scope?.address) params.set('address', scope.address)
+      const qs = params.toString()
+      const res = await fetch(`/api/activity${qs ? `?${qs}` : ''}`, { cache: 'no-store' })
       const data = await res.json()
       if (!data.ok) return
       const next = data.items ?? []
@@ -105,7 +118,7 @@ export default function ActivityRail({ minWidth = 1100 }) {
     } catch {
       /* best-effort; the next tick covers it */
     }
-  }, [])
+  }, [scope?.authorId, scope?.address])
 
   useEffect(() => {
     if (!active) return
@@ -135,14 +148,14 @@ export default function ActivityRail({ minWidth = 1100 }) {
     <div className="arail">
       <div className="arail-head">
         <span className="arail-dot" aria-hidden />
-        Live on eCash
+        {heading}
       </div>
-      <p className="arail-sub">Real economic activity — every line links to its on-chain transaction.</p>
+      <p className="arail-sub">{sub}</p>
 
       {items === null ? (
         <p className="arail-empty">Listening…</p>
       ) : items.length === 0 ? (
-        <p className="arail-empty">Quiet for now — the next post, unlock or mint lands here.</p>
+        <p className="arail-empty">{emptyText}</p>
       ) : (
         <ul className="arail-list">
           {items.map((it) => (
