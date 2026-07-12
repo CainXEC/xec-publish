@@ -15,6 +15,7 @@
     "test:all": "vitest run && playwright test"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.111.0",
     "@google-cloud/text-to-speech": "^6.4.0",
     "@resvg/resvg-js": "^2.6.2",
     "@supabase/ssr": "^0.10.2",

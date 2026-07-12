@@ -317,7 +317,9 @@ export default function FeedClient({
         />
       </aside>
       <main className="wrap" style={{ paddingTop: '28px' }}>
-        {pane?.kind === 'article' ? <HomeReader slug={pane.slug} onClose={closeReader} /> : null}
+        {pane?.kind === 'article' ? (
+          <HomeReader key={pane.slug} slug={pane.slug} onClose={closeReader} />
+        ) : null}
         {pane?.kind === 'thread' ? (
           <ThreadPane txid={pane.txid} onClose={closeReader} onOpenThread={wideShell ? openThread : undefined} />
         ) : null}

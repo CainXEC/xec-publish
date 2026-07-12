@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import ActivityRail from '@/components/feed/ActivityRail'
 import ArticleRail from '@/components/feed/ArticleRail'
 import FeedTopbar from '@/components/feed/FeedTopbar'
+import TranslateButton from '@/components/TranslateButton'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import { ARTICLE_CSS } from './articleTheme'
 import { charCounterClassName } from '@/lib/charCounterClassName'
@@ -70,6 +71,8 @@ export default function PostPageClient({
   const [post] = useState(initialPost)
   const [author] = useState(initialAuthor)
   const [bodyHtml, setBodyHtml] = useState(initialBodyHtml ?? '')
+  // AI translation ({ translated: html, title }); null = original.
+  const [tr, setTr] = useState(null)
 
   const [unlocked, setUnlocked] = useState(initialUnlocked)
   const [unlockCheckPending, setUnlockCheckPending] = useState(!initialUnlocked)
@@ -802,7 +805,7 @@ export default function PostPageClient({
       </aside>
       <main className="wrap">
         <article className="article">
-          <h1 className="arttitle">{post.title}</h1>
+          <h1 className="arttitle">{tr?.title ?? post.title}</h1>
           <p className="artbyline">
             <span>By</span>
             {/* Byline = the account's live display identity: bound handle, else
@@ -912,6 +915,14 @@ export default function PostPageClient({
                 💰 <span>{earningsXec.toLocaleString()}</span>
               </span>
             ) : null}
+
+            <TranslateButton
+              kind="article"
+              id={slug}
+              onTranslated={setTr}
+              onShowOriginal={() => setTr(null)}
+              className="metaitem"
+            />
           </div>
 
           {unlockCheckPending && !canViewFullPost ? (
@@ -928,7 +939,7 @@ export default function PostPageClient({
               </h2>
               <div
                 className="prose"
-                dangerouslySetInnerHTML={{ __html: bodyHtml }}
+                dangerouslySetInnerHTML={{ __html: tr?.translated ?? bodyHtml }}
               />
 
               <div className="paywrap">
@@ -979,7 +990,7 @@ export default function PostPageClient({
               <div
                 className="prose"
                 dangerouslySetInnerHTML={{
-                  __html: bodyHtml,
+                  __html: tr?.translated ?? bodyHtml,
                 }}
               />
 
@@ -1105,7 +1116,7 @@ export default function PostPageClient({
               {bodyHtml ? (
                 <div
                   className="prose"
-                  dangerouslySetInnerHTML={{ __html: bodyHtml }}
+                  dangerouslySetInnerHTML={{ __html: tr?.translated ?? bodyHtml }}
                 />
               ) : null}
               <div className="paywrap">

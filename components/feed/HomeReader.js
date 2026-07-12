@@ -22,6 +22,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import CopyLinkButton from '@/components/feed/CopyLinkButton'
+import TranslateButton from '@/components/TranslateButton'
 import PaneComments from '@/components/feed/PaneComments'
 import PaneUnlock from '@/components/feed/PaneUnlock'
 import { ARTICLE_CSS } from '@/app/posts/[slug]/articleTheme'
@@ -40,6 +41,9 @@ const fmtDate = (iso) => {
 
 export default function HomeReader({ slug, onClose, backLabel = '← The feed' }) {
   const [state, setState] = useState({ loading: true })
+  // Translated view ({ translated: html, title }); null = original. The parent
+  // keys this component by slug, so it remounts per story — tr resets naturally.
+  const [tr, setTr] = useState(null)
 
   // Reusable so an in-pane unlock can refetch: the server, now seeing the
   // entitlement, returns the FULL story and the paywall block melts away.
@@ -78,6 +82,14 @@ export default function HomeReader({ slug, onClose, backLabel = '← The feed' }
     <div className="homereader">
       <div className="hr-bar">
         <button type="button" className="hr-back" onClick={onClose}>{backLabel}</button>
+        {d && !state.loading ? (
+          <TranslateButton
+            kind="article"
+            id={slug}
+            onTranslated={setTr}
+            onShowOriginal={() => setTr(null)}
+          />
+        ) : null}
         <CopyLinkButton path={`/posts/${encodeURIComponent(slug)}`} />
       </div>
 
@@ -88,7 +100,7 @@ export default function HomeReader({ slug, onClose, backLabel = '← The feed' }
       ) : (
         <div className="pow-article readerhost">
           <style>{ARTICLE_CSS}</style>
-          <h1 className="np-serif hr-title">{d.title}</h1>
+          <h1 className="np-serif hr-title">{tr?.title ?? d.title}</h1>
           <p className="hr-meta">
             {d.author?.name ? (
               <>
@@ -132,7 +144,7 @@ export default function HomeReader({ slug, onClose, backLabel = '← The feed' }
 
           {/* Server-prepared HTML: public part only unless this viewer is
               entitled — the same bytes the article page would render. */}
-          <div className="prose" dangerouslySetInnerHTML={{ __html: d.bodyHtml }} />
+          <div className="prose" dangerouslySetInnerHTML={{ __html: tr?.translated ?? d.bodyHtml }} />
 
           {d.hasPaywall && !d.unlocked ? (
             <PaneUnlock

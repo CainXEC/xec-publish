@@ -10,6 +10,7 @@ import LinkedPostEmbed from '@/components/feed/LinkedPostEmbed'
 import ArticleCard from '@/components/feed/ArticleCard'
 import MintCard from '@/components/feed/MintCard'
 import FeedBody from '@/components/feed/FeedBody'
+import TranslateButton from '@/components/TranslateButton'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
 
@@ -177,6 +178,7 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
 
 export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = null, onDeleted, onBlocked, mintVariant = 'full', onOpenThread = null }) {
   const router = useRouter()
+  const [translated, setTranslated] = useState(null)
   const [showReply, setShowReply] = useState(false)
   const [showQuote, setShowQuote] = useState(false)
   const [replyCount, setReplyCount] = useState(post.replyCount ?? 0)
@@ -357,8 +359,8 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
         <>
           {shownBody ? (
             <p className="body">
-              <FeedBody text={shownBody} />
-              {isLong ? (
+              <FeedBody text={translated ?? shownBody} />
+              {isLong && !translated ? (
                 <button
                   type="button"
                   className="showmore"
@@ -404,6 +406,14 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
             likedByViewer={Boolean(post.likedByViewer)}
             repostedByViewer={Boolean(post.repostedByViewer)}
             onQuote={() => setShowQuote((s) => !s)}
+          />
+        ) : null}
+        {!post.deleted && body ? (
+          <TranslateButton
+            kind="feed"
+            id={post.txid}
+            onTranslated={(d) => setTranslated(d.translated)}
+            onShowOriginal={() => setTranslated(null)}
           />
         ) : null}
         {isOwn ? (
