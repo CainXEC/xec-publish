@@ -786,8 +786,6 @@ html:not(.dark) .pow-feed .np-mast{text-shadow:none;}
 .pow-feed .arow-meta{display:flex;align-items:center;gap:10px;margin-top:3px;font-size:11px;
   color:var(--dim);font-variant-numeric:tabular-nums;}
 .pow-feed .arow-amt{color:var(--neon);font-weight:700;}
-.pow-feed .arow-final{color:var(--neon);}
-.pow-feed .arow-pending{color:var(--cyan);animation:arail-pulse 1.4s ease-in-out infinite;}
 .pow-feed .arow-tx{margin-left:auto;color:var(--dim);border-bottom:1px solid transparent;transition:color .15s,border-color .15s;}
 .pow-feed .arow-tx:hover{color:var(--cyan);border-color:var(--cyan);}
 html:not(.dark) .pow-feed .arow-target{color:#3f6b5d;}

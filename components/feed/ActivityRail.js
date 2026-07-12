@@ -26,8 +26,8 @@ const POLL_MS = 45_000
 // A ws push means the tx just hit the mempool; the server records the action
 // a moment later (client confirm + verify). Refetch after this beat…
 const NUDGE_DELAY_MS = 1_200
-// …and once more shortly after: catches slow records and flips the row's
-// "finalizing…" to ✓ right after Chronik's TX_FINALIZED push (~2s).
+// …and once more shortly after: catches actions the server recorded slightly
+// late, so a just-happened row doesn't wait for the next 45s poll to appear.
 const NUDGE_FOLLOWUP_MS = 6_500
 
 const VERB = {
@@ -186,11 +186,6 @@ export default function ActivityRail({
               <span className="arow-meta">
                 {it.amountXec != null ? <span className="arow-amt">{fmtXec(it.amountXec)}</span> : null}
                 <span className="arow-time">{timeAgo(it.at)}</span>
-                {it.final ? (
-                  <span className="arow-final" title="Avalanche finalized">✓</span>
-                ) : (
-                  <span className="arow-pending">finalizing…</span>
-                )}
                 {it.txid ? (
                   <a
                     className="arow-tx"

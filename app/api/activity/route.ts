@@ -11,17 +11,11 @@
 //  verified the payment (and its POWR envelope where applicable), so nothing
 //  unverified can appear. The client's LOKAD websocket subscription is only
 //  a doorbell that triggers a refetch of this endpoint.
-//
-//  `final` mirrors Avalanche finality where the source tracks it
-//  (feed_posts/feed_events.finalized_at — stamped by the reconcile sweep);
-//  unlocks, publishes and mints are recorded at-or-after finality by
-//  construction, so they're always final here.
 // =============================================================================
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { priceForHandle } from "@/lib/handlePricing";
-import { isTxFinal } from "@/lib/ecash/finality";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,7 +44,6 @@ export type ActivityItem = {
   target: string | null;
   amountXec: number | null;
   at: string;
-  final: boolean;
   href: string;
   txid: string | null;
 };
@@ -103,7 +96,7 @@ export async function GET(req: NextRequest) {
 
   let postsQuery = supabase
     .from("feed_posts")
-    .select("txid, action, author_identity, amount_sats, content, created_at, finalized_at, card_kind")
+    .select("txid, action, author_identity, amount_sats, content, created_at, card_kind")
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(PER_SOURCE);
@@ -115,7 +108,7 @@ export async function GET(req: NextRequest) {
 
   let eventsQuery = supabase
     .from("feed_events")
-    .select("txid, action, actor_identity, amount_sats, target_txid, created_at, finalized_at")
+    .select("txid, action, actor_identity, amount_sats, target_txid, created_at")
     .order("created_at", { ascending: false })
     .limit(PER_SOURCE);
   if (scoped) {
@@ -168,7 +161,7 @@ export async function GET(req: NextRequest) {
   type PostRow = {
     txid: string; action: number; author_identity: string | null;
     amount_sats: number | null; content: string | null; created_at: string;
-    finalized_at: string | null; card_kind: string | null;
+    card_kind: string | null;
   };
   const posts = (postsQ.data ?? []) as PostRow[];
   for (const p of posts) {
@@ -181,7 +174,6 @@ export async function GET(req: NextRequest) {
       target: snippet(p.content),
       amountXec: p.amount_sats == null ? null : p.amount_sats / 100,
       at: p.created_at,
-      final: p.finalized_at != null,
       href: `/feed/${p.txid}`,
       txid: p.txid,
     });
@@ -191,7 +183,6 @@ export async function GET(req: NextRequest) {
   type EventRow = {
     txid: string; action: number; actor_identity: string | null;
     amount_sats: number | null; target_txid: string | null; created_at: string;
-    finalized_at: string | null;
   };
   const events = (eventsQ.data ?? []) as EventRow[];
   const targetTxids = [...new Set(events.map((e) => e.target_txid).filter(Boolean))] as string[];
@@ -217,7 +208,6 @@ export async function GET(req: NextRequest) {
         : null,
       amountXec: e.amount_sats == null ? null : e.amount_sats / 100,
       at: e.created_at,
-      final: e.finalized_at != null,
       href: e.target_txid ? `/feed/${e.target_txid}` : "/",
       txid: e.txid,
     });
@@ -273,7 +263,6 @@ export async function GET(req: NextRequest) {
       target: u.posts.title ?? "an article",
       amountXec: u.posts.price_xec ?? null,
       at: u.unlocked_at,
-      final: true, // recorded only after Avalanche finality
       href: `/posts/${u.posts.slug}`,
       txid: u.txid,
     });
@@ -308,7 +297,6 @@ export async function GET(req: NextRequest) {
       target: p.posts.title ?? "an article",
       amountXec: p.amount_sats == null ? null : p.amount_sats / 100,
       at: p.paid_at,
-      final: true, // fee verified on-chain before the row is written
       href: `/posts/${p.posts.slug}`,
       txid: p.txid,
     });
@@ -324,7 +312,6 @@ export async function GET(req: NextRequest) {
       target: null,
       amountXec: priceForHandle(m.handle).priceXec,
       at: m.created_at,
-      final: true, // the NFT exists on-chain
       href: `/@${m.handle}`,
       txid: m.token_id,
     });
@@ -332,32 +319,6 @@ export async function GET(req: NextRequest) {
 
   items.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
   const page = items.slice(0, MAX_ITEMS);
-
-  // Avalanche finalizes in ~2s but finalized_at is stamped by the once-a-minute
-  // reconcile sweep — don't make the rail wear "finalizing…" for a minute of
-  // display lag. For the handful of still-pending rows on the page, ask
-  // Chronik directly (read-only; reconcile still owns the DB write).
-  //
-  // This must never slow the rail down: rows are pending only in the short
-  // window between a 0-conf action and the next sweep, so this set is almost
-  // always EMPTY (zero Chronik calls, zero added latency) — and when it isn't,
-  // the whole batch races a hard 500ms budget. Chronik slow? The response
-  // returns anyway and the rows simply stay provisional until the sweep.
-  const pending = page.filter((i) => !i.final && i.txid).slice(0, 8);
-  if (pending.length > 0) {
-    await Promise.race([
-      Promise.all(
-        pending.map(async (i) => {
-          try {
-            if (await isTxFinal(i.txid as string)) i.final = true;
-          } catch {
-            /* Chronik down — the row just keeps its provisional state */
-          }
-        })
-      ),
-      new Promise((resolve) => setTimeout(resolve, 500)),
-    ]);
-  }
 
   return NextResponse.json(
     { ok: true, items: page },
