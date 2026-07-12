@@ -12,7 +12,7 @@ import { extractFeedPostTxid } from '@/lib/contentLinks'
  * /api/feed/linked-post — mirroring how ArticleCard hydrates its card. Renders
  * nothing while that fetch is in flight, so there's no "unavailable" flash.
  */
-export default function LinkedPostEmbed({ linkedPost, content }) {
+export default function LinkedPostEmbed({ linkedPost, content, onOpenThread = null }) {
   const needFetch = linkedPost === undefined
   const [fetched, setFetched] = useState(undefined)
 
@@ -34,8 +34,8 @@ export default function LinkedPostEmbed({ linkedPost, content }) {
     }
   }, [needFetch, content])
 
-  if (!needFetch) return <QuotedEmbed post={linkedPost} />
+  if (!needFetch) return <QuotedEmbed post={linkedPost} onOpenThread={onOpenThread} />
   // Optimistic: nothing until the fetch resolves (object or null).
   if (fetched === undefined) return null
-  return <QuotedEmbed post={fetched} />
+  return <QuotedEmbed post={fetched} onOpenThread={onOpenThread} />
 }

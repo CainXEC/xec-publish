@@ -370,13 +370,19 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
             </p>
           ) : null}
 
-          {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
+          {post.quoted_txid ? (
+            <QuotedEmbed post={post.quoted ?? null} onOpenThread={onOpenThread ?? undefined} />
+          ) : null}
 
           {/* A pasted on-site feed-post link (not a native quote) renders the target
               as a quoted embed below — "as if you'd quoted it". Server posts carry a
               resolved post.linkedPost; a just-posted one hydrates from the txid. */}
           {!post.deleted && !post.quoted_txid && extractFeedPostTxid(body) ? (
-            <LinkedPostEmbed linkedPost={post.linkedPost} content={body} />
+            <LinkedPostEmbed
+              linkedPost={post.linkedPost}
+              content={body}
+              onOpenThread={onOpenThread ?? undefined}
+            />
           ) : null}
 
           {!post.deleted ? (

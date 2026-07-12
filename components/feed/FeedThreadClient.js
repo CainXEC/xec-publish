@@ -125,9 +125,15 @@ function AncestorNode({ post, top = false, onOpenThread = null }) {
             {expanded ? 'Show less' : 'Show more'}
           </button>
         ) : null}
-        {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
+        {post.quoted_txid ? (
+          <QuotedEmbed post={post.quoted ?? null} onOpenThread={onOpenThread} />
+        ) : null}
         {!post.deleted && !post.quoted_txid && extractFeedPostTxid(post.content) ? (
-          <LinkedPostEmbed linkedPost={post.linkedPost} content={post.content} />
+          <LinkedPostEmbed
+            linkedPost={post.linkedPost}
+            content={post.content}
+            onOpenThread={onOpenThread}
+          />
         ) : null}
         {!post.deleted ? (
           <ArticleCard card={post.articleCard ?? null} content={post.content} />
@@ -269,9 +275,15 @@ export default function FeedThreadClient({
                       </p>
                     ) : null
                   })()}
-                  {post.quoted_txid ? <QuotedEmbed post={post.quoted ?? null} /> : null}
+                  {post.quoted_txid ? (
+                    <QuotedEmbed post={post.quoted ?? null} onOpenThread={onOpenThread} />
+                  ) : null}
                   {!post.quoted_txid && extractFeedPostTxid(post.content) ? (
-                    <LinkedPostEmbed linkedPost={post.linkedPost} content={post.content} />
+                    <LinkedPostEmbed
+                      linkedPost={post.linkedPost}
+                      content={post.content}
+                      onOpenThread={onOpenThread}
+                    />
                   ) : null}
                   <ArticleCard card={post.articleCard ?? null} content={post.content} />
                 </>

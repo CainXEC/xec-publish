@@ -36,7 +36,7 @@ const QUOTE_CLAMP_CHARS = 220
  * shallow preview shape from getFeed (may be a tombstone), or null when the
  * quoted post could not be found.
  */
-export default function QuotedEmbed({ post, interactive = true }) {
+export default function QuotedEmbed({ post, interactive = true, onOpenThread = null }) {
   const router = useRouter()
 
   if (post == null) {
@@ -50,6 +50,11 @@ export default function QuotedEmbed({ post, interactive = true }) {
   const go = (e) => {
     if (!interactive) return
     if (e.target.closest('a, button')) return
+    // Host pages with a center reading pane open the quoted thread in place.
+    if (onOpenThread) {
+      onOpenThread(post.txid)
+      return
+    }
     router.push(`/feed/${post.txid}`)
   }
 
