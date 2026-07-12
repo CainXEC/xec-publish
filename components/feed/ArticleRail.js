@@ -42,14 +42,57 @@ function timeAgo(iso) {
 
 const isFresh = (iso) => Date.now() - Date.parse(iso) < 24 * 60 * 60 * 1000
 
-function datelineToday() {
+// Live masthead dateline: the date plus a ticking clock (with seconds). Its own
+// component so only this line re-renders each second, not the whole rail. The
+// clock is null until mount, so the server renders a blank line and there's no
+// hydration mismatch from server-vs-client time.
+function FrontPageClock() {
+  const [now, setNow] = useState(null)
+
+  useEffect(() => {
+    // Prime on the next tick (not synchronously in the effect body) so the
+    // clock fills in immediately after mount without a cascading render.
+    const prime = setTimeout(() => setNow(new Date()), 0)
+    const id = setInterval(() => setNow(new Date()), 1000)
+    return () => {
+      clearTimeout(prime)
+      clearInterval(id)
+    }
+  }, [])
+
+  if (!now) return <div className="np-date">&nbsp;</div>
+
+  let date = ''
+  let time = ''
   try {
-    return new Date()
-      .toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+    date = now
+      .toLocaleDateString(undefined, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
       .toUpperCase()
+    time = now.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
   } catch {
-    return ''
+    /* leave blank */
   }
+
+  return (
+    <div className="np-date">
+      {date}
+      {time ? (
+        <>
+          {date ? ' · ' : ''}
+          <span style={{ fontVariantNumeric: 'tabular-nums' }}>{time}</span>
+        </>
+      ) : null}
+    </div>
+  )
 }
 
 // Meta line: byline · price · (readers, else recency). Readers = verified
@@ -187,10 +230,7 @@ export default function ArticleRail({ minWidth = 1400, currentSlug = null, onOpe
   return (
     <div className="npaper">
       <div className="np-mast">The front page</div>
-      <div className="np-date">
-        {datelineToday()}
-        {data ? ` — ${Number(data.minted).toLocaleString()} handles minted · ${Number(data.stories).toLocaleString()} ${data.stories === 1 ? 'story' : 'stories'}` : ''}
-      </div>
+      <FrontPageClock />
 
       {data === null ? (
         <p className="np-empty">Setting the type…</p>
