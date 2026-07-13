@@ -78,19 +78,45 @@ export default function HomeReader({ slug, onClose, backLabel = '← The feed' }
 
   const d = state.data
 
+  // The pane never touches the address bar, so — like CopyLinkButton — the share
+  // targets are built from the slug, not window.location (which is the feed's URL
+  // here). Title comes from the loaded story. Mirrors the standalone article
+  // page's share handlers (PostPageClient handleShareX / handleSharePow).
+  const articleUrl = () => `${window.location.origin}/posts/${encodeURIComponent(slug)}`
+  const shareToX = () => {
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+      tr?.title ?? d?.title ?? '',
+    )}&url=${encodeURIComponent(articleUrl())}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+  const shareToFeed = () => {
+    const text = `${tr?.title ?? d?.title ?? ''}\n\n${articleUrl()}`.trim()
+    window.location.href = `/?share=${encodeURIComponent(text)}`
+  }
+
   return (
     <div className="homereader">
       <div className="hr-bar">
         <button type="button" className="hr-back" onClick={onClose}>{backLabel}</button>
-        {d && !state.loading ? (
-          <TranslateButton
-            kind="article"
-            id={slug}
-            onTranslated={setTr}
-            onShowOriginal={() => setTr(null)}
-          />
-        ) : null}
-        <CopyLinkButton path={`/posts/${encodeURIComponent(slug)}`} />
+        <div className="hr-actions">
+          {d && !state.loading ? (
+            <>
+              <TranslateButton
+                kind="article"
+                id={slug}
+                onTranslated={setTr}
+                onShowOriginal={() => setTr(null)}
+              />
+              <button type="button" className="hr-open" onClick={shareToFeed}>
+                Share to feed
+              </button>
+              <button type="button" className="hr-open" onClick={shareToX}>
+                Post to 𝕏
+              </button>
+            </>
+          ) : null}
+          <CopyLinkButton path={`/posts/${encodeURIComponent(slug)}`} />
+        </div>
       </div>
 
       {state.loading ? (
