@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import FeedNotifications from '@/components/feed/FeedNotifications'
+import WordmarkIntro from '@/components/feed/WordmarkIntro'
 import ThemeToggle from '@/components/ThemeToggle'
 
 /**
@@ -118,14 +119,21 @@ export default function FeedTopbar({
         </div>
       </div>
 
+      {/* The bell is its own flex item so CSS can place it: grouped on the
+          right at desktop, but on the LEFT on mobile — the slot the hamburger
+          vacates, where the bottom bar takes over navigation. One instance
+          either way (never double-mounted → never double-polls). */}
+      <div className="tb-bell">
+        <FeedNotifications signedIn={signedIn} />
+      </div>
+
       <Link href="/" className="wordmark" onClick={onWordmarkClick}>
-        proofofwriting
+        <WordmarkIntro />
       </Link>
 
       <div className="toplinks">
         {/* Text links — hidden on mobile (CSS), where they live in the hamburger. */}
         <span className="toplinks-text">{renderLinks('toplink')}</span>
-        <FeedNotifications signedIn={signedIn} />
         <ThemeToggle variant="feed" />
       </div>
     </div>

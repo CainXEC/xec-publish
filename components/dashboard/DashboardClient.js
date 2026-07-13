@@ -514,6 +514,18 @@ export default function DashboardClient({
     }
   }, [])
 
+  const handleDashLogout = useCallback(async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', cache: 'no-store' })
+    } catch {
+      /* ignore */
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sessionChanged'))
+      window.location.href = '/'
+    }
+  }, [])
+
   if (loadError) {
     return (
       <div className="pow-feed dash-wide">
@@ -653,6 +665,16 @@ export default function DashboardClient({
             <Link href="/dashboard/profile" className="dashbtn sec">
               Edit Profile
             </Link>
+            {/* Mobile has no topbar hamburger (the bottom bar owns nav), so
+                log out lives here in the account hub. Hidden on desktop, where
+                the hamburger still carries it. */}
+            <button
+              type="button"
+              className="dashbtn sec dash-mobile-only"
+              onClick={() => void handleDashLogout()}
+            >
+              Log out
+            </button>
           </div>
         </div>
 

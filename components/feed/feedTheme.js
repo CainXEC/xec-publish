@@ -29,13 +29,38 @@ export const FEED_CSS = `
    column shares the 640px width so nothing scrolls in the gutters beside it. */
 .pow-feed .topbar{
   position:sticky;top:0;z-index:50;
-  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;
+  display:flex;align-items:center;gap:10px;min-height:52px;
   max-width:640px;margin:0 auto;padding:16px 20px 14px;
   background:rgba(7,11,10,.82);backdrop-filter:blur(10px);
   border-bottom:1px solid var(--line);
 }
+/* Wordmark is absolutely centered so the left/right items flow freely and the
+   bell can relocate sides by breakpoint without pushing the name off-center. */
 .pow-feed .wordmark{font-size:clamp(17px,4vw,20px);font-weight:800;letter-spacing:.17em;text-transform:uppercase;color:var(--neon);
-  text-shadow:0 0 8px rgba(0,255,156,.5);white-space:nowrap;line-height:1;justify-self:center;}
+  text-shadow:0 0 8px rgba(0,255,156,.5);white-space:nowrap;line-height:1;
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);}
+/* Topbar item placement (flex order). Desktop: [hamburger] … [bell][theme].
+   Mobile (<1100): hamburger gone, [bell] … [theme] — bell in the vacated slot. */
+.pow-feed .topnav{order:0;}
+.pow-feed .tb-bell{display:inline-flex;order:2;margin-left:auto;}
+.pow-feed .toplinks{order:3;}
+/* Extra .topbar ancestor = higher specificity, so these win over the base
+   .topnav / .toplinks rules that appear later in this stylesheet. */
+@media (max-width:1099px){
+  .pow-feed .topbar .topnav{display:none;}
+  .pow-feed .topbar .tb-bell{order:0;margin-left:0;}
+  .pow-feed .topbar .toplinks{order:1;margin-left:auto;}
+}
+/* One-shot wordmark title entrance ("the unredaction"): a censor bar over the
+   name is consumed by a single cyan decrypt sweep, the letters cool from hot
+   white into this resting neon, then everything holds dead still. All the
+   animation CSS + variants live in WordmarkIntro.js (bench: /dev/wordmark);
+   these are just the structural bones. The invisible ghost pins the width so
+   the shot can never shift the nav; the base span is the real name (SSR'd),
+   and the intro overlays unmount back to exactly this static state. */
+.pow-feed .wm-intro{position:relative;display:inline-block;}
+.pow-feed .wm-ghost{visibility:hidden;}
+.pow-feed .wm-base{position:absolute;left:0;top:0;white-space:nowrap;}
 .pow-feed .toplink{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);border:1px solid var(--line);
   border-radius:8px;padding:8px 14px;transition:border-color .15s,box-shadow .15s;}
 .pow-feed .toplink:hover{border-color:var(--cyan);box-shadow:0 0 16px rgba(61,240,255,.22);}
@@ -668,6 +693,10 @@ html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
   box-shadow:0 0 8px rgba(0,255,156,.8);margin-right:6px;vertical-align:2px;}
 /* the story currently being read (article page keeps this rail beside it) */
 .pow-feed .np-now,.pow-feed .np-entry.now .np-entry-h,.pow-feed .np-rank.now .np-rank-h{color:var(--neon);}
+
+/* shown only on mobile (the bottom-bar shell), hidden where the topbar
+   hamburger still carries the same action */
+@media (min-width:1100px){.pow-feed .dash-mobile-only{display:none;}}
 
 /* author profile spread: the handle carousel lives in the CENTER column
    below 1400px (unchanged mobile) and moves into the left rail on wide
