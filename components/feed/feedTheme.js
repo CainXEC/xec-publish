@@ -420,7 +420,7 @@ export const FEED_CSS = `
 .pow-feed .dashhandle.static{cursor:default;}
 .pow-feed .dashhandle.static:hover{border-color:var(--line);box-shadow:none;}
 .pow-feed .dashhandle.active{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.28);}
-.pow-feed .dashhandle-img{width:104px;height:104px;border-radius:12px;object-fit:cover;background:var(--panel);border:1px solid var(--line);
+.pow-feed .dashhandle-img{width:104px;height:104px;max-width:none;border-radius:12px;object-fit:cover;background:var(--panel);border:1px solid var(--line);
   transition:border-color .15s,box-shadow .15s;}
 /* Handle tiles that have a rendered card: the card IS the tile (no chrome, no label below). */
 .pow-feed .dashhandle.hasimg{width:auto;padding:0;border:none;background:none;box-shadow:none;}
