@@ -114,6 +114,11 @@ export const FEED_CSS = `
 .pow-feed .notifpop{position:absolute;top:100%;right:0;margin-top:8px;z-index:60;width:300px;max-width:82vw;
   background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;
   box-shadow:0 10px 30px rgba(0,0,0,.55);}
+/* Mobile: the bell sits on the LEFT (bottom-bar shell), so the dropdown must
+   open to the RIGHT — the desktop right:0 anchor would slide it off-screen. */
+@media (max-width:1099px){
+  .pow-feed .notifpop{right:auto;left:0;}
+}
 .pow-feed .notifpop-head{padding:11px 14px;border-bottom:1px solid var(--line);
   font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);}
 .pow-feed .notifempty{margin:0;padding:18px 14px;font-size:13px;color:var(--dim);text-align:center;}
