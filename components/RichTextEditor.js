@@ -260,7 +260,7 @@ export default function RichTextEditor({
           </ToolbarButton>
         </div>
         <div
-          className="touch-pan-y flex-1 overflow-y-auto"
+          className="rte-scroll touch-pan-y flex-1 overflow-y-auto"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           <EditorContent editor={editor} />
