@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveDisplayHandle } from '@/app/dashboard/saveDisplayHandle'
+import HandleCardImage from '@/components/HandleCardImage'
 
 /**
  * Lets a wallet that holds one or more handle NFTs choose which one is shown as
@@ -109,8 +110,12 @@ export default function DisplayHandlePicker() {
                 onChange={() => void choose(h.tokenId)}
               />
               {h.imageUrl ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={h.imageUrl} alt="" className="prof-radio-img" />
+                <HandleCardImage
+                  src={h.imageUrl}
+                  handle={h.handle}
+                  alt=""
+                  className="prof-radio-img"
+                />
               ) : null}
               <span className="prof-radio-name">@{h.handle}</span>
             </label>

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import HandleCardImage from '@/components/HandleCardImage'
 
 /**
  * Handle-mint card body: the deterministic NFT card image for a freshly minted
@@ -14,8 +15,13 @@ export default function MintCard({ post }) {
   if (!post.image_url) return null
 
   const Img = (
-    /* eslint-disable-next-line @next/next/no-img-element */
-    <img className="mintcard-img" src={post.image_url} alt={alt} loading="lazy" />
+    <HandleCardImage
+      className="mintcard-img"
+      src={post.image_url}
+      handle={handle || null}
+      alt={alt}
+      loading="lazy"
+    />
   )
   return (
     <div className="mintcard">
