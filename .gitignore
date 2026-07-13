@@ -48,3 +48,9 @@ next-env.d.ts
 
 # grandfather claim codes — private, never commit
 claim-codes.csv
+
+# wordmark intro — parked WIP (unfinished animation the founder will redo).
+# Kept on disk to revisit, but ignored so a broad `git add` can't re-commit it
+# and re-ship it. Un-ignore these when the redo is ready to land.
+components/feed/WordmarkIntro.js
+app/dev/wordmark/
