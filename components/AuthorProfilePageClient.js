@@ -18,6 +18,13 @@ function truncateAddress(addr) {
   return `${t.slice(0, 10)}…${t.slice(-4)}`
 }
 
+// Append a fetched page onto an existing list, dropping any txid already shown
+// (keyset paging shouldn't overlap, but a post added between pages could).
+function appendUnique(prev, more) {
+  const seen = new Set((prev ?? []).map((p) => p.txid))
+  return [...(prev ?? []), ...more.filter((p) => p.txid && !seen.has(p.txid))]
+}
+
 /**
  * The follower count plus a "+" dropdown holding the two relationship actions
  * for the profile's account: Follow/Unfollow and Block/Unblock. Session-authorized
@@ -241,6 +248,7 @@ export default function AuthorProfilePageClient({
   initialFollowing = false,
   initialBlocked = false,
   initialPosts = [],
+  initialPostsCursor = null,
   initialReplies = null,
   identifier = '',
   initialArticles = [],
@@ -285,11 +293,17 @@ export default function AuthorProfilePageClient({
   }, [readerSlug, closeReader])
 
   const [posts, setPosts] = useState(initialPosts)
+  // Cursor for the Posts tab: the server renders page 1 and hands us the cursor
+  // for page 2; null means no more pages. Infinite scroll walks it forward.
+  const [postsCursor, setPostsCursor] = useState(initialPostsCursor)
+  const [postsLoadingMore, setPostsLoadingMore] = useState(false)
   // Replies load ON DEMAND: null = not fetched yet. The server no longer renders
   // them into every profile visit; the first switch to the Replies tab fetches
   // them from /api/feed/account-replies (same shape as before).
   const [replies, setReplies] = useState(initialReplies)
   const [repliesLoading, setRepliesLoading] = useState(false)
+  const [repliesCursor, setRepliesCursor] = useState(null)
+  const [repliesLoadingMore, setRepliesLoadingMore] = useState(false)
   const articleList = (initialArticles ?? []).filter((p) => !p.legacy)
   const legacyList = (initialArticles ?? []).filter((p) => p.legacy)
   const [blocked, setBlocked] = useState(Boolean(initialBlocked))
@@ -305,6 +319,7 @@ export default function AuthorProfilePageClient({
       )
       const data = await res.json()
       setReplies(Array.isArray(data.posts) ? data.posts : [])
+      setRepliesCursor(data.nextCursor ?? null)
     } catch {
       setReplies([])
     } finally {
@@ -316,6 +331,68 @@ export default function AuthorProfilePageClient({
     setTab('replies')
     if (replies === null && !repliesLoading) void loadReplies()
   }, [replies, repliesLoading, loadReplies])
+
+  const loadMorePosts = useCallback(async () => {
+    if (postsLoadingMore || !postsCursor || !profileAccountId) return
+    setPostsLoadingMore(true)
+    try {
+      const res = await fetch(
+        `/api/feed/account-posts?accountId=${encodeURIComponent(profileAccountId)}&cursor=${encodeURIComponent(postsCursor)}`,
+      )
+      const data = await res.json()
+      if (res.ok && Array.isArray(data.posts)) {
+        setPosts((prev) => appendUnique(prev, data.posts))
+        setPostsCursor(data.nextCursor ?? null)
+      }
+    } catch {
+      /* leave the cursor in place — scrolling again retries */
+    } finally {
+      setPostsLoadingMore(false)
+    }
+  }, [postsLoadingMore, postsCursor, profileAccountId])
+
+  const loadMoreReplies = useCallback(async () => {
+    if (repliesLoadingMore || !repliesCursor || !profileAccountId) return
+    setRepliesLoadingMore(true)
+    try {
+      const res = await fetch(
+        `/api/feed/account-replies?accountId=${encodeURIComponent(profileAccountId)}&cursor=${encodeURIComponent(repliesCursor)}`,
+      )
+      const data = await res.json()
+      if (res.ok && Array.isArray(data.posts)) {
+        setReplies((prev) => appendUnique(prev, data.posts))
+        setRepliesCursor(data.nextCursor ?? null)
+      }
+    } catch {
+      /* leave the cursor in place — scrolling again retries */
+    } finally {
+      setRepliesLoadingMore(false)
+    }
+  }, [repliesLoadingMore, repliesCursor, profileAccountId])
+
+  // One IntersectionObserver drives infinite scroll for whichever tab is active.
+  // The load-more call lives behind a ref so the observer never needs to be torn
+  // down and rebuilt as cursors/loading flags change — it just fires on sight.
+  const loadMoreRef = useRef(() => {})
+  loadMoreRef.current = () => {
+    if (tab === 'posts') void loadMorePosts()
+    else if (tab === 'replies') void loadMoreReplies()
+  }
+  const sentinelRef = useRef(null)
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) loadMoreRef.current()
+      },
+      { rootMargin: '600px' },
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+    // Re-attach when the active tab changes, when a sentinel mounts/unmounts
+    // (cursor flips to/from null), or when the reader pane hides the list.
+  }, [tab, postsCursor, repliesCursor, readerSlug])
 
   // A delete/block can target a post in either list, so filter both.
   const removePost = useCallback((txid) => {
@@ -460,17 +537,24 @@ export default function AuthorProfilePageClient({
           posts.length === 0 ? (
             <p className="empty">No posts yet.</p>
           ) : (
-            <ul className="panel posts">
-              {posts.map((post) => (
-                <FeedPost
-                  key={post.txid}
-                  post={post}
-                  viewerAccountId={viewerAccountId}
-                  onDeleted={removePost}
-                  onQuoted={handleQuoted}
-                />
-              ))}
-            </ul>
+            <>
+              <ul className="panel posts">
+                {posts.map((post) => (
+                  <FeedPost
+                    key={post.txid}
+                    post={post}
+                    viewerAccountId={viewerAccountId}
+                    onDeleted={removePost}
+                    onQuoted={handleQuoted}
+                  />
+                ))}
+              </ul>
+              {postsCursor ? (
+                <div ref={sentinelRef} className="loadmore">
+                  {postsLoadingMore ? <p className="empty">Loading more…</p> : null}
+                </div>
+              ) : null}
+            </>
           )
         ) : tab === 'replies' ? (
           repliesLoading || replies === null ? (
@@ -478,17 +562,24 @@ export default function AuthorProfilePageClient({
           ) : replies.length === 0 ? (
             <p className="empty">No replies yet.</p>
           ) : (
-            <ul className="panel posts">
-              {replies.map((post) => (
-                <FeedPost
-                  key={post.txid}
-                  post={post}
-                  viewerAccountId={viewerAccountId}
-                  onDeleted={removePost}
-                  onQuoted={handleQuoted}
-                />
-              ))}
-            </ul>
+            <>
+              <ul className="panel posts">
+                {replies.map((post) => (
+                  <FeedPost
+                    key={post.txid}
+                    post={post}
+                    viewerAccountId={viewerAccountId}
+                    onDeleted={removePost}
+                    onQuoted={handleQuoted}
+                  />
+                ))}
+              </ul>
+              {repliesCursor ? (
+                <div ref={sentinelRef} className="loadmore">
+                  {repliesLoadingMore ? <p className="empty">Loading more…</p> : null}
+                </div>
+              ) : null}
+            </>
           )
         ) : articleList.length === 0 && legacyList.length === 0 ? (
           <p className="empty">No articles published yet.</p>

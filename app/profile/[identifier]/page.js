@@ -131,6 +131,7 @@ export default async function ProfilePage({ params }) {
       initialFollowing={initialFollowing}
       initialBlocked={initialBlocked}
       initialPosts={feed.posts}
+      initialPostsCursor={feed.nextCursor ?? null}
       identifier={identifier}
       initialArticles={articleData.posts ?? []}
       postsErrorMessage={articleData.error || null}
