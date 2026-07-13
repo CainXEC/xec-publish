@@ -741,6 +741,7 @@ html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
 /* ---- the reading pane: a front-page story open in the feed's center column.
    Article typography rides in a neutralized .pow-article scope host. ---- */
 .pow-feed .hr-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 20px;}
+.pow-feed .hr-actions{display:flex;align-items:center;flex-wrap:wrap;gap:14px;justify-content:flex-end;}
 .pow-feed .hr-back{background:transparent;border:1px solid var(--line);color:var(--cyan);border-radius:9px;
   padding:9px 16px;font:inherit;font-size:12px;letter-spacing:.06em;cursor:pointer;
   transition:border-color .15s,box-shadow .15s;}
