@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import FeedNotifications from '@/components/feed/FeedNotifications'
-import WordmarkIntro from '@/components/feed/WordmarkIntro'
 import ThemeToggle from '@/components/ThemeToggle'
 
 /**
@@ -128,7 +127,7 @@ export default function FeedTopbar({
       </div>
 
       <Link href="/" className="wordmark" onClick={onWordmarkClick}>
-        <WordmarkIntro />
+        proofofwriting
       </Link>
 
       <div className="toplinks">
