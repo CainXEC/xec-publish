@@ -9,6 +9,7 @@ import { CharacterCount } from '@tiptap/extensions/character-count'
 import { POST_BODY_PLAIN_MAX } from '@/lib/postFieldLimits'
 import { charCounterClassName } from '@/lib/charCounterClassName'
 import { PaywallBreak } from '@/lib/tiptap/PaywallBreak'
+import { powInternalHref } from '@/lib/contentLinks'
 
 const BODY_WARN_WITHIN = 10_000
 
@@ -77,6 +78,18 @@ export default function RichTextEditor({
     () => [
       StarterKit.configure({
         heading: false,
+        // Links obey the same on-site-only policy the save/render layers enforce
+        // (lib/contentLinks.js): only a PoW article/post/profile/@handle URL may
+        // become a link. External URLs stay plain text in the editor instead of
+        // autolinking here and then silently vanishing on publish. openOnClick is
+        // off so clicking a link places the cursor rather than navigating away.
+        link: {
+          openOnClick: false,
+          autolink: true,
+          linkOnPaste: true,
+          shouldAutoLink: (url) => powInternalHref(url) != null,
+          isAllowedUri: (url) => powInternalHref(url) != null,
+        },
       }),
       Heading.configure({ levels: [1, 2, 3] }),
       TextAlign.configure({
