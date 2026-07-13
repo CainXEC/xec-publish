@@ -60,6 +60,11 @@ const shortAddr = (address: string) => {
   return `${b.slice(0, 8)}…${b.slice(-4)}`;
 };
 
+// Legacy (imported) articles live at the root `/<slug>`, not `/posts/<slug>` —
+// mirrors the profile ArticleRow rule so unlock/publish links don't 404.
+const articleHref = (slug: string, legacy?: boolean | null) =>
+  legacy ? `/${encodeURIComponent(slug)}` : `/posts/${encodeURIComponent(slug)}`;
+
 // Identity snapshots are "@handle" or a raw eCash address; addresses get the
 // same truncation the rest of the UI uses so the rail stays scannable.
 const displayIdentity = (identity: string | null | undefined, fallback: string) => {
@@ -121,7 +126,7 @@ export async function GET(req: NextRequest) {
 
   let unlocksQuery = supabase
     .from("unlocks")
-    .select("txid, payer_address, unlocked_at, posts!inner(title, slug, price_xec, author_id)")
+    .select("txid, payer_address, unlocked_at, posts!inner(title, slug, price_xec, author_id, legacy)")
     .order("unlocked_at", { ascending: false })
     .limit(PER_SOURCE);
   if (scoped) {
@@ -132,7 +137,7 @@ export async function GET(req: NextRequest) {
 
   let publishesQuery = supabase
     .from("publishes")
-    .select("txid, amount_sats, paid_at, author_id, posts(title, slug)")
+    .select("txid, amount_sats, paid_at, author_id, posts(title, slug, legacy)")
     .order("paid_at", { ascending: false })
     .limit(PER_SOURCE);
   if (scoped) {
@@ -216,7 +221,7 @@ export async function GET(req: NextRequest) {
   // ---- article unlocks — reader byline resolved from their account ----
   type UnlockRow = {
     txid: string; payer_address: string | null; unlocked_at: string;
-    posts: { title: string | null; slug: string | null; price_xec: number | null } | null;
+    posts: { title: string | null; slug: string | null; price_xec: number | null; legacy?: boolean | null } | null;
   };
   const unlocks = (unlocksQ.data ?? []) as unknown as UnlockRow[];
   const payerBare = [
@@ -263,7 +268,7 @@ export async function GET(req: NextRequest) {
       target: u.posts.title ?? "an article",
       amountXec: u.posts.price_xec ?? null,
       at: u.unlocked_at,
-      href: `/posts/${u.posts.slug}`,
+      href: articleHref(u.posts.slug, u.posts.legacy),
       txid: u.txid,
     });
   }
@@ -271,7 +276,7 @@ export async function GET(req: NextRequest) {
   // ---- article publishes — author byline via their account's handle ----
   type PublishRow = {
     txid: string; amount_sats: number | null; paid_at: string; author_id: string | null;
-    posts: { title: string | null; slug: string | null } | null;
+    posts: { title: string | null; slug: string | null; legacy?: boolean | null } | null;
   };
   const publishes = (publishesQ.data ?? []) as unknown as PublishRow[];
   const authorIds = [...new Set(publishes.map((p) => p.author_id).filter(Boolean))] as string[];
@@ -297,7 +302,7 @@ export async function GET(req: NextRequest) {
       target: p.posts.title ?? "an article",
       amountXec: p.amount_sats == null ? null : p.amount_sats / 100,
       at: p.paid_at,
-      href: `/posts/${p.posts.slug}`,
+      href: articleHref(p.posts.slug, p.posts.legacy),
       txid: p.txid,
     });
   }
