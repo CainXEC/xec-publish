@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import EcashIcon from '@/components/EcashIcon'
+import { HandleCardPreview } from '@/components/HandleCardImage'
 
 // The horizontally-scrolling strip of handle-NFT cards, shared by the dashboard
 // (interactive: pick your own display handle) and the public profile (read-only:
@@ -49,12 +50,15 @@ export default function HandleCarousel({
   const [query, setQuery] = useState('')
   // Hover/focus tooltip. Rendered in a portal at <body> so the strip's
   // horizontal scroll (overflow-x) can't clip a card's floating label.
-  const [tip, setTip] = useState(null) // { text, x, y } | null
+  const [tip, setTip] = useState(null) // { text, imageUrl, cx, top, bottom } | null
   const interactive = typeof onChoose === 'function'
 
-  const showTip = useCallback((event, text) => {
+  // A card with art shows the enlarged card + name on hover (shared
+  // HandleCardPreview); the Address/Buy options have no art, so they keep the
+  // plain text chip.
+  const showTip = useCallback((event, text, imageUrl = null) => {
     const rect = event.currentTarget.getBoundingClientRect()
-    setTip({ text, x: rect.left + rect.width / 2, y: rect.top })
+    setTip({ text, imageUrl, cx: rect.left + rect.width / 2, top: rect.top, bottom: rect.bottom })
   }, [])
   const hideTip = useCallback(() => setTip(null), [])
 
@@ -71,10 +75,10 @@ export default function HandleCarousel({
   // Address option + a Buy-handle prompt); read-only empty collapses to nothing.
   if (handles.length === 0 && !interactive && !buyHandleHref) return null
 
-  const cardProps = (label) => ({
-    onMouseEnter: (e) => showTip(e, label),
+  const cardProps = (label, imageUrl = null) => ({
+    onMouseEnter: (e) => showTip(e, label, imageUrl),
     onMouseLeave: hideTip,
-    onFocus: (e) => showTip(e, label),
+    onFocus: (e) => showTip(e, label, imageUrl),
     onBlur: hideTip,
   })
 
@@ -110,7 +114,7 @@ export default function HandleCarousel({
               onClick={() => onChoose(h.tokenId)}
               disabled={busy}
               className={`dashhandle${h.tokenId === activeTokenId ? ' active' : ''}${h.imageUrl ? ' hasimg' : ''}`}
-              {...cardProps(label)}
+              {...cardProps(label, h.imageUrl)}
             >
               <HandleCardBody handle={h.handle} imageUrl={h.imageUrl} />
             </button>
@@ -119,7 +123,7 @@ export default function HandleCarousel({
               key={h.tokenId ?? h.handle}
               className={`dashhandle static${h.imageUrl ? ' hasimg' : ''}`}
               tabIndex={0}
-              {...cardProps(label)}
+              {...cardProps(label, h.imageUrl)}
             >
               <HandleCardBody handle={h.handle} imageUrl={h.imageUrl} />
             </div>
@@ -175,9 +179,17 @@ export default function HandleCarousel({
 
       {tip && typeof document !== 'undefined'
         ? createPortal(
-            <div className="dashhandle-tip" style={{ left: tip.x, top: tip.y }}>
-              {tip.text}
-            </div>,
+            tip.imageUrl ? (
+              <HandleCardPreview
+                anchor={{ cx: tip.cx, top: tip.top, bottom: tip.bottom }}
+                src={tip.imageUrl}
+                label={tip.text}
+              />
+            ) : (
+              <div className="dashhandle-tip" style={{ left: tip.cx, top: tip.top }}>
+                {tip.text}
+              </div>
+            ),
             document.body,
           )
         : null}

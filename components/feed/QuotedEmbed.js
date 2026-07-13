@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import HandleCardImage from '@/components/HandleCardImage'
 
 function truncateAddress(addr) {
   const t = String(addr ?? '').trim()
@@ -80,15 +81,10 @@ export default function QuotedEmbed({ post, interactive = true, onOpenThread = n
           card art shows here (and on the thread page) even though timeline
           rows render announcements as compact text. */}
       {!post.deleted && post.card_kind === 'handle_mint' && post.image_url ? (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
+        <HandleCardImage
           className="qmint-img"
           src={post.image_url}
-          alt={
-            typeof post.card_meta?.handle === 'string'
-              ? `@${post.card_meta.handle} handle NFT card`
-              : 'handle NFT card'
-          }
+          handle={typeof post.card_meta?.handle === 'string' ? post.card_meta.handle : null}
           loading="lazy"
         />
       ) : null}
