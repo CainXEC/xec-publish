@@ -551,7 +551,16 @@ export default function AuthorProfilePageClient({
               </ul>
               {postsCursor ? (
                 <div ref={sentinelRef} className="loadmore">
-                  {postsLoadingMore ? <p className="empty">Loading more…</p> : null}
+                  {postsLoadingMore ? (
+                    <p className="empty">Loading more…</p>
+                  ) : (
+                    // A real button (not an empty div): it gives the sentinel a
+                    // non-zero height so the IntersectionObserver auto-loads, AND
+                    // it's a guaranteed manual fallback if the observer doesn't fire.
+                    <button type="button" className="ghost" onClick={() => void loadMorePosts()}>
+                      Load more
+                    </button>
+                  )}
                 </div>
               ) : null}
             </>
@@ -576,7 +585,13 @@ export default function AuthorProfilePageClient({
               </ul>
               {repliesCursor ? (
                 <div ref={sentinelRef} className="loadmore">
-                  {repliesLoadingMore ? <p className="empty">Loading more…</p> : null}
+                  {repliesLoadingMore ? (
+                    <p className="empty">Loading more…</p>
+                  ) : (
+                    <button type="button" className="ghost" onClick={() => void loadMoreReplies()}>
+                      Load more
+                    </button>
+                  )}
                 </div>
               ) : null}
             </>
