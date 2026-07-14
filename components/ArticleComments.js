@@ -493,16 +493,14 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
                   <p className="commentbody">{comment.content}</p>
                 )}
 
-                {canReply ? (
+                {canReply && replyingTo !== comment.id ? (
                   <div className="commentactions">
                     <button
                       type="button"
                       className="commentreplybtn"
-                      onClick={() =>
-                        setReplyingTo((cur) => (cur === comment.id ? null : comment.id))
-                      }
+                      onClick={() => setReplyingTo(comment.id)}
                     >
-                      {replyingTo === comment.id ? 'Cancel' : 'Reply'}
+                      Reply
                     </button>
                   </div>
                 ) : null}
