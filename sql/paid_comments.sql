@@ -13,7 +13,7 @@
 -- comment always pay the wallet that paid for it, even after a handle is sold.
 ALTER TABLE public.comments
   ADD COLUMN IF NOT EXISTS txid              text,        -- the on-chain comment/reply tx
-  ADD COLUMN IF NOT EXISTS action            smallint,    -- 1 = top-level comment, 2 = reply
+  ADD COLUMN IF NOT EXISTS action            smallint,    -- POWR action: 10 = comment, 11 = comment_reply (legacy free rows: NULL)
   ADD COLUMN IF NOT EXISTS parent_id         uuid REFERENCES public.comments(id), -- reply → parent comment (thread link; works for legacy free parents too)
   ADD COLUMN IF NOT EXISTS parent_txid       text,        -- reply → parent comment's txid (on-chain REPLY target; NULL if parent is a legacy free comment)
   ADD COLUMN IF NOT EXISTS content_hash      text,        -- sha256(content) hex; == on-chain OP_RETURN
