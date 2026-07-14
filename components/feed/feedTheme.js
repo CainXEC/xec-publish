@@ -473,7 +473,7 @@ export const FEED_CSS = `
   border:1px solid #00ff9c;color:#00ff9c;padding:4px 9px;border-radius:7px;font-size:11px;
   font-family:'JetBrains Mono',ui-monospace,monospace;white-space:nowrap;pointer-events:none;z-index:9999;
   box-shadow:0 0 14px rgba(0,255,156,.28);}
-html:not(.dark) .dashhandle-tip{background:#ffffff;border-color:#00b06e;color:#00b06e;box-shadow:0 4px 14px rgba(0,0,0,.14);}
+html:not(.dark) .dashhandle-tip{background:#fdfcf8;border-color:#e3dfd2;color:#12703c;box-shadow:0 8px 24px rgba(26,28,23,.12);}
 .pow-feed .dashhandle-more{flex:0 0 auto;align-self:center;font-size:11px;color:var(--dim);padding:0 8px;white-space:nowrap;}
 .pow-feed .dashhandles-error{margin:8px 0 0;font-size:12px;color:var(--no);}
 .pow-feed .dashnotifs{margin-top:16px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;}
@@ -583,30 +583,43 @@ html:not(.dark) .dashhandle-tip{background:#ffffff;border-color:#00b06e;color:#0
 @media (max-width:480px){.pow-feed .head{padding-top:20px;}}
 
 /* =========================================================================
-   DAYLIGHT NEON (light mode) — the same neon sign, seen in daylight.
-   The whole feed is driven by the ~9 vars at the top of .pow-feed, so light
-   mode just flips the GROUNDS bright and keeps the NEON electric. Glyphs use a
-   deeper neon ink so they stay legible on white, while every glow/halo is a
-   hardcoded rgba(0,255,156|61,240,255,…) that is untouched here — so neon text
-   reads like a lit tube photographed at noon. Applies whenever <html> is NOT
-   .dark; the dark block above is the default and still wins under .dark.
+   PAPER (light mode) — dark mode is a terminal; light mode is the page.
+   Not the neon sign at a different brightness: a different metaphor. The feed
+   is driven by the ~9 vars at the top of .pow-feed, so paper re-derives those
+   to a warm-manuscript palette (never #fff, never #000), then does three
+   structural things the naive flip can't: (1) elevation now goes UP toward
+   white — warm-paper page, near-white cards; (2) the neon green survives only
+   as a small non-text fill (the live dot) — as TEXT it drops to a dark ink of
+   the same hue so it clears contrast; (3) glow, the dark theme's whole
+   emphasis mechanism, is killed wholesale and replaced by hairlines + weight +
+   one very soft shadow. Applies whenever <html> is NOT .dark; the dark block
+   above is the default and still wins under .dark.
+
+   Paper token set (kept in sync across every scoped theme):
+     bg #f6f4ed  panel #fdfcf8  panel2 #f1eee4  line #e3dfd2
+     ink #1a1c17  dim #5e6155  accent #12703c  accent-hover #0d5a2f
+     link/teal #0e6b74  danger #a3312f  live-dot #00c853
+     paper-shadow 0 1px 2px rgba(26,28,23,.05)
    ======================================================================== */
 html:not(.dark) .pow-feed{
-  --bg:#e9faf2; --panel:#ffffff; --panel2:#f0f9f4; --line:#bfe6d5; --text:#07271d;
-  --dim:#5c8578; --neon:#00b06e; --cyan:#0898b4; --no:#e23b4d;
+  --bg:#f6f4ed; --panel:#fdfcf8; --panel2:#f1eee4; --line:#e3dfd2; --text:#1a1c17;
+  --dim:#5e6155; --neon:#12703c; --cyan:#0e6b74; --no:#a3312f; --live:#00c853;
+  --paper-shadow:0 1px 2px rgba(26,28,23,.05);
+  --accent-hover:#0d5a2f; --accent-tint:#e7f0e7;
   background-color:var(--bg);
-  background-image:
-    radial-gradient(1200px 480px at 50% -8%, rgba(0,255,156,.28), transparent 60%),
-    repeating-linear-gradient(0deg, rgba(0,180,110,.055) 0 1px, transparent 1px 3px);
+  background-image:none;
 }
-/* hardcoded light-teal body/secondary copy -> dark ink so it survives on white */
-html:not(.dark) .pow-feed .sub{color:#3f6b5d;}
+/* Glow is a dark-theme device. On paper it does nothing but muddy the ink, so
+   kill every text-shadow in one stroke — emphasis is carried by weight + hue. */
+html:not(.dark) .pow-feed *{text-shadow:none;}
+/* body/secondary copy -> warm ink so it reads on paper (was light-teal) */
+html:not(.dark) .pow-feed .sub{color:#4a4d42;}
 html:not(.dark) .pow-feed .qbody,
 html:not(.dark) .pow-feed .artcard-teaser,
 html:not(.dark) .pow-feed .artrow-teaser,
 html:not(.dark) .pow-feed .profbio,
-html:not(.dark) .pow-feed .dashbio{color:#2f5b4e;}
-html:not(.dark) .pow-feed .ttext{color:#26564a;}
+html:not(.dark) .pow-feed .dashbio,
+html:not(.dark) .pow-feed .ttext{color:#3a3d33;}
 /* @handle text in light mode: no neon glow, and MATTE the color — darken the
    swatch (carried on --hc) toward ink so it stays on-hue but reads crisply on
    white. Dark mode keeps the bright, glowing swatch. The plain var() is a fallback
@@ -619,9 +632,9 @@ html:not(.dark) .pow-feed .profname{
   text-shadow:none;
 }
 html:not(.dark) .pow-feed .byline:hover{text-shadow:none;filter:brightness(.88);}
-html:not(.dark) .pow-feed .compose textarea::placeholder{color:#8fb8ab;}
-/* sticky topbar tint matches the daylight ground (dark default is set inline above) */
-html:not(.dark) .pow-feed .topbar{background:rgba(233,250,242,.82);}
+html:not(.dark) .pow-feed .compose textarea::placeholder{color:#a9a597;}
+/* sticky topbar tint = translucent paper (dark default is set inline above) */
+html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 
 /* ---- desktop shell: 640px feed column + live activity rail ----
    Only pages that render .feed-cols/.feed-rail (the home feed) are affected;
@@ -823,8 +836,81 @@ html:not(.dark) .pow-feed .np-mast{text-shadow:none;}
 .pow-feed .arow-amt{color:var(--neon);font-weight:700;}
 .pow-feed .arow-tx{margin-left:auto;color:var(--dim);border-bottom:1px solid transparent;transition:color .15s,border-color .15s;}
 .pow-feed .arow-tx:hover{color:var(--cyan);border-color:var(--cyan);}
-html:not(.dark) .pow-feed .arow-target{color:#3f6b5d;}
-html:not(.dark) .pow-feed .arow{border-top-color:rgba(191,230,213,.85);}
+html:not(.dark) .pow-feed .arow-target{color:#4a4d42;}
+html:not(.dark) .pow-feed .arow{border-top-color:var(--line);}
 html:not(.dark) .pow-feed .arow.fresh{animation-name:arow-in-light;}
-@keyframes arow-in-light{0%{background:rgba(0,176,110,.14);}100%{background:transparent;}}
+@keyframes arow-in-light{0%{background:var(--accent-tint);}100%{background:transparent;}}
+
+/* -------------------------------------------------------------------------
+   PAPER structural overrides. The dark theme leans on neon box-shadow halos
+   for elevation and on neon-green for every emphasis; on paper we swap the
+   halos for one soft shadow + hairlines, and demote green from "glowing text"
+   to "solid accent fill." Grouped by mechanism so it stays legible.
+   ------------------------------------------------------------------------- */
+/* Elevation: cards sit ABOVE the page with a whisper of shadow, not a glow. */
+html:not(.dark) .pow-feed .panel,
+html:not(.dark) .pow-feed .dashpanel{box-shadow:var(--paper-shadow);}
+
+/* Primary buttons: filled ink-green with paper text (was outline + neon glow). */
+html:not(.dark) .pow-feed .btn,
+html:not(.dark) .pow-feed .dashbtn,
+html:not(.dark) .pow-feed .hr-unlock,
+html:not(.dark) .pow-feed .np-btn.unlock,
+html:not(.dark) .pow-feed .tipgo{
+  background:var(--neon);color:#fdfcf8;border-color:var(--neon);
+  box-shadow:var(--paper-shadow);}
+html:not(.dark) .pow-feed .btn:hover:not(:disabled),
+html:not(.dark) .pow-feed .dashbtn:hover:not(:disabled),
+html:not(.dark) .pow-feed .hr-unlock:hover,
+html:not(.dark) .pow-feed .np-btn.unlock:hover,
+html:not(.dark) .pow-feed .tipgo:hover{
+  background:var(--accent-hover);color:#fdfcf8;box-shadow:var(--paper-shadow);}
+html:not(.dark) .pow-feed .btn:disabled,
+html:not(.dark) .pow-feed .dashbtn:disabled{
+  background:transparent;color:var(--dim);border-color:var(--line);box-shadow:none;}
+/* Secondary/ghost dashbtn stays an outline, not a fill. */
+html:not(.dark) .pow-feed .dashbtn.sec{background:transparent;color:var(--neon);border-color:var(--border-strong,#cfc9b8);}
+html:not(.dark) .pow-feed .dashbtn.sec:hover{background:var(--accent-tint);color:var(--accent-hover);border-color:var(--neon);box-shadow:none;}
+
+/* Article link card: a hairline card that warms on hover — no neon border/glow. */
+html:not(.dark) .pow-feed .artcard{border-color:var(--line);background:var(--panel);box-shadow:var(--paper-shadow);}
+html:not(.dark) .pow-feed .artcard:hover{border-color:var(--neon);background:var(--accent-tint);box-shadow:var(--paper-shadow);}
+
+/* The neon green survives ONLY as a small solid fill: the live/thread dots. */
+html:not(.dark) .pow-feed .tdot,
+html:not(.dark) .pow-feed .np-dot,
+html:not(.dark) .pow-feed .arail-dot{background:var(--live);box-shadow:none;}
+html:not(.dark) .pow-feed .tnode.focused .tdot{background:var(--cyan);box-shadow:none;}
+
+/* Count badges: solid danger chip with paper text, no glow. */
+html:not(.dark) .pow-feed .notifbadge,
+html:not(.dark) .pow-feed .dashbadge{background:var(--no);color:#fdfcf8;box-shadow:none;}
+
+/* Floating menus / popovers: a soft ink shadow, not the dark theme's rgba(0,0,0,.5). */
+html:not(.dark) .pow-feed .hammenu,
+html:not(.dark) .pow-feed .menupop,
+html:not(.dark) .pow-feed .notifpop,
+html:not(.dark) .pow-feed .tipmenu{box-shadow:0 8px 24px rgba(26,28,23,.12);}
+
+/* Green/white hover washes -> a soft warm accent tint so they read on paper. */
+html:not(.dark) .pow-feed .hammenu-item:hover,
+html:not(.dark) .pow-feed .notifitem:hover,
+html:not(.dark) .pow-feed .notifitem.unread,
+html:not(.dark) .pow-feed .notifmore:hover,
+html:not(.dark) .pow-feed .dashnotif-more:hover,
+html:not(.dark) .pow-feed .tippreset:hover{background:var(--accent-tint);}
+html:not(.dark) .pow-feed .notifitem.unread:hover{background:#dce8dc;}
+html:not(.dark) .pow-feed .menubtn:hover{background:rgba(26,28,23,.06);}
+
+/* Inset fields / recessed surfaces read as a slightly darker paper, not teal. */
+html:not(.dark) .pow-feed .manualrow input,
+html:not(.dark) .pow-feed .tipfield{background:var(--panel2);}
+html:not(.dark) .pow-feed .compose textarea::placeholder,
+html:not(.dark) .pow-feed .hr-commentarea::placeholder{color:#a9a597;}
+
+/* QR plate: keep it a clean near-white card, drop the neon ring for a hairline. */
+html:not(.dark) .pow-feed .qr{background:#fff;box-shadow:0 0 0 1px var(--line),var(--paper-shadow);}
+
+/* Warm the last teal-tinted hairlines that were set explicitly for daylight. */
+html:not(.dark) .pow-feed .np-entry{border-bottom-color:var(--line);}
 `

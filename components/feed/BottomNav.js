@@ -93,9 +93,10 @@ const CSS = `
 .pow-bnav .bn-ic{display:inline-flex;}
 .pow-bnav .bn-ic svg{width:23px;height:23px;display:block;}
 .pow-bnav .bn-tab.on .bn-ic svg{filter:drop-shadow(0 0 6px rgba(0,255,156,.55));}
-html:not(.dark) .pow-bnav{background:rgba(233,250,242,.94);border-top-color:#bfe6d5;}
-html:not(.dark) .pow-bnav .bn-tab{color:#5c8578;}
-html:not(.dark) .pow-bnav .bn-tab.on{color:#00b06e;}
-html:not(.dark) .pow-bnav .bn-tab.on .bn-ic svg{filter:drop-shadow(0 0 5px rgba(0,176,110,.45));}
+/* Paper: translucent paper bar, warm hairline, ink-green active tab, no glow. */
+html:not(.dark) .pow-bnav{background:rgba(246,244,237,.94);border-top-color:#e3dfd2;}
+html:not(.dark) .pow-bnav .bn-tab{color:#5e6155;}
+html:not(.dark) .pow-bnav .bn-tab.on{color:#12703c;}
+html:not(.dark) .pow-bnav .bn-tab.on .bn-ic svg{filter:none;}
 @media (prefers-reduced-motion:reduce){.pow-bnav *{transition:none!important;}}
 `

@@ -35,10 +35,13 @@ textarea,
 ----------------------------------------------------------------------------- */
 
 :root {
-  --background: #f6fffb;
-  --foreground: #0d1513;
-  --color-text-primary: #0d1513;
-  --color-text-secondary: #3f5d53;
+  /* Paper (light mode) default grounds for any page NOT inside a scoped
+     .pow-* theme — warm manuscript, never #fff; ink type, never #000. The
+     scoped themes (feed/article/marketplace/mint) set their own --bg on top. */
+  --background: #f6f4ed;
+  --foreground: #1a1c17;
+  --color-text-primary: #1a1c17;
+  --color-text-secondary: #5e6155;
 }
 
 .dark {

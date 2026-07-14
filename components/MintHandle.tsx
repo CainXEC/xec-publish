@@ -562,8 +562,11 @@ const CSS = `
 
 /* Daylight neon: keep the electric palette on a bright ground. The page
    backdrop itself belongs to MarketplaceShell; only the vars flip here. */
+/* PAPER (light mode) — see feedTheme.js for the shared token set. */
 html:not(.dark) .pow-mint{
-  --bg:#e9faf2; --panel:#ffffff; --panel2:#f0f9f4; --line:#bfe6d5; --text:#07271d;
-  --dim:#5c8578; --neon:#00b06e; --cyan:#0898b4; --no:#e23b4d;
+  --bg:#f6f4ed; --panel:#fdfcf8; --panel2:#f1eee4; --line:#e3dfd2; --text:#1a1c17;
+  --dim:#5e6155; --neon:#12703c; --cyan:#0e6b74; --no:#a3312f; --live:#00c853;
+  --paper-shadow:0 1px 2px rgba(26,28,23,.05); --accent-hover:#0d5a2f; --accent-tint:#e7f0e7;
 }
+html:not(.dark) .pow-mint *{text-shadow:none;}
 `;

@@ -337,4 +337,19 @@ const CSS = `
 
 @media (prefers-reduced-motion:reduce){.pow-mint *{transition:none!important;animation:none!important;}}
 @media (max-width:480px){.pow-mint .title{font-size:32px;}.pow-mint .card{width:230px;height:230px;}.pow-mint .card.won{width:260px;height:260px;}}
+
+/* PAPER (light mode) — warm manuscript grounds, ink type, glow killed.
+   Mirrors the feed/article paper token set (see feedTheme.js). The handle
+   NFT art card (.card / img.card) keeps its own chip and is untouched. */
+html:not(.dark) .pow-mint{
+  --bg:#f6f4ed; --panel:#fdfcf8; --line:#e3dfd2; --text:#1a1c17; --dim:#5e6155;
+  --neon:#12703c; --cyan:#0e6b74; --no:#a3312f; --live:#00c853;
+  --paper-shadow:0 1px 2px rgba(26,28,23,.05);
+  background-image:none;
+}
+html:not(.dark) .pow-mint *{text-shadow:none;}
+html:not(.dark) .pow-mint .sub{color:#4a4d42;}
+html:not(.dark) .pow-mint .cta{box-shadow:var(--paper-shadow);}
+html:not(.dark) .pow-mint .cta:hover{background:var(--neon);color:#fdfcf8;box-shadow:var(--paper-shadow);}
+html:not(.dark) .pow-mint .qr{background:#fff;box-shadow:0 0 0 1px var(--line),var(--paper-shadow);}
 `;
