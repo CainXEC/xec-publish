@@ -241,7 +241,7 @@ export default function EngagementBar({
             aria-label={liked ? 'Liked' : 'Like'}
             title={liked ? 'You liked this' : 'Tip the author'}
           >
-            {liked ? '♥' : '♡'} {likes > 0 ? likes : ''}
+            <span aria-hidden className="likeico">{liked ? '♥' : '♡'}</span> {likes > 0 ? likes : ''}
           </button>
           {!liked && !pending ? (
             <div className="tipmenu" role="menu">

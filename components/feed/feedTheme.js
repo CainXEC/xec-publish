@@ -306,7 +306,10 @@ export const FEED_CSS = `
 /* The ❝ quotation ornament sits on the cap-height line, riding high next to the
    vertically-centred emoji glyphs (💬 ♡ 🔁). Bump the size and nudge it down so
    it optically lines up with the other action icons. */
-.pow-feed .qico{display:inline-block;font-size:15px;line-height:1;transform:translateY(3px);}
+.pow-feed .qico{display:inline-block;font-size:18px;line-height:1;transform:translateY(5px);}
+/* The like heart (♡/♥) and quote ❝ are thin text glyphs — render them larger so
+   they carry the same visual weight as the emoji action icons (💬 reply, 🔁 repost). */
+.pow-feed .likeico{display:inline-block;font-size:18px;line-height:1;transform:translateY(2px);}
 .pow-feed .repostbtn.on{color:var(--neon);text-shadow:0 0 10px rgba(0,255,156,.5);}
 .pow-feed .likebtn:disabled,.pow-feed .repostbtn:disabled{cursor:default;opacity:.7;}
 .pow-feed .reactpay{flex-basis:100%;width:100%;margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:12px;
