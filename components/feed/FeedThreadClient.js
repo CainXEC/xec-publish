@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import ComposeBox from '@/components/feed/ComposeBox'
 import FeedPost from '@/components/feed/FeedPost'
 import FeedTopbar from '@/components/feed/FeedTopbar'
+import ActivityRail from '@/components/feed/ActivityRail'
+import ArticleRail from '@/components/feed/ArticleRail'
 import EngagementBar from '@/components/feed/EngagementBar'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import LinkedPostEmbed from '@/components/feed/LinkedPostEmbed'
@@ -392,15 +394,29 @@ export default function FeedThreadClient({
     return <div className="threadpane">{content}</div>
   }
 
+  // Desktop shell: the shared-post page is a top entry point for new visitors,
+  // so it wears the same 3-column shell as the home feed — the front page
+  // (≥1400px) on the left, the thread in the center column, the live activity
+  // rail (≥1100px) on the right. Rails are in navigation mode (no inline panes
+  // here), and their default breakpoints match the feed shell exactly. Below
+  // 1100px the rails aren't grid items and this is the plain single column.
   return (
-    <div className="pow-feed">
+    <div className="pow-feed has-rail">
       <style>{FEED_CSS}</style>
 
       <FeedTopbar signedIn={viewerAccountId != null} isAuthor={isAuthor} />
 
-      <main className="wrap" style={{ paddingTop: '28px' }}>
-        {content}
-      </main>
+      <div className="feed-cols">
+        <aside className="feed-left" aria-label="The front page — long-form writing">
+          <ArticleRail />
+        </aside>
+        <main className="wrap" style={{ paddingTop: '28px' }}>
+          {content}
+        </main>
+        <aside className="feed-rail" aria-label="Live on-chain activity">
+          <ActivityRail />
+        </aside>
+      </div>
     </div>
   )
 }
