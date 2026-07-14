@@ -14,7 +14,8 @@
 ALTER TABLE public.comments
   ADD COLUMN IF NOT EXISTS txid              text,        -- the on-chain comment/reply tx
   ADD COLUMN IF NOT EXISTS action            smallint,    -- 1 = top-level comment, 2 = reply
-  ADD COLUMN IF NOT EXISTS parent_txid       text,        -- reply → parent comment's txid (thread link)
+  ADD COLUMN IF NOT EXISTS parent_id         uuid REFERENCES public.comments(id), -- reply → parent comment (thread link; works for legacy free parents too)
+  ADD COLUMN IF NOT EXISTS parent_txid       text,        -- reply → parent comment's txid (on-chain REPLY target; NULL if parent is a legacy free comment)
   ADD COLUMN IF NOT EXISTS content_hash      text,        -- sha256(content) hex; == on-chain OP_RETURN
   ADD COLUMN IF NOT EXISTS author_account_id uuid REFERENCES public.accounts(id),
   ADD COLUMN IF NOT EXISTS author_identity   text,        -- snapshot: "@handle" or raw ecash address
@@ -29,10 +30,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS comments_txid_key
   ON public.comments (txid)
   WHERE txid IS NOT NULL;
 
--- Thread lookup: a comment's replies are the rows whose parent_txid is its txid.
-CREATE INDEX IF NOT EXISTS comments_parent_txid_idx
-  ON public.comments (parent_txid)
-  WHERE parent_txid IS NOT NULL;
+-- Thread lookup: a comment's replies are the rows whose parent_id is its id.
+CREATE INDEX IF NOT EXISTS comments_parent_id_idx
+  ON public.comments (parent_id)
+  WHERE parent_id IS NOT NULL;
 
 -- List a post's comments in order.
 CREATE INDEX IF NOT EXISTS comments_post_created_idx

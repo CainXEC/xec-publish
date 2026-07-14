@@ -14,7 +14,8 @@ import {
 //  Comments cost like a feed post (100 XEC floor, 1 XEC/char). A top-level
 //  comment pays the ARTICLE author 94/6; a reply pays the author of whatever it
 //  answers, 94/6. Threads are flat, feed-style — a reply carries a "Replying to
-//  @X" line, no indentation — and you can reply to anything (parent_txid links).
+//  @X" line, no indentation — and you can reply to anything (parent_id links,
+//  so legacy free comments are replyable too).
 //
 //  Payment mirrors the feed composer: type → /api/comments/prepare (BIP21 +
 //  Cashtab link) → pay in Cashtab → poll /api/comments/confirm until the
@@ -36,16 +37,17 @@ function formatCommentDate(iso) {
 
 /** Depth-first thread order: each comment is immediately followed by its
  *  descendants (siblings in chronological order), so the flat list reads in
- *  conversation order without any indentation. Comments whose parent isn't in
- *  the set (legacy free comments, or a pruned parent) are treated as roots. */
+ *  conversation order without any indentation. Threaded by parent_id (every
+ *  comment has an id), so legacy free comments thread the same as paid ones.
+ *  A comment whose parent isn't in the set is treated as a root. */
 function buildThreadOrder(comments) {
-  const byTxid = new Map()
-  for (const c of comments) if (c.txid) byTxid.set(c.txid, c)
+  const byId = new Map()
+  for (const c of comments) byId.set(c.id, c)
   const childrenOf = new Map()
   const roots = []
   const byCreated = (a, b) => new Date(a.created_at) - new Date(b.created_at)
   for (const c of comments) {
-    const parent = c.parent_txid && byTxid.has(c.parent_txid) ? c.parent_txid : null
+    const parent = c.parent_id && byId.has(c.parent_id) ? c.parent_id : null
     if (parent) {
       if (!childrenOf.has(parent)) childrenOf.set(parent, [])
       childrenOf.get(parent).push(c)
@@ -56,15 +58,15 @@ function buildThreadOrder(comments) {
   const out = []
   const walk = (node) => {
     out.push(node)
-    const kids = (childrenOf.get(node.txid) || []).slice().sort(byCreated)
+    const kids = (childrenOf.get(node.id) || []).slice().sort(byCreated)
     for (const k of kids) walk(k)
   }
   for (const r of roots.slice().sort(byCreated)) walk(r)
   return out
 }
 
-/** Compose + pay a top-level comment (parentTxid null) or a reply. */
-function CommentComposer({ postId, parentTxid = null, autoFocus = false, onPosted, onCancel }) {
+/** Compose + pay a top-level comment (parentId null) or a reply. */
+function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted, onCancel }) {
   const [content, setContent] = useState('')
   const [phase, setPhase] = useState('compose') // 'compose' | 'paying'
   const [intent, setIntent] = useState(null)
@@ -77,7 +79,7 @@ function CommentComposer({ postId, parentTxid = null, autoFocus = false, onPoste
   const chars = priced.chars
   const over = chars > FEED_MAX_CHARS
   const canSubmit = priced.ok && !submitting
-  const isReply = Boolean(parentTxid)
+  const isReply = Boolean(parentId)
 
   useEffect(() => {
     if (autoFocus) textareaRef.current?.focus()
@@ -112,7 +114,7 @@ function CommentComposer({ postId, parentTxid = null, autoFocus = false, onPoste
       const res = await fetch('/api/comments/prepare', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ postId, content, parentTxid }),
+        body: JSON.stringify({ postId, content, parentId }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) {
@@ -137,7 +139,7 @@ function CommentComposer({ postId, parentTxid = null, autoFocus = false, onPoste
     } finally {
       setSubmitting(false)
     }
-  }, [content, parentTxid, postId, priced.ok, resetToCompose])
+  }, [content, parentId, postId, priced.ok, resetToCompose])
 
   // Poll for the on-chain payment while paying.
   useEffect(() => {
@@ -151,7 +153,7 @@ function CommentComposer({ postId, parentTxid = null, autoFocus = false, onPoste
           body: JSON.stringify({
             postId,
             content,
-            parentTxid,
+            parentId,
             since: intent.preparedAt,
             ...(manualTxid ? { txid: manualTxid } : {}),
           }),
@@ -180,7 +182,7 @@ function CommentComposer({ postId, parentTxid = null, autoFocus = false, onPoste
       clearInterval(id)
       unwatch()
     }
-  }, [phase, intent, content, parentTxid, postId, handlePosted])
+  }, [phase, intent, content, parentId, postId, handlePosted])
 
   const verifyManual = useCallback(async () => {
     const t = txidInput.trim()
@@ -193,7 +195,7 @@ function CommentComposer({ postId, parentTxid = null, autoFocus = false, onPoste
       const res = await fetch('/api/comments/confirm', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ postId, content, parentTxid, txid: t }),
+        body: JSON.stringify({ postId, content, parentId, txid: t }),
       })
       const data = await res.json().catch(() => ({}))
       if (data.status === 'posted' && data.comment) {
@@ -206,7 +208,7 @@ function CommentComposer({ postId, parentTxid = null, autoFocus = false, onPoste
     } catch {
       setNotice('Network hiccup — try again.')
     }
-  }, [txidInput, content, parentTxid, postId, handlePosted])
+  }, [txidInput, content, parentId, postId, handlePosted])
 
   const noun = isReply ? 'reply' : 'comment'
 
@@ -389,9 +391,9 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
   }, [])
 
   const ordered = useMemo(() => buildThreadOrder(comments), [comments])
-  const byTxid = useMemo(() => {
+  const byId = useMemo(() => {
     const m = {}
-    for (const c of comments) if (c.txid) m[c.txid] = c
+    for (const c of comments) m[c.id] = c
     return m
   }, [comments])
 
@@ -441,7 +443,7 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
               'Anonymous'
             const copyAddr =
               typeof comment.payer_address === 'string' ? comment.payer_address.trim() : ''
-            const parent = comment.parent_txid ? byTxid[comment.parent_txid] : null
+            const parent = comment.parent_id ? byId[comment.parent_id] : null
             const parentWho =
               parent?.author_identity?.trim() ||
               (parent?.payer_address ? parent.payer_address.trim() : '') ||
@@ -449,9 +451,9 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
             const canDelete =
               !comment.deleted &&
               (isAuthorSession || (byline && ownedIds.includes(byline)) || (copyAddr && ownedIds.includes(copyAddr)))
-            // Only paid comments (with a txid) can be replied to (a reply targets
-            // its parent's txid and pays that author); tombstones can't.
-            const canReply = canComment && Boolean(comment.txid) && !comment.deleted
+            // Any comment can be replied to (threaded by id; the reply pays the
+            // parent's author 94/6, paid or legacy). Tombstones can't.
+            const canReply = canComment && !comment.deleted
 
             return (
               <li key={comment.id} className="commentitem">
@@ -497,18 +499,18 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
                       type="button"
                       className="commentreplybtn"
                       onClick={() =>
-                        setReplyingTo((cur) => (cur === comment.txid ? null : comment.txid))
+                        setReplyingTo((cur) => (cur === comment.id ? null : comment.id))
                       }
                     >
-                      {replyingTo === comment.txid ? 'Cancel' : 'Reply'}
+                      {replyingTo === comment.id ? 'Cancel' : 'Reply'}
                     </button>
                   </div>
                 ) : null}
 
-                {replyingTo === comment.txid ? (
+                {replyingTo === comment.id ? (
                   <CommentComposer
                     postId={postId}
-                    parentTxid={comment.txid}
+                    parentId={comment.id}
                     autoFocus
                     onPosted={handlePosted}
                     onCancel={() => setReplyingTo(null)}
