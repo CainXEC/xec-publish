@@ -128,7 +128,8 @@ export async function processPaidMint(mintId: string): Promise<{ status: string;
     try {
       const official = await resolveOfficialAccount(supabase);
       if (official) {
-        const content = `🖊️ @${res.handle} — a new handle was minted.`;
+        const priceXec = Number(m.expected_sats) / 100;
+        const content = `@${res.handle} minted · ${priceXec.toLocaleString("en-US")} XEC`;
         await supabase.from("feed_posts").insert({
           txid: res.childTokenId,
           action: 1,                                   // POST → surfaces in the main timeline
@@ -139,7 +140,7 @@ export async function processPaidMint(mintId: string): Promise<{ status: string;
           card_meta: {
             handle: res.handle,
             tier,
-            priceXec: Number(m.expected_sats) / 100,
+            priceXec,
             minterAddress: m.payer_address,
           },
           author_account_id: official.accountId,
