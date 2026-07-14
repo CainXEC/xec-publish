@@ -295,6 +295,48 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   const isMintCard = post.card_kind === 'handle_mint' && !post.deleted
   const compactMint = isMintCard && mintVariant === 'compact'
 
+  // Feed timeline: a handle mint reads as a one-line @proofofwriting
+  // announcement — "@handle minted · price XEC", no card, no engagement bar —
+  // matching the "Live on eCash" rail. (The full NFT card still renders on the
+  // thread page / profile gallery, i.e. the non-compact path below.)
+  if (compactMint) {
+    const mintHandle =
+      typeof post.card_meta?.handle === 'string' ? post.card_meta.handle : null
+    const mintPrice = Number(post.card_meta?.priceXec)
+    return (
+      <li className="post mintline" onClick={openThread} style={{ cursor: 'pointer' }}>
+        <div className="postmeta">
+          <Byline identity={post.displayIdentity ?? post.author_identity} color={post.displayColor} />
+          <span aria-hidden className="dot">·</span>
+          <Link
+            href={`/feed/${post.txid}`}
+            className="time"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {timeAgo(post.created_at)}
+          </Link>
+        </div>
+        <p className="body mintannounce">
+          {mintHandle ? (
+            <Link
+              href={`/@${mintHandle}`}
+              className="mention"
+              onClick={(e) => e.stopPropagation()}
+            >
+              @{mintHandle}
+            </Link>
+          ) : (
+            'A handle'
+          )}{' '}
+          minted
+          {Number.isFinite(mintPrice) && mintPrice > 0 ? (
+            <span className="mintannounce-amt"> · {mintPrice.toLocaleString('en-US')} XEC</span>
+          ) : null}
+        </p>
+      </li>
+    )
+  }
+
   return (
     <li className={`post${compactMint ? ' mintline' : ''}`} onClick={openThread} style={{ cursor: 'pointer' }}>
       {repostedBy ? (
