@@ -23,7 +23,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import CopyLinkButton from '@/components/feed/CopyLinkButton'
 import TranslateButton from '@/components/TranslateButton'
-import PaneComments from '@/components/feed/PaneComments'
+import ArticleComments from '@/components/ArticleComments'
 import PaneUnlock from '@/components/feed/PaneUnlock'
 import { ARTICLE_CSS } from '@/app/posts/[slug]/articleTheme'
 
@@ -185,7 +185,9 @@ export default function HomeReader({ slug, onClose, backLabel = '← The feed' }
           {/* Same rule as the article page: entitled readers (an unlock, or
               the author/admin — the server folds those into `unlocked`) get
               the comment section right in the pane. */}
-          {d.unlocked && d.postId ? <PaneComments postId={d.postId} /> : null}
+          {d.unlocked && d.postId ? (
+            <ArticleComments postId={d.postId} canComment={d.unlocked} />
+          ) : null}
         </div>
       )}
     </div>
