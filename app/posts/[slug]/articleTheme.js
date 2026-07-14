@@ -41,7 +41,7 @@ export const ARTICLE_CSS = `
 .pow-article .arttitle{font-size:34px;line-height:1.2;font-weight:800;letter-spacing:.01em;color:var(--neon);
   text-shadow:0 0 22px rgba(0,255,156,.3);margin:0;word-break:break-word;}
 .pow-article .artbyline{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:16px 0 0;font-size:13px;color:var(--dim);}
-.pow-article .bylink{font-weight:700;color:var(--cyan);text-shadow:0 0 8px rgba(61,240,255,.3);transition:text-shadow .15s;}
+.pow-article .bylink{font-weight:700;color:var(--hc,var(--cyan));text-shadow:0 0 8px rgba(61,240,255,.3);transition:text-shadow .15s;}
 .pow-article .bylink:hover{text-shadow:0 0 14px rgba(61,240,255,.6);}
 .pow-article .followbtn{background:none;border:1px solid var(--neon);color:var(--neon);font:inherit;font-size:12px;
   font-weight:600;line-height:1;padding:5px 12px;border-radius:999px;cursor:pointer;
@@ -225,6 +225,9 @@ html:not(.dark) .pow-article{
 }
 /* Kill every neon text glow at once — emphasis on paper is weight + hue. */
 html:not(.dark) .pow-article *{text-shadow:none;}
+/* Byline handle: the account's neon swatch (carried on --hc) is too bright on
+   paper — darken it toward ink on the same hue, matching the feed. */
+html:not(.dark) .pow-article .bylink{color:color-mix(in oklab, var(--hc,var(--cyan)) 58%, #000);}
 html:not(.dark) .pow-article .prose blockquote{color:#3a3d33;}
 html:not(.dark) .pow-article .commentarea::placeholder{color:#a9a597;}
 /* Prose links: underlined ink-green, no glow (the underline does the work). */

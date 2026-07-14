@@ -692,7 +692,7 @@ export default function PostPageClient({
                   }
                   style={
                     author?.display_handle?.trim() && author?.handle_color
-                      ? { color: author.handle_color }
+                      ? { '--hc': author.handle_color }
                       : undefined
                   }
                 >
