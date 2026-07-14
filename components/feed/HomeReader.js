@@ -147,14 +147,14 @@ export default function HomeReader({ slug, onClose, backLabel = '← The feed' }
                               d.author.xecAddress.toLowerCase().replace(/^ecash:/, ''),
                             )}`
                     }
-                    style={d.author.color ? { color: d.author.color } : undefined}
+                    style={d.author.color ? { '--hc': d.author.color } : undefined}
                   >
                     {d.author.handle ? `@${d.author.handle}` : d.author.name}
                   </Link>
                 ) : (
                   <span
                     className="hr-author"
-                    style={d.author.color ? { color: d.author.color } : undefined}
+                    style={d.author.color ? { '--hc': d.author.color } : undefined}
                   >
                     {d.author.name}
                   </span>

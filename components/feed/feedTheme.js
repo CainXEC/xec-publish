@@ -770,8 +770,11 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 .pow-feed .readerhost.pow-article{width:auto;margin:0;min-height:0;background:none;padding:0;}
 .pow-feed .hr-title{font-size:30px;line-height:1.22;color:var(--text);margin:4px 0 10px;font-weight:700;}
 .pow-feed .hr-meta{font-size:11.5px;color:var(--dim);margin:0 0 24px;}
-.pow-feed .hr-author{font-weight:700;}
+.pow-feed .hr-author{font-weight:700;color:var(--hc);}
 .pow-feed a.hr-author:hover{text-decoration:underline;text-underline-offset:2px;}
+/* Paper: darken the account's neon handle swatch (carried on --hc) toward ink
+   on the same hue; no --hc (address byline) inherits the meta color. */
+html:not(.dark) .pow-feed .hr-author{color:color-mix(in oklab, var(--hc) 58%, #000);}
 .pow-feed .hr-paywall{border:1px solid var(--line);border-radius:12px;padding:20px 16px;margin-top:26px;text-align:center;}
 .pow-feed .hr-lockline{font-size:12.5px;color:var(--dim);margin:0 0 12px;}
 .pow-feed .hr-unlock{display:inline-block;border:1px solid var(--neon);color:var(--neon);border-radius:9px;
