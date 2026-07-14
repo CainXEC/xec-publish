@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import EcashIcon from '@/components/EcashIcon'
@@ -62,6 +62,32 @@ export default function HandleCarousel({
   }, [])
   const hideTip = useCallback(() => setTip(null), [])
 
+  // Desktop-mouse scroll: the strip is a horizontal overflow container, but a
+  // mouse wheel only emits vertical delta and browsers won't turn that into
+  // horizontal scroll — and the scrollbar is hidden. So translate a vertical
+  // wheel into horizontal scroll here. A real horizontal (trackpad) swipe is
+  // left alone, and at the horizontal edges we don't preventDefault so the page
+  // keeps scrolling normally. Attached non-passively via a ref (React's onWheel
+  // is passive, so preventDefault there wouldn't take).
+  const trackRef = useRef(null)
+  useEffect(() => {
+    const el = trackRef.current
+    if (!el) return undefined
+    const onWheel = (e) => {
+      if (el.scrollWidth <= el.clientWidth) return // nothing to scroll
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return // native horizontal swipe — leave it
+      const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY // normalize line-mode wheels
+      if (!dy) return
+      const atStart = el.scrollLeft <= 0
+      const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1
+      if ((dy < 0 && atStart) || (dy > 0 && atEnd)) return // let the page scroll at the edges
+      e.preventDefault()
+      el.scrollLeft += dy
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return handles
@@ -99,6 +125,7 @@ export default function HandleCarousel({
       </div>
 
       <div
+        ref={trackRef}
         className="dashhandles-track"
         role={interactive ? 'radiogroup' : undefined}
         aria-label={interactive ? 'Display handle' : undefined}
