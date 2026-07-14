@@ -873,6 +873,10 @@ html:not(.dark) .pow-market *{text-shadow:none;}
 html:not(.dark) .pow-market .sub{color:#4a4d42;}
 /* The NFT art tile (.mkart) + its provenance overlay (.mkprov) stay on a dark
    chip in BOTH themes — intentional, framed like a plate on the page rather
-   than a leak (suggestion #7). So we DON'T repaint them for paper. */
+   than a leak (suggestion #7). The overlay KEEPS its dark background, but its
+   text is var(--text) — which is ink on paper and would vanish on the dark
+   plate — so we hold it light here (ink-on-dark, matching the plate). */
+html:not(.dark) .pow-market .mkprov{color:#efece2;}
+html:not(.dark) .pow-market .mkprov .dimline{color:#a7a293;}
 html:not(.dark) .pow-market .mkoffer .obtn:hover{color:#fdfcf8;}
 `;
