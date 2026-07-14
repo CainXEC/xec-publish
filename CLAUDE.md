@@ -48,19 +48,22 @@ https://ecashskill.vercel.app/skills/SKILL.md
 
 ## POWR OP_RETURN protocol (lib/feedProtocol.js)
 - ONE envelope for every on-chain action: feed (post/reply/quote/repost/like)
-  + the 3 site actions that used to ride a bare UUID push (publish/unlock/auth).
-  Layout: LOKAD(4) | OP_0 version | OP_N action | [targetTxid 32] | [contentHash
-  32] | [nonce 36]. targetTxid on reply/quote/repost/like; contentHash on
-  post/reply/quote/publish; nonce (ASCII auth UUID) on auth. `op_return_raw` is
-  the script WITHOUT the leading 0x6a — Cashtab re-adds OP_RETURN.
+  + site actions that used to ride a bare UUID push (publish/unlock/auth/handle)
+  + article comments (comment/comment_reply, OP_10/OP_11 — distinct from feed
+  post/reply so they read as comments on chain). Layout: LOKAD(4) | OP_0 version
+  | OP_N action | [targetTxid 32] | [contentHash 32] | [nonce 36]. targetTxid on
+  reply/quote/repost/like/comment_reply; contentHash on
+  post/reply/quote/publish/comment/comment_reply; nonce (ASCII UUID) on
+  auth/handle. `op_return_raw` is the script WITHOUT the leading 0x6a — Cashtab
+  re-adds OP_RETURN.
 - Content hash = sha256 of the EXACT stored UTF-8 bytes = the "proof of writing".
   Backend NEVER trusts a client-sent hash; it recomputes over stored bytes and
   compares to the on-chain value.
 - LOKAD is env-driven and MUST be NEXT_PUBLIC_ (browser encoder + server decoder
-  read the SAME value, else silent verify mismatch). Default = testing "PROW"
-  (50524f57); launch = "POWR" (504f5752) by setting
-  NEXT_PUBLIC_POW_LOKAD_HEX=504f5752 in prod. Freeze the byte spec before real
-  users post — it becomes permanent (docs/cashtab-powr-integration.md).
+  read the SAME value, else silent verify mismatch). Default = launch "POWR"
+  (504f5752); a test/staging env can opt back to "PROW" (50524f57) via
+  NEXT_PUBLIC_POW_LOKAD_HEX=50524f57 to avoid polluting the real index. The byte
+  spec is frozen — it's permanent (docs/cashtab-powr-integration.md).
 
 ## Gen 1 NFT art engine (built + wired)
 - Architecture MIRRORS the voxel handle-card engine (lib/renderHandleCard.ts +

@@ -29,7 +29,7 @@ Every action is a single OP_RETURN output. The layout of the output script:
 OP_RETURN                 (0x6a)
 <push 4> 504f5752         LOKAD prefix "POWR"
 OP_0                      protocol version 0 (bare opcode)
-OP_N                      action, bare opcode: OP_1..OP_9 (see table)
+OP_N                      action, bare opcode: OP_1..OP_11 (see table)
 [pushdata(s)]             per-action payload, see table
 ```
 
@@ -46,10 +46,19 @@ Per-action layout:
 | unlock  | OP_7   | —                   | —                   | Article paywall unlock           |
 | auth    | OP_8   | nonce (36B)         | —                   | Wallet login challenge payment   |
 | handle  | OP_9   | nonce (36B)         | —                   | Handle NFT mint payment          |
+| comment | OP_10  | contentHash (32B)   | —                   | Article comment (top-level)      |
+| creply  | OP_11  | targetTxid (32B)    | contentHash (32B)   | Reply to an article comment      |
+
+Article comments are priced and split like the feed (94% author / 6% platform),
+but pay the ARTICLE author (comment) or the PARENT comment's author (creply).
+They get their own action codes so they read as comments — not feed posts —
+on-chain. A comment reply to a legacy (pre-paid) comment has no parent txid to
+target, so it is emitted as a plain `comment` (OP_10); the thread link lives in
+our DB, not on-chain.
 
 Notes:
-- `version` and `action` are **bare opcodes** (`OP_0`, `OP_1`..`OP_9`), which
-  `ecash-lib`'s `getStackArray` decodes as one-byte stack entries `"00"`, `"51"`..`"59"`.
+- `version` and `action` are **bare opcodes** (`OP_0`, `OP_1`..`OP_11`), which
+  `ecash-lib`'s `getStackArray` decodes as one-byte stack entries `"00"`, `"51"`..`"5b"`.
 - `targetTxid` and `contentHash` are each a 32-byte pushdata (push opcode `0x20`).
 - `nonce` is a 36-byte pushdata (push opcode `0x24`): the ASCII bytes of a
   standard UUID string (e.g. `550e8400-e29b-41d4-a716-446655440000`), matching
@@ -93,7 +102,7 @@ returns them, and a websocket subscription to the LOKAD is a real-time firehose 
 platform activity. This is the reason the non-feed actions were migrated off their old
 bare-UUID push (`6a 24 <36B uuid>`): a bare 36-byte first push has **no** LOKAD, so
 Chronik indexed it under nothing — findable only by address or txid, never as "a
-Proof-of-Writing action." All nine actions share the one LOKAD; consumers filter by the
+Proof-of-Writing action." All eleven actions share the one LOKAD; consumers filter by the
 action opcode (e.g. `stackArray[2] === '59'` for a handle mint payment).
 
 ### 1.2 Example txids (live mainnet, POWR)

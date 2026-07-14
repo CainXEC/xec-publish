@@ -99,9 +99,9 @@ export async function POST(request) {
     payoutAddress = payee.payoutAddress
     parentTxid = payee.parentTxid
     parentAuthorAccountId = payee.parentAccountId
-    action = parentTxid ? FEED_ACTION.REPLY : FEED_ACTION.POST
+    action = parentTxid ? FEED_ACTION.COMMENT_REPLY : FEED_ACTION.COMMENT
   } else {
-    action = FEED_ACTION.POST
+    action = FEED_ACTION.COMMENT
     const { data: post, error } = await supabase
       .from('posts')
       .select('author_id')

@@ -81,11 +81,12 @@ export async function POST(request) {
     }
     payoutAddress = payee.payoutAddress
     parentTxid = payee.parentTxid
-    // A paid parent has a txid to target on-chain (REPLY); a legacy free parent
-    // doesn't, so the reply is a plain POST that still splits to that author.
-    action = parentTxid ? FEED_ACTION.REPLY : FEED_ACTION.POST
+    // A paid parent has a txid to target on-chain (COMMENT_REPLY); a legacy free
+    // parent doesn't, so the reply is a plain COMMENT that still splits to that
+    // author (its parent link lives in the DB, by parent_id).
+    action = parentTxid ? FEED_ACTION.COMMENT_REPLY : FEED_ACTION.COMMENT
   } else {
-    action = FEED_ACTION.POST
+    action = FEED_ACTION.COMMENT
     const { data: post, error } = await supabase
       .from('posts')
       .select('author_id')
