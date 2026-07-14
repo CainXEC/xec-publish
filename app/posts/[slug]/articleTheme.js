@@ -186,7 +186,7 @@ export const ARTICLE_CSS = `
   padding:2px 0;transition:color .15s;}
 .pow-article .commentreplybtn:hover{color:var(--cyan);}
 .pow-article .comment-replyingto{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);margin:0 0 8px;}
-.pow-article .comment-replyarrow{color:var(--line);}
+.pow-article .comment-replyarrow{color:var(--dim);}
 .pow-article .comment-replyingto-who{color:var(--cyan);font-weight:600;}
 .pow-article .commenttomb{color:var(--dim);font-style:italic;}
 /* pay state (Cashtab opened → polling for the on-chain payment) */
