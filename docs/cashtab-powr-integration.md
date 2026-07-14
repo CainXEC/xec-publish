@@ -164,10 +164,12 @@ export interface PowAction {
         | 'publish'
         | 'unlock'
         | 'auth'
-        | 'handle';
-    /** referenced feed tx (hex txid); present for reply/quote/repost/like */
+        | 'handle'
+        | 'comment'
+        | 'comment_reply';
+    /** referenced tx (hex txid); present for reply/quote/repost/like/comment_reply */
     targetTxid?: string;
-    /** sha256 of stored content (hex); present for post/reply/quote/publish */
+    /** sha256 of stored content (hex); present for post/reply/quote/publish/comment/comment_reply */
     contentHash?: string;
     /** server-issued nonce (hex of 36-byte ASCII UUID); present for auth/handle */
     nonce?: string;
@@ -203,6 +205,8 @@ case opReturn.appPrefixesHex.pow: {
         '57': 'unlock',  // OP_7
         '58': 'auth',    // OP_8
         '59': 'handle',  // OP_9
+        '5a': 'comment', // OP_10
+        '5b': 'comment_reply', // OP_11
     };
     const type = TYPES[stackArray[2]];
     if (typeof type === 'undefined') {
@@ -217,7 +221,8 @@ case opReturn.appPrefixesHex.pow: {
 
     switch (type) {
         case 'post':
-        case 'publish': {
+        case 'publish':
+        case 'comment': {
             if (!is32(stackArray[3])) {
                 appActions.push({ lokadId, app, isValid: false });
                 break;
@@ -229,7 +234,8 @@ case opReturn.appPrefixesHex.pow: {
             break;
         }
         case 'reply':
-        case 'quote': {
+        case 'quote':
+        case 'comment_reply': {
             if (!is32(stackArray[3]) || !is32(stackArray[4])) {
                 appActions.push({ lokadId, app, isValid: false });
                 break;
@@ -319,6 +325,8 @@ case opReturn.appPrefixesHex.pow: {
         unlock: 'Article Unlocked',
         auth: 'Login',
         handle: 'Handle Mint',
+        comment: 'Comment',
+        comment_reply: 'Comment Reply',
     };
 
     renderedAppActions.push(
@@ -355,6 +363,8 @@ case opReturn.appPrefixesHex.pow: {
 | unlock  | 🖊 Proof of Writing · Article Unlocked     |
 | auth    | 🖊 Proof of Writing · Login                |
 | handle  | 🖊 Proof of Writing · Handle Mint          |
+| comment | 🖊 Proof of Writing · Comment              |
+| creply  | 🖊 Proof of Writing · Comment Reply        |
 
 Icon + label, nothing tappable. Users get their real notifications inside the
 proofofwriting.com app; the wallet row is identification only.
