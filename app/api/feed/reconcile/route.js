@@ -33,11 +33,15 @@ const GRACE_MS = 30_000
 // with zero network calls; this cap only bites during a burst.
 const MAX_ROWS = 60
 
-async function reconcileTable(supabase, table, now) {
-  const { data: rows, error } = await supabase
+async function reconcileTable(supabase, table, now, { requireTxid = false } = {}) {
+  let query = supabase
     .from(table)
     .select('id, txid, created_at')
     .is('finalized_at', null)
+  // `comments` holds legacy FREE rows (txid IS NULL) that predate paid comments;
+  // they must never be swept (a null txid reads as 'missing' → would be deleted).
+  if (requireTxid) query = query.not('txid', 'is', null)
+  const { data: rows, error } = await query
     .order('created_at', { ascending: true })
     .limit(MAX_ROWS)
   if (error) throw new Error(`${table}: ${error.message}`)
@@ -74,11 +78,12 @@ async function reconcileTable(supabase, table, now) {
 async function runSweep() {
   const supabase = createServerSupabase()
   const now = Date.now()
-  const [posts, events] = await Promise.all([
+  const [posts, events, comments] = await Promise.all([
     reconcileTable(supabase, 'feed_posts', now),
     reconcileTable(supabase, 'feed_events', now),
+    reconcileTable(supabase, 'comments', now, { requireTxid: true }),
   ])
-  return { posts, events }
+  return { posts, events, comments }
 }
 
 /**

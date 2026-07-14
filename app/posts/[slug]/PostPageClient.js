@@ -6,10 +6,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import ActivityRail from '@/components/feed/ActivityRail'
 import ArticleRail from '@/components/feed/ArticleRail'
 import FeedTopbar from '@/components/feed/FeedTopbar'
+import ArticleComments from '@/components/ArticleComments'
 import TranslateButton from '@/components/TranslateButton'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import { ARTICLE_CSS } from './articleTheme'
-import { charCounterClassName } from '@/lib/charCounterClassName'
 import { encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
 import { buildPaywallBip21, computePaymentSplit } from '@/lib/paymentSplit'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
@@ -21,22 +21,6 @@ import {
   primeAudioContextOnUserGesture,
 } from '@/lib/webAudioUnlock'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
-
-const COMMENT_MAX_LEN = 500
-const COMMENT_WARN_WITHIN = 50
-
-function formatCommentDate(iso) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 function formatArticlePublishedDate(iso) {
   if (!iso) return ''
@@ -93,14 +77,6 @@ export default function PostPageClient({
 
   const [commentCount, setCommentCount] = useState(initialCommentCount)
   const [unlockCount, setUnlockCount] = useState(initialUnlockCount)
-  const [comments, setComments] = useState([])
-  const [commentsLoading, setCommentsLoading] = useState(false)
-  const [commentsError, setCommentsError] = useState(null)
-  const [commentText, setCommentText] = useState('')
-  const [commentSubmitting, setCommentSubmitting] = useState(false)
-  const [commentActionError, setCommentActionError] = useState(null)
-  const [deletingCommentId, setDeletingCommentId] = useState(null)
-  const [copiedCommentIds, setCopiedCommentIds] = useState({})
   const [copiedShareLink, setCopiedShareLink] = useState(false)
   const [readerWalletAddress, setReaderWalletAddress] = useState('')
   // Session identity from GET /api/me (the HttpOnly pow_session cookie).
@@ -108,7 +84,6 @@ export default function PostPageClient({
   const [me, setMe] = useState(null)
   const [isFollowingAuthor, setIsFollowingAuthor] = useState(false)
   const [followAuthorBusy, setFollowAuthorBusy] = useState(false)
-  const commentCopyTimeoutsRef = useRef({})
   const shareCopyTimeoutRef = useRef(null)
 
   // Author / admin identity now comes from the wallet session (/api/me), not
@@ -199,9 +174,6 @@ export default function PostPageClient({
 
   useEffect(() => {
     return () => {
-      Object.values(commentCopyTimeoutsRef.current).forEach((timeoutId) => {
-        clearTimeout(timeoutId)
-      })
       if (shareCopyTimeoutRef.current) {
         clearTimeout(shareCopyTimeoutRef.current)
       }
@@ -243,23 +215,6 @@ export default function PostPageClient({
       setCopiedShareLink(false)
     }
   }, [getCurrentPageUrl])
-
-  const handleCopyCommentWallet = useCallback(async (commentId, walletAddress) => {
-    if (!commentId || !walletAddress) return
-    try {
-      await navigator.clipboard.writeText(walletAddress)
-      setCopiedCommentIds((prev) => ({ ...prev, [commentId]: true }))
-      if (commentCopyTimeoutsRef.current[commentId]) {
-        clearTimeout(commentCopyTimeoutsRef.current[commentId])
-      }
-      commentCopyTimeoutsRef.current[commentId] = window.setTimeout(() => {
-        setCopiedCommentIds((prev) => ({ ...prev, [commentId]: false }))
-        delete commentCopyTimeoutsRef.current[commentId]
-      }, 2000)
-    } catch {
-      setCopiedCommentIds((prev) => ({ ...prev, [commentId]: false }))
-    }
-  }, [])
 
   const triggerPaywallUnlockEffect = useCallback(() => {
     triggerPaymentSuccessEffect(unlockAudioContextRef.current ?? undefined)
@@ -318,29 +273,6 @@ export default function PostPageClient({
     }
   }, [])
 
-  const fetchComments = useCallback(async (postId) => {
-    if (!postId) return
-    setCommentsLoading(true)
-    setCommentsError(null)
-    try {
-      const res = await fetch(`/api/comments/${encodeURIComponent(postId)}`, {
-        cache: 'no-store',
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setCommentsError(data?.error || 'Could not load comments.')
-        setComments([])
-        return
-      }
-      setComments(Array.isArray(data?.comments) ? data.comments : [])
-    } catch {
-      setCommentsError('Could not load comments.')
-      setComments([])
-    } finally {
-      setCommentsLoading(false)
-    }
-  }, [])
-
   useEffect(() => {
     if (!post?.id) return
     if (initialUnlocked) return
@@ -394,10 +326,6 @@ export default function PostPageClient({
     }
   }, [refetchMe, router])
 
-  useEffect(() => {
-    if (!post?.id || (!unlocked && !isAuthorSession)) return
-    void fetchComments(post.id)
-  }, [post?.id, unlocked, isAuthorSession, fetchComments])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -702,72 +630,6 @@ export default function PostPageClient({
     triggerPaywallUnlockEffect,
   ])
 
-  const handlePostComment = useCallback(async () => {
-    if (!post?.id || (!unlocked && !isAuthorSession)) return
-    const content = commentText.trim()
-    if (!content) {
-      setCommentActionError('Comment content is required.')
-      return
-    }
-    setCommentSubmitting(true)
-    setCommentActionError(null)
-    try {
-      // Identity + authorization come from the session cookie (sent
-      // automatically same-origin); the route ignores any body-supplied address.
-      const res = await fetch(`/api/comments/${encodeURIComponent(post.id)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setCommentActionError(data?.error || 'Could not post comment.')
-        return
-      }
-      setCommentText('')
-      await fetchComments(post.id)
-      await fetchCommentCount(post.id)
-    } finally {
-      setCommentSubmitting(false)
-    }
-  }, [
-    commentText,
-    fetchCommentCount,
-    fetchComments,
-    isAuthorSession,
-    post?.id,
-    unlocked,
-  ])
-
-  const handleDeleteComment = useCallback(async (commentId) => {
-    if (!post?.id || !commentId) return
-    if (!window.confirm('Are you sure you want to delete this comment?')) return
-    setDeletingCommentId(commentId)
-    setCommentActionError(null)
-    try {
-      // Authorization (author/admin/own-comment) is decided server-side from
-      // the session cookie; the route ignores any body-supplied identity.
-      const res = await fetch(`/api/comments/${encodeURIComponent(post.id)}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ commentId }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setCommentActionError(data?.error || 'Could not delete comment.')
-        return
-      }
-      await fetchComments(post.id)
-      await fetchCommentCount(post.id)
-    } finally {
-      setDeletingCommentId(null)
-    }
-  }, [
-    fetchCommentCount,
-    fetchComments,
-    post?.id,
-  ])
-
   if (!post) {
     return null
   }
@@ -994,120 +856,13 @@ export default function PostPageClient({
                 }}
               />
 
-              <section id="comments" className="comments">
-                <h3 className="comments-title">Comments</h3>
-                <p className="comments-count">
-                  {commentCount} {commentCount === 1 ? 'comment' : 'comments'}
-                </p>
-
-                <div className="commentform">
-                  <label htmlFor="new-comment" className="commentlabel">
-                    Add a comment
-                  </label>
-                  <textarea
-                    id="new-comment"
-                    rows={4}
-                    maxLength={COMMENT_MAX_LEN}
-                    value={commentText}
-                    onChange={(e) =>
-                      setCommentText(e.target.value.slice(0, COMMENT_MAX_LEN))
-                    }
-                    className="commentarea"
-                    placeholder="Share your thoughts..."
-                  />
-                  <p
-                    className={`charcount ${charCounterClassName(commentText.length, COMMENT_MAX_LEN, COMMENT_WARN_WITHIN)}`}
-                  >
-                    {commentText.length}/{COMMENT_MAX_LEN}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => void handlePostComment()}
-                    disabled={commentSubmitting}
-                    className="postcomment-btn"
-                  >
-                    {commentSubmitting ? 'Posting…' : 'Post Comment'}
-                  </button>
-                </div>
-
-                {commentActionError ? (
-                  <p className="commenterr" role="alert">
-                    {commentActionError}
-                  </p>
-                ) : null}
-
-                {commentsError ? (
-                  <p className="commenterr" role="alert">
-                    {commentsError}
-                  </p>
-                ) : null}
-
-                {commentsLoading ? (
-                  <p className="commentmuted">Loading comments...</p>
-                ) : comments.length === 0 ? (
-                  <p className="commentmuted">No comments yet.</p>
-                ) : (
-                  <ul className="commentlist">
-                    {comments.map((comment) => {
-                      const fullWalletAddress =
-                        typeof comment.payer_address === 'string'
-                          ? comment.payer_address.trim()
-                          : ''
-                      // Own comment if it matches this session's display identity
-                      // (@handle) or either stored form of its address. Server
-                      // enforces the real authorization on delete regardless.
-                      const myAddr = (me?.address || '').trim()
-                      const ownedIds = me
-                        ? [
-                            me.identity,
-                            myAddr,
-                            myAddr.startsWith('ecash:')
-                              ? myAddr.slice('ecash:'.length)
-                              : `ecash:${myAddr}`,
-                          ].filter(Boolean)
-                        : []
-                      const canDelete =
-                        isAuthorSession ||
-                        (fullWalletAddress && ownedIds.includes(fullWalletAddress))
-                      return (
-                        <li key={comment.id} className="commentitem">
-                          <div className="commenthead">
-                            <div>
-                              <p
-                                className="commentaddr"
-                                title={fullWalletAddress ? 'Click to copy' : undefined}
-                                onClick={() => {
-                                  if (!fullWalletAddress) return
-                                  void handleCopyCommentWallet(comment.id, fullWalletAddress)
-                                }}
-                              >
-                                {fullWalletAddress || 'Anonymous'}
-                              </p>
-                              {copiedCommentIds[comment.id] ? (
-                                <p className="commentcopied">Copied!</p>
-                              ) : null}
-                              <p className="commentdate">
-                                {formatCommentDate(comment.created_at)}
-                              </p>
-                            </div>
-                            {canDelete ? (
-                              <button
-                                type="button"
-                                onClick={() => void handleDeleteComment(comment.id)}
-                                disabled={deletingCommentId === comment.id}
-                                className="delbtn"
-                              >
-                                {deletingCommentId === comment.id ? 'Deleting…' : 'Delete'}
-                              </button>
-                            ) : null}
-                          </div>
-                          <p className="commentbody">{comment.content}</p>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                )}
-              </section>
+              <ArticleComments
+                postId={post.id}
+                canComment={unlocked || isAuthorSession}
+                me={me}
+                isAuthorSession={isAuthorSession}
+                onChanged={() => fetchCommentCount(post.id)}
+              />
             </section>
           ) : null}
 
