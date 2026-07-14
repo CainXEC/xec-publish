@@ -295,48 +295,6 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   const isMintCard = post.card_kind === 'handle_mint' && !post.deleted
   const compactMint = isMintCard && mintVariant === 'compact'
 
-  // Feed timeline: a handle mint reads as a one-line @proofofwriting
-  // announcement — "@handle minted · price XEC", no card, no engagement bar —
-  // matching the "Live on eCash" rail. (The full NFT card still renders on the
-  // thread page / profile gallery, i.e. the non-compact path below.)
-  if (compactMint) {
-    const mintHandle =
-      typeof post.card_meta?.handle === 'string' ? post.card_meta.handle : null
-    const mintPrice = Number(post.card_meta?.priceXec)
-    return (
-      <li className="post mintline" onClick={openThread} style={{ cursor: 'pointer' }}>
-        <div className="postmeta">
-          <Byline identity={post.displayIdentity ?? post.author_identity} color={post.displayColor} />
-          <span aria-hidden className="dot">·</span>
-          <Link
-            href={`/feed/${post.txid}`}
-            className="time"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {timeAgo(post.created_at)}
-          </Link>
-        </div>
-        <p className="body mintannounce">
-          {mintHandle ? (
-            <Link
-              href={`/@${mintHandle}`}
-              className="mention"
-              onClick={(e) => e.stopPropagation()}
-            >
-              @{mintHandle}
-            </Link>
-          ) : (
-            'A handle'
-          )}{' '}
-          minted
-          {Number.isFinite(mintPrice) && mintPrice > 0 ? (
-            <span className="mintannounce-amt"> · {mintPrice.toLocaleString('en-US')} XEC</span>
-          ) : null}
-        </p>
-      </li>
-    )
-  }
-
   return (
     <li className={`post${compactMint ? ' mintline' : ''}`} onClick={openThread} style={{ cursor: 'pointer' }}>
       {repostedBy ? (
@@ -518,49 +476,39 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
 }
 
 /**
- * A collapsed run of mint announcements: when a page's time span holds more
- * than a few mints, the server sends ONE synthetic digest entry instead of the
- * individual rows (see buildMintEntries in lib/getFeed.js) so a mint rush reads
- * as a single pulse line. Each named handle links to its new profile; the
- * "+N more" overflow links to the announcer's profile — the full card gallery.
+ * ONE digest row summarizing the mints in a page's time span (see
+ * buildMintEntries in lib/getFeed.js): names a few handles, then collapses the
+ * rest into "and N others" — "@X, @Y, @Z and 61 others minted handles". The
+ * named handles are a subset of the count, so a named handle is never also in
+ * "others"; and page spans are disjoint, so each mint appears in exactly one
+ * digest — no double-counting.
  */
 export function MintDigestRow({ digest }) {
-  const count = Number(digest?.count) || 0
-  const named = (digest?.handles ?? []).filter((h) => h?.handle)
-  const more = Math.max(0, count - named.length)
-  const announcer =
-    typeof digest?.authorIdentity === 'string' && digest.authorIdentity.startsWith('@')
-      ? digest.authorIdentity.slice(1)
-      : null
+  const named = (digest?.named ?? []).filter((h) => h?.handle)
+  const others = Math.max(0, Number(digest?.others) || 0)
+  const total = named.length + others
+  if (total === 0) return null
+  const verb = total === 1 ? 'minted a handle' : 'minted handles'
 
   return (
     <li className="post mintdigest">
       <span aria-hidden className="mintdigest-icon">🖊️</span>
       <span className="mintdigest-text">
-        {count} handles minted
-        {named.length > 0 ? (
-          <>
-            {' — '}
-            {named.map((h, i) => (
-              <Fragment key={h.txid ?? h.handle}>
-                {i > 0 ? ', ' : ''}
-                <Link href={`/@${h.handle}`} className="mention">
-                  @{h.handle}
-                </Link>
-              </Fragment>
-            ))}
-          </>
-        ) : null}
-        {more > 0 ? (
-          announcer ? (
-            <Link href={`/@${announcer}`} className="mintdigest-more">
-              {' '}
-              +{more} more
+        {named.map((h, i) => (
+          <Fragment key={h.txid ?? h.handle}>
+            {i > 0 ? (others === 0 && i === named.length - 1 ? ' and ' : ', ') : ''}
+            <Link href={`/@${h.handle}`} className="mention">
+              @{h.handle}
             </Link>
-          ) : (
-            <span className="mintdigest-more"> +{more} more</span>
-          )
-        ) : null}
+          </Fragment>
+        ))}
+        {others > 0 ? (
+          <span className="mintdigest-more">
+            {named.length > 0 ? ' and ' : ''}
+            {others.toLocaleString('en-US')} other{others === 1 ? '' : 's'}
+          </span>
+        ) : null}{' '}
+        {verb}
       </span>
       <span aria-hidden className="dot">
         ·

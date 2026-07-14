@@ -264,8 +264,6 @@ export const FEED_CSS = `
    .mintdigest is the ONE synthetic row a busy span collapses into. */
 .pow-feed .post.mintline{padding:12px 16px;}
 .pow-feed .post.mintline .body{margin-top:4px;font-size:13px;line-height:1.5;color:var(--dim);}
-/* mint announcement price — emphasized like the activity rail's amount */
-.pow-feed .mintannounce-amt{color:var(--neon);font-weight:600;}
 .pow-feed .post.mintline .actions{margin-top:8px;}
 .pow-feed .post.mintdigest{display:flex;align-items:baseline;gap:6px;padding:12px 16px;
   font-size:13px;color:var(--dim);cursor:default;}
