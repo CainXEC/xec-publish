@@ -37,7 +37,7 @@ export async function GET(_request, { params }) {
 
   const { data, error } = await supabase
     .from('comments')
-    .select('id, txid, action, parent_txid, payer_address, author_identity, content, created_at, deleted_at')
+    .select('id, txid, action, parent_id, parent_txid, payer_address, author_identity, content, created_at, deleted_at')
     .eq('post_id', postId)
     .order('created_at', { ascending: true })
 

@@ -6,7 +6,7 @@ import { createServerSupabase } from '@/lib/supabase-server'
 import { priceFeedPost } from '@/lib/feedPricing'
 import { contentHashHex, FEED_ACTION } from '@/lib/feedProtocol'
 import { verifyCommentTxid, findCommentPayment } from '@/lib/verifyFeedPost'
-import { resolveCommenter } from '@/lib/commentGate'
+import { resolveCommenter, resolveParentPayout, toEcashAddr } from '@/lib/commentGate'
 import { resolveOrCreateAccount } from '@/lib/walletAuth'
 import { recordArticleNotification, recordFeedNotification } from '@/lib/feedNotifications'
 import {
@@ -17,13 +17,7 @@ import {
 } from '@/lib/session'
 
 const COMMENT_COLUMNS =
-  'id, txid, action, parent_txid, content, author_account_id, author_identity, payer_address, created_at, deleted_at'
-
-function toEcashAddr(a) {
-  const s = typeof a === 'string' ? a.trim() : ''
-  if (!s) return ''
-  return s.startsWith('ecash:') ? s : `ecash:${s}`
-}
+  'id, txid, action, parent_id, parent_txid, content, author_account_id, author_identity, payer_address, created_at, deleted_at'
 
 function identityFor(address, handle) {
   const h = typeof handle === 'string' ? handle.trim() : ''
@@ -75,32 +69,37 @@ export async function POST(request) {
   const { costXec } = priced
   const contentHash = contentHashHex(content)
 
-  // Re-resolve the payee (never trust the client): reply → parent comment's
-  // payout snapshot; top-level → the article author's payout address.
-  const parentTxid =
-    typeof body?.parentTxid === 'string' && body.parentTxid.trim()
-      ? body.parentTxid.trim().toLowerCase()
-      : null
+  // Re-resolve the payee (never trust the client): a reply pays the parent
+  // comment's author (paid or legacy, threaded by parent_id); a top-level
+  // comment pays the article author.
+  const parentId =
+    typeof body?.parentId === 'string' && body.parentId.trim() ? body.parentId.trim() : null
 
   let action
   let payoutAddress
+  let parentTxid = null
   let parentAuthorAccountId = null
-  if (parentTxid) {
-    if (!/^[0-9a-f]{64}$/.test(parentTxid)) {
-      return NextResponse.json({ error: 'Invalid parent comment' }, { status: 400 })
-    }
-    action = FEED_ACTION.REPLY
+  if (parentId) {
     const { data: parent, error } = await supabase
       .from('comments')
-      .select('payout_address, author_account_id, post_id, deleted_at')
-      .eq('txid', parentTxid)
+      .select('id, txid, payout_address, author_account_id, payer_address, post_id, deleted_at')
+      .eq('id', parentId)
       .maybeSingle()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    if (!parent?.payout_address || parent.deleted_at || String(parent.post_id) !== String(postId)) {
+    if (!parent || parent.deleted_at || String(parent.post_id) !== String(postId)) {
       return NextResponse.json({ error: 'Parent comment not found' }, { status: 404 })
     }
-    payoutAddress = toEcashAddr(parent.payout_address)
-    parentAuthorAccountId = parent.author_account_id ?? null
+    const payee = await resolveParentPayout(parent)
+    if (!payee?.payoutAddress) {
+      return NextResponse.json(
+        { error: "Can't reply to this comment — its author can't be paid." },
+        { status: 409 },
+      )
+    }
+    payoutAddress = payee.payoutAddress
+    parentTxid = payee.parentTxid
+    parentAuthorAccountId = payee.parentAccountId
+    action = parentTxid ? FEED_ACTION.REPLY : FEED_ACTION.POST
   } else {
     action = FEED_ACTION.POST
     const { data: post, error } = await supabase
@@ -170,6 +169,7 @@ export async function POST(request) {
     post_id: postId,
     txid: match.txid,
     action,
+    parent_id: parentId,
     parent_txid: parentTxid,
     content,
     content_hash: contentHash,
@@ -202,7 +202,7 @@ export async function POST(request) {
   // Notify: a reply pings the PARENT comment's author; a top-level comment pings
   // the ARTICLE author. Best-effort — never fails the comment.
   try {
-    if (parentTxid) {
+    if (parentId) {
       if (parentAuthorAccountId && parentAuthorAccountId !== resolved.accountId) {
         await recordFeedNotification(supabase, {
           recipientAccountId: parentAuthorAccountId,
