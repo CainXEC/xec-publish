@@ -181,13 +181,15 @@ const SHELL_CSS = `
 
 /* Daylight neon: same recipe the mint page used — grounds flip light, glow
    halos stay bright. */
+/* PAPER (light mode) — warm manuscript grounds, ink type, glow killed.
+   Mirrors the feed/article paper token set. */
 html:not(.dark) .pow-mkt{
-  --bg:#e9faf2; --panel:#ffffff; --panel2:#f0f9f4; --line:#bfe6d5; --text:#07271d;
-  --dim:#5c8578; --neon:#00b06e; --cyan:#0898b4; --no:#e23b4d;
+  --bg:#f6f4ed; --panel:#fdfcf8; --panel2:#f1eee4; --line:#e3dfd2; --text:#1a1c17;
+  --dim:#5e6155; --neon:#12703c; --cyan:#0e6b74; --no:#a3312f; --live:#00c853;
+  --paper-shadow:0 1px 2px rgba(26,28,23,.05); --accent-hover:#0d5a2f; --accent-tint:#e7f0e7;
   background-color:var(--bg);
-  background-image:
-    radial-gradient(1200px 480px at 50% -8%, rgba(0,255,156,.28), transparent 62%),
-    repeating-linear-gradient(0deg, rgba(0,180,110,.055) 0 1px, transparent 1px 3px);
+  background-image:none;
 }
-html:not(.dark) .pow-mkt .fsearch::placeholder{color:#8fb3a6;}
+html:not(.dark) .pow-mkt *{text-shadow:none;}
+html:not(.dark) .pow-mkt .fsearch::placeholder{color:#a9a597;}
 `;

@@ -863,12 +863,16 @@ const CSS = `
 
 /* Daylight neon: grounds flip light, neon deepens just enough to stay legible;
    the page background itself belongs to MarketplaceShell. */
+/* PAPER (light mode) — see feedTheme.js for the shared token set. */
 html:not(.dark) .pow-market{
-  --bg:#e9faf2; --panel:#ffffff; --panel2:#f0f9f4; --line:#bfe6d5; --text:#07271d;
-  --dim:#5c8578; --neon:#00b06e; --cyan:#0898b4; --no:#e23b4d;
+  --bg:#f6f4ed; --panel:#fdfcf8; --panel2:#f1eee4; --line:#e3dfd2; --text:#1a1c17;
+  --dim:#5e6155; --neon:#12703c; --cyan:#0e6b74; --no:#a3312f; --live:#00c853;
+  --paper-shadow:0 1px 2px rgba(26,28,23,.05); --accent-hover:#0d5a2f; --accent-tint:#e7f0e7;
 }
-html:not(.dark) .pow-market .sub{color:#3f6b5d;}
-html:not(.dark) .pow-market .mkart{background:#eef7f2;}
-html:not(.dark) .pow-market .mkprov{background:rgba(255,255,255,.9);}
-html:not(.dark) .pow-market .mkoffer .obtn:hover{color:#ffffff;}
+html:not(.dark) .pow-market *{text-shadow:none;}
+html:not(.dark) .pow-market .sub{color:#4a4d42;}
+/* The NFT art tile (.mkart) + its provenance overlay (.mkprov) stay on a dark
+   chip in BOTH themes — intentional, framed like a plate on the page rather
+   than a leak (suggestion #7). So we DON'T repaint them for paper. */
+html:not(.dark) .pow-market .mkoffer .obtn:hover{color:#fdfcf8;}
 `;

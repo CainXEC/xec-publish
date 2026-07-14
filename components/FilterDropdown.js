@@ -227,10 +227,10 @@ export default function FilterDropdown({
     'inline-flex items-center justify-center gap-1.5 rounded-full border-[0.5px] px-3 py-1.5 text-left text-sm font-normal leading-[1.2] transition-colors duration-150',
     fullWidth ? 'w-full min-w-0' : 'shrink-0',
     disabled
-      ? 'cursor-not-allowed border-zinc-200 bg-zinc-100 text-zinc-500 opacity-40 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-500'
+      ? 'cursor-not-allowed border-[#e3dfd2] bg-[#f1eee4] text-[#5e6155] opacity-40 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-500'
       : isOpen
-        ? 'cursor-pointer border-zinc-300 bg-zinc-200 text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100'
-        : 'cursor-pointer border-zinc-200 bg-zinc-100 text-zinc-900 hover:bg-zinc-200 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-100 dark:hover:bg-zinc-800',
+        ? 'cursor-pointer border-[#cfc9b8] bg-[#e3dfd2] text-[#1a1c17] dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100'
+        : 'cursor-pointer border-[#e3dfd2] bg-[#f1eee4] text-[#1a1c17] hover:bg-[#e3dfd2] dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-100 dark:hover:bg-zinc-800',
   ].join(' ')
 
   const menuPanel =
@@ -248,7 +248,7 @@ export default function FilterDropdown({
           left: `${menuPosition.left}px`,
           width: `${menuPosition.width}px`,
         }}
-        className="z-[100] rounded-xl border border-zinc-200 bg-zinc-100 py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900/80"
+        className="z-[100] rounded-xl border border-[#e3dfd2] bg-[#fdfcf8] py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900/80"
       >
         {options.map((opt) => {
           const selectedHere = opt.value === value
@@ -262,7 +262,7 @@ export default function FilterDropdown({
               aria-selected={selectedHere}
               aria-disabled="true"
               title={opt.disabledHint ?? ''}
-              className="flex cursor-not-allowed items-center px-3 py-2 text-left text-xs text-zinc-400 opacity-50 sm:text-sm dark:text-zinc-500"
+              className="flex cursor-not-allowed items-center px-3 py-2 text-left text-xs text-[#a9a597] opacity-50 sm:text-sm dark:text-zinc-500"
             >
               <span className="min-w-0 flex-1">{opt.label}</span>
               {opt.disabledHint ? (
@@ -279,8 +279,8 @@ export default function FilterDropdown({
               aria-selected={selectedHere}
               className={`flex w-full items-center px-3 py-2 text-left text-xs focus:outline-none sm:text-sm ${
                 selectedHere
-                  ? 'bg-emerald-50 font-medium text-emerald-900 focus-visible:ring-2 focus-visible:ring-emerald-600/35 focus-visible:ring-inset dark:bg-emerald-950/50 dark:text-emerald-100 dark:focus-visible:ring-emerald-400/30'
-                  : 'text-zinc-800 hover:bg-zinc-50 focus-visible:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-zinc-400/40 focus-visible:ring-inset dark:text-zinc-200 dark:hover:bg-zinc-800 dark:focus-visible:bg-zinc-800 dark:focus-visible:ring-zinc-500/35'
+                  ? 'bg-[#e7f0e7] font-medium text-[#0d5a2f] focus-visible:ring-2 focus-visible:ring-[#12703c]/35 focus-visible:ring-inset dark:bg-emerald-950/50 dark:text-emerald-100 dark:focus-visible:ring-emerald-400/30'
+                  : 'text-[#1a1c17] hover:bg-[#f1eee4] focus-visible:bg-[#f1eee4] focus-visible:ring-2 focus-visible:ring-[#cfc9b8]/60 focus-visible:ring-inset dark:text-zinc-200 dark:hover:bg-zinc-800 dark:focus-visible:bg-zinc-800 dark:focus-visible:ring-zinc-500/35'
               }`}
               onPointerDown={(e) => {
                 e.stopPropagation()
@@ -328,7 +328,7 @@ export default function FilterDropdown({
       >
         <span className="truncate">{triggerText}</span>
         <ChevronDownIcon
-          className={`h-3 w-3 shrink-0 text-zinc-500 transition-transform duration-150 dark:text-zinc-400 ${
+          className={`h-3 w-3 shrink-0 text-[#5e6155] transition-transform duration-150 dark:text-zinc-400 ${
             isOpen ? 'rotate-180' : 'rotate-0'
           }`}
         />

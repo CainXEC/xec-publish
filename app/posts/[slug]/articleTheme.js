@@ -168,20 +168,48 @@ export const ARTICLE_CSS = `
 @media (max-width:480px){.pow-article .arttitle{font-size:27px;}}
 
 /* =========================================================================
-   DAYLIGHT NEON (light mode) — same neon sign seen in daylight. Flip the
-   grounds bright and deepen the neon so it reads on white; the prose body ink
-   goes dark for long-form legibility. Applies whenever <html> is NOT .dark.
+   PAPER (light mode) — the reader as a manuscript, not a neon sign at noon.
+   The long-form body was already the one high-contrast surface; paper extends
+   that honesty to the whole page: warm-paper grounds (never #fff), ink type
+   (never #000), the neon accent dropped to a dark ink-green so it clears
+   contrast, and glow killed wholesale in favour of hairlines + one soft
+   shadow. Applies whenever <html> is NOT .dark. (Paper token set mirrors the
+   feed's — see feedTheme.js.)
    ======================================================================== */
 html:not(.dark) .pow-article{
-  --bg:#e9faf2; --panel:#ffffff; --panel2:#f0f9f4; --line:#bfe6d5; --text:#07271d;
-  --dim:#5c8578; --neon:#00b06e; --cyan:#0898b4; --no:#e23b4d; --ink:#123c31;
+  --bg:#f6f4ed; --panel:#fdfcf8; --panel2:#f1eee4; --line:#e3dfd2; --text:#1a1c17;
+  --dim:#5e6155; --neon:#12703c; --cyan:#0e6b74; --no:#a3312f; --ink:#1a1c17;
+  --live:#00c853; --paper-shadow:0 1px 2px rgba(26,28,23,.05);
+  --accent-hover:#0d5a2f; --accent-tint:#e7f0e7;
   background-color:var(--bg);
-  background-image:
-    radial-gradient(1200px 480px at 50% -8%, rgba(0,255,156,.28), transparent 60%),
-    repeating-linear-gradient(0deg, rgba(0,180,110,.055) 0 1px, transparent 1px 3px);
+  background-image:none;
 }
-html:not(.dark) .pow-article .prose blockquote{color:#2f5b4e;}
-html:not(.dark) .pow-article .commentarea::placeholder{color:#8fb8ab;}
+/* Kill every neon text glow at once — emphasis on paper is weight + hue. */
+html:not(.dark) .pow-article *{text-shadow:none;}
+html:not(.dark) .pow-article .prose blockquote{color:#3a3d33;}
+html:not(.dark) .pow-article .commentarea::placeholder{color:#a9a597;}
+/* Prose links: underlined ink-green, no glow (the underline does the work). */
+html:not(.dark) .pow-article .prose a[href]{text-decoration-color:rgba(18,112,60,.5);}
+/* Code + pre: a warm inset plate with a hairline, not a teal-black terminal. */
+html:not(.dark) .pow-article .prose code{background:var(--panel2);border-color:var(--line);color:#0d5a2f;}
+/* Primary actions: filled ink-green with paper text (was outline + neon glow). */
+html:not(.dark) .pow-article .unlockbtn,
+html:not(.dark) .pow-article .postcomment-btn{
+  background:var(--neon);color:#fdfcf8;border-color:var(--neon);box-shadow:var(--paper-shadow);}
+html:not(.dark) .pow-article .unlockbtn:hover:not(:disabled),
+html:not(.dark) .pow-article .postcomment-btn:hover:not(:disabled){
+  background:var(--accent-hover);color:#fdfcf8;box-shadow:var(--paper-shadow);}
+html:not(.dark) .pow-article .unlockbtn:disabled,
+html:not(.dark) .pow-article .postcomment-btn:disabled{
+  background:transparent;color:var(--dim);border-color:var(--line);box-shadow:none;}
+/* Follow pill stays an outline until active, then fills accent. */
+html:not(.dark) .pow-article .followbtn.on{color:#fdfcf8;}
+/* Elevation: recessed cards get a hairline + soft shadow, not a glow. */
+html:not(.dark) .pow-article .pollcard,
+html:not(.dark) .pow-article .commentitem{box-shadow:var(--paper-shadow);}
+/* Delete button: warm danger outline instead of the dark-red terminal border. */
+html:not(.dark) .pow-article .delbtn{border-color:var(--line);}
+html:not(.dark) .pow-article .delbtn:hover:not(:disabled){border-color:var(--no);color:var(--no);box-shadow:none;}
 
 /* ---- desktop shell: the story keeps the newspaper spread ----
    The article column is 760px (wider than the feed's 640), so the tiers sit

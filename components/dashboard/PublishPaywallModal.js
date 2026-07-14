@@ -353,24 +353,24 @@ export default function PublishPaywallModal({
       aria-modal="true"
       aria-labelledby="publish-paywall-title"
     >
-      <div className="max-h-[90vh] w-auto inline-block max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+      <div className="max-h-[90vh] w-auto inline-block max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-[#e3dfd2] bg-[#fdfcf8] p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
         <h2
           id="publish-paywall-title"
-          className="text-lg font-semibold text-zinc-900 dark:text-zinc-50"
+          className="text-lg font-semibold text-[#1a1c17] dark:text-zinc-50"
         >
           Pay to publish
         </h2>
         {waiting ? (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-700 dark:border-zinc-600 dark:border-t-zinc-200" />
-            <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Waiting for payment...</p>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#e3dfd2] border-t-[#3a3d33] dark:border-zinc-600 dark:border-t-zinc-200" />
+            <p className="text-sm font-medium text-[#3a3d33] dark:text-zinc-300">Waiting for payment...</p>
+            <p className="text-xs text-[#5e6155] dark:text-zinc-400">
               Complete the payment in Cashtab to publish your post.
             </p>
           </div>
         ) : (
           <>
-            <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+            <p className="mt-3 text-sm leading-relaxed text-[#5e6155] dark:text-zinc-400">
               Publishing costs 100 XEC to help prevent
               <span className="hidden sm:inline">
                 <br />
@@ -395,7 +395,7 @@ export default function PublishPaywallModal({
               type="button"
               onClick={handlePublishPaywallPay}
               disabled={!publishFeeCashtabUrl}
-              className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400"
+              className="rounded-lg bg-[#12703c] px-4 py-2.5 text-sm font-semibold text-[#fdfcf8] shadow-sm transition hover:bg-[#0d5a2f] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400"
             >
               Pay 100 XEC to publish
             </button>
@@ -403,7 +403,7 @@ export default function PublishPaywallModal({
           <button
             type="button"
             onClick={handlePublishPaywallCancel}
-            className="rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="rounded-lg border border-[#e3dfd2] bg-[#fdfcf8] px-4 py-2.5 text-sm font-medium text-[#1a1c17] transition hover:bg-[#f1eee4] dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             Cancel
           </button>

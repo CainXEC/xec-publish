@@ -16,11 +16,13 @@ const BODY_WARN_WITHIN = 10_000
 const toolbarBtnBase =
   'rounded border px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide transition disabled:pointer-events-none disabled:opacity-40 md:px-2 md:text-xs'
 
+// Light halves are paper tokens (accent-tint / ink-green / warm paper + hairline);
+// dark: variants are untouched. See project_paper_light_mode memory.
 const toolbarBtnOn =
-  'border-emerald-600 bg-emerald-100 text-emerald-900 dark:border-emerald-400 dark:bg-emerald-900/40 dark:text-emerald-100'
+  'border-[#12703c] bg-[#e7f0e7] text-[#0d5a2f] dark:border-emerald-400 dark:bg-emerald-900/40 dark:text-emerald-100'
 
 const toolbarBtnOff =
-  'border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800'
+  'border-[#e3dfd2] bg-[#fdfcf8] text-[#3a3d33] hover:bg-[#f1eee4] dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800'
 
 function ToolbarButton({ active, disabled, onAction, title, children }) {
   return (
@@ -42,7 +44,7 @@ function ToolbarButton({ active, disabled, onAction, title, children }) {
 function ToolbarSeparator() {
   return (
     <span
-      className="mx-0.5 hidden h-5 w-px self-center bg-zinc-200 sm:inline-block dark:bg-zinc-700"
+      className="mx-0.5 hidden h-5 w-px self-center bg-[#e3dfd2] sm:inline-block dark:bg-zinc-700"
       aria-hidden
     />
   )
@@ -108,7 +110,7 @@ export default function RichTextEditor({
     () => ({
       attributes: {
         class:
-          'tiptap ProseMirror min-h-[300px] px-3 py-2 text-sm text-zinc-900 outline-none focus:outline-none dark:text-zinc-50',
+          'tiptap ProseMirror min-h-[300px] px-3 py-2 text-sm text-[#1a1c17] outline-none focus:outline-none dark:text-zinc-50',
         role: 'textbox',
         'aria-multiline': 'true',
         ...(ariaLabelledBy ? { 'aria-labelledby': ariaLabelledBy } : {}),
@@ -144,10 +146,10 @@ export default function RichTextEditor({
     return (
       <div className={className}>
         <div
-          className={`overflow-hidden rounded-lg border border-zinc-300 bg-white dark:border-zinc-600 dark:bg-zinc-950`}
+          className={`overflow-hidden rounded-lg border border-[#e3dfd2] bg-[#fdfcf8] dark:border-zinc-600 dark:bg-zinc-950`}
         >
-          <div className="h-10 animate-pulse border-b border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900" />
-          <div className="min-h-[240px] bg-zinc-50/80 dark:bg-zinc-900/50" />
+          <div className="h-10 animate-pulse border-b border-[#e3dfd2] bg-[#f1eee4] dark:border-zinc-700 dark:bg-zinc-900" />
+          <div className="min-h-[240px] bg-[#f1eee4]/80 dark:bg-zinc-900/50" />
         </div>
         <p className={`mt-1 text-right text-xs tabular-nums ${counterClass}`}>
           {Number(0).toLocaleString('en-US')}/{maxLabel}
@@ -159,10 +161,10 @@ export default function RichTextEditor({
   return (
     <div className={className}>
       <div
-        className={`rich-text-editor flex h-80 flex-col overflow-hidden rounded-lg border border-zinc-300 bg-white md:h-[480px] dark:border-zinc-600 dark:bg-zinc-950`}
+        className={`rich-text-editor flex h-80 flex-col overflow-hidden rounded-lg border border-[#e3dfd2] bg-[#fdfcf8] md:h-[480px] dark:border-zinc-600 dark:bg-zinc-950`}
       >
         <div
-          className="z-10 flex flex-wrap items-center gap-1 border-b border-zinc-200 bg-white px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-900"
+          className="z-10 flex flex-wrap items-center gap-1 border-b border-[#e3dfd2] bg-[#fdfcf8] px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-900"
           role="toolbar"
           aria-label="Formatting"
         >
