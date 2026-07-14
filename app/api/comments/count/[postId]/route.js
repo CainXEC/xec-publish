@@ -15,6 +15,7 @@ export async function GET(_request, { params }) {
     .from('comments')
     .select('id', { count: 'exact', head: true })
     .eq('post_id', postId)
+    .is('deleted_at', null)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

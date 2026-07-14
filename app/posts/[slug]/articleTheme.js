@@ -164,6 +164,41 @@ export const ARTICLE_CSS = `
 .pow-article .delbtn:hover:not(:disabled){border-color:var(--no);color:#ff8892;box-shadow:0 0 12px rgba(255,92,108,.2);}
 .pow-article .delbtn:disabled{opacity:.5;cursor:default;}
 
+/* ---- paid comment composer: bar (charcount + buttons), reply, pay states ---- */
+.pow-article .commentbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;}
+.pow-article .commentbar-btns{display:flex;align-items:center;gap:10px;}
+.pow-article .charcount.over{color:var(--no);}
+.pow-article .commentghost{background:transparent;border:1px solid var(--line);color:var(--dim);border-radius:9px;
+  padding:9px 16px;font:inherit;font-size:12px;cursor:pointer;transition:border-color .15s,color .15s;}
+.pow-article .commentghost:hover{border-color:var(--cyan);color:var(--cyan);}
+.pow-article .commentlink{background:none;border:none;color:var(--dim);font:inherit;font-size:12px;cursor:pointer;padding:0;
+  transition:color .15s;}
+.pow-article .commentlink:hover{color:var(--cyan);}
+/* an inline reply composer, nested under the comment it answers (no indentation
+   — the "Replying to @X" line carries the context, feed-style) */
+.pow-article .commentform-reply{margin:12px 0 4px;}
+.pow-article .commentactions{margin-top:10px;}
+.pow-article .commentreplybtn{background:none;border:none;color:var(--dim);font:inherit;font-size:13px;cursor:pointer;
+  padding:2px 0;transition:color .15s;}
+.pow-article .commentreplybtn:hover{color:var(--cyan);}
+.pow-article .comment-replyingto{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);margin:0 0 8px;}
+.pow-article .comment-replyarrow{color:var(--line);}
+.pow-article .comment-replyingto-who{color:var(--cyan);font-weight:600;}
+.pow-article .commenttomb{color:var(--dim);font-style:italic;}
+/* pay state (Cashtab opened → polling for the on-chain payment) */
+.pow-article .commentpay{border:1px solid var(--line);background:var(--panel2);border-radius:12px;padding:16px;margin-top:10px;}
+.pow-article .commentpay-reply{margin-top:12px;}
+.pow-article .commentpay-head{font-size:13.5px;color:var(--text);margin:0 0 12px;}
+.pow-article .commentpay-head strong{color:var(--neon);}
+.pow-article .commentpay-poll{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text);}
+.pow-article .commentmanual{margin:14px 0 0;}
+.pow-article .commentmanual summary{color:var(--dim);font-size:12px;cursor:pointer;list-style:none;text-align:center;}
+.pow-article .commentmanual summary::-webkit-details-marker{display:none;}
+.pow-article .commentmanualrow{display:flex;gap:8px;margin:12px 0 0;}
+.pow-article .commentmanualrow input{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  padding:10px 12px;color:var(--text);font:inherit;font-size:12px;outline:none;}
+.pow-article .commentmanualrow input:focus{border-color:var(--cyan);}
+
 @media (prefers-reduced-motion:reduce){.pow-article *{transition:none!important;animation:none!important;}}
 @media (max-width:480px){.pow-article .arttitle{font-size:27px;}}
 
@@ -206,7 +241,8 @@ html:not(.dark) .pow-article .postcomment-btn:disabled{
 html:not(.dark) .pow-article .followbtn.on{color:#fdfcf8;}
 /* Elevation: recessed cards get a hairline + soft shadow, not a glow. */
 html:not(.dark) .pow-article .pollcard,
-html:not(.dark) .pow-article .commentitem{box-shadow:var(--paper-shadow);}
+html:not(.dark) .pow-article .commentitem,
+html:not(.dark) .pow-article .commentpay{box-shadow:var(--paper-shadow);}
 /* Delete button: warm danger outline instead of the dark-red terminal border. */
 html:not(.dark) .pow-article .delbtn{border-color:var(--line);}
 html:not(.dark) .pow-article .delbtn:hover:not(:disabled){border-color:var(--no);color:var(--no);box-shadow:none;}

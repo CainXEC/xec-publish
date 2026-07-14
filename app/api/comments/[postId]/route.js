@@ -4,7 +4,6 @@ import { NextResponse } from 'next/server'
 import { verifyCookieValue } from '@/lib/cookieSigner'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { getAuthedAccount } from '@/lib/authHelpers'
-import { recordArticleNotification } from '@/lib/feedNotifications'
 
 const supabase = createServerSupabase()
 
@@ -38,7 +37,7 @@ export async function GET(_request, { params }) {
 
   const { data, error } = await supabase
     .from('comments')
-    .select('id, payer_address, content, created_at')
+    .select('id, txid, action, parent_txid, payer_address, author_identity, content, created_at, deleted_at')
     .eq('post_id', postId)
     .order('created_at', { ascending: true })
 
@@ -46,121 +45,28 @@ export async function GET(_request, { params }) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ comments: data ?? [] })
+  // A deleted comment is kept as a tombstone (so replies under it keep their
+  // context) but its content is never sent to the client. Legacy free comments
+  // (txid IS NULL) come through unchanged.
+  const comments = (data ?? []).map((c) =>
+    c.deleted_at
+      ? { ...c, content: '', deleted: true }
+      : { ...c, deleted: false },
+  )
+
+  return NextResponse.json({ comments })
 }
 
-export async function POST(request, { params }) {
-  const { postId } = await params
-  if (!postId) {
-    return NextResponse.json({ error: 'Missing postId' }, { status: 400 })
-  }
-
-  const body = await request.json().catch(() => ({}))
-  const rawContent = typeof body?.content === 'string' ? body.content : ''
-  if (rawContent.length > 500) {
-    return NextResponse.json(
-      { error: 'Comment must be 500 characters or less' },
-      { status: 400 },
-    )
-  }
-  const content = rawContent.trim()
-  if (!content) {
-    return NextResponse.json({ error: 'Comment content is required' }, { status: 400 })
-  }
-
-  const supabaseService = createServerSupabase()
-
-  // Identity is decided SERVER-SIDE and stamped from proven auth only — the
-  // request body's payer_address is never trusted.
-  let verified = false
-  let payerAddress = null
-
-  const acct = await getAuthedAccount()
-
-  if (acct) {
-    if (await isAuthorOrAdmin(acct, postId, supabaseService)) {
-      // author of this post / admin — stamp their display identity
-      verified = true
-      payerAddress = acct.identity
-    } else {
-      // logged-in reader — allowed only if this account's address unlocked it
-      const forms = addressForms(acct.address)
-      if (forms.length) {
-        const { data: unlockRow } = await supabase
-          .from('unlocks')
-          .select('id')
-          .eq('post_id', postId)
-          .in('payer_address', forms)
-          .limit(1)
-          .maybeSingle()
-        if (unlockRow) {
-          verified = true
-          payerAddress = acct.identity
-        }
-      }
-    }
-  }
-
-  // Fallback for a paid reader who isn't logged in as a session (same device):
-  // the signed unlock cookie -> stamp the PROVEN address from its unlock row.
-  if (!verified) {
-    const rawCookie = request.cookies.get(`unlock_${postId}`)?.value
-    const { valid, txid } = verifyCookieValue(postId, rawCookie)
-    if (valid && String(txid).trim()) {
-      const { data: unlockRow, error: unlockError } = await supabaseService
-        .from('unlocks')
-        .select('payer_address')
-        .eq('post_id', postId)
-        .eq('txid', String(txid).trim())
-        .maybeSingle()
-      if (unlockError) {
-        return NextResponse.json({ error: unlockError.message }, { status: 500 })
-      }
-      const proven =
-        typeof unlockRow?.payer_address === 'string'
-          ? unlockRow.payer_address.trim()
-          : ''
-      if (proven) {
-        verified = true
-        payerAddress = proven
-      }
-    }
-  }
-
-  if (!verified) {
-    return NextResponse.json(
-      { error: 'Only unlocked readers can post comments' },
-      { status: 403 },
-    )
-  }
-
-  const { data: inserted, error: insertError } = await supabase
-    .from('comments')
-    .insert({
-      post_id: postId,
-      payer_address: payerAddress,
-      content,
-    })
-    .select('id, payer_address, content, created_at')
-    .single()
-
-  if (insertError) {
-    return NextResponse.json({ error: insertError.message }, { status: 500 })
-  }
-
-  // Tell the author they got a comment. Best-effort — never fails the comment.
-  // A logged-in commenter gives us their account directly; the logged-out cookie
-  // path gives only the proven address, which we resolve. The author commenting
-  // on their own post is skipped (recipient === actor).
-  await recordArticleNotification(supabase, {
-    postId,
-    type: 'comment',
-    actorAccountId: acct?.accountId ?? null,
-    actorIdentity: acct?.identity ?? null,
-    actorAddress: acct ? null : payerAddress,
-  })
-
-  return NextResponse.json({ comment: inserted })
+/**
+ * Comments are now PAID (pay-to-comment, like the feed). The free write path is
+ * retired — the client posts via /api/comments/prepare → pay in Cashtab →
+ * /api/comments/confirm, which verifies the on-chain payment before inserting.
+ */
+export async function POST() {
+  return NextResponse.json(
+    { error: 'Comments now require payment. Use /api/comments/prepare and /api/comments/confirm.' },
+    { status: 410 },
+  )
 }
 
 export async function DELETE(request, { params }) {
@@ -249,9 +155,12 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  // Soft-delete (tombstone) so any replies hanging off this comment keep their
+  // context. GET blanks the content and marks it deleted; the row stays for
+  // thread structure and to preserve the on-chain txid/idempotency key.
   const { error: deleteError } = await supabaseService
     .from('comments')
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', commentId)
     .eq('post_id', postId)
 
