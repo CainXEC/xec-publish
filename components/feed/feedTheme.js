@@ -785,6 +785,9 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 .pow-feed .hr-meta{font-size:11.5px;color:var(--dim);margin:0 0 24px;}
 .pow-feed .hr-author{font-weight:700;color:var(--hc);}
 .pow-feed a.hr-author:hover{text-decoration:underline;text-underline-offset:2px;}
+.pow-feed .hr-jump{background:none;border:none;padding:0;margin:0;font:inherit;color:inherit;
+  cursor:pointer;text-decoration:underline;text-underline-offset:2px;transition:color .15s;}
+.pow-feed .hr-jump:hover{color:var(--cyan);}
 /* Paper: darken the account's neon handle swatch (carried on --hc) toward ink
    on the same hue; no --hc (address byline) inherits the meta color. */
 html:not(.dark) .pow-feed .hr-author{color:color-mix(in oklab, var(--hc) 58%, #000);}
