@@ -44,6 +44,23 @@ export default function HomeReader({ slug, onClose, backLabel = '← The feed' }
   // Translated view ({ translated: html, title }); null = original. The parent
   // keys this component by slug, so it remounts per story — tr resets naturally.
   const [tr, setTr] = useState(null)
+  // Viewer session — needed so the comments section can show the Delete button
+  // (own comments) and let an author moderate. The article page passes the same
+  // `me` to ArticleComments; the pane was missing it, so delete never appeared.
+  const [me, setMe] = useState(null)
+
+  useEffect(() => {
+    let alive = true
+    fetch('/api/me', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((data) => {
+        if (alive) setMe(data?.authenticated ? data : null)
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [])
 
   // Reusable so an in-pane unlock can refetch: the server, now seeing the
   // entitlement, returns the FULL story and the paywall block melts away.
@@ -202,7 +219,13 @@ export default function HomeReader({ slug, onClose, backLabel = '← The feed' }
               the author/admin — the server folds those into `unlocked`) get
               the comment section right in the pane. */}
           {d.unlocked && d.postId ? (
-            <ArticleComments postId={d.postId} canComment={d.unlocked} />
+            <ArticleComments
+              postId={d.postId}
+              canComment={d.unlocked}
+              me={me}
+              isAuthorSession={Boolean(me?.authorId && d.authorId && me.authorId === d.authorId)}
+              onChanged={() => void load({ quiet: true })}
+            />
           ) : null}
         </div>
       )}

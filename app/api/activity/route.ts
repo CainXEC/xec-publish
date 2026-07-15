@@ -37,7 +37,7 @@ export type ActivityItem = {
   kind:
     | "post" | "reply" | "quote"
     | "like" | "tip" | "repost"
-    | "unlock" | "publish" | "mint";
+    | "unlock" | "publish" | "mint" | "comment";
   /** Frozen display byline: "@handle" or a raw eCash address. */
   actor: string;
   /** Link to the actor's profile ("/@handle" or "/a/<address>"), or null for
@@ -161,7 +161,7 @@ export async function GET(req: NextRequest) {
       : publishesQuery.eq("txid", "-");
   }
 
-  const [postsQ, eventsQ, unlocksQ, publishesQ, mintsQ] = await Promise.all([
+  const [postsQ, eventsQ, unlocksQ, publishesQ, mintsQ, commentsQ] = await Promise.all([
     postsQuery,
     eventsQuery,
     unlocksQuery,
@@ -171,6 +171,17 @@ export async function GET(req: NextRequest) {
       : supabase
           .from("handles")
           .select("token_id, handle, tier, created_at")
+          .order("created_at", { ascending: false })
+          .limit(PER_SOURCE),
+    // Paid article comments + replies. Only on-chain ones (txid present) — a
+    // legacy free comment has no payment to show. Site-wide firehose only.
+    scoped
+      ? Promise.resolve({ data: [] as Array<never> })
+      : supabase
+          .from("comments")
+          .select("txid, author_identity, amount_sats, content, created_at, posts!inner(title, slug, legacy)")
+          .is("deleted_at", null)
+          .not("txid", "is", null)
           .order("created_at", { ascending: false })
           .limit(PER_SOURCE),
   ]);
@@ -348,6 +359,28 @@ export async function GET(req: NextRequest) {
       at: m.created_at,
       href: `/@${m.handle}`,
       txid: m.token_id,
+    });
+  }
+
+  // ---- paid article comments / replies — link to the article's comments ----
+  type CommentRow = {
+    txid: string; author_identity: string | null; amount_sats: number | null;
+    content: string | null; created_at: string;
+    posts: { title: string | null; slug: string | null; legacy?: boolean | null } | null;
+  };
+  for (const c of (commentsQ.data ?? []) as unknown as CommentRow[]) {
+    const cp = Array.isArray(c.posts) ? c.posts[0] : c.posts;
+    if (!cp?.slug) continue;
+    items.push({
+      id: `cm:${c.txid}`,
+      kind: "comment",
+      actor: displayIdentity(c.author_identity, "someone"),
+      actorHref: profileHref(c.author_identity),
+      target: snippet(c.content),
+      amountXec: c.amount_sats == null ? null : c.amount_sats / 100,
+      at: c.created_at,
+      href: `${articleHref(cp.slug, cp.legacy)}#comments`,
+      txid: c.txid,
     });
   }
 

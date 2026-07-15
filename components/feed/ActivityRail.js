@@ -40,6 +40,7 @@ const VERB = {
   unlock: 'unlocked',
   publish: 'published',
   mint: 'minted',
+  comment: 'commented',
 }
 
 const fmtXec = (n) => `${Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 })} XEC`
@@ -62,7 +63,7 @@ function timeAgo(iso) {
 // Content snippets read as speech; titles and bylines read as names.
 function targetNode(it) {
   if (!it.target) return null
-  if (it.kind === 'post' || it.kind === 'reply' || it.kind === 'quote') {
+  if (it.kind === 'post' || it.kind === 'reply' || it.kind === 'quote' || it.kind === 'comment') {
     return <span className="arow-target">“{it.target}”</span>
   }
   return <span className="arow-target">{it.target}</span>
