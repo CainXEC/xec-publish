@@ -2,14 +2,15 @@
 // =============================================================================
 //  ArticleRail.js — the desktop LEFT rail: the site's front page.
 //
-//  An editor-less newspaper whose editor is the chain: a lead story chosen by
-//  readers × freshness, LATEST in pure chronology, MOST READ by verified
-//  unlock count. The feed is social time; this rail is editorial time.
+//  An editor-less newspaper whose editor is the chain: a LEAD story chosen by
+//  breadth × freshness × a sublinear price nudge (readers dominate; a pricier
+//  piece only edges an equally-read cheaper one), then MORE STORIES in pure
+//  chronology. The feed is social time; this rail is editorial time.
 //
 //  Newspaper-ness comes from STRUCTURE (masthead between double rules, a
-//  dateline folio with chain stats, hairline-separated entries, a numbered
-//  most-read list), not from paper skin — it lives happily in the terminal
-//  theme. The one new ingredient: story headlines are SERIF. The site's
+//  dateline folio, a hero lead, hairline-separated entries below), not from
+//  paper skin — it lives happily in the terminal theme. The one new
+//  ingredient: story headlines are SERIF. The site's
 //  three-voice type rule: serif = writing, mono = machinery, neon = money.
 //
 //  Interactions: clicking a headline opens the story; clicking anywhere else
@@ -141,6 +142,46 @@ function PeekButtons({ story, onOpen }) {
   )
 }
 
+// The lead: a full newspaper hero — big serif headline, teaser, a meta line
+// that surfaces earnings alongside readers, and the Read/Unlock actions inline
+// (no click-to-peek; the lead is already open).
+function Lead({ story, now, onOpen }) {
+  const parts = [story.author, fmtPrice(story.priceXec)]
+  parts.push(story.readers > 0 ? `${story.readers} reader${story.readers === 1 ? '' : 's'}` : timeAgo(story.at))
+  if (story.earnedXec > 0) parts.push(`${Number(story.earnedXec).toLocaleString()} XEC earned`)
+  return (
+    <div className={`np-lead${now ? ' now' : ''}`}>
+      <Link
+        className="np-lead-hl"
+        href={`/posts/${story.slug}`}
+        onClick={onOpen ? (e) => onOpen(e, story.slug) : undefined}
+        data-no-navprogress={onOpen ? '' : undefined}
+      >
+        <span className="np-serif np-lead-h">
+          {isFresh(story.at) ? <span className="np-dot" aria-hidden /> : null}
+          {story.title}
+        </span>
+      </Link>
+      {story.teaser ? <p className="np-lead-teaser">{story.teaser}</p> : null}
+      <div className="np-lead-meta">
+        {parts.map((p, i) => (
+          <span key={i}>
+            {i > 0 ? ' · ' : ''}
+            {String(p).endsWith('XEC') ? (
+              <span className="np-price">{p}</span>
+            ) : String(p).endsWith('earned') ? (
+              <span className="np-earned">{p}</span>
+            ) : (
+              p
+            )}
+          </span>
+        ))}
+      </div>
+      <PeekButtons story={story} onOpen={onOpen} />
+    </div>
+  )
+}
+
 function Entry({ story, open, now, onToggle, onOpen }) {
   return (
     <div
@@ -224,8 +265,8 @@ export default function ArticleRail({ minWidth = 1400, currentSlug = null, onOpe
 
   const toggle = (id) => setOpenId((cur) => (cur === id ? null : id))
 
-  const latest = data?.latest ?? []
-  const mostRead = data?.mostRead ?? []
+  const lead = data?.lead ?? null
+  const more = data?.more ?? []
 
   return (
     <div className="npaper">
@@ -234,35 +275,16 @@ export default function ArticleRail({ minWidth = 1400, currentSlug = null, onOpe
 
       {data === null ? (
         <p className="np-empty">Setting the type…</p>
-      ) : mostRead.length === 0 && latest.length === 0 ? (
+      ) : !lead && more.length === 0 ? (
         <p className="np-empty">The presses are warm and the front page is blank.</p>
       ) : (
         <>
-          {mostRead.length > 0 ? (
-            <>
-              <div className="np-sec np-first">Most read · 7 days</div>
-              <div className="np-ranks">
-                {mostRead.map((s, i) => (
-                  <Link
-                    className={`np-rank${isNow(s) ? ' now' : ''}`}
-                    key={s.id}
-                    href={`/posts/${s.slug}`}
-                    onClick={interceptOpen ? (e) => interceptOpen(e, s.slug) : undefined}
-                    data-no-navprogress={interceptOpen ? '' : undefined}
-                  >
-                    <span className="np-rank-n">{i + 1}</span>
-                    <span className="np-serif np-rank-h">{s.title}</span>
-                    <span className="np-rank-c">{s.readers7d}</span>
-                  </Link>
-                ))}
-              </div>
-            </>
-          ) : null}
+          {lead ? <Lead story={lead} now={isNow(lead)} onOpen={interceptOpen} /> : null}
 
-          {latest.length > 0 ? (
+          {more.length > 0 ? (
             <>
-              <div className={`np-sec${mostRead.length === 0 ? ' np-first' : ''}`}>Latest</div>
-              {latest.map((s) => (
+              <div className="np-sec">More stories</div>
+              {more.map((s) => (
                 <Entry
                   key={s.id}
                   story={s}

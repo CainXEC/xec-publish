@@ -703,6 +703,16 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 .pow-feed .np-sec{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);
   border-bottom:1px solid var(--line);padding:16px 0 5px;}
 .pow-feed .np-sec.np-first{padding-top:0;}
+/* the lead: a full newspaper hero above the More-stories list */
+.pow-feed .np-lead{padding:13px 0 15px;border-bottom:1px solid var(--line);}
+.pow-feed .np-lead-hl{display:block;}
+.pow-feed .np-lead-h{display:block;font-size:20px;line-height:1.2;color:var(--text);font-weight:700;}
+.pow-feed .np-lead-hl:hover .np-lead-h{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
+.pow-feed .np-lead-teaser{font-size:12.5px;line-height:1.55;color:var(--dim);margin:8px 0 0;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.pow-feed .np-lead-meta{font-size:11px;color:var(--dim);line-height:1.5;margin-top:8px;}
+.pow-feed .np-earned{color:var(--neon);}
+.pow-feed .np-lead.now .np-lead-h{color:var(--neon);}
 .pow-feed .np-entry{padding:10px 0;border-bottom:1px solid rgba(23,58,51,.55);cursor:pointer;}
 .pow-feed .np-entry-h{display:block;font-size:14.5px;line-height:1.3;color:var(--text);}
 .pow-feed .np-entry .np-meta{margin-top:3px;}
