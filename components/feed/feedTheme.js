@@ -216,12 +216,12 @@ export const FEED_CSS = `
   margin:0 0 6px;transition:color .15s;}
 .pow-feed .replyingto:hover{color:var(--cyan);}
 .pow-feed .replyingto .replyarrow{color:var(--line);}
-.pow-feed .replyingto-who{color:var(--cyan);font-weight:600;}
+.pow-feed .replyingto-who{color:var(--hc,var(--cyan));font-weight:600;}
 /* "Reposted by @X" context line above a resurfaced repost (Following timeline) */
 .pow-feed .repostedby{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);
   margin:0 0 6px;}
 .pow-feed .reposticon{font-size:11px;line-height:1;}
-.pow-feed .repostedby-who{color:var(--dim);font-weight:600;transition:color .15s;}
+.pow-feed .repostedby-who{color:var(--hc,var(--dim));font-weight:600;transition:color .15s;}
 .pow-feed a.repostedby-who:hover{color:var(--cyan);}
 .pow-feed .postmeta{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
 .pow-feed .byline{font-size:13px;font-weight:700;color:var(--hc,var(--neon));text-shadow:0 0 8px rgba(0,255,156,.35);transition:text-shadow .15s;}
@@ -638,6 +638,14 @@ html:not(.dark) .pow-feed .profname{
    follower/following list) — the swatch on --hc would otherwise stay neon. */
 html:not(.dark) .pow-feed .dashwelcome a{color:color-mix(in oklab, var(--hc,var(--cyan)) 58%, #000);}
 html:not(.dark) .pow-feed .dashfollow{color:color-mix(in oklab, var(--hc,var(--text)) 62%, #000);}
+/* …and the "Replying to @X" / "Reposted by @X" context handles (--hc swatch). */
+html:not(.dark) .pow-feed .replyingto-who{color:color-mix(in oklab, var(--hc,var(--cyan)) 58%, #000);}
+html:not(.dark) .pow-feed .repostedby-who{color:color-mix(in oklab, var(--hc,var(--dim)) 62%, #000);}
+/* An ADDRESS profile name is teal (--cyan, already paper-readable), not a handle
+   swatch: the general .profname paper rule above would fall back to a GREEN mix,
+   so pin it to the plain teal here — matching the ecash: address bylines below
+   it (higher specificity wins). */
+html:not(.dark) .pow-feed .profname.isaddr{color:var(--cyan);}
 html:not(.dark) .pow-feed .byline:hover{text-shadow:none;filter:brightness(.88);}
 html:not(.dark) .pow-feed .compose textarea::placeholder{color:#a9a597;}
 /* sticky topbar tint = translucent paper (dark default is set inline above) */
