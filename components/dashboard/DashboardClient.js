@@ -556,7 +556,7 @@ export default function DashboardClient({
               Welcome{' '}
               <Link
                 href={profileHref}
-                style={identity?.startsWith('@') && handleColor ? { color: handleColor } : undefined}
+                style={identity?.startsWith('@') && handleColor ? { '--hc': handleColor } : undefined}
               >
                 {identity?.startsWith('@')
                   ? identity.slice(1)
@@ -630,7 +630,7 @@ export default function DashboardClient({
                         <Link
                           href={a.href}
                           className="dashfollow"
-                          style={a.color ? { color: a.color } : undefined}
+                          style={a.color ? { '--hc': a.color } : undefined}
                         >
                           {a.display}
                         </Link>

@@ -270,7 +270,7 @@ export default function ProfileSettingsForm({
                       <span
                         className="blockid"
                         title={b.identity}
-                        style={isHandle && b.color ? { color: b.color } : undefined}
+                        style={isHandle && b.color ? { '--hc': b.color } : undefined}
                       >
                         {blockedLabel(b.identity)}
                       </span>
@@ -361,7 +361,8 @@ const PROFILE_CSS = `
 .pow-feed .blocklist{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:8px;}
 .pow-feed .blockrow{display:flex;align-items:center;justify-content:space-between;gap:12px;
   border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel2);}
-.pow-feed .blockid{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:700;color:var(--text);}
+.pow-feed .blockid{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:700;color:var(--hc,var(--text));}
+html:not(.dark) .pow-feed .blockid{color:color-mix(in oklab, var(--hc,var(--text)) 62%, #000);}
 .pow-feed .blockunbtn{flex:none;}
 /* danger zone */
 .pow-feed .prof-danger{border-color:var(--no);}
