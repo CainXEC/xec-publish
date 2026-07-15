@@ -183,23 +183,31 @@ export default function ActivityRail({
               onOpenThread && it.href?.startsWith('/feed/') ? it.href.slice('/feed/'.length) : null
             return (
             <li key={it.id} className={`arow${freshIds.current.has(it.id) ? ' fresh' : ''}`}>
-              <Link
-                href={it.href}
-                className="arow-main"
-                onClick={
-                  threadTxid
-                    ? (e) => {
-                        if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1) return
-                        e.preventDefault()
-                        onOpenThread(threadTxid)
-                      }
-                    : undefined
-                }
-                data-no-navprogress={threadTxid ? true : undefined}
-              >
-                <strong className="arow-actor">{it.actor}</strong> {VERB[it.kind] ?? it.kind}{' '}
-                {targetNode(it)}
-              </Link>
+              <div className="arow-main">
+                {it.actorHref ? (
+                  <Link href={it.actorHref} className="arow-actor arow-actor-link">
+                    {it.actor}
+                  </Link>
+                ) : (
+                  <strong className="arow-actor">{it.actor}</strong>
+                )}{' '}
+                <Link
+                  href={it.href}
+                  className="arow-say"
+                  onClick={
+                    threadTxid
+                      ? (e) => {
+                          if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1) return
+                          e.preventDefault()
+                          onOpenThread(threadTxid)
+                        }
+                      : undefined
+                  }
+                  data-no-navprogress={threadTxid ? true : undefined}
+                >
+                  {VERB[it.kind] ?? it.kind} {targetNode(it)}
+                </Link>
+              </div>
               <span className="arow-meta">
                 {it.amountXec != null ? <span className="arow-amt">{fmtXec(it.amountXec)}</span> : null}
                 <span className="arow-time">{timeAgo(it.at)}</span>
