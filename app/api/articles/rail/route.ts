@@ -42,10 +42,6 @@ type RailStory = {
   author: string;
   readers: number;
   readers7d: number;
-  /** Author's take so far: readers × price × 94% (fee-adjusted, matching the
-   *  article page's earnings display). A cheap proxy — every unlock is priced
-   *  at the article's current price. */
-  earnedXec: number;
 };
 
 const bare = (address: string) => address.replace(/^ecash:/, "").toLowerCase();
@@ -101,23 +97,18 @@ export async function GET() {
     }
   }
 
-  const stories: RailStory[] = posts.map((p) => {
-    const rc = readers.get(p.id) ?? 0;
-    const price = Number(p.price_xec) || 0;
-    return {
-      id: p.id,
-      title: p.title as string,
-      slug: p.slug as string,
-      teaser: p.teaser,
-      priceXec: p.price_xec,
-      readMinutes: p.reading_time_minutes,
-      at: p.published_at ?? p.created_at ?? new Date(0).toISOString(),
-      author: (p.author_id ? byline.get(p.author_id) : null) ?? "an author",
-      readers: rc,
-      readers7d: readers7d.get(p.id) ?? 0,
-      earnedXec: Math.round(rc * price * 0.94),
-    };
-  });
+  const stories: RailStory[] = posts.map((p) => ({
+    id: p.id,
+    title: p.title as string,
+    slug: p.slug as string,
+    teaser: p.teaser,
+    priceXec: p.price_xec,
+    readMinutes: p.reading_time_minutes,
+    at: p.published_at ?? p.created_at ?? new Date(0).toISOString(),
+    author: (p.author_id ? byline.get(p.author_id) : null) ?? "an author",
+    readers: readers.get(p.id) ?? 0,
+    readers7d: readers7d.get(p.id) ?? 0,
+  }));
 
   // ---- the legible ranking: a LEAD story, then MORE STORIES in chronology.
   //  Lead score = breadth × freshness × a SUBLINEAR price nudge:

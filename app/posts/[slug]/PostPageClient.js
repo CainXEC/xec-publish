@@ -635,9 +635,6 @@ export default function PostPageClient({
   }
 
   const articleDateIso = post.published_at ?? post.created_at
-  const earningsSats = Number(post.earnings ?? 0)
-  const earningsXec =
-    Number.isFinite(earningsSats) && earningsSats > 0 ? Math.round(earningsSats / 100) : 0
   const previewReadTimeLabel = formatReadingTimeLabel(post.reading_time_minutes)
   const canViewFullPost = unlocked || isAuthorSession || isAdminSession
   const showPaywall = !canViewFullPost && !unlockCheckPending
@@ -774,12 +771,6 @@ export default function PostPageClient({
             >
               💬 <span>{commentCount}</span>
             </button>
-
-            {earningsXec > 0 ? (
-              <span className="metaitem">
-                💰 <span>{earningsXec.toLocaleString()}</span>
-              </span>
-            ) : null}
 
             <TranslateButton
               kind="article"
