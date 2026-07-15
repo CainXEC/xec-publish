@@ -417,7 +417,11 @@ export const FEED_CSS = `
 .pow-feed .wrap > .dashpanel:first-child{margin-top:0;}
 .pow-feed .dashtop{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .pow-feed .dashwelcome{margin:0;font-size:22px;font-weight:800;letter-spacing:.01em;color:var(--neon);
-  text-shadow:0 0 12px rgba(0,255,156,.4);}
+  text-shadow:0 0 12px rgba(0,255,156,.4);min-width:0;}
+/* compact logout in the welcome header (mobile only) — never shrinks, so a long
+   handle wraps instead of squeezing the button. Selector carries .dashbtn so it
+   beats the base .dashbtn sizing that appears later in this sheet. */
+.pow-feed .dashbtn.dash-logout-top{flex-shrink:0;padding:6px 12px;font-size:12px;}
 .pow-feed .dashwelcome a{color:var(--hc,var(--cyan));}
 .pow-feed .dashwelcome a:hover{text-shadow:0 0 10px rgba(61,240,255,.5);}
 .pow-feed .dashbell{position:relative;display:inline-flex;align-items:center;justify-content:center;
