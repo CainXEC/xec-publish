@@ -164,8 +164,24 @@ export default function HomeReader({ slug, onClose, backLabel = '← The feed' }
             ) : null}
             {d.readMinutes ? `${d.readMinutes} min · ` : ''}
             {d.publishedAt ? fmtDate(d.publishedAt) : ''}
+            {` · ${d.priceXec > 0 ? `${Number(d.priceXec).toLocaleString()} XEC` : 'Free'}`}
             {` · ${Number(d.unlockCount ?? 0)} unlock${d.unlockCount === 1 ? '' : 's'}`}
-            {` · ${Number(d.commentCount ?? 0)} comment${d.commentCount === 1 ? '' : 's'}`}
+            {' · '}
+            {d.unlocked ? (
+              // Once unlocked the comments render below in the pane — let the
+              // count jump straight to them (mirrors the article page).
+              <button
+                type="button"
+                className="hr-jump"
+                onClick={() =>
+                  document.getElementById('comments')?.scrollIntoView({ behavior: 'smooth' })
+                }
+              >
+                {Number(d.commentCount ?? 0)} comment{d.commentCount === 1 ? '' : 's'}
+              </button>
+            ) : (
+              `${Number(d.commentCount ?? 0)} comment${d.commentCount === 1 ? '' : 's'}`
+            )}
           </p>
 
           {/* Server-prepared HTML: public part only unless this viewer is

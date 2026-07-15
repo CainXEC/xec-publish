@@ -759,6 +759,9 @@ export default function PostPageClient({
               <span className="metaitem">{post.reading_time_minutes} min read</span>
             ) : null}
             <span className="metaitem">
+              🏷️ <span>{priceXec > 0 ? `${formatXec(priceXec)} XEC` : 'Free'}</span>
+            </span>
+            <span className="metaitem">
               🔓 <span>{unlockCount}</span>
             </span>
 
