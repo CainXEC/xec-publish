@@ -25,6 +25,7 @@ import { preparePublicPostPageData } from '@/lib/preparePublicPostPageData'
 import { contentHashHex } from '@/lib/feedProtocol'
 import { getClientIp, rateLimit, getRedis } from '@/lib/rateLimit'
 import { normalizeLang, langName } from '@/lib/translateLangs'
+import { resolveCommenter } from '@/lib/commentGate'
 
 const MODEL = 'claude-haiku-4-5'
 const CACHE_TTL_SECS = 7 * 24 * 60 * 60 // 7 days
@@ -103,7 +104,14 @@ export async function POST(request) {
   }
 
   const body = await request.json().catch(() => ({}))
-  const kind = body?.kind === 'article' ? 'article' : body?.kind === 'feed' ? 'feed' : null
+  const kind =
+    body?.kind === 'article'
+      ? 'article'
+      : body?.kind === 'feed'
+        ? 'feed'
+        : body?.kind === 'comment'
+          ? 'comment'
+          : null
   const id = typeof body?.id === 'string' ? body.id.trim() : ''
   const lang = normalizeLang(body?.lang)
 
@@ -135,6 +143,24 @@ export async function POST(request) {
       }
       sourceText = typeof post.content === 'string' ? post.content : ''
       hash = post.content_hash || contentHashHex(sourceText)
+    } else if (kind === 'comment') {
+      const supabase = createServerSupabase()
+      const { data: comment } = await supabase
+        .from('comments')
+        .select('content, content_hash, post_id, deleted_at')
+        .eq('id', id)
+        .maybeSingle()
+      if (!comment || comment.deleted_at) {
+        return NextResponse.json({ ok: false, error: 'not found' }, { status: 404 })
+      }
+      // Same gate a reader passes to SEE the comment: only an unlocked reader of
+      // the comment's article may translate it (never a free translation proxy).
+      const who = await resolveCommenter(request, String(comment.post_id), supabase)
+      if (!who.ok) {
+        return NextResponse.json({ ok: false, error: 'forbidden' }, { status: 403 })
+      }
+      sourceText = typeof comment.content === 'string' ? comment.content : ''
+      hash = comment.content_hash || contentHashHex(sourceText)
     } else {
       // Current posts live at /posts/{slug} (legacy=false); imported legacy
       // posts at root /{slug} (legacy=true). Try both so the article page's
@@ -170,7 +196,7 @@ export async function POST(request) {
   // --- translate ---
   try {
     let payload
-    if (kind === 'feed') {
+    if (kind === 'feed' || kind === 'comment') {
       payload = { translated: await translatePlain(sourceText, targetName) }
     } else {
       const { sanitizePostBodyHtml } = await import('@/lib/sanitizePostBodyHtml')

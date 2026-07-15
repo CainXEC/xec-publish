@@ -181,7 +181,7 @@ export const ARTICLE_CSS = `
 /* an inline reply composer, nested under the comment it answers (no indentation
    — the "Replying to @X" line carries the context, feed-style) */
 .pow-article .commentform-reply{margin:12px 0 4px;}
-.pow-article .commentactions{margin-top:10px;}
+.pow-article .commentactions{margin-top:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
 .pow-article .commentreplybtn{background:none;border:none;color:var(--dim);font:inherit;font-size:13px;cursor:pointer;
   padding:2px 0;transition:color .15s;}
 .pow-article .commentreplybtn:hover{color:var(--cyan);}
