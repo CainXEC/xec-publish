@@ -12,7 +12,7 @@ import { CHRONIK_URLS } from '@/lib/ecash/chronikEndpoints'
 
 const chronik = new ChronikClient(CHRONIK_URLS)
 
-const PUBLISH_FEE_SATS = 10_000
+const PUBLISH_FEE_SATS = 100_000 // 1,000 XEC one-time publish fee
 const LOG_PREFIX = '[verify-publish-payment]'
 
 function outputScriptToHex(outputScript) {
