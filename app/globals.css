@@ -22,6 +22,22 @@ textarea,
   touch-action: manipulation;
 }
 
+/* iOS Safari auto-zooms the whole page when you focus a text field whose
+   font-size is under 16px (to make the small text readable) and never zooms back
+   out — so after composing a post, typing a comment/reply, searching, or tipping
+   you were left zoomed in and had to pinch to refit. Force form controls to 16px
+   on phones to suppress that zoom. `!important` because the scoped .pow-* themes
+   set 12–15px with higher specificity; kept behind a phone-width query so the
+   compact desktop field sizing is untouched, and pinch-zoom stays enabled (we
+   never set maximum-scale) so accessibility is preserved. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* -----------------------------------------------------------------------------
    Neon theme (site-wide). Unifies the whole site with the feed/mint aesthetic.
    Strategy: the brand accent was already `emerald`, so the emerald ramp is
