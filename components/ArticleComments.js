@@ -22,6 +22,14 @@ import {
 //  on-chain payment is detected and the comment is recorded.
 // =============================================================================
 
+// A handle (@x, ≤16 chars) shows in full; a raw eCash address is truncated so a
+// long address can't overflow the comment card / "Replying to" line on mobile.
+function truncateIdentity(id) {
+  const t = String(id ?? '').trim()
+  if (t.length <= 16) return t
+  return `${t.slice(0, 10)}…${t.slice(-4)}`
+}
+
 function formatCommentDate(iso) {
   if (!iso) return ''
   const d = new Date(iso)
@@ -460,7 +468,7 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
                 {parent ? (
                   <p className="comment-replyingto">
                     <span className="comment-replyarrow">↳</span> Replying to{' '}
-                    <span className="comment-replyingto-who">{parentWho}</span>
+                    <span className="comment-replyingto-who">{truncateIdentity(parentWho)}</span>
                   </p>
                 ) : null}
                 <div className="commenthead">
@@ -470,7 +478,7 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
                       title={copyAddr ? 'Click to copy' : undefined}
                       onClick={() => copyAddr && void handleCopy(comment.id, copyAddr)}
                     >
-                      {byline}
+                      {truncateIdentity(byline)}
                     </p>
                     {copiedIds[comment.id] ? <p className="commentcopied">Copied!</p> : null}
                     <p className="commentdate">{formatCommentDate(comment.created_at)}</p>
