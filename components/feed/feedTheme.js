@@ -838,11 +838,10 @@ html:not(.dark) .pow-feed .np-mast{text-shadow:none;}
 .pow-feed .arail-dot{width:7px;height:7px;border-radius:50%;background:var(--neon);
   box-shadow:0 0 10px rgba(0,255,156,.8);animation:arail-pulse 2.2s ease-in-out infinite;}
 @keyframes arail-pulse{50%{opacity:.35;}}
-/* Live presence count: just a number, pushed to the header's trailing edge.
-   letter-spacing:normal so digits aren't stretched by the head's .22em tracking. */
-.pow-feed .arail-online{margin-left:auto;font-size:14px;font-weight:800;letter-spacing:normal;
-  color:var(--neon);text-shadow:0 0 10px rgba(0,255,156,.45);font-variant-numeric:tabular-nums;}
-html:not(.dark) .pow-feed .arail-online{color:var(--live);text-shadow:none;}
+/* Live presence count: just a number at the header's trailing edge. Inherits
+   the head's font/size/color/glow in BOTH modes so it reads as the same type
+   as "LIVE ON ECASH"; only the tracking is reset so lone digits sit snug. */
+.pow-feed .arail-online{margin-left:auto;letter-spacing:normal;font-variant-numeric:tabular-nums;}
 .pow-feed .arail-sub{margin:9px 0 4px;font-size:11px;color:var(--dim);line-height:1.55;}
 .pow-feed .arail-empty{color:var(--dim);font-size:12.5px;margin:14px 0;line-height:1.55;}
 .pow-feed .arail-list{list-style:none;margin:6px 0 0;padding:0;}
