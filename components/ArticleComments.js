@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
+import TranslateButton from '@/components/TranslateButton'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 import {
   beginCashtabPayment,
@@ -308,6 +309,7 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
   const [deletingId, setDeletingId] = useState(null)
   const [actionError, setActionError] = useState(null)
   const [copiedIds, setCopiedIds] = useState({})
+  const [translations, setTranslations] = useState({}) // { [commentId]: translatedText }
   const copyTimeouts = useRef({})
 
   const fetchComments = useCallback(async () => {
@@ -498,18 +500,35 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
                 {comment.deleted ? (
                   <p className="commentbody commenttomb">[comment deleted]</p>
                 ) : (
-                  <p className="commentbody">{comment.content}</p>
+                  <p className="commentbody">{translations[comment.id] ?? comment.content}</p>
                 )}
 
-                {canReply && replyingTo !== comment.id ? (
+                {!comment.deleted ? (
                   <div className="commentactions">
-                    <button
-                      type="button"
-                      className="commentreplybtn"
-                      onClick={() => setReplyingTo(comment.id)}
-                    >
-                      Reply
-                    </button>
+                    {canReply && replyingTo !== comment.id ? (
+                      <button
+                        type="button"
+                        className="commentreplybtn"
+                        onClick={() => setReplyingTo(comment.id)}
+                      >
+                        Reply
+                      </button>
+                    ) : null}
+                    <TranslateButton
+                      kind="comment"
+                      id={comment.id}
+                      className="comment-tb"
+                      onTranslated={(d) =>
+                        setTranslations((prev) => ({ ...prev, [comment.id]: d.translated }))
+                      }
+                      onShowOriginal={() =>
+                        setTranslations((prev) => {
+                          const next = { ...prev }
+                          delete next[comment.id]
+                          return next
+                        })
+                      }
+                    />
                   </div>
                 ) : null}
 
