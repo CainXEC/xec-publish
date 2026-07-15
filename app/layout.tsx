@@ -11,6 +11,7 @@ import { Suspense } from "react";
 import ScrollToTopOnRouteChange from "@/components/ScrollToTopOnRouteChange";
 import NavProgress from "@/components/NavProgress";
 import BottomNav from "@/components/feed/BottomNav";
+import PresenceHeartbeat from "@/components/PresenceHeartbeat";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -111,6 +112,7 @@ export default async function RootLayout({
         </Suspense>
         {children}
         <BottomNav />
+        <PresenceHeartbeat />
         <Analytics />
       </body>
     </html>
