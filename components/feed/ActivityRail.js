@@ -100,6 +100,12 @@ export default function ActivityRail({
       if (typeof n === 'number' && Number.isFinite(n) && n >= 0) setOnline(n)
     }
     window.addEventListener('pow:presence', onPresence)
+    // Paint the last-known count immediately (it survives in-app navigation on
+    // window), then ask the site-wide heartbeat to refresh it — otherwise a rail
+    // mounted after a client-side nav would wait up to one 25s beat before any
+    // number appears.
+    if (typeof window.__powPresenceCount === 'number') setOnline(window.__powPresenceCount)
+    window.dispatchEvent(new Event('pow:presence-request'))
     return () => window.removeEventListener('pow:presence', onPresence)
   }, [])
 

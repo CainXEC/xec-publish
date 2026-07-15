@@ -18,6 +18,22 @@ import { useEffect } from 'react'
 
 const PING_MS = 25_000
 const STORE_KEY = 'pow_tab_id'
+const PRESENCE_EVENT = 'pow:presence'
+// A freshly-mounted listener (the activity rail after an in-app navigation)
+// fires this to ask for the current number instead of waiting for the next beat.
+const PRESENCE_REQUEST = 'pow:presence-request'
+
+// Broadcast a count AND remember it on `window`, so a listener that mounts
+// between beats can read the last-known value synchronously (see ActivityRail).
+function publishCount(n) {
+  if (typeof n !== 'number' || !Number.isFinite(n) || n < 0) return
+  try {
+    window.__powPresenceCount = n
+  } catch {
+    /* non-fatal */
+  }
+  window.dispatchEvent(new CustomEvent(PRESENCE_EVENT, { detail: n }))
+}
 
 // One id per browser tab. sessionStorage is per-tab, so two tabs = two ids =
 // two counted sessions (the ordinary meaning of "online now").
@@ -42,8 +58,10 @@ export default function PresenceHeartbeat() {
     const id = tabId()
     if (!id) return
     let stopped = false
+    let lastPingAt = 0
 
     const ping = async () => {
+      lastPingAt = Date.now()
       try {
         const res = await fetch('/api/presence', {
           method: 'POST',
@@ -53,9 +71,7 @@ export default function PresenceHeartbeat() {
           keepalive: true,
         })
         const data = await res.json()
-        if (!stopped && typeof data?.count === 'number') {
-          window.dispatchEvent(new CustomEvent('pow:presence', { detail: data.count }))
-        }
+        if (!stopped && typeof data?.count === 'number') publishCount(data.count)
       } catch {
         /* best-effort; the next beat covers it */
       }
@@ -68,10 +84,24 @@ export default function PresenceHeartbeat() {
     }
     document.addEventListener('visibilitychange', onVis)
 
+    // Answer a rail that just mounted: re-broadcast the cached count at once so
+    // it paints instantly, then refresh from the server — unless we just pinged
+    // (dedupes the double-mount on hard load and rapid in-app nav bursts).
+    const onRequest = () => {
+      if (typeof window.__powPresenceCount === 'number') {
+        window.dispatchEvent(
+          new CustomEvent(PRESENCE_EVENT, { detail: window.__powPresenceCount }),
+        )
+      }
+      if (Date.now() - lastPingAt > 5_000) void ping()
+    }
+    window.addEventListener(PRESENCE_REQUEST, onRequest)
+
     return () => {
       stopped = true
       clearInterval(iv)
       document.removeEventListener('visibilitychange', onVis)
+      window.removeEventListener(PRESENCE_REQUEST, onRequest)
     }
   }, [])
 
