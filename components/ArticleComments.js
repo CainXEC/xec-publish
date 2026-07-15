@@ -65,14 +65,18 @@ function buildThreadOrder(comments) {
       roots.push(c)
     }
   }
-  const out = []
-  const walk = (node) => {
-    out.push(node)
+  // Collect a subtree in DFS order, but DROP a deleted comment that has no
+  // visible descendants — a deleted leaf just disappears. A deleted comment
+  // WITH replies stays (as an anonymized tombstone) so its replies keep their
+  // context. Collapse is recursive: if all of a deleted node's children also
+  // vanish, the node vanishes too.
+  const collect = (node) => {
     const kids = (childrenOf.get(node.id) || []).slice().sort(byCreated)
-    for (const k of kids) walk(k)
+    const below = kids.flatMap(collect)
+    if (node.deleted && below.length === 0) return []
+    return [node, ...below]
   }
-  for (const r of roots.slice().sort(byCreated)) walk(r)
-  return out
+  return roots.slice().sort(byCreated).flatMap(collect)
 }
 
 /** Compose + pay a top-level comment (parentId null) or a reply. */
@@ -470,17 +474,24 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
       ) : (
         <ul className="commentlist">
           {ordered.map((comment) => {
-            const byline =
-              (comment.author_identity && comment.author_identity.trim()) ||
-              (typeof comment.payer_address === 'string' ? comment.payer_address.trim() : '') ||
-              'Anonymous'
+            // A surviving tombstone (kept only because it has replies) is
+            // anonymized — no byline, no copyable address — so it never reads as
+            // "you commented [deleted]".
+            const byline = comment.deleted
+              ? '[deleted]'
+              : (comment.author_identity && comment.author_identity.trim()) ||
+                (typeof comment.payer_address === 'string' ? comment.payer_address.trim() : '') ||
+                'Anonymous'
             const copyAddr =
-              typeof comment.payer_address === 'string' ? comment.payer_address.trim() : ''
+              comment.deleted || typeof comment.payer_address !== 'string'
+                ? ''
+                : comment.payer_address.trim()
             const parent = comment.parent_id ? byId[comment.parent_id] : null
-            const parentWho =
-              parent?.author_identity?.trim() ||
-              (parent?.payer_address ? parent.payer_address.trim() : '') ||
-              'a comment'
+            const parentWho = parent?.deleted
+              ? 'a deleted comment'
+              : parent?.author_identity?.trim() ||
+                (parent?.payer_address ? parent.payer_address.trim() : '') ||
+                'a comment'
             const canDelete =
               !comment.deleted &&
               (isAuthorSession || (byline && ownedIds.includes(byline)) || (copyAddr && ownedIds.includes(copyAddr)))
