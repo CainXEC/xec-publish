@@ -14,6 +14,7 @@ import LinkedPostEmbed from '@/components/feed/LinkedPostEmbed'
 import ArticleCard from '@/components/feed/ArticleCard'
 import FeedBody from '@/components/feed/FeedBody'
 import MintCard from '@/components/feed/MintCard'
+import PollCard from '@/components/feed/PollCard'
 import TranslateButton from '@/components/TranslateButton'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
@@ -279,6 +280,7 @@ export default function FeedThreadClient({
                       </p>
                     ) : null
                   })()}
+                  {post.card_kind === 'poll' ? <PollCard post={post} /> : null}
                   {post.quoted_txid ? (
                     <QuotedEmbed post={post.quoted ?? null} onOpenThread={onOpenThread} />
                   ) : null}
