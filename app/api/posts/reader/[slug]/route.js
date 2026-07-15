@@ -47,6 +47,7 @@ export async function GET(_req, { params }) {
       ok: true,
       slug,
       postId: p.initialPost?.id ?? null,
+      authorId: p.initialPost?.author_id ?? null,
       title: p.initialPost?.title ?? '',
       bodyHtml: p.initialBodyHtml ?? '',
       unlocked: Boolean(p.initialUnlocked),
