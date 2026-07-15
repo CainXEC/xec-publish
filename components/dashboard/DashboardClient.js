@@ -574,6 +574,16 @@ export default function DashboardClient({
               </Link>
               !
             </h1>
+            {/* Mobile has no topbar hamburger (the bottom bar owns nav), so log
+                out lives in the account hub — top-right of the welcome card.
+                Hidden on desktop, where the hamburger still carries it. */}
+            <button
+              type="button"
+              className="dashbtn sec dash-mobile-only dash-logout-top"
+              onClick={() => void handleDashLogout()}
+            >
+              Log out
+            </button>
           </div>
 
           <div className="dashstats">
@@ -673,16 +683,6 @@ export default function DashboardClient({
             <Link href="/dashboard/profile" className="dashbtn sec">
               Edit Profile
             </Link>
-            {/* Mobile has no topbar hamburger (the bottom bar owns nav), so
-                log out lives here in the account hub. Hidden on desktop, where
-                the hamburger still carries it. */}
-            <button
-              type="button"
-              className="dashbtn sec dash-mobile-only"
-              onClick={() => void handleDashLogout()}
-            >
-              Log out
-            </button>
           </div>
         </div>
 
