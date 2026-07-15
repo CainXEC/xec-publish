@@ -199,6 +199,9 @@ export const FEED_CSS = `
   transition:width .45s ease;}
 .pow-feed .poll-res.mine{border-color:var(--neon);}
 .pow-feed .poll-res.mine .poll-res-fill{background:rgba(0,255,156,.18);}
+/* Paper: the neon-green wash reads washed-out on light; use an ink-green tint
+   that matches the ink-green "mine" border instead. */
+html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,60,.15);}
 .pow-feed .poll-res-text{position:relative;z-index:1;color:var(--text);}
 .pow-feed .poll-res-pct{position:relative;z-index:1;color:var(--dim);font-variant-numeric:tabular-nums;font-weight:700;}
 .pow-feed .poll-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px;color:var(--dim);}
