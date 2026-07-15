@@ -119,42 +119,21 @@ function Meta({ story }) {
   )
 }
 
-function PeekButtons({ story, onOpen }) {
-  const paid = story.priceXec != null && story.priceXec > 0
-  return (
-    <div className="np-btns">
-      <Link
-        className="np-btn"
-        href={`/posts/${story.slug}`}
-        onClick={onOpen ? (e) => onOpen(e, story.slug) : undefined}
-        data-no-navprogress={onOpen ? '' : undefined}
-      >
-        Read →
-      </Link>
-      {paid ? (
-        // Unlock always goes to the story's own page — the payment flow
-        // lives there, and a reading pane can't finish a Cashtab round-trip.
-        <Link className="np-btn unlock" href={`/posts/${story.slug}`}>
-          Unlock · {Number(story.priceXec).toLocaleString()} XEC
-        </Link>
-      ) : null}
-    </div>
-  )
-}
-
-// The lead: a full newspaper hero — big serif headline, teaser, a meta line
-// that surfaces earnings alongside readers, and the Read/Unlock actions inline
-// (no click-to-peek; the lead is already open).
+// The lead: a full newspaper hero — big serif headline, a meta line
+// (byline · price · readers) directly beneath it, then a generous teaser.
+// The headline AND the teaser open the story (in the center pane on the home
+// page, else its own page); there are no buttons — the unlock flow lives in the
+// story itself, so a reader opens it and scrolls down to unlock.
 function Lead({ story, now, onOpen }) {
+  const open = onOpen ? (e) => onOpen(e, story.slug) : undefined
   const parts = [story.author, fmtPrice(story.priceXec)]
   parts.push(story.readers > 0 ? `${story.readers} reader${story.readers === 1 ? '' : 's'}` : timeAgo(story.at))
-  if (story.earnedXec > 0) parts.push(`${Number(story.earnedXec).toLocaleString()} XEC earned`)
   return (
     <div className={`np-lead${now ? ' now' : ''}`}>
       <Link
         className="np-lead-hl"
         href={`/posts/${story.slug}`}
-        onClick={onOpen ? (e) => onOpen(e, story.slug) : undefined}
+        onClick={open}
         data-no-navprogress={onOpen ? '' : undefined}
       >
         <span className="np-serif np-lead-h">
@@ -162,62 +141,48 @@ function Lead({ story, now, onOpen }) {
           {story.title}
         </span>
       </Link>
-      {story.teaser ? <p className="np-lead-teaser">{story.teaser}</p> : null}
       <div className="np-lead-meta">
         {parts.map((p, i) => (
           <span key={i}>
             {i > 0 ? ' · ' : ''}
-            {String(p).endsWith('XEC') ? (
-              <span className="np-price">{p}</span>
-            ) : String(p).endsWith('earned') ? (
-              <span className="np-earned">{p}</span>
-            ) : (
-              p
-            )}
+            {String(p).endsWith('XEC') ? <span className="np-price">{p}</span> : p}
           </span>
         ))}
       </div>
-      <PeekButtons story={story} onOpen={onOpen} />
+      {story.teaser ? (
+        <Link
+          className="np-lead-teaser-link"
+          href={`/posts/${story.slug}`}
+          onClick={open}
+          data-no-navprogress={onOpen ? '' : undefined}
+        >
+          <p className="np-lead-teaser">{story.teaser}</p>
+        </Link>
+      ) : null}
     </div>
   )
 }
 
-function Entry({ story, open, now, onToggle, onOpen }) {
+// A More-stories row: headline + meta; the whole row opens the story on click.
+function Entry({ story, now, onOpen }) {
   return (
-    <div
-      className={`np-entry${open ? ' open' : ''}${now ? ' now' : ''}`}
-      onClick={(e) => {
-        // The headline navigates; the rest of the entry toggles the peek.
-        if (e.target.closest('a')) return
-        onToggle()
-      }}
+    <Link
+      className={`np-entry${now ? ' now' : ''}`}
+      href={`/posts/${story.slug}`}
+      onClick={onOpen ? (e) => onOpen(e, story.slug) : undefined}
+      data-no-navprogress={onOpen ? '' : undefined}
     >
-      <Link
-        className="np-hl"
-        href={`/posts/${story.slug}`}
-        onClick={onOpen ? (e) => onOpen(e, story.slug) : undefined}
-        data-no-navprogress={onOpen ? '' : undefined}
-      >
-        <span className="np-serif np-entry-h">
-          {isFresh(story.at) ? <span className="np-dot" aria-hidden /> : null}
-          {story.title}
-        </span>
-      </Link>
-      {open ? (
-        <>
-          {story.teaser ? <p className="np-teaser">{story.teaser}</p> : null}
-          <PeekButtons story={story} onOpen={onOpen} />
-        </>
-      ) : (
-        <Meta story={story} />
-      )}
-    </div>
+      <span className="np-serif np-entry-h">
+        {isFresh(story.at) ? <span className="np-dot" aria-hidden /> : null}
+        {story.title}
+      </span>
+      <Meta story={story} />
+    </Link>
   )
 }
 
 export default function ArticleRail({ minWidth = 1400, currentSlug = null, onOpenStory = null }) {
   const [data, setData] = useState(null)
-  const [openId, setOpenId] = useState(null)
   // The front page only exists above the host page's breakpoint — don't
   // fetch where it can't show.
   const [active, setActive] = useState(false)
@@ -263,8 +228,6 @@ export default function ArticleRail({ minWidth = 1400, currentSlug = null, onOpe
     }
   }, [active])
 
-  const toggle = (id) => setOpenId((cur) => (cur === id ? null : id))
-
   const lead = data?.lead ?? null
   const more = data?.more ?? []
 
@@ -285,14 +248,7 @@ export default function ArticleRail({ minWidth = 1400, currentSlug = null, onOpe
             <>
               <div className="np-sec">More stories</div>
               {more.map((s) => (
-                <Entry
-                  key={s.id}
-                  story={s}
-                  open={openId === s.id}
-                  now={isNow(s)}
-                  onToggle={() => toggle(s.id)}
-                  onOpen={interceptOpen}
-                />
+                <Entry key={s.id} story={s} now={isNow(s)} onOpen={interceptOpen} />
               ))}
             </>
           ) : null}
