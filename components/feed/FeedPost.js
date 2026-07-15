@@ -304,7 +304,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
             <Link
               href={`/${reposterId}`}
               className="repostedby-who"
-              style={repostedBy.color ? { color: repostedBy.color } : undefined}
+              style={repostedBy.color ? { '--hc': repostedBy.color } : undefined}
             >
               {reposterId}
             </Link>
@@ -324,7 +324,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
           <span aria-hidden className="replyarrow">↳</span> Replying to{' '}
           <span
             className="replyingto-who"
-            style={parentIsHandle && post.parent.displayColor ? { color: post.parent.displayColor } : undefined}
+            style={parentIsHandle && post.parent.displayColor ? { '--hc': post.parent.displayColor } : undefined}
           >
             {post.parent.deleted
               ? 'a deleted post'
