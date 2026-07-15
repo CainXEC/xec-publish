@@ -9,6 +9,7 @@ import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import LinkedPostEmbed from '@/components/feed/LinkedPostEmbed'
 import ArticleCard from '@/components/feed/ArticleCard'
 import MintCard from '@/components/feed/MintCard'
+import PollCard from '@/components/feed/PollCard'
 import FeedBody from '@/components/feed/FeedBody'
 import TranslateButton from '@/components/TranslateButton'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
@@ -294,6 +295,9 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   // work), so the buyer's "that's me!" quote flow is untouched.
   const isMintCard = post.card_kind === 'handle_mint' && !post.deleted
   const compactMint = isMintCard && mintVariant === 'compact'
+  // A poll's question is the normal post body; the options/results card renders
+  // right beneath it (see below). Polls have no compact variant.
+  const isPoll = post.card_kind === 'poll' && !post.deleted
 
   return (
     <li className={`post${compactMint ? ' mintline' : ''}`} onClick={openThread} style={{ cursor: 'pointer' }}>
@@ -371,6 +375,8 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
               ) : null}
             </p>
           ) : null}
+
+          {isPoll ? <PollCard post={post} /> : null}
 
           {post.quoted_txid ? (
             <QuotedEmbed post={post.quoted ?? null} onOpenThread={onOpenThread ?? undefined} />
