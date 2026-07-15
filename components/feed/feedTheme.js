@@ -157,6 +157,7 @@ export const FEED_CSS = `
 .pow-feed .compose textarea::placeholder{color:#37655a;}
 .pow-feed .composebar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;
   border-top:1px solid var(--line);padding-top:12px;}
+.pow-feed .barleft{display:flex;align-items:center;gap:8px;}
 .pow-feed .count{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;}
 .pow-feed .count.over{color:var(--no);}
 .pow-feed .count .cost{margin-left:10px;color:var(--neon);}

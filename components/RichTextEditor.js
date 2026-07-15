@@ -10,6 +10,7 @@ import { POST_BODY_PLAIN_MAX } from '@/lib/postFieldLimits'
 import { charCounterClassName } from '@/lib/charCounterClassName'
 import { PaywallBreak } from '@/lib/tiptap/PaywallBreak'
 import { powInternalHref } from '@/lib/contentLinks'
+import EmojiPicker from '@/components/EmojiPicker'
 
 const BODY_WARN_WITHIN = 10_000
 
@@ -273,6 +274,11 @@ export default function RichTextEditor({
           >
             R
           </ToolbarButton>
+          <ToolbarSeparator />
+          <EmojiPicker
+            direction="down"
+            onPick={(emoji) => editor.chain().focus().insertContent(emoji).run()}
+          />
         </div>
         <div
           className="rte-scroll touch-pan-y flex-1 overflow-y-auto"

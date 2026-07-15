@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
+import EmojiPicker from '@/components/EmojiPicker'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 import { beginCashtabPayment, completeCashtabPayment, abortCashtabPayment } from '@/lib/ecash/cashtabPay'
 
@@ -58,6 +59,26 @@ export default function ComposeBox({
   useEffect(() => {
     autosize()
   }, [content, autosize])
+
+  // Insert an emoji at the textarea caret (replacing any selection), then put
+  // the caret right after it and refocus — so picking an emoji feels like typing
+  // one, mid-sentence, rather than always appending at the end.
+  const insertEmoji = useCallback((emoji) => {
+    const el = textareaRef.current
+    setContent((prev) => {
+      const start = el?.selectionStart ?? prev.length
+      const end = el?.selectionEnd ?? prev.length
+      const next = prev.slice(0, start) + emoji + prev.slice(end)
+      if (el) {
+        const pos = start + emoji.length
+        requestAnimationFrame(() => {
+          el.focus()
+          try { el.setSelectionRange(pos, pos) } catch { /* noop */ }
+        })
+      }
+      return next
+    })
+  }, [])
 
   const resetToCompose = useCallback(() => {
     setPhase('compose')
@@ -268,9 +289,12 @@ export default function ComposeBox({
       />
       {isQuote ? <QuotedEmbed post={quotedPost} interactive={false} /> : null}
       <div className="composebar">
-        <span className={`count${overCap ? ' over' : ''}`}>
-          {chars}/{FEED_MAX_CHARS}
-        </span>
+        <div className="barleft">
+          <EmojiPicker onPick={insertEmoji} />
+          <span className={`count${overCap ? ' over' : ''}`}>
+            {chars}/{FEED_MAX_CHARS}
+          </span>
+        </div>
         <div className="barbtns">
           {(isReply || isQuote) && onCancel ? (
             <button type="button" onClick={onCancel} className="ghost">
