@@ -29,7 +29,10 @@ const supabase = createClient(
 );
 
 const CANDIDATES = 40;
-const MORE_N = 6;
+// The front-page rail scrolls independently (.feed-left is a sticky, overflowing
+// column), so "More stories" can run long without shifting the page — 12 gives a
+// fuller front page while staying curated.
+const MORE_N = 12;
 
 type RailStory = {
   id: string;
