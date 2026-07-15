@@ -108,7 +108,10 @@ export default function WriteReaderPreview({
           <span className="wp-card-teaser wp-dim">Your opening lines show here…</span>
         )}
         <span className="wp-card-meta">
-          <span style={isHandle && handleColor ? { color: handleColor } : undefined}>
+          <span
+            className="wp-card-author"
+            style={isHandle && handleColor ? { '--hc': handleColor } : undefined}
+          >
             {metaParts.join(' · ')}
           </span>
           {metaParts.length ? ' · ' : ''}

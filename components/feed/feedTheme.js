@@ -417,7 +417,7 @@ export const FEED_CSS = `
 .pow-feed .dashtop{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .pow-feed .dashwelcome{margin:0;font-size:22px;font-weight:800;letter-spacing:.01em;color:var(--neon);
   text-shadow:0 0 12px rgba(0,255,156,.4);}
-.pow-feed .dashwelcome a{color:var(--cyan);}
+.pow-feed .dashwelcome a{color:var(--hc,var(--cyan));}
 .pow-feed .dashwelcome a:hover{text-shadow:0 0 10px rgba(61,240,255,.5);}
 .pow-feed .dashbell{position:relative;display:inline-flex;align-items:center;justify-content:center;
   width:38px;height:38px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);
@@ -634,6 +634,10 @@ html:not(.dark) .pow-feed .profname{
   color:color-mix(in oklab, var(--hc,#00b06e) 55%, #000);
   text-shadow:none;
 }
+/* Same paper darkening for the dashboard handle bylines (Welcome @X, the
+   follower/following list) — the swatch on --hc would otherwise stay neon. */
+html:not(.dark) .pow-feed .dashwelcome a{color:color-mix(in oklab, var(--hc,var(--cyan)) 58%, #000);}
+html:not(.dark) .pow-feed .dashfollow{color:color-mix(in oklab, var(--hc,var(--text)) 62%, #000);}
 html:not(.dark) .pow-feed .byline:hover{text-shadow:none;filter:brightness(.88);}
 html:not(.dark) .pow-feed .compose textarea::placeholder{color:#a9a597;}
 /* sticky topbar tint = translucent paper (dark default is set inline above) */
@@ -751,7 +755,7 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 .pow-feed .dashfollows-title{margin:0 0 9px;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);}
 .pow-feed .dashfollows-empty{margin:4px 0 0;font-size:13px;color:var(--dim);line-height:1.5;}
 .pow-feed .dashfollows-list{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px 18px;}
-.pow-feed .dashfollow{font-size:13.5px;font-weight:700;color:var(--text);word-break:break-all;}
+.pow-feed .dashfollow{font-size:13.5px;font-weight:700;color:var(--hc,var(--text));word-break:break-all;}
 .pow-feed a.dashfollow:hover{color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.35);}
 
 /* ---- the reading pane: a front-page story open in the feed's center column.

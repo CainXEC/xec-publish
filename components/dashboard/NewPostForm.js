@@ -554,6 +554,10 @@ const FORM_CSS = `
 .pow-feed .wp-card-title{font-size:16px;font-weight:700;line-height:1.35;color:var(--text);}
 .pow-feed .wp-card-teaser{font-size:13px;line-height:1.5;color:var(--dim);}
 .pow-feed .wp-card-meta{margin-top:2px;font-size:12px;color:var(--dim);}
+/* the author's handle byline carries its swatch on --hc; no handle inherits the
+   meta color. Paper darkens the swatch toward ink (else it stays neon). */
+.pow-feed .wp-card-author{color:var(--hc);}
+html:not(.dark) .pow-feed .wp-card-author{color:color-mix(in oklab, var(--hc) 58%, #000);}
 .pow-feed .wp-card-price{color:var(--cyan);}
 .pow-feed .wp-dim{opacity:.7;}
 .pow-feed .wp-lock{display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:10px;
