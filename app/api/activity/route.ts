@@ -40,6 +40,9 @@ export type ActivityItem = {
     | "unlock" | "publish" | "mint";
   /** Frozen display byline: "@handle" or a raw eCash address. */
   actor: string;
+  /** Link to the actor's profile ("/@handle" or "/a/<address>"), or null for
+   *  placeholder bylines ("a reader", "an author") that have no profile. */
+  actorHref: string | null;
   /** Who/what the action touched: a post author byline, article title, or handle. */
   target: string | null;
   amountXec: number | null;
@@ -71,6 +74,18 @@ const displayIdentity = (identity: string | null | undefined, fallback: string) 
   const id = String(identity ?? "").trim();
   if (!id) return fallback;
   return id.startsWith("@") ? id : shortAddr(id);
+};
+
+// Profile link for an actor. Both handles and raw addresses are served under
+// /@<identifier> (next.config rewrites /@:id → /profile/:id, which resolves a
+// handle to its current on-chain holder or a bare eCash address to that
+// account). Placeholder bylines / anything unrecognized → null (plain text).
+const profileHref = (rawIdentity: string | null | undefined): string | null => {
+  const id = String(rawIdentity ?? "").trim();
+  if (!id) return null;
+  if (id.startsWith("@")) return `/@${encodeURIComponent(id.slice(1))}`;
+  const b = id.toLowerCase().replace(/^ecash:/, "");
+  return /^[a-z0-9]{42}$/.test(b) ? `/@${b}` : null;
 };
 
 export async function GET(req: NextRequest) {
@@ -176,6 +191,7 @@ export async function GET(req: NextRequest) {
       id: `fp:${p.txid}`,
       kind,
       actor: displayIdentity(p.author_identity, "someone"),
+      actorHref: profileHref(p.author_identity),
       target: snippet(p.content),
       amountXec: p.amount_sats == null ? null : p.amount_sats / 100,
       at: p.created_at,
@@ -208,6 +224,7 @@ export async function GET(req: NextRequest) {
       id: `fe:${e.txid}`,
       kind,
       actor: displayIdentity(e.actor_identity, "someone"),
+      actorHref: profileHref(e.actor_identity),
       target: e.target_txid
         ? displayIdentity(targetAuthor.get(e.target_txid), "") || null
         : null,
@@ -265,6 +282,7 @@ export async function GET(req: NextRequest) {
       id: `un:${u.txid}`,
       kind: "unlock",
       actor: payer ? payerDisplay.get(payer) ?? shortAddr(payer) : "a reader",
+      actorHref: profileHref(payer ? payerDisplay.get(payer) ?? payer : null),
       target: u.posts.title ?? "an article",
       amountXec: u.posts.price_xec ?? null,
       at: u.unlocked_at,
@@ -281,16 +299,25 @@ export async function GET(req: NextRequest) {
   const publishes = (publishesQ.data ?? []) as unknown as PublishRow[];
   const authorIds = [...new Set(publishes.map((p) => p.author_id).filter(Boolean))] as string[];
   const authorDisplay = new Map<string, string>();
+  // authorDisplay truncates the address for display; authorRaw keeps the FULL
+  // identity ("@handle" or full bare address) so the byline can link to a profile.
+  const authorRaw = new Map<string, string>();
   if (authorIds.length > 0) {
     const [{ data: accounts }, { data: authors }] = await Promise.all([
       supabase.from("accounts").select("author_id, display_handle").in("author_id", authorIds),
       supabase.from("authors").select("id, xec_address").in("id", authorIds),
     ]);
     for (const a of (authors ?? []) as Array<{ id: string; xec_address: string | null }>) {
-      if (a.xec_address) authorDisplay.set(a.id, shortAddr(a.xec_address));
+      if (a.xec_address) {
+        authorDisplay.set(a.id, shortAddr(a.xec_address));
+        authorRaw.set(a.id, bare(a.xec_address));
+      }
     }
     for (const a of (accounts ?? []) as Array<{ author_id: string; display_handle: string | null }>) {
-      if (a.display_handle) authorDisplay.set(a.author_id, `@${a.display_handle}`);
+      if (a.display_handle) {
+        authorDisplay.set(a.author_id, `@${a.display_handle}`);
+        authorRaw.set(a.author_id, `@${a.display_handle}`);
+      }
     }
   }
   for (const p of publishes) {
@@ -299,6 +326,7 @@ export async function GET(req: NextRequest) {
       id: `pb:${p.txid}`,
       kind: "publish",
       actor: (p.author_id ? authorDisplay.get(p.author_id) : null) ?? "an author",
+      actorHref: profileHref(p.author_id ? authorRaw.get(p.author_id) : null),
       target: p.posts.title ?? "an article",
       amountXec: p.amount_sats == null ? null : p.amount_sats / 100,
       at: p.paid_at,
@@ -314,6 +342,7 @@ export async function GET(req: NextRequest) {
       id: `mt:${m.token_id}`,
       kind: "mint",
       actor: `@${m.handle}`,
+      actorHref: `/@${encodeURIComponent(m.handle)}`,
       target: null,
       amountXec: priceForHandle(m.handle).priceXec,
       at: m.created_at,

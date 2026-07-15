@@ -850,8 +850,14 @@ html:not(.dark) .pow-feed .np-mast{text-shadow:none;}
 .pow-feed .arow.fresh{animation:arow-in 1.1s ease;}
 @keyframes arow-in{0%{background:rgba(0,255,156,.16);}100%{background:transparent;}}
 .pow-feed .arow-main{display:block;font-size:12.5px;line-height:1.5;color:var(--text);word-break:break-word;}
-.pow-feed .arow-main:hover .arow-actor{color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.4);}
+.pow-feed .arow-say{color:inherit;}
 .pow-feed .arow-actor{font-weight:700;transition:color .15s;}
+/* The byline is its own link to the actor's profile; light it up on hover so
+   it reads as tappable, distinct from the rest of the row (which opens the
+   thread/article). The static <strong> variant — placeholder bylines with no
+   profile — stays plain. */
+.pow-feed .arow-actor-link:hover{color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.4);}
+html:not(.dark) .pow-feed .arow-actor-link:hover{color:var(--accent-hover);text-shadow:none;}
 .pow-feed .arow-target{color:#a6d8c9;}
 .pow-feed .arow-meta{display:flex;align-items:center;gap:10px;margin-top:3px;font-size:11px;
   color:var(--dim);font-variant-numeric:tabular-nums;}
