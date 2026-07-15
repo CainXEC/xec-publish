@@ -293,7 +293,7 @@ export default function NewPostForm({
   }
 
   return (
-    <div className={`pow-feed has-rail${focusMode ? ' write-focus' : ''}`}>
+    <div className={`pow-feed has-rail write-shell${focusMode ? ' write-focus' : ''}`}>
       <style>{FEED_CSS}</style>
       <style>{FORM_CSS}</style>
 
@@ -539,11 +539,32 @@ const FORM_CSS = `
   transition:border-color .15s,color .15s;}
 .pow-feed .pf-focus:hover{border-color:var(--cyan);color:var(--cyan);}
 .pow-feed .pf-focus[aria-pressed="true"]{border-color:var(--neon);color:var(--neon);}
-/* Focus mode: the rail CONTENTS vanish but their grid tracks stay, so only the
-   sides disappear — the writing column doesn't move a pixel. (display:none would
-   collapse the tracks and shift the center, since the 300/330 rails aren't
-   symmetric.) */
-.pow-feed.write-focus .feed-left,.pow-feed.write-focus .feed-rail{visibility:hidden;}
+/* Focus mode: the writing card EXPANDS to fill the width the two alleys leave,
+   and animates both directions. Mechanism — the shell keeps its normal centered
+   track cluster; toggling focus collapses the side tracks to 0 and lifts the
+   center track's cap, all as px→px transitions so grid-template-columns
+   interpolates smoothly (no JS, no layout thrash). The alleys fade as they
+   squeeze shut. Scoped to .write-shell so the home feed's identical grid is
+   untouched. Only runs at the desktop breakpoints where the alleys exist. */
+@media (min-width:1100px){
+  .pow-feed.write-shell .feed-cols{
+    transition:grid-template-columns .42s cubic-bezier(.4,0,.2,1),gap .42s cubic-bezier(.4,0,.2,1);}
+  /* 1100–1399px: two tracks (card · right preview). */
+  .pow-feed.write-shell.write-focus .feed-cols{grid-template-columns:minmax(0,1160px) 0px;gap:0;}
+  .pow-feed.write-shell .feed-left,
+  .pow-feed.write-shell .feed-rail{transition:opacity .3s ease;}
+  .pow-feed.write-shell.write-focus .feed-left,
+  .pow-feed.write-shell.write-focus .feed-rail{opacity:0;overflow:hidden;pointer-events:none;}
+}
+@media (min-width:1400px){
+  /* 1400px+: three tracks (left context · card · right preview). */
+  .pow-feed.write-shell.write-focus .feed-cols{grid-template-columns:0px minmax(0,1160px) 0px;gap:0;}
+}
+@media (prefers-reduced-motion:reduce){
+  .pow-feed.write-shell .feed-cols,
+  .pow-feed.write-shell .feed-left,
+  .pow-feed.write-shell .feed-rail{transition:none;}
+}
 
 /* ---- right rail: live reader preview (WriteReaderPreview) ---- */
 .pow-feed .wp{padding-top:28px;display:flex;flex-direction:column;gap:12px;}
