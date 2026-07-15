@@ -346,6 +346,12 @@ export default function DashboardClient({
     () => nonLegacyPosts.filter((p) => !p.published),
     [nonLegacyPosts],
   )
+  // Drafts are hidden by default: every filter except "Drafts" lists published
+  // articles only. Drafts surface exclusively under the "Drafts" filter.
+  const publishedPosts = useMemo(
+    () => nonLegacyPosts.filter((p) => p.published),
+    [nonLegacyPosts],
+  )
 
   const legacyPosts = useMemo(
     () => posts.filter((p) => p.legacy === true),
@@ -445,7 +451,9 @@ export default function DashboardClient({
 
   const sortedPosts = useMemo(() => {
     if (sortMode === 'drafts') return sortPostsByNewest(draftPosts)
-    const sourcePosts = nonLegacyPosts
+    // Every other filter shows published articles only — drafts stay hidden
+    // until the reader picks "Drafts".
+    const sourcePosts = publishedPosts
     const withCounts = sourcePosts.map((p) => ({
       ...p,
       unlocks: [{ count: unlockCountMap[p.id] ?? 0 }],
@@ -454,7 +462,7 @@ export default function DashboardClient({
     if (sortMode === 'newest') return sortPostsByNewest(withCounts)
     if (sortMode === 'earned') return sortPostsByEarned(withCounts)
     return sortPostsByUnlocksThenNewest(withCounts)
-  }, [draftPosts, earningsMap, nonLegacyPosts, sortMode, unlockCountMap])
+  }, [draftPosts, earningsMap, publishedPosts, sortMode, unlockCountMap])
 
   const totalPages = Math.max(1, Math.ceil(sortedPosts.length / PAGE_SIZE))
   const effectivePage = Math.max(1, Math.min(currentPage, totalPages))
@@ -830,7 +838,11 @@ export default function DashboardClient({
             <>
               {sortedPosts.length === 0 ? (
                 <div className="empty">
-                  {sortMode === 'drafts' ? 'No drafts yet.' : 'No posts found.'}
+                  {sortMode === 'drafts'
+                    ? 'No drafts yet.'
+                    : draftPosts.length > 0
+                      ? 'No published articles yet — switch the filter to “Drafts” to see your unpublished work.'
+                      : 'No posts found.'}
                 </div>
               ) : (
                 <ul className="dashlist">
