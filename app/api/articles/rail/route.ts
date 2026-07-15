@@ -29,8 +29,7 @@ const supabase = createClient(
 );
 
 const CANDIDATES = 40;
-const LATEST_N = 6;
-const MOST_READ_N = 3;
+const MORE_N = 6;
 
 type RailStory = {
   id: string;
@@ -43,6 +42,10 @@ type RailStory = {
   author: string;
   readers: number;
   readers7d: number;
+  /** Author's take so far: readers × price × 94% (fee-adjusted, matching the
+   *  article page's earnings display). A cheap proxy — every unlock is priced
+   *  at the article's current price. */
+  earnedXec: number;
 };
 
 const bare = (address: string) => address.replace(/^ecash:/, "").toLowerCase();
@@ -60,16 +63,12 @@ export async function GET() {
 
   const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [postsQ, storiesQ, mintedQ] = await Promise.all([
-    supabase
-      .from("posts")
-      .select("id, title, slug, teaser, price_xec, reading_time_minutes, published_at, created_at, author_id")
-      .eq("published", true)
-      .order("created_at", { ascending: false })
-      .limit(CANDIDATES),
-    supabase.from("posts").select("id", { count: "exact", head: true }).eq("published", true),
-    supabase.from("handles").select("token_id", { count: "exact", head: true }),
-  ]);
+  const postsQ = await supabase
+    .from("posts")
+    .select("id, title, slug, teaser, price_xec, reading_time_minutes, published_at, created_at, author_id")
+    .eq("published", true)
+    .order("created_at", { ascending: false })
+    .limit(CANDIDATES);
 
   const posts = ((postsQ.data ?? []) as PostRow[]).filter((p) => p.slug && p.title);
   const ids = posts.map((p) => p.id);
@@ -102,41 +101,55 @@ export async function GET() {
     }
   }
 
-  const stories: RailStory[] = posts.map((p) => ({
-    id: p.id,
-    title: p.title as string,
-    slug: p.slug as string,
-    teaser: p.teaser,
-    priceXec: p.price_xec,
-    readMinutes: p.reading_time_minutes,
-    at: p.published_at ?? p.created_at ?? new Date(0).toISOString(),
-    author: (p.author_id ? byline.get(p.author_id) : null) ?? "an author",
-    readers: readers.get(p.id) ?? 0,
-    readers7d: readers7d.get(p.id) ?? 0,
-  }));
+  const stories: RailStory[] = posts.map((p) => {
+    const rc = readers.get(p.id) ?? 0;
+    const price = Number(p.price_xec) || 0;
+    return {
+      id: p.id,
+      title: p.title as string,
+      slug: p.slug as string,
+      teaser: p.teaser,
+      priceXec: p.price_xec,
+      readMinutes: p.reading_time_minutes,
+      at: p.published_at ?? p.created_at ?? new Date(0).toISOString(),
+      author: (p.author_id ? byline.get(p.author_id) : null) ?? "an author",
+      readers: rc,
+      readers7d: readers7d.get(p.id) ?? 0,
+      earnedXec: Math.round(rc * price * 0.94),
+    };
+  });
 
-  // ---- the legible ranking: MOST READ leads the page, LATEST follows,
-  //      deduped downward so a story never appears twice. (A "lead story"
-  //      slot may return later — for now readers ARE the front page.) ----
-  const mostRead = stories
-    .filter((s) => s.readers7d > 0)
-    .sort((a, b) => b.readers7d - a.readers7d)
-    .slice(0, MOST_READ_N);
-  const shown = new Set(mostRead.map((s) => s.id));
+  // ---- the legible ranking: a LEAD story, then MORE STORIES in chronology.
+  //  Lead score = breadth × freshness × a SUBLINEAR price nudge:
+  //      (1 + readers) · exp(−ageDays / HALF_LIFE) · (1 + log10(1 + priceXec))
+  //  Breadth (reader count) dominates; freshness decays it over days so a stale
+  //  hit yields the front page; the log price factor lets a pricier article edge
+  //  ahead of an equally-read cheaper one WITHOUT letting one costly unlock top a
+  //  widely-read piece (price is author-set, so it may only nudge, never rule).
+  //  The (1 + readers) base means a brand-new, unread post can still lead on
+  //  freshness alone, so the page is never empty right after a publish. ----
+  const HALF_LIFE_DAYS = 3;
+  const now = Date.now();
+  const priceFactor = (price: number | null) =>
+    1 + Math.log10(1 + Math.max(0, Number(price) || 0));
+  const freshness = (iso: string) => {
+    const ageDays = Math.max(0, (now - Date.parse(iso)) / 86_400_000);
+    return Math.exp(-ageDays / HALF_LIFE_DAYS);
+  };
+  const score = (s: RailStory) =>
+    (1 + s.readers) * freshness(s.at) * priceFactor(s.priceXec);
 
-  const latest = stories
-    .filter((s) => !shown.has(s.id))
+  const lead = stories.length > 0
+    ? [...stories].sort((a, b) => score(b) - score(a))[0]
+    : null;
+
+  const more = stories
+    .filter((s) => s.id !== lead?.id)
     .sort((a, b) => (a.at < b.at ? 1 : -1))
-    .slice(0, LATEST_N);
+    .slice(0, MORE_N);
 
   return NextResponse.json(
-    {
-      ok: true,
-      stories: storiesQ.count ?? stories.length,
-      minted: mintedQ.count ?? 0,
-      latest,
-      mostRead,
-    },
+    { ok: true, lead, more },
     // Publishes are rare events; a minute of CDN cache keeps this free.
     { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
   );
