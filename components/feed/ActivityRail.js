@@ -82,6 +82,9 @@ export default function ActivityRail({
   onOpenThread = null,
 }) {
   const [items, setItems] = useState(null)
+  // Live "on the site right now" count, broadcast by the site-wide
+  // PresenceHeartbeat via a window event — no request of our own.
+  const [online, setOnline] = useState(null)
   // The rail only exists above the host page's breakpoint (1100px on the
   // feed, wider on the article page) — don't spend fetches or a websocket
   // subscription where it's display:none.
@@ -90,6 +93,15 @@ export default function ActivityRail({
   const freshIds = useRef(new Set())
   const nudgeTimer = useRef(null)
   const followupTimer = useRef(null)
+
+  useEffect(() => {
+    const onPresence = (e) => {
+      const n = e.detail
+      if (typeof n === 'number' && Number.isFinite(n) && n >= 0) setOnline(n)
+    }
+    window.addEventListener('pow:presence', onPresence)
+    return () => window.removeEventListener('pow:presence', onPresence)
+  }, [])
 
   useEffect(() => {
     const mq = window.matchMedia(`(min-width: ${minWidth}px)`)
@@ -152,6 +164,11 @@ export default function ActivityRail({
       <div className="arail-head">
         <span className="arail-dot" aria-hidden />
         {heading}
+        {online != null ? (
+          <span className="arail-online" title="On the site right now">
+            {online.toLocaleString()}
+          </span>
+        ) : null}
       </div>
       <p className="arail-sub">{sub}</p>
 
