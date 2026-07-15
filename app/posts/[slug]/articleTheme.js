@@ -166,6 +166,8 @@ export const ARTICLE_CSS = `
 
 /* ---- paid comment composer: bar (charcount + buttons), reply, pay states ---- */
 .pow-article .commentbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;}
+.pow-article .commentbar-left{display:flex;align-items:center;gap:8px;}
+.pow-article .commentbar-left .charcount{margin:0;}
 .pow-article .commentbar-btns{display:flex;align-items:center;gap:10px;}
 /* .postcomment-btn carries a margin-top for its standalone use below a textarea;
    inside the composer bar it sits in a flex row next to Cancel, so drop the

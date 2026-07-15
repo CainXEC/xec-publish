@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
 import TranslateButton from '@/components/TranslateButton'
+import EmojiPicker from '@/components/EmojiPicker'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 import {
   beginCashtabPayment,
@@ -93,6 +94,25 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
   useEffect(() => {
     if (autoFocus) textareaRef.current?.focus()
   }, [autoFocus])
+
+  // Insert an emoji at the caret (replacing any selection), caret after it —
+  // same feel as the feed composer.
+  const insertEmoji = useCallback((emoji) => {
+    const el = textareaRef.current
+    setContent((prev) => {
+      const start = el?.selectionStart ?? prev.length
+      const end = el?.selectionEnd ?? prev.length
+      const next = prev.slice(0, start) + emoji + prev.slice(end)
+      if (el) {
+        const pos = start + emoji.length
+        requestAnimationFrame(() => {
+          el.focus()
+          try { el.setSelectionRange(pos, pos) } catch { /* noop */ }
+        })
+      }
+      return next
+    })
+  }, [])
 
   const resetToCompose = useCallback(() => {
     setPhase('compose')
@@ -277,9 +297,12 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
         placeholder={isReply ? 'Post your reply…' : 'Share your thoughts…'}
       />
       <div className="commentbar">
-        <span className={`charcount${over ? ' over' : ''}`}>
-          {chars}/{FEED_MAX_CHARS}
-        </span>
+        <div className="commentbar-left">
+          <EmojiPicker onPick={insertEmoji} />
+          <span className={`charcount${over ? ' over' : ''}`}>
+            {chars}/{FEED_MAX_CHARS}
+          </span>
+        </div>
         <div className="commentbar-btns">
           {isReply && onCancel ? (
             <button type="button" onClick={onCancel} className="commentghost">
