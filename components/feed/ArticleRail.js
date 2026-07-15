@@ -242,7 +242,12 @@ export default function ArticleRail({ minWidth = 1400, currentSlug = null, onOpe
         <p className="np-empty">The presses are warm and the front page is blank.</p>
       ) : (
         <>
-          {lead ? <Lead story={lead} now={isNow(lead)} onOpen={interceptOpen} /> : null}
+          {lead ? (
+            <>
+              <div className="np-sec">Lead story</div>
+              <Lead story={lead} now={isNow(lead)} onOpen={interceptOpen} />
+            </>
+          ) : null}
 
           {more.length > 0 ? (
             <>
@@ -256,7 +261,7 @@ export default function ArticleRail({ minWidth = 1400, currentSlug = null, onOpe
       )}
 
       <div className="np-foot">
-        Write your story. <Link href="/dashboard">Publish for 100 XEC</Link>.
+        Write your story. <Link href="/dashboard">Publish for 1,000 XEC</Link>.
       </div>
     </div>
   )

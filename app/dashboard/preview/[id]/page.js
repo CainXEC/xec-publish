@@ -91,8 +91,8 @@ export default async function DraftPreviewPage({ params, searchParams }) {
       {post.publish_paid !== true ? (
         <p className="feenote" role={paymentBlocked ? 'alert' : undefined}>
           {paymentBlocked
-            ? 'Publishing was blocked: the 100 XEC publish fee has not been paid for this draft. '
-            : 'Publishing costs a one-time 100 XEC fee. '}
+            ? 'Publishing was blocked: the 1,000 XEC publish fee has not been paid for this draft. '
+            : 'Publishing costs a one-time 1,000 XEC fee. '}
           Open the draft in the editor to pay and go live.
         </p>
       ) : null}

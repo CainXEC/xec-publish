@@ -10,7 +10,7 @@ import {
   primeAudioContextOnUserGesture,
 } from '@/lib/webAudioUnlock'
 
-const PUBLISH_FEE_XEC = 100
+const PUBLISH_FEE_XEC = 1000
 
 export default function PublishPaywallModal({
   isOpen,
@@ -371,7 +371,7 @@ export default function PublishPaywallModal({
         ) : (
           <>
             <p className="mt-3 text-sm leading-relaxed text-[#5e6155] dark:text-zinc-400">
-              Publishing costs 100 XEC to help prevent
+              Publishing costs {PUBLISH_FEE_XEC.toLocaleString()} XEC to help prevent
               <span className="hidden sm:inline">
                 <br />
               </span>{' '}
@@ -397,7 +397,7 @@ export default function PublishPaywallModal({
               disabled={!publishFeeCashtabUrl}
               className="rounded-lg bg-[#12703c] px-4 py-2.5 text-sm font-semibold text-[#fdfcf8] shadow-sm transition hover:bg-[#0d5a2f] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-500 dark:text-emerald-950 dark:hover:bg-emerald-400"
             >
-              Pay 100 XEC to publish
+              Pay {PUBLISH_FEE_XEC.toLocaleString()} XEC to publish
             </button>
           ) : null}
           <button
