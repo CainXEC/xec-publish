@@ -7,6 +7,7 @@ import { createServerSupabase } from '@/lib/supabase-server'
 import { FEED_CACHE_TAG } from '@/lib/getFeed'
 import { priceFeedPost } from '@/lib/feedPricing'
 import { contentHashHex, FEED_ACTION } from '@/lib/feedProtocol'
+import { normalizePoll } from '@/lib/feedPoll'
 import { findFeedPayment, verifyFeedTxid } from '@/lib/verifyFeedPost'
 import { resolveOrCreateAccount } from '@/lib/walletAuth'
 import { displayHandlesByAccountId } from '@/lib/authorDisplayHandles'
@@ -20,7 +21,7 @@ import {
 } from '@/lib/session'
 
 const FEED_POST_COLUMNS =
-  'id, txid, action, parent_txid, quoted_txid, content, content_hash, author_account_id, author_identity, payer_address, payout_address, amount_sats, created_at'
+  'id, txid, action, parent_txid, quoted_txid, content, content_hash, author_account_id, author_identity, payer_address, payout_address, amount_sats, created_at, card_kind, card_meta'
 
 function normalizeAction(action) {
   if (action === 2 || action === 'reply') return FEED_ACTION.REPLY
@@ -89,6 +90,25 @@ export async function POST(request) {
   const content = body.content
   const { costXec } = priced
   const contentHash = contentHashHex(content)
+
+  // A poll rides on a top-level POST: the question is `content` (priced +
+  // hashed like any post), the options + eligibility live in card_meta. The
+  // server re-normalizes so a client can't inject option ids or extra fields.
+  let cardKind = null
+  let cardMeta = null
+  if (body?.poll != null) {
+    if (action !== FEED_ACTION.POST) {
+      return NextResponse.json({ error: 'A poll must be a top-level post.' }, { status: 400 })
+    }
+    cardMeta = normalizePoll(body.poll)
+    if (!cardMeta) {
+      return NextResponse.json(
+        { error: 'A poll needs a question and 2–4 options.' },
+        { status: 400 },
+      )
+    }
+    cardKind = 'poll'
+  }
 
   const supabase = createServerSupabase()
 
@@ -201,6 +221,8 @@ export async function POST(request) {
     payout_address: match.payerAddress, // snapshot: replies to this post pay the poster
     amount_sats: match.sats,
     finalized_at: finalizedAt,
+    card_kind: cardKind,
+    card_meta: cardMeta,
   }
 
   const { data: inserted, error: insertError } = await supabase

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import EmojiPicker from '@/components/EmojiPicker'
@@ -31,6 +31,13 @@ export default function ComposeBox({
   const [content, setContent] = useState(initialContent)
   const [phase, setPhase] = useState('compose') // 'compose' | 'paying'
   const [intent, setIntent] = useState(null)
+  // Poll composer (top-level posts only). pollRef snapshots the payload at pay
+  // time so the confirm poll-loop reads a stable value, not a live closure.
+  const [pollMode, setPollMode] = useState(false)
+  const [pollOptions, setPollOptions] = useState(['', ''])
+  const [pollEligibility, setPollEligibility] = useState('account')
+  const pollRef = useRef(null)
+  const composerId = useId()
   const [statusMsg, setStatusMsg] = useState('Waiting for payment…')
   const [notice, setNotice] = useState('')
   const [txidInput, setTxidInput] = useState('')
@@ -40,7 +47,20 @@ export default function ComposeBox({
   const priced = priceFeedPost(content)
   const chars = priced.chars
   const overCap = chars > FEED_MAX_CHARS
-  const canSubmit = priced.ok && !submitting
+
+  // Polls are top-level posts only. Need 2+ non-empty options to be valid.
+  const pollAllowed = action === 'post'
+  const pollActive = pollAllowed && pollMode
+  const pollCleanOptions = pollOptions.map((o) => o.trim()).filter(Boolean)
+  const pollValid = !pollActive || pollCleanOptions.length >= 2
+  const canSubmit = priced.ok && pollValid && !submitting
+
+  const setOption = (i, val) =>
+    setPollOptions((prev) => prev.map((o, idx) => (idx === i ? val : o)))
+  const addOption = () =>
+    setPollOptions((prev) => (prev.length < 4 ? [...prev, ''] : prev))
+  const removeOption = (i) =>
+    setPollOptions((prev) => (prev.length > 2 ? prev.filter((_, idx) => idx !== i) : prev))
 
   useEffect(() => {
     if (autoFocus) textareaRef.current?.focus()
@@ -99,6 +119,10 @@ export default function ComposeBox({
         action === 'quote' && quotedPost ? { ...post, quoted: quotedPost } : post,
       )
       setContent('')
+      setPollMode(false)
+      setPollOptions(['', ''])
+      setPollEligibility('account')
+      pollRef.current = null
       resetToCompose()
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('sessionChanged'))
@@ -108,7 +132,15 @@ export default function ComposeBox({
   )
 
   const startPayment = useCallback(async () => {
-    if (!priced.ok) return
+    if (!priced.ok || !pollValid) return
+    // Snapshot the poll now so the confirm poll-loop records exactly what was
+    // composed, even though the compose inputs are unmounted during 'paying'.
+    pollRef.current = pollActive
+      ? {
+          eligibility: pollEligibility,
+          options: pollCleanOptions.map((text) => ({ text })),
+        }
+      : null
     setSubmitting(true)
     setNotice('')
     // Warm the shared Chronik ws now (before /prepare + Cashtab approval) so the
@@ -149,7 +181,7 @@ export default function ComposeBox({
     } finally {
       setSubmitting(false)
     }
-  }, [content, action, parentTxid, quotedTxid, priced.ok])
+  }, [content, action, parentTxid, quotedTxid, priced.ok, pollActive, pollEligibility, pollOptions, pollValid])
 
   // Poll for the on-chain payment while paying.
   useEffect(() => {
@@ -165,6 +197,7 @@ export default function ComposeBox({
             action,
             parentTxid,
             quotedTxid,
+            poll: pollRef.current,
             since: intent.preparedAt,
             ...(manualTxid ? { txid: manualTxid } : {}),
           }),
@@ -217,7 +250,7 @@ export default function ComposeBox({
       const res = await fetch('/api/feed/confirm', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ content, action, parentTxid, quotedTxid, txid: t }),
+        body: JSON.stringify({ content, action, parentTxid, quotedTxid, poll: pollRef.current, txid: t }),
       })
       const data = await res.json()
       if (data.status === 'posted' && data.post) {
@@ -284,13 +317,83 @@ export default function ComposeBox({
         rows={isReply ? 2 : 3}
         placeholder={
           placeholder ||
-          (isReply ? 'Post your reply…' : isQuote ? 'Add a comment…' : "What's happening?")
+          (isReply
+            ? 'Post your reply…'
+            : isQuote
+              ? 'Add a comment…'
+              : pollActive
+                ? 'Ask a question…'
+                : "What's happening?")
         }
       />
       {isQuote ? <QuotedEmbed post={quotedPost} interactive={false} /> : null}
+
+      {pollActive ? (
+        <div className="pollcompose">
+          {pollOptions.map((opt, i) => (
+            <div className="pollcompose-row" key={i}>
+              <input
+                className="pollcompose-input"
+                value={opt}
+                onChange={(e) => setOption(i, e.target.value)}
+                placeholder={`Option ${i + 1}`}
+                maxLength={80}
+              />
+              {pollOptions.length > 2 ? (
+                <button
+                  type="button"
+                  className="pollcompose-x"
+                  onClick={() => removeOption(i)}
+                  aria-label={`Remove option ${i + 1}`}
+                >
+                  ×
+                </button>
+              ) : null}
+            </div>
+          ))}
+          {pollOptions.length < 4 ? (
+            <button type="button" className="pollcompose-add" onClick={addOption}>
+              + Add option
+            </button>
+          ) : null}
+          <div className="pollcompose-elig">
+            <span className="pollcompose-elig-label">Who can vote</span>
+            <label className={pollEligibility === 'account' ? 'on' : ''}>
+              <input
+                type="radio"
+                name={`elig-${composerId}`}
+                checked={pollEligibility === 'account'}
+                onChange={() => setPollEligibility('account')}
+              />
+              Anyone logged in
+            </label>
+            <label className={pollEligibility === 'handle' ? 'on' : ''}>
+              <input
+                type="radio"
+                name={`elig-${composerId}`}
+                checked={pollEligibility === 'handle'}
+                onChange={() => setPollEligibility('handle')}
+              />
+              Handle-holders only
+            </label>
+          </div>
+        </div>
+      ) : null}
+
       <div className="composebar">
         <div className="barleft">
           <EmojiPicker onPick={insertEmoji} />
+          {pollAllowed ? (
+            <button
+              type="button"
+              className={`polltoggle${pollActive ? ' on' : ''}`}
+              aria-pressed={pollActive}
+              onClick={() => setPollMode((v) => !v)}
+              title={pollActive ? 'Remove poll' : 'Add a poll'}
+            >
+              📊
+            </button>
+          ) : null}
           <span className={`count${overCap ? ' over' : ''}`}>
             {chars}/{FEED_MAX_CHARS}
           </span>
