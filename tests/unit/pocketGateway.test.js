@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   snapshot: { status: 'ready', registered: true, balanceSats: 1_000_000, accountId: 'acct-1' },
   spendContext: { skHex: 'ab'.repeat(32), address: 'ecash:qpocket' },
   pocketSpend: vi.fn(async () => ({ ok: true, txid: 'f'.repeat(64) })),
+  warmPocketWallet: vi.fn(async () => {}),
   refreshPocketBalance: vi.fn(),
   extensionAvailable: false,
   payWithCashtab: vi.fn(async () => ({ ok: true, via: 'extension', txid: 'e'.repeat(64) })),
@@ -22,7 +23,10 @@ vi.mock('@/lib/pocket/store', () => ({
   getPocketSpendContext: () => mocks.spendContext,
   refreshPocketBalance: mocks.refreshPocketBalance,
 }))
-vi.mock('@/lib/pocket/wallet', () => ({ pocketSpend: mocks.pocketSpend }))
+vi.mock('@/lib/pocket/wallet', () => ({
+  pocketSpend: mocks.pocketSpend,
+  warmPocketWallet: mocks.warmPocketWallet,
+}))
 vi.mock('@/lib/ecash/cashtabPay', () => ({
   payWithCashtab: mocks.payWithCashtab,
   beginCashtabPayment: mocks.beginCashtabPayment,
@@ -80,7 +84,7 @@ describe('spendEligibility', () => {
 })
 
 describe('beginPayment / completePayment', () => {
-  it('pocket mode opens nothing and pays locally, feeding back the txid', async () => {
+  it('pocket mode opens nothing, warms the signer at click, and pays locally', async () => {
     const { beginPayment, completePayment } = await import('@/lib/pocket/payGateway')
     const handle = beginPayment({ kind: 'like', amountXec: 100 })
     expect(handle).toEqual({ mode: 'pocket' })
@@ -89,6 +93,8 @@ describe('beginPayment / completePayment', () => {
     const r = await completePayment(handle, PAY)
     expect(r).toEqual({ ok: true, via: 'pocket', txid: 'f'.repeat(64) })
     expect(mocks.pocketSpend).toHaveBeenCalledWith({ skHex: mocks.spendContext.skHex, bip21: PAY.bip21 })
+    // The click-time warm ran in parallel with the (caller's) prepare fetch.
+    expect(mocks.warmPocketWallet).toHaveBeenCalledWith(mocks.spendContext.skHex)
     expect(mocks.refreshPocketBalance).toHaveBeenCalled()
     expect(mocks.completeCashtabPayment).not.toHaveBeenCalled()
   })
