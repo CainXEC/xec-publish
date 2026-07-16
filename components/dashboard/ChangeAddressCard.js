@@ -15,12 +15,15 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 import { payWithCashtab } from '@/lib/ecash/cashtabPay'
+import { usePocket } from '@/lib/pocket/store'
 
 export default function ChangeAddressCard({ currentAddress, handle = null }) {
   const router = useRouter()
+  const pocket = usePocket()
   const [phase, setPhase] = useState('idle') // idle | starting | proving | done
   const [started, setStarted] = useState(null)
   const [notice, setNotice] = useState('')
@@ -192,6 +195,15 @@ export default function ChangeAddressCard({ currentAddress, handle = null }) {
                 Your <strong>@{handle}</strong> handle NFT lives in your current wallet. To keep
                 your byline, send the NFT to the new wallet (Cashtab → eTokens) and re-select it
                 under “Your handles” — you can do that before or after switching.
+              </li>
+            ) : null}
+            {pocket.status === 'ready' && (pocket.balanceSats ?? 0) > 0 ? (
+              <li>
+                Your <strong>Pocket</strong> holds {Math.floor(pocket.balanceSats / 100).toLocaleString()}{' '}
+                XEC and was created by your <strong>current</strong> wallet’s signature — after the
+                switch, recovering it needs the old wallet.{' '}
+                <Link href="/pocket">Sweep the Pocket to your wallet first</Link>, then set up a
+                fresh one with the new wallet.
               </li>
             ) : null}
           </ul>

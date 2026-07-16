@@ -40,11 +40,20 @@ export async function POST(request) {
 
   const liked = []
   const reposted = []
-  if (txids.length > 0 && acct.address) {
+  if (txids.length > 0 && (acct.accountId || acct.address)) {
+    // Match by ACCOUNT, not wallet: a like paid from a linked non-primary
+    // wallet (the Pocket) must still show as "liked" for the viewer, or the
+    // button invites a double-pay. payer_address covers legacy rows whose
+    // actor_account_id predates account resolution.
+    // Quote the address value: it contains a colon (ecash:) and PostgREST's
+    // .or() grammar splits conditions on commas/dots.
+    const clauses = []
+    if (acct.accountId) clauses.push(`actor_account_id.eq.${acct.accountId}`)
+    if (acct.address) clauses.push(`payer_address.eq."${acct.address}"`)
     const { data } = await supabase
       .from('feed_events')
       .select('target_txid, action')
-      .eq('payer_address', acct.address)
+      .or(clauses.join(','))
       .in('target_txid', txids)
     for (const r of data ?? []) {
       if (r.action === FEED_ACTION.LIKE) liked.push(r.target_txid)

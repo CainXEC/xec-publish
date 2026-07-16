@@ -13,7 +13,9 @@ import { ARTICLE_CSS } from './articleTheme'
 import { encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
 import { buildPaywallBip21, computePaymentSplit } from '@/lib/paymentSplit'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
-import { payWithCashtab } from '@/lib/ecash/cashtabPay'
+// Pocket-aware: eligible unlocks sign locally (payDirect → known txid, no
+// address scan); everything else is the exact payWithCashtab behavior.
+import { payDirect } from '@/lib/pocket/payGateway'
 import { triggerPaymentSuccessEffect } from '@/lib/paymentSuccessEffect'
 import {
   ensureAudioContextRunning,
@@ -72,6 +74,9 @@ export default function PostPageClient({
   const payWatchRef = useRef(null)
   const payBaselineTxidRef = useRef('')
   const payLastHandledTxidRef = useRef('')
+  // Set when the Pocket paid the unlock: the txid is KNOWN, so verification
+  // targets that tx directly instead of scanning the author's address.
+  const payPocketTxidRef = useRef('')
   /** Shared AudioContext, primed on Pay click (user gesture) for mobile unlock sound after async verify. */
   const unlockAudioContextRef = useRef(null)
 
@@ -447,10 +452,16 @@ export default function PostPageClient({
     } catch {
       /* ignore */
     }
-    // Cashtab extension if the reader has it (in-page popup, no tab), else a
-    // Cashtab web tab — exactly one, never both. Rejecting in the extension
-    // popup drops back out of the waiting state.
-    void payWithCashtab({ bip21: bip21Url, cashtabUrl }).then((res) => {
+    // Pocket if eligible (signs locally; the .then hands us the txid), else
+    // Cashtab extension popup or web tab — exactly one, never both. Rejecting
+    // in the extension popup drops back out of the waiting state.
+    void payDirect({ kind: 'unlock', amountXec: priceXec, bip21: bip21Url, cashtabUrl }).then((res) => {
+      if (res.ok && res.via === 'pocket' && res.txid) {
+        // Known txid: the auto-verify loop targets it directly from now on.
+        payPocketTxidRef.current = res.txid
+        setPaymentFinalizing(true)
+        return
+      }
       if (!res.ok && res.reason === 'denied') {
         if (payTxPollRef.current) {
           clearInterval(payTxPollRef.current)
@@ -469,6 +480,8 @@ export default function PostPageClient({
           /* ignore */
         }
       }
+      // pocket_error: leave the waiting UI + its manual Cashtab link in place —
+      // paying from Cashtab still completes this unlock.
     })
   }
 
@@ -514,6 +527,9 @@ export default function PostPageClient({
       payWatchRef.current()
       payWatchRef.current = null
     }
+    // Fresh attempt: forget any pocket txid from a previous run. (openCashtab's
+    // payDirect .then always resolves after this synchronous section.)
+    payPocketTxidRef.current = ''
 
     try {
       const baselineRes = await fetch(
@@ -528,15 +544,19 @@ export default function PostPageClient({
 
     const checkLatest = async () => {
       try {
-        const latestTxRes = await fetch(
-          `/api/latest-tx/${encodeURIComponent(authorAddressForLatestTx)}`,
-        )
-        const latestTxData = await latestTxRes.json().catch(() => ({}))
-        const latestTxid = latestTxRes.ok ? latestTxData.txid : ''
-        if (!latestTxid) return
-        if (latestTxid === payBaselineTxidRef.current) return
-        if (latestTxid === payLastHandledTxidRef.current) return
-        payLastHandledTxidRef.current = latestTxid
+        // Pocket-paid: the txid is known — verify it directly, skip the scan.
+        let latestTxid = payPocketTxidRef.current
+        if (!latestTxid) {
+          const latestTxRes = await fetch(
+            `/api/latest-tx/${encodeURIComponent(authorAddressForLatestTx)}`,
+          )
+          const latestTxData = await latestTxRes.json().catch(() => ({}))
+          latestTxid = latestTxRes.ok ? latestTxData.txid : ''
+          if (!latestTxid) return
+          if (latestTxid === payBaselineTxidRef.current) return
+          if (latestTxid === payLastHandledTxidRef.current) return
+          payLastHandledTxidRef.current = latestTxid
+        }
 
         const verifyRes = await fetch('/api/verify-payment', {
           method: 'POST',

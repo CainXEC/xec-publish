@@ -1,8 +1,47 @@
 import type { NextConfig } from "next";
+
+// Content-Security-Policy, REPORT-ONLY for now. The Pocket keeps a spending
+// key in the browser, which raises the stakes on XSS — but an *enforced* CSP
+// on Next App Router needs nonce-based inline-script handling (middleware)
+// and a careful rollout. Step 1 is observing: this header logs would-be
+// violations to the console without breaking anything. Origins covered:
+// Chronik REST+WS (payments), Supabase, Vercel analytics/insights, Google
+// Fonts, Cashtab QR/data images. Tighten + enforce as its own follow-up.
+const CSP_REPORT_ONLY = [
+  "default-src 'self'",
+  // Next injects inline bootstrap scripts; 'wasm-unsafe-eval' for ecash-lib.
+  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://va.vercel-scripts.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com data:",
+  "img-src 'self' data: blob: https:",
+  [
+    "connect-src 'self'",
+    'https://chronik.e.cash wss://chronik.e.cash',
+    'https://chronik-native1.fabien.cash wss://chronik-native1.fabien.cash',
+    'https://chronik-native2.fabien.cash wss://chronik-native2.fabien.cash',
+    'https://chronik-native3.fabien.cash wss://chronik-native3.fabien.cash',
+    'https://*.supabase.co wss://*.supabase.co',
+    'https://va.vercel-scripts.com https://vitals.vercel-insights.com',
+  ].join(' '),
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ')
+
 const nextConfig: NextConfig = {
   serverExternalPackages: ['jsdom', '@resvg/resvg-js'],
   outputFileTracingIncludes: {
     '/api/**': ['./assets/fonts/**'],
+  },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'Content-Security-Policy-Report-Only', value: CSP_REPORT_ONLY },
+        ],
+      },
+    ]
   },
   async rewrites() {
     return [

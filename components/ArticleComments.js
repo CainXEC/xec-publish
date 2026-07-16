@@ -5,11 +5,10 @@ import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
 import TranslateButton from '@/components/TranslateButton'
 import EmojiPicker from '@/components/EmojiPicker'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
-import {
-  beginCashtabPayment,
-  completeCashtabPayment,
-  abortCashtabPayment,
-} from '@/lib/ecash/cashtabPay'
+// Pocket-aware gateway: identical contract to the cashtabPay trio. Pocket
+// eligible → local sign + instant broadcast (r.txid feeds the confirm poll);
+// otherwise the exact extension/web-tab behavior this file always had.
+import { beginPayment, completePayment, abortPayment } from '@/lib/pocket/payGateway'
 
 // =============================================================================
 //  ArticleComments — paid, threaded comments on an article.
@@ -142,7 +141,9 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
     setSubmitting(true)
     setNotice('')
     prewarmPaymentWatch()
-    const gesture = beginCashtabPayment()
+    // Pocket-vs-Cashtab decided AT the click (the client prices the comment
+    // itself, so eligibility is synchronous). Pocket opens nothing.
+    const handle = beginPayment({ kind: 'comment', amountXec: priced.costXec })
     try {
       const res = await fetch('/api/comments/prepare', {
         method: 'POST',
@@ -151,28 +152,32 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) {
-        abortCashtabPayment(gesture)
+        abortPayment(handle)
         setNotice(data.error || 'Could not start the payment. Try again.')
         return
       }
-      void completeCashtabPayment(gesture, {
+      void completePayment(handle, {
         bip21: data.bip21Url,
         cashtabUrl: data.cashtabUrl,
       }).then((r) => {
-        if (!r.ok && r.reason === 'denied') {
+        if (r.ok && r.via === 'pocket' && r.txid) {
+          setIntent((prev) => (prev ? { ...prev, pocketTxid: r.txid } : prev))
+        } else if (!r.ok && r.reason === 'denied') {
           resetToCompose()
           setNotice('Payment cancelled — your draft is safe.')
+        } else if (!r.ok && r.reason === 'pocket_error') {
+          setNotice(r.message || 'Pocket couldn’t send — use the Cashtab link below.')
         }
       })
       setIntent(data)
       setPhase('paying')
     } catch {
-      abortCashtabPayment(gesture)
+      abortPayment(handle)
       setNotice('Network hiccup — try again.')
     } finally {
       setSubmitting(false)
     }
-  }, [content, parentId, postId, priced.ok, resetToCompose])
+  }, [content, parentId, postId, priced.ok, priced.costXec, resetToCompose])
 
   // Poll for the on-chain payment while paying.
   useEffect(() => {
@@ -180,6 +185,8 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
     let stopped = false
     const confirm = async (manualTxid) => {
       try {
+        // A pocket-paid comment knows its txid up front — single-tx verify.
+        const knownTxid = manualTxid ?? intent.pocketTxid
         const res = await fetch('/api/comments/confirm', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -188,7 +195,7 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
             content,
             parentId,
             since: intent.preparedAt,
-            ...(manualTxid ? { txid: manualTxid } : {}),
+            ...(knownTxid ? { txid: knownTxid } : {}),
           }),
         })
         const data = await res.json().catch(() => ({}))

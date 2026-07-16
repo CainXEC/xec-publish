@@ -29,7 +29,7 @@ Every action is a single OP_RETURN output. The layout of the output script:
 OP_RETURN                 (0x6a)
 <push 4> 504f5752         LOKAD prefix "POWR"
 OP_0                      protocol version 0 (bare opcode)
-OP_N                      action, bare opcode: OP_1..OP_11 (see table)
+OP_N                      action, bare opcode: OP_1..OP_12 (see table)
 [pushdata(s)]             per-action payload, see table
 ```
 
@@ -48,6 +48,7 @@ Per-action layout:
 | handle  | OP_9   | nonce (36B)         | —                   | Handle NFT mint payment          |
 | comment | OP_10  | contentHash (32B)   | —                   | Article comment (top-level)      |
 | creply  | OP_11  | targetTxid (32B)    | contentHash (32B)   | Reply to an article comment      |
+| delegate| OP_12  | pubkey (33B)        | —                   | Pocket spending-key endorsement  |
 
 Article comments are priced and split like the feed (94% author / 6% platform),
 but pay the ARTICLE author (comment) or the PARENT comment's author (creply).
@@ -55,6 +56,13 @@ They get their own action codes so they read as comments — not feed posts —
 on-chain. A comment reply to a legacy (pre-paid) comment has no parent txid to
 target, so it is emitted as a plain `comment` (OP_10); the thread link lives in
 our DB, not on-chain.
+
+`delegate` (OP_12, ADDITIVE 2026-07) rides a wallet's payment that FUNDS its
+Pocket — the site's browser-held spending key. The payer commits the pocket's
+33-byte compressed pubkey, making the wallet↔pocket link publicly
+reconstructable from chain alone. Additive to the frozen spec: decoders that
+predate OP_12 return null/unparsed for it, which is harmless (the tx is just a
+send with data).
 
 Notes:
 - `version` and `action` are **bare opcodes** (`OP_0`, `OP_1`..`OP_11`), which

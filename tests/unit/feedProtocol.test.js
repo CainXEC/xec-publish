@@ -94,6 +94,23 @@ describe('encodeFeedOpReturnRaw', () => {
     expect(raw).toBe(`04${LOKAD_HEX}0057`)
   })
 
+  it('delegate carries a 33-byte compressed pubkey (OP_12)', () => {
+    const pubkey = '02' + 'ab'.repeat(32)
+    const raw = encodeFeedOpReturnRaw({ action: FEED_ACTION.DELEGATE, pubkey })
+    // 04 <LOKAD> 00 <OP_12=5c> 21 <pubkey>
+    expect(raw).toBe(`04${LOKAD_HEX}005c` + `21${pubkey}`)
+  })
+
+  it('requires a 33-byte hex pubkey for delegate', () => {
+    expect(() => encodeFeedOpReturnRaw({ action: FEED_ACTION.DELEGATE })).toThrow()
+    expect(() =>
+      encodeFeedOpReturnRaw({ action: FEED_ACTION.DELEGATE, pubkey: '02' + 'ab'.repeat(31) }),
+    ).toThrow()
+    expect(() =>
+      encodeFeedOpReturnRaw({ action: FEED_ACTION.DELEGATE, pubkey: '04' + 'ab'.repeat(64) }),
+    ).toThrow() // uncompressed (65B) is not the committed form
+  })
+
   it('auth carries the 36-byte ASCII nonce (OP_8)', () => {
     const raw = encodeFeedOpReturnRaw({ action: FEED_ACTION.AUTH, nonce: SAMPLE_UUID })
     // 24 = push 36 bytes.
@@ -117,6 +134,7 @@ describe('decodeFeedOpReturn', () => {
       { action: FEED_ACTION.PUBLISH, contentHash: HASH },
       { action: FEED_ACTION.UNLOCK },
       { action: FEED_ACTION.AUTH, nonce: SAMPLE_UUID },
+      { action: FEED_ACTION.DELEGATE, pubkey: '02' + 'ab'.repeat(32) },
     ]
     for (const c of cases) {
       const decoded = decodeFeedOpReturn(asScript(encodeFeedOpReturnRaw(c)))
@@ -126,6 +144,7 @@ describe('decodeFeedOpReturn', () => {
       expect(decoded.targetTxid).toBe(c.targetTxid ?? null)
       expect(decoded.contentHash).toBe(c.contentHash ?? null)
       expect(decoded.nonce).toBe(c.nonce ?? null)
+      expect(decoded.pubkey).toBe(c.pubkey ?? null)
       // parentTxid is kept as a back-compat alias for targetTxid.
       expect(decoded.parentTxid).toBe(decoded.targetTxid)
     }
@@ -149,8 +168,14 @@ describe('decodeFeedOpReturn', () => {
   })
 
   it('returns null for an out-of-range action opcode', () => {
-    // OP_9 (0x59) is beyond the defined POWR actions (OP_1..OP_8).
-    const bad = `6a04${LOKAD_HEX}0059` + `20${TARGET}`
+    // OP_13 (0x5d) is beyond the defined POWR actions (OP_1..OP_12).
+    const bad = `6a04${LOKAD_HEX}005d` + `20${TARGET}`
+    expect(decodeFeedOpReturn(bad)).toBeNull()
+  })
+
+  it('returns null for a delegate whose pubkey push is the wrong length', () => {
+    // OP_12 with a 32-byte push where the 33-byte pubkey belongs.
+    const bad = `6a04${LOKAD_HEX}005c` + `20${TARGET}`
     expect(decodeFeedOpReturn(bad)).toBeNull()
   })
 

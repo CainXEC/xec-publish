@@ -9,7 +9,7 @@ import { priceFeedPost } from '@/lib/feedPricing'
 import { contentHashHex, FEED_ACTION } from '@/lib/feedProtocol'
 import { normalizePoll } from '@/lib/feedPoll'
 import { findFeedPayment, verifyFeedTxid } from '@/lib/verifyFeedPost'
-import { resolveOrCreateAccount } from '@/lib/walletAuth'
+import { resolveOrCreateAccount, primaryAddressForAccount } from '@/lib/walletAuth'
 import { displayHandlesByAccountId } from '@/lib/authorDisplayHandles'
 import { isBlockedPair } from '@/lib/feedBlocks'
 import { recordFeedNotification } from '@/lib/feedNotifications'
@@ -206,7 +206,13 @@ export async function POST(request) {
     }
   }
 
-  const authorIdentity = identityFor(match.payerAddress, resolved.handle)
+  // Snapshot payout + byline from the account's LIVE primary, not the raw
+  // payer: a payment signed by a linked non-primary wallet (the Pocket) must
+  // still route replies' earnings to the account's real payout wallet, and a
+  // handle-less account's byline must show its primary address — never the
+  // hot pocket key. For a normal wallet payer, primary == payer (no change).
+  const displayAddress = await primaryAddressForAccount(resolved.accountId, match.payerAddress)
+  const authorIdentity = identityFor(displayAddress, resolved.handle)
 
   const row = {
     txid: match.txid,
@@ -218,7 +224,7 @@ export async function POST(request) {
     author_account_id: resolved.accountId,
     author_identity: authorIdentity,
     payer_address: match.payerAddress,
-    payout_address: match.payerAddress, // snapshot: replies to this post pay the poster
+    payout_address: displayAddress, // snapshot: replies to this post pay the poster's account
     amount_sats: match.sats,
     finalized_at: finalizedAt,
     card_kind: cardKind,

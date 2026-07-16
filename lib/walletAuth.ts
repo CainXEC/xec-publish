@@ -87,6 +87,37 @@ function payerOf(tx: any): string | null {
   const first = (tx.inputs ?? [])[0];
   return first ? scriptToAddress(first.outputScript) : null;
 }
+
+/** True when the address is a Pocket (browser-held spending key, kind='pocket').
+ *  Pocket payments ATTRIBUTE to their account like any linked address, but the
+ *  pocket key must never authenticate: login and address-change both refuse it,
+ *  so a stolen pocket key is capped at spending the pocket change. */
+async function isPocketAddress(address: string): Promise<boolean> {
+  const bare = String(address ?? "").toLowerCase().replace(/^ecash:/, "");
+  if (!bare) return false;
+  const { data } = await supabase
+    .from("account_addresses")
+    .select("kind")
+    .in("address", [bare, `ecash:${bare}`])
+    .eq("kind", "pocket")
+    .limit(1);
+  return Boolean(data?.[0]);
+}
+
+/** The account's LIVE primary address (the DB row, never the session cookie),
+ *  with a caller-chosen fallback for accounts that somehow lack one. Confirm
+ *  routes use this to snapshot payouts/bylines: a payment signed by a linked
+ *  non-primary wallet (e.g. the Pocket) must still route future earnings and
+ *  display identity to the account's real payout wallet. */
+export async function primaryAddressForAccount(accountId: string, fallback: string): Promise<string> {
+  const { data } = await supabase
+    .from("account_addresses")
+    .select("address")
+    .eq("account_id", accountId)
+    .eq("is_primary", true)
+    .maybeSingle();
+  return data?.address ?? fallback;
+}
 // Read the login nonce from a tx's OP_RETURN. Accepts BOTH layouts so payments
 // in flight across the deploy still verify: the new POWR auth envelope
 // (LOKAD | v0 | OP_8 | nonce) and the legacy bare-UUID push (no LOKAD).
@@ -149,7 +180,7 @@ export async function startAuth(): Promise<StartAuthResult> {
 // ---------------------------------------------------------------------------
 export type VerifyAuthResult =
   | { ok: true; accountId: string; address: string; authorId: string | null; handle: string | null }
-  | { ok: false; status: "awaiting_payment" | "expired" | "error"; error?: string };
+  | { ok: false; status: "awaiting_payment" | "expired" | "pocket_address" | "error"; error?: string };
 
 export async function verifyAuth(): Promise<VerifyAuthResult> {
   try {
@@ -169,6 +200,11 @@ export async function verifyAuth(): Promise<VerifyAuthResult> {
     const page = await chronik().address(AUTH_ADDRESS).history(0, 25);
     const nowSec = Math.floor(Date.now() / 1000);
 
+    // A pocket-paid challenge shouldn't kill the login: remember the reason,
+    // keep the nonce alive, and let the user simply pay again from their main
+    // wallet with the SAME request (mirrors verifyAddressChange's hints).
+    let pocketHint = false;
+
     for (const tx of page.txs ?? []) {
       const seen = Number(tx.timeFirstSeen ?? 0);
       if (seen && nowSec - seen > FRESH_SECONDS) continue;     // backstop freshness
@@ -179,6 +215,14 @@ export async function verifyAuth(): Promise<VerifyAuthResult> {
 
       const address = payerOf(tx);
       if (!address) continue;
+
+      // A Pocket key can spend pocket change; it can NOT authenticate. Without
+      // this, exfiltrating a browser-held pocket key would mint a full
+      // challenge-scope session for the account it's linked to.
+      if (await isPocketAddress(address)) {
+        pocketHint = true;
+        continue;
+      }
 
       // Atomically claim the nonce with a conditional DELETE ... RETURNING. The
       // client polls this endpoint, so two in-flight verifies could otherwise
@@ -211,6 +255,14 @@ export async function verifyAuth(): Promise<VerifyAuthResult> {
       return { ok: true, accountId: resolved.accountId, address, authorId: resolved.authorId, handle: resolved.handle };
     }
 
+    if (pocketHint) {
+      return {
+        ok: false,
+        status: "pocket_address",
+        error:
+          "That payment came from your Pocket (spending balance). Log in by paying from your main Cashtab wallet instead.",
+      };
+    }
     return { ok: false, status: "awaiting_payment" };
   } catch (e: any) {
     return { ok: false, status: "error", error: e?.message ?? "auth verification failed" };
@@ -351,7 +403,7 @@ export type VerifyAddressChangeResult =
       /** true when the new wallet's unused shell account was folded into this one */
       absorbed: boolean;
     }
-  | { ok: false; status: "awaiting_payment" | "same_address" | "address_in_use" | "error"; error?: string };
+  | { ok: false; status: "awaiting_payment" | "same_address" | "address_in_use" | "pocket_address" | "error"; error?: string };
 
 export async function verifyAddressChange(claim: SessionClaim): Promise<VerifyAddressChangeResult> {
   try {
@@ -382,7 +434,7 @@ export async function verifyAddressChange(claim: SessionClaim): Promise<VerifyAd
     // A wrong-wallet payment shouldn't kill the challenge: remember the reason,
     // keep scanning (and keep the nonce alive), so the user can simply pay again
     // from the right wallet with the SAME request while the countdown runs.
-    let hint: "same_address" | "address_in_use" | null = null;
+    let hint: "same_address" | "address_in_use" | "pocket_address" | null = null;
     let hintError = "";
 
     for (const tx of page.txs ?? []) {
@@ -400,6 +452,15 @@ export async function verifyAddressChange(claim: SessionClaim): Promise<VerifyAd
       if (candidateBare === oldBare) {
         hint = "same_address";
         hintError = "That payment came from your CURRENT wallet. Send it from the new wallet you want to switch to.";
+        continue;
+      }
+
+      // A Pocket (browser-held spending key) can never become a primary — the
+      // RPC re-checks transactionally (v3 'pocket_address'); this early check
+      // just keeps the challenge alive with a friendlier message.
+      if (await isPocketAddress(candidate)) {
+        hint = "pocket_address";
+        hintError = "That wallet is a Pocket (spending balance) — it can't become your main address. Pay from the real wallet you want to switch to.";
         continue;
       }
 
@@ -440,13 +501,17 @@ export async function verifyAddressChange(claim: SessionClaim): Promise<VerifyAd
         p_new_address: candidate,
       });
       if (rpcError) {
-        const inUse = String(rpcError.message ?? "").includes("address_in_use");
+        const msg = String(rpcError.message ?? "");
+        const inUse = msg.includes("address_in_use");
+        const isPocket = msg.includes("pocket_address");
         return {
           ok: false,
-          status: inUse ? "address_in_use" : "error",
-          error: inUse
-            ? "That wallet already has an account with activity on it. Log into that account and delete it if you want to reuse the wallet."
-            : rpcError.message ?? "Could not change the address.",
+          status: isPocket ? "pocket_address" : inUse ? "address_in_use" : "error",
+          error: isPocket
+            ? "That wallet is a Pocket (spending balance) — it can't become your main address."
+            : inUse
+              ? "That wallet already has an account with activity on it. Log into that account and delete it if you want to reuse the wallet."
+              : rpcError.message ?? "Could not change the address.",
         };
       }
       const absorbed = (swapResult as any)?.absorbed === true;

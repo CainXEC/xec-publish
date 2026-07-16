@@ -22,16 +22,22 @@ import Link from 'next/link'
 import { buildPaywallBip21, computePaymentSplit } from '@/lib/paymentSplit'
 import { encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
-import { payWithCashtab } from '@/lib/ecash/cashtabPay'
+// Pocket-aware: eligible unlocks sign locally (payDirect → known txid, no
+// address scan); everything else is the exact payWithCashtab behavior.
+import { payDirect } from '@/lib/pocket/payGateway'
 import { triggerPaymentSuccessEffect } from '@/lib/paymentSuccessEffect'
 
 export default function PaneUnlock({ postId, priceXec, authorAddress, slug, onUnlocked }) {
   const [phase, setPhase] = useState('idle') // idle | watching | finalizing
+  const [notice, setNotice] = useState('')
   const pollRef = useRef(null)
   const watchRef = useRef(null)
   const baselineRef = useRef('')
   const handledRef = useRef('')
   const doneRef = useRef(false)
+  // Set when the Pocket paid: we KNOW the txid, so every check verifies that
+  // tx directly instead of scanning the author's address history.
+  const pocketTxidRef = useRef('')
 
   const platformAddress = (process.env.NEXT_PUBLIC_PLATFORM_XEC_ADDRESS ?? '').trim()
   const split = priceXec != null ? computePaymentSplit(priceXec) : null
@@ -87,11 +93,15 @@ export default function PaneUnlock({ postId, priceXec, authorAddress, slug, onUn
   const checkLatest = useCallback(async () => {
     if (doneRef.current) return
     try {
-      const latestRes = await fetch(`/api/latest-tx/${encodeURIComponent(authorAddress)}`)
-      const latestData = await latestRes.json().catch(() => ({}))
-      const txid = latestRes.ok ? latestData.txid : ''
-      if (!txid || txid === baselineRef.current || txid === handledRef.current) return
-      handledRef.current = txid
+      // Pocket-paid: the txid is known — verify it directly, skip the scan.
+      let txid = pocketTxidRef.current
+      if (!txid) {
+        const latestRes = await fetch(`/api/latest-tx/${encodeURIComponent(authorAddress)}`)
+        const latestData = await latestRes.json().catch(() => ({}))
+        txid = latestRes.ok ? latestData.txid : ''
+        if (!txid || txid === baselineRef.current || txid === handledRef.current) return
+        handledRef.current = txid
+      }
 
       const verifyRes = await fetch('/api/verify-payment', {
         method: 'POST',
@@ -133,19 +143,34 @@ export default function PaneUnlock({ postId, priceXec, authorAddress, slug, onUn
     // can't outrun the watcher's handshake.
     prewarmPaymentWatch()
     setPhase('watching')
-    // Cashtab extension if the reader has it (in-page popup, no tab), else a
-    // Cashtab web tab — exactly one. If they reject in the extension popup,
-    // drop back to idle instead of waiting forever.
-    void payWithCashtab({ bip21, cashtabUrl }).then((res) => {
-      if (!res.ok && res.reason === 'denied' && !doneRef.current) {
-        stop()
-        setPhase('idle')
-      }
-    })
+    setNotice('')
+    // Pocket if eligible (signs locally — the .then below hands us the txid);
+    // else Cashtab extension popup or web tab — exactly one. If they reject
+    // in the extension popup, drop back to idle instead of waiting forever.
+    void payDirect({ kind: 'unlock', amountXec: Number(priceXec ?? 0), bip21, cashtabUrl }).then(
+      (res) => {
+        if (doneRef.current) return
+        if (res.ok && res.via === 'pocket' && res.txid) {
+          pocketTxidRef.current = res.txid
+          setPhase('finalizing')
+          void checkLatest()
+          return
+        }
+        if (!res.ok && res.reason === 'denied') {
+          stop()
+          setPhase('idle')
+        } else if (!res.ok && res.reason === 'pocket_error') {
+          // The watching loop (and its Cashtab link in the note below) stays
+          // live — paying from Cashtab still completes this unlock.
+          setNotice(res.message || 'Pocket couldn’t send — pay with Cashtab instead.')
+        }
+      },
+    )
 
     stop()
     doneRef.current = false
     handledRef.current = ''
+    pocketTxidRef.current = ''
     try {
       const res = await fetch(`/api/latest-tx/${encodeURIComponent(authorAddress)}`)
       const data = await res.json().catch(() => ({}))
@@ -160,7 +185,7 @@ export default function PaneUnlock({ postId, priceXec, authorAddress, slug, onUn
       () => void checkLatest(),
       () => void checkLatest(),
     )
-  }, [cashtabUrl, authorAddress, checkLatest, stop])
+  }, [cashtabUrl, bip21, priceXec, authorAddress, checkLatest, stop])
 
   const priceLabel = `${Number(priceXec ?? 0).toLocaleString()} XEC`
 
@@ -189,10 +214,15 @@ export default function PaneUnlock({ postId, priceXec, authorAddress, slug, onUn
         <>
           <p className="hr-watching">
             {phase === 'finalizing'
-              ? 'Payment detected — finalizing on eCash…'
+              ? pocketTxidRef.current
+                ? 'Paid from your Pocket — finalizing on eCash…'
+                : 'Payment detected — finalizing on eCash…'
               : 'Waiting for your payment…'}
           </p>
-          <p className="hr-note">Approve in the Cashtab tab — this pane unlocks itself in a few seconds.</p>
+          {!pocketTxidRef.current ? (
+            <p className="hr-note">Approve in the Cashtab tab — this pane unlocks itself in a few seconds.</p>
+          ) : null}
+          {notice ? <p className="hr-note">{notice}</p> : null}
           <button
             type="button"
             className="hr-cancelwait"

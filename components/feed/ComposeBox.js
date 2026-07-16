@@ -5,7 +5,10 @@ import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import EmojiPicker from '@/components/EmojiPicker'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
-import { beginCashtabPayment, completeCashtabPayment, abortCashtabPayment } from '@/lib/ecash/cashtabPay'
+// Pocket-aware gateway: identical contract to the cashtabPay trio. Pocket
+// eligible → local sign + instant broadcast (r.txid feeds the confirm poll);
+// otherwise the exact extension/web-tab behavior this file always had.
+import { beginPayment, completePayment, abortPayment } from '@/lib/pocket/payGateway'
 
 /**
  * Compose + pay flow for a feed post, reply, or quote. Shared by the top-of-feed
@@ -146,10 +149,15 @@ export default function ComposeBox({
     // Warm the shared Chronik ws now (before /prepare + Cashtab approval) so the
     // payment-address subscription is live the moment the payment lands.
     prewarmPaymentWatch()
-    // Decide extension-vs-tab AT the click gesture (never both). With the
-    // Cashtab extension this opens nothing; without it, it pre-opens about:blank
-    // so the deep link survives popup blockers once /prepare returns.
-    const gesture = beginCashtabPayment()
+    // Decide pocket-vs-Cashtab AT the click gesture (never both). Pocket
+    // eligible → opens nothing at all; extension → in-page popup; else
+    // pre-opens about:blank so the deep link survives popup blockers once
+    // /prepare returns. The client prices the post itself (priceFeedPost), so
+    // eligibility is decidable synchronously.
+    const handle = beginPayment({
+      kind: pollActive ? 'feed-poll' : `feed-${action}`,
+      amountXec: priced.costXec,
+    })
     try {
       const res = await fetch('/api/feed/prepare', {
         method: 'POST',
@@ -158,30 +166,37 @@ export default function ComposeBox({
       })
       const data = await res.json()
       if (!res.ok || !data.ok) {
-        abortCashtabPayment(gesture)
+        abortPayment(handle)
         setNotice(data.error || 'Could not start the payment. Try again.')
         return
       }
-      // Extension popup or the pre-opened tab — exactly one. A rejected popup
-      // drops back to the composer with the draft intact.
-      void completeCashtabPayment(gesture, {
+      // Pocket signs locally (txid feeds the confirm poll); Cashtab is the
+      // extension popup or the pre-opened tab — exactly one. A rejected popup
+      // drops back to the composer with the draft intact; a pocket failure
+      // keeps the paying screen, whose manual Cashtab link completes it.
+      void completePayment(handle, {
         bip21: data.bip21Url,
         cashtabUrl: data.cashtabUrl,
       }).then((r) => {
-        if (!r.ok && r.reason === 'denied') {
+        if (r.ok && r.via === 'pocket' && r.txid) {
+          setStatusMsg('Paid from your Pocket — recording on-chain…')
+          setIntent((prev) => (prev ? { ...prev, pocketTxid: r.txid } : prev))
+        } else if (!r.ok && r.reason === 'denied') {
           resetToCompose()
           setNotice('Payment cancelled — your draft is safe.')
+        } else if (!r.ok && r.reason === 'pocket_error') {
+          setNotice(r.message || 'Pocket couldn’t send — use the Cashtab link below.')
         }
       })
       setIntent(data)
       setPhase('paying')
     } catch {
-      abortCashtabPayment(gesture)
+      abortPayment(handle)
       setNotice('Network hiccup — try again.')
     } finally {
       setSubmitting(false)
     }
-  }, [content, action, parentTxid, quotedTxid, priced.ok, pollActive, pollEligibility, pollOptions, pollValid])
+  }, [content, action, parentTxid, quotedTxid, priced.ok, priced.costXec, pollActive, pollEligibility, pollOptions, pollValid, resetToCompose])
 
   // Poll for the on-chain payment while paying.
   useEffect(() => {
@@ -189,6 +204,9 @@ export default function ComposeBox({
     let stopped = false
     const confirm = async (manualTxid) => {
       try {
+        // A pocket-paid post knows its txid up front — send it so confirm does
+        // a single-tx verify (records on the first request, no address scan).
+        const knownTxid = manualTxid ?? intent.pocketTxid
         const res = await fetch('/api/feed/confirm', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -199,7 +217,7 @@ export default function ComposeBox({
             quotedTxid,
             poll: pollRef.current,
             since: intent.preparedAt,
-            ...(manualTxid ? { txid: manualTxid } : {}),
+            ...(knownTxid ? { txid: knownTxid } : {}),
           }),
         })
         const data = await res.json()

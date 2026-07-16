@@ -11,6 +11,9 @@ const mocks = vi.hoisted(() => ({
   findFeedPayment: vi.fn(async () => null),
   verifyFeedTxid: vi.fn(async () => null),
   resolveOrCreateAccount: vi.fn(async () => ({ accountId: 'acct-1', handle: 'alice' })),
+  // Pass-through by default: for a normal wallet payer the account's primary
+  // IS the payer, so payout/byline snapshots are unchanged by the pocket fix.
+  primaryAddressForAccount: vi.fn(async (_accountId, fallback) => fallback),
   verifySession: vi.fn(() => null),
   signSession: vi.fn(() => 'signed.session'),
 }))
@@ -32,7 +35,10 @@ vi.mock('@/lib/verifyFeedPost', () => ({
   findFeedPayment: mocks.findFeedPayment,
   verifyFeedTxid: mocks.verifyFeedTxid,
 }))
-vi.mock('@/lib/walletAuth', () => ({ resolveOrCreateAccount: mocks.resolveOrCreateAccount }))
+vi.mock('@/lib/walletAuth', () => ({
+  resolveOrCreateAccount: mocks.resolveOrCreateAccount,
+  primaryAddressForAccount: mocks.primaryAddressForAccount,
+}))
 vi.mock('@/lib/session', () => ({
   verifySession: mocks.verifySession,
   signSession: mocks.signSession,
@@ -62,6 +68,10 @@ function makeSupabase(resolver) {
         },
         eq(col, val) {
           state.filters[col] = val
+          return b
+        },
+        limit(n) {
+          state.limit = n
           return b
         },
         maybeSingle() {
@@ -230,6 +240,38 @@ describe('POST /api/feed/confirm', () => {
     // The 0-conf row is recorded provisionally; the reconcile sweep finalizes it.
     expect(insertedRow.finalized_at).toBeNull()
     expect(mocks.resolveOrCreateAccount).toHaveBeenCalledWith('ecash:qpayer')
+  })
+
+  it('snapshots payout + byline from the account PRIMARY when the payer is a linked non-primary wallet (the Pocket)', async () => {
+    // The payer is the pocket address; the account's primary is a different
+    // wallet. payout_address and the address byline must follow the PRIMARY
+    // (else replies would pay the hot pocket key), while payer_address keeps
+    // the true on-chain payer for forensics.
+    mocks.verifyFeedTxid.mockResolvedValue({
+      txid: PAY_TXID,
+      payerAddress: 'ecash:qpocket',
+      sats: 10000,
+      isFinal: true,
+    })
+    mocks.resolveOrCreateAccount.mockResolvedValue({ accountId: 'acct-1', handle: null })
+    mocks.primaryAddressForAccount.mockResolvedValue('ecash:qprimary')
+    let captured = null
+    useSupabase((state, term) => {
+      if (state.op === 'insert') {
+        captured = state.insertRow
+        return { data: { id: 'post-1', txid: PAY_TXID, action: 1, content: 'Hello world' }, error: null }
+      }
+      if (term === 'list') return { data: [], error: null }
+      return { data: null, error: null }
+    })
+    const { POST } = await import('@/app/api/feed/confirm/route')
+    const res = await POST(makeReq({ action: 'post', content: 'Hello world', txid: PAY_TXID }))
+    expect(res.status).toBe(200)
+    expect((await res.json()).status).toBe('posted')
+    expect(mocks.primaryAddressForAccount).toHaveBeenCalledWith('acct-1', 'ecash:qpocket')
+    expect(captured.payer_address).toBe('ecash:qpocket')
+    expect(captured.payout_address).toBe('ecash:qprimary')
+    expect(captured.author_identity).toBe('ecash:qprimary')
   })
 
   it('records a final paid post (finalized_at stamped) and mints a pay session', async () => {
@@ -411,6 +453,35 @@ describe('POST /api/feed/react/confirm', () => {
     // Already final at detection → born final, so the sweep never touches it.
     expect(captured.finalized_at).not.toBeNull()
     expect(mocks.resolveOrCreateAccount).toHaveBeenCalledWith('ecash:qfan')
+  })
+
+  it('dedupes a reaction per ACCOUNT across wallets (pocket like + wallet like = one record)', async () => {
+    // The DB unique key is per payer WALLET; an account with a Pocket has two.
+    // A like paid from the pocket when the account already liked from its main
+    // wallet must return the existing record, never insert a second one.
+    mocks.verifyFeedTxid.mockResolvedValue({
+      txid: PAY_TXID,
+      payerAddress: 'ecash:qpocket',
+      sats: 10000,
+      isFinal: true,
+    })
+    const walletLike = { id: 'evt-0', txid: 'b'.repeat(64), action: 5, target_txid: TXID_A, actor_account_id: 'acct-1' }
+    useSupabase((state, term) => {
+      if (state.op === 'insert') throw new Error('should not insert a second like for the same account')
+      if (state.table === 'feed_posts') return { data: liveTarget, error: null }
+      if (state.table === 'feed_events' && term === 'list') {
+        // The account-level dedupe query filters on actor_account_id.
+        if (state.filters.actor_account_id) return { data: [walletLike], error: null }
+        return { data: [], error: null } // exclude-txids scan
+      }
+      return { data: null, error: null } // txid idempotency lookup: not recorded
+    })
+    const { POST } = await import('@/app/api/feed/react/confirm/route')
+    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A, txid: PAY_TXID }))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.status).toBe('reacted')
+    expect(json.event.id).toBe('evt-0')
   })
 
   it('is idempotent on an already-recorded reaction txid', async () => {
