@@ -27,20 +27,6 @@ const REFRESH_MS = 5 * 60_000 // publishes are rare; the ticker announces them l
 const fmtPrice = (p) =>
   p != null && p > 0 ? `${Number(p).toLocaleString()} XEC` : 'free'
 
-function timeAgo(iso) {
-  const t = Date.parse(iso)
-  if (!Number.isFinite(t)) return ''
-  const s = Math.max(0, Math.floor((Date.now() - t) / 1000))
-  if (s < 3600) return `${Math.max(1, Math.floor(s / 60))}m ago`
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
-  if (s < 7 * 86400) return `${Math.floor(s / 86400)}d ago`
-  try {
-    return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-  } catch {
-    return ''
-  }
-}
-
 const isFresh = (iso) => Date.now() - Date.parse(iso) < 24 * 60 * 60 * 1000
 
 // Live masthead dateline: the date plus a ticking clock (with seconds). Its own
@@ -96,25 +82,27 @@ function FrontPageClock() {
   )
 }
 
-// Meta line: byline · price · (readers, else recency). Readers = verified
-// on-chain unlocks — circulation, not views.
-function metaLine(s) {
-  const parts = [s.author]
-  parts.push(fmtPrice(s.priceXec))
-  parts.push(s.readers > 0 ? `${s.readers} reader${s.readers === 1 ? '' : 's'}` : timeAgo(s.at))
-  return parts
+// Meta content: byline · price · 🔓 unlocks · 💬 comments. Unlocks are verified
+// on-chain reads (circulation, not views); comments exclude deleted. Shared by
+// the lead hero and the More-stories rows (each wraps it in its own class).
+function MetaInner({ story }) {
+  return (
+    <>
+      {story.author}
+      {' · '}
+      <span className="np-price">{fmtPrice(story.priceXec)}</span>
+      {' · '}
+      <span className="np-stat" title="unlocks">🔓 {Number(story.readers).toLocaleString()}</span>
+      {' · '}
+      <span className="np-stat" title="comments">💬 {Number(story.comments).toLocaleString()}</span>
+    </>
+  )
 }
 
 function Meta({ story }) {
-  const parts = metaLine(story)
   return (
     <div className="np-meta">
-      {parts.map((p, i) => (
-        <span key={i}>
-          {i > 0 ? ' · ' : ''}
-          {String(p).endsWith('XEC') ? <span className="np-price">{p}</span> : p}
-        </span>
-      ))}
+      <MetaInner story={story} />
     </div>
   )
 }
@@ -126,8 +114,6 @@ function Meta({ story }) {
 // story itself, so a reader opens it and scrolls down to unlock.
 function Lead({ story, now, onOpen }) {
   const open = onOpen ? (e) => onOpen(e, story.slug) : undefined
-  const parts = [story.author, fmtPrice(story.priceXec)]
-  parts.push(story.readers > 0 ? `${story.readers} reader${story.readers === 1 ? '' : 's'}` : timeAgo(story.at))
   return (
     <div className={`np-lead${now ? ' now' : ''}`}>
       <Link
@@ -142,12 +128,7 @@ function Lead({ story, now, onOpen }) {
         </span>
       </Link>
       <div className="np-lead-meta">
-        {parts.map((p, i) => (
-          <span key={i}>
-            {i > 0 ? ' · ' : ''}
-            {String(p).endsWith('XEC') ? <span className="np-price">{p}</span> : p}
-          </span>
-        ))}
+        <MetaInner story={story} />
       </div>
       {story.teaser ? (
         <Link

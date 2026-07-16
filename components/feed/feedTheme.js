@@ -755,6 +755,7 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 .pow-feed .np-kick{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--neon);margin:0 0 6px;}
 .pow-feed .np-meta{font-size:10.5px;color:var(--dim);line-height:1.5;}
 .pow-feed .np-price{color:var(--neon);}
+.pow-feed .np-stat{white-space:nowrap;font-variant-numeric:tabular-nums;}
 .pow-feed .np-sec{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);
   border-bottom:1px solid var(--line);padding:16px 0 5px;}
 /* the lead: a full newspaper hero — headline, meta beneath it, then a generous
