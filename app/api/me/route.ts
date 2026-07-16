@@ -86,5 +86,9 @@ export async function GET() {
     handleColor: account.handle_color ?? null,
     identity: account.display_handle ? `@${account.display_handle}` : primaryAddress,
     unlockedPostIds,
+    // 'challenge' (nonce-proven login) vs 'pay' (minted by a payment). The
+    // Pocket wizard checks this before attempting register, which requires
+    // challenge scope — same bar as change-address.
+    sessionVia: claim.via ?? null,
   });
 }

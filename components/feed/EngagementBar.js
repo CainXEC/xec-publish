@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { normalizeTipXec } from '@/lib/feedPricing'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
-import { beginCashtabPayment, completeCashtabPayment, abortCashtabPayment } from '@/lib/ecash/cashtabPay'
+// Pocket-aware gateway: identical contract to the cashtabPay trio. Pocket
+// eligible → local sign + instant broadcast (r.txid feeds the confirm poll);
+// otherwise the exact extension/web-tab behavior this file always had.
+import { beginPayment, completePayment, abortPayment } from '@/lib/pocket/payGateway'
 
 // Quick-pick tip amounts (XEC) shown in the like menu; the field takes any custom
 // amount. Labels abbreviate the thousands.
@@ -96,11 +99,11 @@ export default function EngagementBar({
       startingRef.current = true
       setNotice('')
       setTipError('')
-      // Decide extension-vs-tab AT the click gesture (never both). With the
-      // Cashtab extension this opens nothing; without it, it pre-opens
-      // about:blank so the deep link survives popup blockers once /prepare
-      // returns.
-      const gesture = beginCashtabPayment()
+      // Decide pocket-vs-Cashtab AT the click gesture (never both). Pocket
+      // eligible → opens nothing at all; extension → in-page popup; else
+      // pre-opens about:blank so the deep link survives popup blockers once
+      // /prepare returns.
+      const handle = beginPayment({ kind: action, amountXec: amount ?? 100 })
       // Warm the shared ws and flip the button optimistically so the reaction
       // feels instant; both are undone below if the payment can't be started.
       prewarmPaymentWatch()
@@ -117,28 +120,34 @@ export default function EngagementBar({
         })
         const data = await res.json()
         if (!res.ok || !data.ok) {
-          abortCashtabPayment(gesture)
+          abortPayment(handle)
           revertReaction(action)
           setNotice(data.error || 'Could not start the payment. Try again.')
           return
         }
-        // Extension popup or the pre-opened tab — exactly one. A rejected popup
-        // undoes the optimistic flip.
-        void completeCashtabPayment(gesture, {
+        // Pocket signs locally (txid feeds the confirm poll below); Cashtab is
+        // the extension popup or the pre-opened tab — exactly one. A rejected
+        // popup undoes the optimistic flip; a pocket failure keeps the pending
+        // UI, whose manual "Open Cashtab" path still completes the payment.
+        void completePayment(handle, {
           bip21: data.bip21Url,
           cashtabUrl: data.cashtabUrl,
         }).then((r) => {
-          if (!r.ok && r.reason === 'denied') {
+          if (r.ok && r.via === 'pocket' && r.txid) {
+            setIntent((prev) => (prev ? { ...prev, pocketTxid: r.txid } : prev))
+          } else if (!r.ok && r.reason === 'denied') {
             revertReaction(action)
             setPending(null)
             setIntent(null)
             setNotice('Payment cancelled.')
+          } else if (!r.ok && r.reason === 'pocket_error') {
+            setNotice(r.message || 'Pocket couldn’t send — use Open Cashtab below.')
           }
         })
         setIntent(data)
         setPending(action)
       } catch {
-        abortCashtabPayment(gesture)
+        abortPayment(handle)
         revertReaction(action)
         setNotice('Network hiccup — try again.')
       } finally {
@@ -154,6 +163,9 @@ export default function EngagementBar({
     let stopped = false
     const check = async (manualTxid) => {
       try {
+        // A pocket-paid reaction knows its txid up front — send it so confirm
+        // verifies THAT tx directly (records on the first request, no scan).
+        const knownTxid = manualTxid ?? intent.pocketTxid
         const res = await fetch('/api/feed/react/confirm', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -161,7 +173,7 @@ export default function EngagementBar({
             action: pending,
             targetTxid,
             since: intent.preparedAt,
-            ...(manualTxid ? { txid: manualTxid } : {}),
+            ...(knownTxid ? { txid: knownTxid } : {}),
           }),
         })
         const data = await res.json()
@@ -315,8 +327,16 @@ export default function EngagementBar({
       {pending && intent ? (
         <div className="reactpay">
           <p className="poll">
-            Confirm <strong>{intent.amountXec} XEC</strong> in Cashtab to{' '}
-            {isLike ? 'like' : 'repost'} this post…
+            {intent.pocketTxid ? (
+              <>
+                <strong>{intent.amountXec} XEC</strong> paid from your Pocket — recording on-chain…
+              </>
+            ) : (
+              <>
+                Confirm <strong>{intent.amountXec} XEC</strong> in Cashtab to{' '}
+                {isLike ? 'like' : 'repost'} this post…
+              </>
+            )}
           </p>
           <details className="manual">
             <summary>Cashtab didn&apos;t open, or already paid?</summary>

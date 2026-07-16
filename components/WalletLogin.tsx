@@ -88,6 +88,11 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
         setPhase("done");
         // hard navigation so every component re-reads auth via /api/me
         setTimeout(() => { if (typeof window !== "undefined") window.location.assign(redirectTo); }, 600);
+      } else if (j.status === "pocket_address") {
+        // Paid from the Pocket (spending balance) — that key can't authenticate.
+        // The nonce stays alive server-side, so paying again from the main
+        // wallet completes this SAME challenge; keep polling.
+        setNotice(j.error ?? "That payment came from your Pocket. Pay from your main Cashtab wallet instead.");
       } else if (j.status === "error") {
         setNotice(j.error ?? "Something went wrong verifying your login.");
       }

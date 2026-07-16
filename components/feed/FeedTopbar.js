@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import FeedNotifications from '@/components/feed/FeedNotifications'
+import PocketChip from '@/components/pocket/PocketChip'
 import ThemeToggle from '@/components/ThemeToggle'
 
 /**
@@ -133,6 +134,9 @@ export default function FeedTopbar({
       <div className="toplinks">
         {/* Text links — hidden on mobile (CSS), where they live in the hamburger. */}
         <span className="toplinks-text">{renderLinks('toplink')}</span>
+        {/* Spending-balance pill. Self-fetching (pocket store); renders null
+            when signed out or the pocket feature flag is off. */}
+        <PocketChip />
         <ThemeToggle variant="feed" />
       </div>
     </div>
