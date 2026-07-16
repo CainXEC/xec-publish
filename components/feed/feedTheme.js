@@ -738,7 +738,8 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 .pow-feed .np-mast{border-bottom:1px solid var(--line);
   padding:0 0 7px;text-align:center;font-size:12px;letter-spacing:.24em;text-transform:uppercase;
   color:var(--neon);text-shadow:0 0 10px rgba(0,255,156,.3);}
-.pow-feed .np-date{font-size:10px;color:var(--dim);text-align:center;margin:7px 0 14px;
+.pow-feed .np-date{font-size:10px;color:var(--dim);text-align:center;margin:7px 0 0;
+  padding-bottom:9px;border-bottom:1px solid var(--line);
   letter-spacing:.05em;text-transform:uppercase;font-variant-numeric:tabular-nums;}
 .pow-feed .np-empty{color:var(--dim);font-size:12px;line-height:1.6;margin:16px 0;text-align:center;}
 .pow-feed .np-kick{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--neon);margin:0 0 6px;}
