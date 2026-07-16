@@ -214,6 +214,8 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .poll-res-pct{position:relative;z-index:1;color:var(--dim);font-variant-numeric:tabular-nums;font-weight:700;}
 .pow-feed .poll-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px;color:var(--dim);}
 .pow-feed .poll-hint{margin-left:auto;color:var(--cyan);}
+.pow-feed .poll-hint-link{text-decoration:underline;text-underline-offset:2px;}
+.pow-feed .poll-hint-link:hover{color:var(--neon);}
 .pow-feed .poll-note{margin:2px 0 0;font-size:12.5px;color:var(--no);}
 
 /* ---- buttons ---- */

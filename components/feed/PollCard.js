@@ -13,6 +13,7 @@
 // =============================================================================
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 
 const pct = (n, total) => (total > 0 ? Math.round((n / total) * 100) : 0)
 
@@ -90,10 +91,11 @@ export default function PollCard({ post }) {
     eligibility === 'handle' ? 'Handle-holders only' : 'Open to all members'
   const votesLabel = `${total.toLocaleString()} vote${total === 1 ? '' : 's'}`
 
+  // Logged-out → a link to /login; logged-in-but-ineligible → a plain note.
+  const needsLogin = !loading && !yourVote && !state?.loggedIn
   let hint = ''
-  if (!loading && !yourVote) {
-    if (!state?.loggedIn) hint = 'Log in to vote.'
-    else if (!state?.eligible) hint = 'Only handle-holders can vote in this poll.'
+  if (!loading && !yourVote && state?.loggedIn && !state?.eligible) {
+    hint = 'Only handle-holders can vote in this poll.'
   }
 
   // Stop clicks inside the poll from bubbling up to the post's open-thread
@@ -142,7 +144,13 @@ export default function PollCard({ post }) {
           ·
         </span>
         <span>{audienceLabel}</span>
-        {hint ? <span className="poll-hint">{hint}</span> : null}
+        {needsLogin ? (
+          <Link href="/login" className="poll-hint poll-hint-link">
+            Log in to vote.
+          </Link>
+        ) : hint ? (
+          <span className="poll-hint">{hint}</span>
+        ) : null}
       </div>
       {note ? <p className="poll-note">{note}</p> : null}
     </div>
