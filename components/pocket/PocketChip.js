@@ -33,7 +33,7 @@ export default function PocketChip() {
   )
 }
 
-/** A shirt pocket: pentagon body with a pointed hem + the flap stitch line. */
+/** A shirt pocket: flat rounded-bottom body + the flap stitch line. */
 function PocketIcon() {
   return (
     <svg
@@ -47,7 +47,7 @@ function PocketIcon() {
       strokeLinejoin="round"
       aria-hidden
     >
-      <path d="M5 4h14v9l-7 7-7-7z" />
+      <path d="M5 4h14v12a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z" />
       <path d="M5 9h14" />
     </svg>
   )
