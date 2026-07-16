@@ -5,14 +5,15 @@
 //  Below 1100px (where the desktop rails don't show) this fixed bar owns
 //  navigation, so the topbar hamburger goes away: Feed / Front Page / Live /
 //  Marketplace / You. The two rails that only exist as desktop columns get
-//  full-screen routes here (/paper, /live). "You" points at /dashboard, which
-//  redirects to /login for signed-out visitors — so the bar needs no auth
-//  awareness. Hidden at ≥1100px (CSS), where the three columns + topbar nav
-//  take over. Mounted once, globally, in the root layout.
+//  full-screen routes here (/paper, /live). The last tab is "You" → /dashboard
+//  for signed-in visitors, and "Login" → /login for signed-out ones (checked
+//  via /api/me, re-checked on `sessionChanged`). Hidden at ≥1100px (CSS), where
+//  the three columns + topbar nav take over. Mounted once, globally, in layout.
 // =============================================================================
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 const HOME = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -54,10 +55,43 @@ const TABS = [
 
 export default function BottomNav() {
   const pathname = usePathname() || '/'
+  // null = unknown (pre-fetch). Signed-out visitors get a "Login" tab instead
+  // of "You"; re-checked on `sessionChanged` (paying doubles as login).
+  const [authed, setAuthed] = useState(null)
+
+  useEffect(() => {
+    let alive = true
+    const check = () => {
+      fetch('/api/me', { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((d) => {
+          if (alive) setAuthed(Boolean(d?.authenticated))
+        })
+        .catch(() => {})
+    }
+    check()
+    window.addEventListener('sessionChanged', check)
+    return () => {
+      alive = false
+      window.removeEventListener('sessionChanged', check)
+    }
+  }, [])
+
+  const tabs = TABS.map((t) =>
+    t.href === '/dashboard' && authed === false
+      ? {
+          ...t,
+          href: '/login',
+          label: 'Login',
+          match: (p) => p.startsWith('/login') || p.startsWith('/dashboard'),
+        }
+      : t,
+  )
+
   return (
     <nav className="pow-bnav" aria-label="Primary">
       <style>{CSS}</style>
-      {TABS.map((t) => {
+      {tabs.map((t) => {
         const on = t.match(pathname)
         return (
           <Link
