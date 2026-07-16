@@ -42,22 +42,29 @@ beforeEach(() => {
 })
 
 describe('spendEligibility', () => {
-  it('accepts an allowlisted, affordable, under-cap action', async () => {
+  it('accepts any affordable action — the balance is the only price limit', async () => {
     const { spendEligibility } = await import('@/lib/pocket/payGateway')
     expect(spendEligibility('like', 100).eligible).toBe(true)
     expect(spendEligibility('unlock', 1000).eligible).toBe(true)
+    expect(spendEligibility('publish', 1000).eligible).toBe(true)
+    // balanceSats is 1_000_000 (= 10,000 XEC): a 9,900 XEC tip fits...
+    expect(spendEligibility('tip', 9900).eligible).toBe(true)
+    // ...and a bigger balance affords a bigger tip. No per-payment ceiling.
+    mocks.snapshot = { ...mocks.snapshot, balanceSats: 3_000_000 }
+    expect(spendEligibility('tip', 25_000).eligible).toBe(true)
   })
 
-  it('routes big-ticket kinds to Cashtab regardless of balance (tier by value)', async () => {
+  it('routes structural exclusions to Cashtab regardless of balance', async () => {
     const { spendEligibility } = await import('@/lib/pocket/payGateway')
-    for (const kind of ['publish', 'mint', 'login', 'change-address', 'anything-else']) {
+    // Proof-of-keys flows and NFT deliveries never touch the pocket; unknown
+    // kinds fall through as a backstop.
+    for (const kind of ['mint', 'claim', 'login', 'change-address', 'anything-else']) {
       expect(spendEligibility(kind, 100)).toEqual({ eligible: false, reason: 'kind' })
     }
   })
 
-  it('enforces the per-tx ceiling and the fee margin', async () => {
-    const { spendEligibility, POCKET_MAX_PER_TX_XEC } = await import('@/lib/pocket/payGateway')
-    expect(spendEligibility('tip', POCKET_MAX_PER_TX_XEC + 1)).toEqual({ eligible: false, reason: 'over_max' })
+  it('enforces the fee margin (affordable means price + network fee)', async () => {
+    const { spendEligibility } = await import('@/lib/pocket/payGateway')
     // 100 XEC = 10_000 sats; balance of exactly 10_000 leaves no fee headroom.
     mocks.snapshot = { ...mocks.snapshot, balanceSats: 10_000 }
     expect(spendEligibility('like', 100)).toEqual({ eligible: false, reason: 'balance' })
@@ -135,7 +142,7 @@ describe('beginPayment / completePayment', () => {
   })
 })
 
-describe('payDirect (known-bip21 flows: unlock)', () => {
+describe('payDirect (known-bip21 flows: unlock, publish)', () => {
   it('pays from the pocket when eligible', async () => {
     const { payDirect } = await import('@/lib/pocket/payGateway')
     const r = await payDirect({ kind: 'unlock', amountXec: 500, ...PAY })
@@ -149,6 +156,24 @@ describe('payDirect (known-bip21 flows: unlock)', () => {
     expect(mocks.payWithCashtab).toHaveBeenCalledWith(PAY)
     expect(mocks.pocketSpend).not.toHaveBeenCalled()
     expect(r.via).toBe('extension')
+  })
+
+  it('reads the price off the BIP21 when amountXec is omitted', async () => {
+    const { payDirect } = await import('@/lib/pocket/payGateway')
+    const addr = 'qp5kphz2sq69fsaw6su5gn3fpsa5wp6j7yw8rpf3fd'
+    // 1,000 XEC — affordable on the 10,000 XEC balance → pocket.
+    const cheap = { bip21: `ecash:${addr}?amount=1000`, cashtabUrl: 'https://cashtab.com/#/send?bip21=x' }
+    const r1 = await payDirect({ kind: 'publish', ...cheap })
+    expect(r1.via).toBe('pocket')
+    // 50,000 XEC — beyond the balance → Cashtab, automatically.
+    const pricey = { bip21: `ecash:${addr}?amount=50000`, cashtabUrl: 'https://cashtab.com/#/send?bip21=x' }
+    const r2 = await payDirect({ kind: 'publish', ...pricey })
+    expect(mocks.payWithCashtab).toHaveBeenCalledWith(pricey)
+    expect(r2.via).toBe('extension')
+    // Unparseable BIP21 → never the pocket.
+    mocks.payWithCashtab.mockClear()
+    await payDirect({ kind: 'publish', bip21: `ecash:${addr}?amount=1&mystery=1`, cashtabUrl: 'x' })
+    expect(mocks.payWithCashtab).toHaveBeenCalled()
   })
 })
 

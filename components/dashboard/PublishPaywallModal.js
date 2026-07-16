@@ -4,7 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { triggerPaymentSuccessEffect } from '@/lib/paymentSuccessEffect'
 import { buildPublishFeeBip21 } from '@/lib/paymentSplit'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
-import { payWithCashtab } from '@/lib/ecash/cashtabPay'
+// Pocket-aware: a funded Pocket pays the flat publish fee locally (payDirect →
+// known txid, no address scan); otherwise the exact payWithCashtab behavior.
+import { payDirect } from '@/lib/pocket/payGateway'
 import {
   getSharedAudioContext,
   primeAudioContextOnUserGesture,
@@ -27,6 +29,9 @@ export default function PublishPaywallModal({
   const watchRef = useRef(null)
   const baselineTxidRef = useRef('')
   const lastHandledTxidRef = useRef('')
+  // Set when the Pocket paid the fee: the txid is KNOWN, so verification
+  // targets that tx directly instead of scanning the platform address.
+  const pocketTxidRef = useRef('')
   const publishAudioContextRef = useRef(null)
   const onPaymentConfirmedRef = useRef(onPaymentConfirmed)
   const onPublishPaymentPollingEndedRef = useRef(onPublishPaymentPollingEnded)
@@ -167,15 +172,19 @@ export default function PublishPaywallModal({
 
     const checkLatest = async () => {
       try {
-        const latestTxRes = await fetch(
-          `/api/latest-tx/${encodeURIComponent(platformAddressForLatestTx)}`,
-        )
-        const latestTxData = await latestTxRes.json().catch(() => ({}))
-        const latestTxid = latestTxRes.ok ? latestTxData.txid : ''
-        if (!latestTxid) return
-        if (latestTxid === baselineTxidRef.current) return
-        if (latestTxid === lastHandledTxidRef.current) return
-        lastHandledTxidRef.current = latestTxid
+        // Pocket-paid: the txid is known — verify it directly, skip the scan.
+        let latestTxid = pocketTxidRef.current
+        if (!latestTxid) {
+          const latestTxRes = await fetch(
+            `/api/latest-tx/${encodeURIComponent(platformAddressForLatestTx)}`,
+          )
+          const latestTxData = await latestTxRes.json().catch(() => ({}))
+          latestTxid = latestTxRes.ok ? latestTxData.txid : ''
+          if (!latestTxid) return
+          if (latestTxid === baselineTxidRef.current) return
+          if (latestTxid === lastHandledTxidRef.current) return
+          lastHandledTxidRef.current = latestTxid
+        }
 
         const verifyRes = await fetch('/api/verify-publish-payment', {
           method: 'POST',
@@ -274,13 +283,21 @@ export default function PublishPaywallModal({
     } catch {
       /* ignore */
     }
-    // Cashtab extension if the author has it (in-page popup, no tab), else a
-    // Cashtab web tab — exactly one. Rejecting in the extension popup drops
-    // back out of the waiting state.
-    void payWithCashtab({
+    pocketTxidRef.current = ''
+    // Pocket if it can cover the flat fee (signs locally; .then hands us the
+    // txid), else Cashtab extension popup or web tab — exactly one. Rejecting
+    // in the extension popup drops back out of the waiting state.
+    void payDirect({
+      kind: 'publish',
+      amountXec: PUBLISH_FEE_XEC,
       bip21: publishFeeBip21Url,
       cashtabUrl: publishFeeCashtabUrl,
     }).then((res) => {
+      if (res.ok && res.via === 'pocket' && res.txid) {
+        // Known txid: the verify loop targets it directly from now on.
+        pocketTxidRef.current = res.txid
+        return
+      }
       if (!res.ok && res.reason === 'denied') {
         stopPublishFeePolling()
         setWaiting(false)
@@ -289,6 +306,10 @@ export default function PublishPaywallModal({
         } catch {
           /* ignore */
         }
+      } else if (!res.ok && res.reason === 'pocket_error') {
+        // Keep the waiting UI (its manual Cashtab link still completes the
+        // payment); surface why the silent path didn't run.
+        setPayError(res.message || 'Pocket couldn’t send — pay with Cashtab instead.')
       }
     })
     onCashtabOpened?.()
