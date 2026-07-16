@@ -155,13 +155,21 @@ export const FEED_CSS = `
   font:inherit;font-size:15px;line-height:1.55;box-sizing:border-box;min-height:72px;max-height:360px;overflow-y:auto;
   display:block;}
 .pow-feed .compose textarea::placeholder{color:#37655a;}
-.pow-feed .composebar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;
-  border-top:1px solid var(--line);padding-top:12px;}
+.pow-feed .composebar{display:flex;align-items:center;justify-content:space-between;gap:12px 10px;margin-top:12px;
+  border-top:1px solid var(--line);padding-top:12px;flex-wrap:wrap;}
 .pow-feed .barleft{display:flex;align-items:center;gap:8px;}
 .pow-feed .count{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;}
 .pow-feed .count.over{color:var(--no);}
 .pow-feed .count .cost{margin-left:10px;color:var(--neon);}
-.pow-feed .barbtns{display:flex;align-items:center;gap:10px;}
+/* margin-left:auto keeps the buttons right-aligned whether they sit next to the
+   emoji/count or wrap to their own line on a narrow phone (was overflowing the
+   card edge before flex-wrap). */
+.pow-feed .barbtns{display:flex;align-items:center;gap:10px;margin-left:auto;}
+/* Tighten the pay/cancel buttons on phones so they fit on one line where they can. */
+@media (max-width:480px){
+  .pow-feed .composebar .btn{padding:9px 13px;letter-spacing:.03em;}
+  .pow-feed .composebar .ghost{padding:9px 12px;}
+}
 
 /* ---- poll composer (ComposeBox: 📊 toggle + option inputs + eligibility) ---- */
 .pow-feed .polltoggle{display:inline-flex;align-items:center;justify-content:center;background:transparent;
