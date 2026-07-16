@@ -45,6 +45,7 @@ type RailStory = {
   author: string;
   readers: number;
   readers7d: number;
+  comments: number;
 };
 
 const bare = (address: string) => address.replace(/^ecash:/, "").toLowerCase();
@@ -72,16 +73,21 @@ export async function GET() {
   const posts = ((postsQ.data ?? []) as PostRow[]).filter((p) => p.slug && p.title);
   const ids = posts.map((p) => p.id);
 
-  // ---- readers: all-time (display) + 7-day (ranking), via the shared RPC ----
+  // ---- readers: all-time (display) + 7-day (ranking) + comment counts ----
   const readers = new Map<string, number>();
   const readers7d = new Map<string, number>();
+  const comments = new Map<string, number>();
   if (ids.length > 0) {
-    const [allTime, week] = await Promise.all([
+    const [allTime, week, commentRes] = await Promise.all([
       fetchAllUnlockCountRows(supabase, ids, null),
       fetchAllUnlockCountRows(supabase, ids, since7d),
+      supabase.rpc("get_comment_counts", { post_ids: ids }),
     ]);
     for (const r of allTime.rows ?? []) readers.set(r.post_id, Number(r.count) || 0);
     for (const r of week.rows ?? []) readers7d.set(r.post_id, Number(r.count) || 0);
+    for (const r of (commentRes.data ?? []) as Array<{ post_id: string; count: number }>) {
+      comments.set(r.post_id, Number(r.count) || 0);
+    }
   }
 
   // ---- author bylines: account display handle, else the author's address ----
@@ -111,6 +117,7 @@ export async function GET() {
     author: (p.author_id ? byline.get(p.author_id) : null) ?? "an author",
     readers: readers.get(p.id) ?? 0,
     readers7d: readers7d.get(p.id) ?? 0,
+    comments: comments.get(p.id) ?? 0,
   }));
 
   // ---- the legible ranking: a LEAD story, then MORE STORIES in chronology.
