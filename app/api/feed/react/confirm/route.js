@@ -6,7 +6,7 @@ import { createServerSupabase } from '@/lib/supabase-server'
 import { FEED_MIN_XEC } from '@/lib/feedPricing'
 import { FEED_ACTION } from '@/lib/feedProtocol'
 import { findFeedPayment, verifyFeedTxid } from '@/lib/verifyFeedPost'
-import { resolveOrCreateAccount } from '@/lib/walletAuth'
+import { resolveOrCreateAccount, primaryAddressForAccount } from '@/lib/walletAuth'
 import { recordFeedNotification } from '@/lib/feedNotifications'
 import {
   verifySession,
@@ -126,7 +126,24 @@ export async function POST(request) {
   }
 
   const resolved = await resolveOrCreateAccount(match.payerAddress)
-  const actorIdentity = identityFor(match.payerAddress, resolved.handle)
+  // Byline snapshots the account's primary, never a linked pocket address.
+  const displayAddress = await primaryAddressForAccount(resolved.accountId, match.payerAddress)
+  const actorIdentity = identityFor(displayAddress, resolved.handle)
+
+  // The DB unique key is (action, target, payer_address) — per WALLET. An
+  // account with a Pocket has two wallets, so also dedupe per ACCOUNT here:
+  // a wallet like + a pocket like on the same post must not double-record
+  // (the payment already happened either way; we just don't double-count).
+  const { data: sameAccountRows } = await supabase
+    .from('feed_events')
+    .select(FEED_EVENT_COLUMNS)
+    .eq('action', action)
+    .eq('target_txid', targetTxid)
+    .eq('actor_account_id', resolved.accountId)
+    .limit(1)
+  if (sameAccountRows?.[0]) {
+    return NextResponse.json({ ok: true, status: 'reacted', event: sameAccountRows[0] })
+  }
 
   const row = {
     txid: match.txid,

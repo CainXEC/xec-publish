@@ -7,7 +7,7 @@ import { priceFeedPost } from '@/lib/feedPricing'
 import { contentHashHex, FEED_ACTION } from '@/lib/feedProtocol'
 import { verifyCommentTxid, findCommentPayment } from '@/lib/verifyFeedPost'
 import { resolveCommenter, resolveParentPayout, toEcashAddr } from '@/lib/commentGate'
-import { resolveOrCreateAccount } from '@/lib/walletAuth'
+import { resolveOrCreateAccount, primaryAddressForAccount } from '@/lib/walletAuth'
 import { recordArticleNotification, recordFeedNotification } from '@/lib/feedNotifications'
 import {
   verifySession,
@@ -161,9 +161,14 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, status: 'posted', comment: already })
   }
 
-  // Byline follows the PROVEN payer wallet (proof of writing), like the feed.
+  // Byline follows the PROVEN payer's ACCOUNT (proof of writing), like the
+  // feed. Payout + byline snapshot the account's LIVE primary, not the raw
+  // payer: a comment paid from the Pocket must still route replies' earnings
+  // to the real payout wallet, never the hot pocket key. For a normal wallet
+  // payer, primary == payer (no change).
   const resolved = await resolveOrCreateAccount(match.payerAddress)
-  const authorIdentity = identityFor(match.payerAddress, resolved.handle)
+  const displayAddress = await primaryAddressForAccount(resolved.accountId, match.payerAddress)
+  const authorIdentity = identityFor(displayAddress, resolved.handle)
 
   const row = {
     post_id: postId,
@@ -176,7 +181,7 @@ export async function POST(request) {
     author_account_id: resolved.accountId,
     author_identity: authorIdentity,
     payer_address: match.payerAddress,
-    payout_address: match.payerAddress, // snapshot: replies to THIS comment pay the commenter
+    payout_address: displayAddress, // snapshot: replies to THIS comment pay the commenter's account
     amount_sats: match.sats,
     finalized_at: finalizedAt,
   }

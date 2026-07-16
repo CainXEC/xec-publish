@@ -1,7 +1,17 @@
 -- =============================================================================
 --  change_primary_address(p_account_id, p_new_address) — atomically move an
 --  account's identity + payout to a NEW wallet address. v2: absorbs empty
---  shell accounts.
+--  shell accounts. v3: pocket guards (run sql/pocket_wallets.sql FIRST — it
+--  adds the account_addresses.kind column this version references).
+--
+--  POCKET GUARDS (v3): a kind='pocket' address is a browser-held spending key
+--  (see sql/pocket_wallets.sql). It must never become anyone's primary — a
+--  stolen pocket key could otherwise pay the change-address challenge and
+--  promote itself into (or absorb) an account, escalating "steal the pocket
+--  change" into "own the account". Three rules:
+--    1. the candidate address being pocket-kind anywhere → 'pocket_address',
+--    2. a shell owning ANY pocket rows is never absorbed → 'address_in_use',
+--    3. the promote-UPDATE skips kind='pocket' rows (belt and braces).
 --
 --  The address lives in three DB places that must never diverge:
 --    1. account_addresses.is_primary  — login identity / handle-ownership anchor
@@ -90,6 +100,17 @@ begin
     raise exception 'account_not_found';
   end if;
 
+  -- v3: a pocket address (browser-held spending key) can never become a
+  -- primary. Whoever holds that key proved only pocket control — promoting it
+  -- would hand them the account.
+  if exists (
+    select 1 from account_addresses
+     where lower(replace(address, 'ecash:', '')) = v_bare
+       and kind = 'pocket'
+  ) then
+    raise exception 'pocket_address';
+  end if;
+
   -- Does the new address belong to another account?
   select account_id into v_shell_id
     from account_addresses
@@ -104,6 +125,13 @@ begin
       from accounts where id = v_shell_id for update;
     if not found then
       v_shell_id := null; -- vanished mid-flight; treat as unclaimed
+    elsif exists (select 1 from account_addresses
+                   where account_id = v_shell_id and kind = 'pocket')
+       or exists (select 1 from pocket_wallets where account_id = v_shell_id)
+    then
+      -- v3: an account that owns pocket rows is somebody's REAL account (they
+      -- registered a pocket from a challenge session) — never absorb it.
+      raise exception 'address_in_use';
     elsif exists (select 1 from feed_posts   where author_account_id   = v_shell_id)
        or exists (select 1 from feed_events  where actor_account_id    = v_shell_id)
        or exists (select 1 from feed_follows where follower_account_id = v_shell_id
@@ -153,10 +181,13 @@ begin
    where account_id = p_account_id and is_primary;
 
   -- Promote an existing link for this address, or insert a fresh one.
+  -- (kind <> 'pocket' is belt-and-braces: the v3 top guard already rejected
+  -- pocket candidates before anything moved.)
   update account_addresses
      set is_primary = true, verified_at = v_now
    where account_id = p_account_id
-     and lower(replace(address, 'ecash:', '')) = v_bare;
+     and lower(replace(address, 'ecash:', '')) = v_bare
+     and kind <> 'pocket';
   if not found then
     insert into account_addresses (account_id, address, is_primary, verified_at)
     values (p_account_id, v_pref, true, v_now);
