@@ -84,7 +84,6 @@ export default function NewPostForm({
   const [focusMode, setFocusMode] = useState(false)
 
   const [submitting, setSubmitting] = useState(false)
-  const [publishPaymentWaiting, setPublishPaymentWaiting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
   const [autosaveStatus, setAutosaveStatus] = useState(() =>
     editingPostId ? 'Saved' : 'Draft not yet saved',
@@ -141,8 +140,11 @@ export default function NewPostForm({
         setSubmitError(result?.error || 'Could not publish post.')
         return
       }
+      // Warm the OG cache in the background — it's a nicety for social crawlers,
+      // not a prerequisite for the author landing on their dashboard. Awaiting it
+      // added ~1s of dead time before navigation.
       if (result.id) {
-        await warmOgImageForPost(result.id)
+        void warmOgImageForPost(result.id).catch(() => {})
       }
       router.push('/dashboard')
       router.refresh()
@@ -151,7 +153,6 @@ export default function NewPostForm({
       setSubmitError(msg)
     } finally {
       setSubmitting(false)
-      setPublishPaymentWaiting(false)
     }
   }, [persistDraft, router])
 
@@ -265,6 +266,11 @@ export default function NewPostForm({
         return
       }
 
+      // Hand the modal its postId now, before the publish round-trip, so it can
+      // prefetch the publish envelope in parallel. By the time we learn payment is
+      // needed and open the dialog, the Pay button is already lit — no flicker.
+      setPublishPaywallPostId(draftId)
+
       // Attempt to go live — savePost enforces the publish-payment gate.
       const pubResult = await persistDraft({
         forceId: draftId,
@@ -272,8 +278,6 @@ export default function NewPostForm({
       })
       if (pubResult?.unauthorized) return
       if (pubResult?.needsPayment) {
-        setPublishPaywallPostId(draftId)
-        setPublishPaymentWaiting(false)
         setShowPublishPaywall(true)
         return
       }
@@ -282,7 +286,7 @@ export default function NewPostForm({
         return
       }
       if (pubResult.id) {
-        await warmOgImageForPost(pubResult.id)
+        void warmOgImageForPost(pubResult.id).catch(() => {})
       }
 
       router.push('/dashboard')
@@ -442,25 +446,15 @@ export default function NewPostForm({
               </p>
             ) : null}
 
-            {publishPaymentWaiting ? (
-              <div className="pf-waiting">
-                <div className="pf-waiting-row">
-                  <span aria-hidden className="pf-spinner" />
-                  <p className="pf-waiting-title">Waiting for payment...</p>
-                </div>
-                <p className="pf-waiting-sub">This usually takes a few seconds</p>
-              </div>
-            ) : (
-              <button type="submit" disabled={submitting} className="btn pf-submit">
-                {submitting
-                  ? 'Saving…'
-                  : isEditMode
-                    ? 'Save changes'
-                    : published
-                      ? 'Create post'
-                      : 'Save draft'}
-              </button>
-            )}
+            <button type="submit" disabled={submitting} className="btn pf-submit">
+              {submitting
+                ? 'Saving…'
+                : isEditMode
+                  ? 'Save changes'
+                  : published
+                    ? 'Create post'
+                    : 'Save draft'}
+            </button>
           </form>
         </section>
         </main>
@@ -478,14 +472,9 @@ export default function NewPostForm({
 
       <PublishPaywallModal
         isOpen={showPublishPaywall}
-        onClose={() => {
-          setShowPublishPaywall(false)
-          setPublishPaymentWaiting(false)
-        }}
+        onClose={() => setShowPublishPaywall(false)}
         postId={publishPaywallPostId ?? ''}
         onPaymentConfirmed={handlePublishPaymentConfirmed}
-        onCashtabOpened={() => setPublishPaymentWaiting(true)}
-        onPublishPaymentPollingEnded={() => setPublishPaymentWaiting(false)}
       />
     </div>
   )
@@ -518,19 +507,10 @@ const FORM_CSS = `
 .pow-feed .pf-check input{width:16px;height:16px;accent-color:var(--neon);cursor:pointer;}
 .pow-feed .pf-check label{font-size:13px;color:var(--text);}
 .pow-feed .pf-submit{margin-top:24px;}
-.pow-feed .pf-waiting{margin-top:24px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);
-  padding:14px 16px;}
-.pow-feed .pf-waiting-row{display:flex;align-items:center;gap:12px;}
-.pow-feed .pf-spinner{width:16px;height:16px;flex:none;border-radius:50%;border:2px solid var(--line);
-  border-top-color:var(--neon);animation:pf-spin .7s linear infinite;}
-@keyframes pf-spin{to{transform:rotate(360deg);}}
-.pow-feed .pf-waiting-title{margin:0;font-size:13px;font-weight:700;color:var(--text);}
-.pow-feed .pf-waiting-sub{margin:6px 0 0;font-size:12px;color:var(--dim);}
 /* reframe the tiptap widget so it reads as part of the neon panel */
 .pow-feed .pf-editor{margin-top:8px;}
 .pow-feed .pf-editor .rich-text-editor{border-color:var(--line)!important;background:var(--panel2)!important;}
 .pow-feed .pf-editor [role="toolbar"]{background:var(--panel)!important;border-color:var(--line)!important;}
-@media (prefers-reduced-motion:reduce){.pow-feed .pf-spinner{animation:none!important;}}
 
 /* panel header row: title + focus toggle */
 .pow-feed .pf-head{display:flex;align-items:center;justify-content:space-between;gap:12px;}

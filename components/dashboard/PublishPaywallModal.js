@@ -38,6 +38,14 @@ export default function PublishPaywallModal({
   // verify-publish-payment's "does not match" hard-stop and strand this one.
   const pocketExpectedRef = useRef(false)
   const publishAudioContextRef = useRef(null)
+  // Fires the success chime + navigation exactly once. The poll interval and the
+  // Chronik websocket can both reach the "paid" branch in the same instant; without
+  // this latch each would ding and each would run onPaymentConfirmed (double publish
+  // + double ding). Re-armed at the start of every pay attempt (startPublishFeePolling).
+  const settledRef = useRef(false)
+  // The postId whose publish envelope we've already fetched — so prefetching (below)
+  // doesn't refetch on every re-render, and a switch to a new post drops the stale one.
+  const preparedPostIdRef = useRef('')
   const onPaymentConfirmedRef = useRef(onPaymentConfirmed)
   const onPublishPaymentPollingEndedRef = useRef(onPublishPaymentPollingEnded)
 
@@ -61,12 +69,20 @@ export default function PublishPaywallModal({
 
   // Fetch the POWR publish envelope (OP_6) from the server, which hashes the
   // canonical stored body so the on-chain contentHash always matches what the
-  // verify route recomputes. Runs when the modal opens for a given post.
+  // verify route recomputes. Runs as soon as we have a postId — the form sets it
+  // BEFORE it flips the modal open, so the envelope is usually in hand by the time
+  // the dialog paints and the Pay button is lit on first frame (no "off then on"
+  // flicker). The [isOpen] dep keeps a retry path: if the prefetch is still in
+  // flight (or failed) when the modal opens, this re-runs and fetches once more.
   useEffect(() => {
-    if (!isOpen || !postId) {
+    if (!postId) {
       setOpReturnRaw('')
+      preparedPostIdRef.current = ''
       return
     }
+    // Already have this post's envelope (from the prefetch) — don't refetch on the
+    // modal-open re-render; the button is already lit and the value is current.
+    if (preparedPostIdRef.current === postId) return
     let alive = true
     void (async () => {
       try {
@@ -77,7 +93,9 @@ export default function PublishPaywallModal({
         const data = await res.json().catch(() => ({}))
         if (!alive) return
         if (res.ok && data.opReturnRaw) {
+          preparedPostIdRef.current = postId
           setOpReturnRaw(data.opReturnRaw)
+          setPayError(null)
         } else {
           setOpReturnRaw('')
           setPayError(
@@ -145,6 +163,12 @@ export default function PublishPaywallModal({
     if (!isOpen) {
       stopPublishFeePolling()
       setWaiting(false)
+      // Drop the prepared envelope on close so re-publishing the same draft — whose
+      // body may have been edited in between — refetches a fresh content hash rather
+      // than paying against a stale one. The common first-publish path is untouched:
+      // the envelope is only cleared once the dialog actually closes.
+      setOpReturnRaw('')
+      preparedPostIdRef.current = ''
     }
   }, [isOpen, stopPublishFeePolling])
 
@@ -157,6 +181,9 @@ export default function PublishPaywallModal({
 
   const startPublishFeePolling = useCallback(() => {
     if (!postId || !platformAddressForLatestTx) return
+
+    // Fresh attempt: re-arm the settle latch so this payment's success can fire.
+    settledRef.current = false
 
     if (pollRef.current) {
       clearInterval(pollRef.current)
@@ -206,6 +233,11 @@ export default function PublishPaywallModal({
         const verifyData = await verifyRes.json().catch(() => ({}))
 
         if (verifyRes.ok && (verifyData.paid === true || verifyData.already_paid === true)) {
+          // Settle exactly once. The 1.2s poll tick and the Chronik websocket can
+          // both reach this branch in the same instant; the latch stops the second
+          // from dinging again and running a duplicate publish + navigation.
+          if (settledRef.current) return
+          settledRef.current = true
           stopPublishFeePolling()
           try {
             sessionStorage.removeItem('pollingActive')
@@ -213,9 +245,12 @@ export default function PublishPaywallModal({
             /* ignore */
           }
           setPayError(null)
+          // Chime the instant the payment confirms — the money landing is what the
+          // sound celebrates — then run the publish + navigation. Firing before the
+          // await keeps the feedback immediate instead of trailing the persist call.
+          triggerPaymentSuccessEffect(publishAudioContextRef.current ?? undefined)
           try {
             await Promise.resolve(onPaymentConfirmedRef.current?.())
-            triggerPaymentSuccessEffect(publishAudioContextRef.current ?? undefined)
           } catch (err) {
             const msg = err instanceof Error ? err.message : 'Could not complete publish.'
             setPayError(msg)
