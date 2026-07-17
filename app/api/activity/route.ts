@@ -218,27 +218,32 @@ export async function GET(req: NextRequest) {
   };
   const events = (eventsQ.data ?? []) as EventRow[];
   const targetTxids = [...new Set(events.map((e) => e.target_txid).filter(Boolean))] as string[];
-  const targetAuthor = new Map<string, string>();
+  // Resolve the liked/reposted post itself — its CONTENT is what the line should
+  // reference ("liked '…the post…'"), not just whose post it was. Keep the
+  // author byline as a fallback for a post with no text (e.g. an image card).
+  const targetInfo = new Map<string, { author: string | null; content: string | null }>();
   if (targetTxids.length > 0) {
     const { data: targets } = await supabase
       .from("feed_posts")
-      .select("txid, author_identity")
+      .select("txid, author_identity, content")
       .in("txid", targetTxids);
-    for (const t of (targets ?? []) as Array<{ txid: string; author_identity: string | null }>) {
-      if (t.author_identity) targetAuthor.set(t.txid, t.author_identity);
+    for (const t of (targets ?? []) as Array<{ txid: string; author_identity: string | null; content: string | null }>) {
+      targetInfo.set(t.txid, { author: t.author_identity, content: t.content });
     }
   }
   for (const e of events) {
     const kind =
       e.action === 4 ? "repost" : (e.amount_sats ?? 0) > LIKE_FLOOR_SATS ? "tip" : "like";
+    const info = e.target_txid ? targetInfo.get(e.target_txid) : null;
+    const targetText =
+      (info ? snippet(info.content) : null) ??
+      (info?.author ? displayIdentity(info.author, "") || null : null);
     items.push({
       id: `fe:${e.txid}`,
       kind,
       actor: displayIdentity(e.actor_identity, "someone"),
       actorHref: profileHref(e.actor_identity),
-      target: e.target_txid
-        ? displayIdentity(targetAuthor.get(e.target_txid), "") || null
-        : null,
+      target: targetText,
       amountXec: e.amount_sats == null ? null : e.amount_sats / 100,
       at: e.created_at,
       href: e.target_txid ? `/feed/${e.target_txid}` : "/",
