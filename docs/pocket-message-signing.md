@@ -205,6 +205,21 @@ and the same primitive unlocks message-signature login for any eCash app —
 several of our flows (and, we suspect, other builders') currently burn a
 5.5 XEC dust payment where a signature would do.
 
+**7.4 — Cheap stepping stone: URL prefill for Sign & Verify.** Independent of
+(and much smaller than) 7.3: let the sign screen accept a prefilled message the
+way the send screen accepts `?bip21=`:
+
+```
+https://cashtab.com/#/signverifymsg?msg=<urlencoded message>
+```
+
+Prefill the textarea only — the user still reads the message, still clicks
+Sign, still copies the signature back by hand, and nothing is returned to the
+opener (no new trust surface; the user sees exactly what they're signing, same
+as if they'd pasted it). It removes the most error-prone half of our ceremony
+(hand-copying a 127-char sentence that must match byte-for-byte) with, we
+suspect, a one-file change to the SignVerifyMsg component.
+
 ---
 
 *Contact: @proofofwriting — happy to hop into Phabricator/GitHub threads or
