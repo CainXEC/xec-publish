@@ -63,14 +63,32 @@ export async function GET() {
 
   const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const postsQ = await supabase
-    .from("posts")
-    .select("id, title, slug, teaser, price_xec, reading_time_minutes, published_at, created_at, author_id")
-    .eq("published", true)
-    .order("created_at", { ascending: false })
-    .limit(CANDIDATES);
+  const COLS =
+    "id, title, slug, teaser, price_xec, reading_time_minutes, published_at, created_at, author_id";
 
-  const posts = ((postsQ.data ?? []) as PostRow[]).filter((p) => p.slug && p.title);
+  // The candidate pool must be picked by PUBLICATION recency, not draft
+  // creation — a long-drafted post goes live today with an old created_at, so a
+  // pool ordered only by created_at silently excludes it (loadAuthorProfile
+  // documents the same trap). We can't COALESCE inside .order(), so take the
+  // union of two pools — newest-created AND newest-published — and dedupe.
+  // The created_at pool also covers legacy paid-flow posts whose published_at
+  // is null (created_at is their real go-live moment); the published_at pool
+  // (nulls last) catches the long-drafted just-published case. The JS ranking
+  // below then sorts the merged set by published_at ?? created_at.
+  const [byCreated, byPublished] = await Promise.all([
+    supabase
+      .from("posts").select(COLS).eq("published", true)
+      .order("created_at", { ascending: false }).limit(CANDIDATES),
+    supabase
+      .from("posts").select(COLS).eq("published", true)
+      .order("published_at", { ascending: false, nullsFirst: false }).limit(CANDIDATES),
+  ]);
+
+  const byId = new Map<string, PostRow>();
+  for (const p of [...(byCreated.data ?? []), ...(byPublished.data ?? [])] as PostRow[]) {
+    if (!byId.has(p.id)) byId.set(p.id, p);
+  }
+  const posts = [...byId.values()].filter((p) => p.slug && p.title);
   const ids = posts.map((p) => p.id);
 
   // ---- readers: all-time (display) + 7-day (ranking) + comment counts ----
