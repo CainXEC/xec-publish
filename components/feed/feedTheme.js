@@ -69,7 +69,7 @@ export const FEED_CSS = `
 .pow-feed .toplink-toggle{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;
   padding:0;color:var(--neon);cursor:pointer;}
 .pow-feed .toplink-toggle:hover{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
-.pow-feed .toplink-toggle svg{width:15px;height:15px;}
+.pow-feed .toplink-toggle svg{width:17px;height:17px;}
 /* Nav links live in the hamburger at every width; the inline pill row is hidden. */
 .pow-feed .toplinks-text{display:none;}
 .pow-feed .topnav{display:inline-flex;justify-self:start;position:relative;}
