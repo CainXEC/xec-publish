@@ -805,6 +805,24 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
   box-shadow:0 0 8px rgba(0,255,156,.8);margin-right:6px;vertical-align:2px;}
 /* the story currently being read (article page keeps this rail beside it) */
 .pow-feed .np-now,.pow-feed .np-entry.now .np-entry-h{color:var(--neon);}
+/* Most-read ranked list. These were referenced but never styled, so the rank
+   number, headline and read-count ran together ("1Announcing…56"). Lay each row
+   out as [rank] headline [reads]: neon tabular rank, serif headline (via
+   .np-serif) taking the middle, a dim read-count on the right. */
+.pow-feed .np-rank{display:flex;align-items:baseline;gap:11px;padding:9px 0;
+  border-bottom:1px solid var(--line);text-decoration:none;}
+.pow-feed .np-rank:last-child{border-bottom:none;}
+.pow-feed .np-rank-n{flex:none;min-width:13px;font-size:15px;font-weight:800;line-height:1.25;
+  color:var(--neon);font-variant-numeric:tabular-nums;}
+.pow-feed .np-rank-h{flex:1;min-width:0;font-size:14.5px;line-height:1.3;color:var(--text);}
+.pow-feed .np-rank:hover .np-rank-h{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
+.pow-feed .np-rank-c{flex:none;font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap;}
+/* Entry (Latest) headline link wraps a block; teaser + button row when expanded. */
+.pow-feed .np-hl{display:block;text-decoration:none;}
+.pow-feed .np-teaser{font-size:12.5px;line-height:1.6;color:var(--dim);margin:8px 0 0;}
+.pow-feed .np-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+/* first section header leads the widget — trim its top padding. */
+.pow-feed .np-sec.np-first{padding-top:4px;}
 
 /* shown only on mobile (the bottom-bar shell), hidden where the topbar
    hamburger still carries the same action */
