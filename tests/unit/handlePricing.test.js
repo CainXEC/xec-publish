@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { priceForHandle } from '@/lib/handlePricing'
+import { displayHandle } from '@/lib/handleSkeleton'
 
 // Flat three-tier pricing keyed on handle LENGTH. These tests pin the tier
 // boundaries and the sats derivation so a boundary-off-by-one can't overcharge
@@ -41,6 +42,28 @@ describe('priceForHandle', () => {
       const p = priceForHandle(h)
       expect(p.priceSats).toBe(p.priceXec * 100)
       expect(p.auctionOnly).toBe(false)
+    }
+  })
+})
+
+// The check + intent endpoints both price displayHandle(handle) — so the price
+// SHOWN and the price CHARGED can only ever match if displayHandle preserves
+// the tier. Regression for a report where "01234567890" (11 chars) was quoted
+// at 10,000 XEC (base) but hit Cashtab as 1,000,000 (short): an all-numeric /
+// leading-zero handle must NOT collapse to a shorter, pricier tier.
+describe('display-form pricing (page price must equal mint price)', () => {
+  it('prices the reported handle 01234567890 at base 10,000 XEC via displayHandle', () => {
+    const h = '01234567890'
+    expect(displayHandle(h)).toBe(h) // length preserved — no number coercion / zero-strip
+    const p = priceForHandle(displayHandle(h))
+    expect(p.tier).toBe('base')
+    expect(p.priceXec).toBe(10_000)
+  })
+
+  it('displayHandle preserves length for numeric handles, so no tier shift', () => {
+    for (const h of ['01234', '012345', '0123456789', '00000', '10000', '99999999999']) {
+      expect(displayHandle(h).length).toBe(h.length)
+      expect(priceForHandle(displayHandle(h)).priceXec).toBe(priceForHandle(h).priceXec)
     }
   })
 })

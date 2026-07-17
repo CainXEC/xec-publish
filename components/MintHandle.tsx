@@ -135,6 +135,24 @@ export default function MintHandle({ signedIn = false }: { signedIn?: boolean })
         setNotice(STATUS_COPY[j.status] ?? j.reason ?? j.error ?? "Couldn't start the mint. Try again.");
         return;
       }
+      // Money-flow guard: the amount we're about to hand Cashtab MUST equal the
+      // price the page showed. The two come from separate round-trips (check
+      // vs intent); they should never disagree, but if they ever do — a stale
+      // cached bundle, a future regression, anything — refuse rather than
+      // silently overcharge (a user reported a 10K quote that hit Cashtab as
+      // 1M). The server price stays authoritative; this only blocks a mismatch.
+      const shownXec = avail?.available ? Number(avail.priceXec) : null;
+      const payXec = Number(j.amountXec);
+      if (
+        shownXec != null && Number.isFinite(shownXec) && Number.isFinite(payXec) &&
+        payXec !== shownXec
+      ) {
+        abortCashtabPayment(gesture);
+        setNotice(
+          `Price mismatch: the page showed ${shownXec.toLocaleString()} XEC but the mint would charge ${payXec.toLocaleString()} XEC. Refresh the page and try again.`,
+        );
+        return;
+      }
       setIntent(j);
       setPhase("pay");
       const url = `https://cashtab.com/#/send?bip21=${j.bip21Url}`;
@@ -150,7 +168,7 @@ export default function MintHandle({ signedIn = false }: { signedIn?: boolean })
       abortCashtabPayment(gesture);
       setNotice("Network hiccup — try again.");
     }
-  }, [display]);
+  }, [display, avail]);
 
   // Re-open Cashtab from the pay screen (intent already in hand): extension if
   // present, else a web tab — exactly one, never both.
