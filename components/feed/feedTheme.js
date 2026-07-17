@@ -39,8 +39,9 @@ export const FEED_CSS = `
 .pow-feed .wordmark{font-size:clamp(17px,4vw,20px);font-weight:800;letter-spacing:.17em;text-transform:uppercase;color:var(--neon);
   text-shadow:0 0 8px rgba(0,255,156,.5);white-space:nowrap;line-height:1;
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);}
-/* Topbar item placement (flex order). Desktop: [hamburger] … [bell][theme].
-   Mobile (<1100): hamburger gone, [bell] … [theme] — bell in the vacated slot. */
+/* Topbar item placement (flex order). The pocket (order:1) sits just after the
+   hamburger on the LEFT. Desktop: [hamburger][pocket] … [bell][theme].
+   Mobile (<1100): hamburger gone, [bell][pocket] … [theme]. */
 .pow-feed .topnav{order:0;}
 .pow-feed .tb-bell{display:inline-flex;order:2;margin-left:auto;}
 .pow-feed .toplinks{order:3;}
@@ -49,7 +50,7 @@ export const FEED_CSS = `
 @media (max-width:1099px){
   .pow-feed .topbar .topnav{display:none;}
   .pow-feed .topbar .tb-bell{order:0;margin-left:0;}
-  .pow-feed .topbar .toplinks{order:1;margin-left:auto;}
+  .pow-feed .topbar .toplinks{order:2;margin-left:auto;}
 }
 /* One-shot wordmark title entrance ("the unredaction"): a censor bar over the
    name is consumed by a single cyan decrypt sweep, the letters cool from hot
@@ -107,12 +108,14 @@ export const FEED_CSS = `
   color:var(--neon);line-height:1;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
 .pow-feed .notifbtn:hover{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
 .pow-feed .notifbtn svg{display:block;}
-/* Pocket button — the bell's sibling in .tb-bell, same 34px chrome. DOM order
-   is [pocket, bell]: desktop shows pocket to the bell's LEFT; the mobile flip
-   below mirrors the cluster in the top-left corner so the pocket sits to the
-   bell's RIGHT there. Dashed = signed in but no pocket yet. */
-.pow-feed .tb-bell{gap:8px;}
-.pow-feed .pocketbtn{position:relative;display:inline-flex;align-items:center;justify-content:center;
+/* Pocket button — a standalone topbar item on the LEFT (same 34px chrome as the
+   bell/toggle). order:1 puts it right after the hamburger on desktop
+   ([hamburger][pocket] … [bell][theme]); on mobile the hamburger is gone and the
+   bell takes order 0, so the pocket sits to the bell's RIGHT
+   ([bell][pocket] … [theme]) — matching its mobile corner. It renders nothing
+   when there's no pocket, so it never leaves an empty slot. Dashed = signed in
+   but no pocket yet. */
+.pow-feed .pocketbtn{order:1;position:relative;display:inline-flex;align-items:center;justify-content:center;
   box-sizing:border-box;width:34px;height:34px;min-width:34px;min-height:34px;max-width:34px;max-height:34px;
   flex:none;align-self:center;background:transparent;border:1px solid var(--line);border-radius:8px;
   color:var(--neon);line-height:1;cursor:pointer;text-decoration:none;
@@ -122,9 +125,6 @@ export const FEED_CSS = `
 /* NB: modifier is prefixed — a bare .empty class collides with the feed's
    empty-state panel style (44px padding) further down this sheet. */
 .pow-feed .pocketbtn.pocketbtn-empty{color:var(--dim);border-style:dashed;}
-@media (max-width:1099px){
-  .pow-feed .topbar .tb-bell{flex-direction:row-reverse;}
-}
 .pow-feed .notifbadge{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;
   display:inline-flex;align-items:center;justify-content:center;border-radius:9px;
   background:var(--no);color:#0b0304;font-size:10px;font-weight:800;line-height:1;

@@ -119,16 +119,17 @@ export default function FeedTopbar({
         </div>
       </div>
 
-      {/* The bell cluster is its own flex item so CSS can place it: grouped on
-          the right at desktop, but on the LEFT on mobile — the slot the
-          hamburger vacates, where the bottom bar takes over navigation. One
-          instance either way (never double-mounted → never double-polls).
-          The Pocket button rides with it: DOM order [pocket, bell] shows the
-          pocket left of the bell on desktop; the mobile corner flip
-          (row-reverse in feedTheme) puts it to the bell's right there. It
-          self-fetches and renders null when signed out or the flag is off. */}
+      {/* Pocket chip — a standalone topbar item placed on the LEFT by CSS order
+          (right of the hamburger on desktop; right of the bell on mobile, where
+          the hamburger is gone). Self-fetching; renders null when signed out or
+          the pocket flag is off, so it never leaves an empty slot. */}
+      <PocketChip />
+
+      {/* The bell is its own flex item so CSS can place it: on the right at
+          desktop, on the LEFT on mobile — the slot the hamburger vacates, where
+          the bottom bar takes over navigation. One instance either way (never
+          double-mounted → never double-polls). */}
       <div className="tb-bell">
-        <PocketChip />
         <FeedNotifications signedIn={signedIn} />
       </div>
 
