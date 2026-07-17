@@ -555,7 +555,9 @@ export default function DashboardClient({
     <div className="pow-feed dash-wide">
       <style>{FEED_CSS}</style>
 
-      <FeedTopbar signedIn isAuthor showLogout showDashboard={false} />
+      {/* No showLogout: on the dashboard, log out lives on the welcome card
+          (top-right) at every width, not in the hamburger. */}
+      <FeedTopbar signedIn isAuthor showDashboard={false} />
 
       <main className="wrap" style={{ paddingTop: '28px' }}>
         <div className="dashpanel">
@@ -574,12 +576,13 @@ export default function DashboardClient({
               </Link>
               !
             </h1>
-            {/* Mobile has no topbar hamburger (the bottom bar owns nav), so log
-                out lives in the account hub — top-right of the welcome card.
-                Hidden on desktop, where the hamburger still carries it. */}
+            {/* Log out lives in the account hub — top-right of the welcome
+                card — at every width. Mobile never had a topbar hamburger; the
+                dashboard's desktop hamburger no longer carries logout either, so
+                the two now match. */}
             <button
               type="button"
-              className="dashbtn sec dash-mobile-only dash-logout-top"
+              className="dashbtn sec dash-logout-top"
               onClick={() => void handleDashLogout()}
             >
               Log out
