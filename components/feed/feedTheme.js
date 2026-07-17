@@ -160,7 +160,11 @@ export const FEED_CSS = `
 .pow-feed .sub{color:#a6d8c9;font-size:14px;line-height:1.55;margin:0;}
 
 /* ---- shared column ---- */
-.pow-feed .wrap{max-width:640px;margin:0 auto;padding:0 20px 120px;}
+/* Bottom padding is a plain breather. On mobile the fixed bottom nav is cleared
+   by body{padding-bottom} (see BottomNav) — the wrap must NOT re-reserve that
+   height too, or the two stack into a big empty gap above the bar. */
+.pow-feed .wrap{max-width:640px;margin:0 auto;padding:0 20px 56px;}
+@media (max-width:1099px){ .pow-feed .wrap{padding-bottom:24px;} }
 
 /* ---- panels ---- */
 .pow-feed .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;
