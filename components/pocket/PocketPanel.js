@@ -308,8 +308,8 @@ function CreateOrRestore({ pocket }) {
           {busy ? 'Checking…' : 'Create my pocket'}
         </button>
         <p className="warn">
-          The signature is the key to your Pocket. Never share it, and never paste it on any other
-          site — anyone who has it can spend your Pocket.
+          The signature is the key to your Pocket. Never share it or paste it on any other site
+          unless you’re willing to risk losing your Pocket change.
         </p>
         {error && <p className="notice">{error}</p>}
       </div>
@@ -634,7 +634,7 @@ const CSS = `
   padding:8px 14px;font:inherit;font-size:12.5px;cursor:pointer;text-decoration:none;display:inline-block;}
 .pow-pocket .ghost:hover{border-color:var(--cyan);}
 .pow-pocket .ghost.tiny{padding:2px 8px;font-size:11px;margin-left:8px;}
-.pow-pocket .paste{width:100%;box-sizing:border-box;background:#04120c;border:1px solid var(--line);border-radius:10px;
+.pow-pocket .paste{display:block;width:100%;max-width:420px;box-sizing:border-box;background:#04120c;border:1px solid var(--line);border-radius:10px;
   color:var(--text);font:inherit;font-size:13px;padding:12px;margin:0 0 12px;resize:vertical;}
 .pow-pocket .paste:focus{outline:none;border-color:var(--neon);}
 .pow-pocket .warn{font-size:12.5px;color:#e8c06a;line-height:1.55;margin:12px 0 0;}
