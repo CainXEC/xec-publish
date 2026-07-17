@@ -15,7 +15,7 @@
 //
 //  Flow:
 //    startAuth()  -> sweep expired nonces, issue a fresh nonce (5-min expiry),
-//                    return a 5.5 XEC payment request with the nonce in OP_RETURN.
+//                    return a 6 XEC payment request with the nonce in OP_RETURN.
 //    verifyAuth() -> find a payment to the auth address carrying a LIVE nonce,
 //                    read its sender, resolve-or-create the account, delete the
 //                    nonce, issue the session cookie.
@@ -60,8 +60,16 @@ const AUTH_NONCE_COOKIE = "pow_auth_nonce";
 // verifier only accepts the nonce carried in its own cookie) even though both
 // flows share the auth_challenges table and the on-chain payment shape.
 const ADDR_NONCE_COOKIE = "pow_addr_nonce";
-const PROOF_XEC = "5.50";               // fixed login amount, below the 6.00 claim floor
-const PROOF_SATS_MIN = 550;             // 5.50 XEC = 550 sats; accept >= this
+// WHOLE number of XEC on purpose: a decimal amount like "5.50" is mis-parsed by
+// some Android Cashtab builds — the decimal point drops and "5.50" is read as 550
+// XEC (a ×100 overcharge). A no-decimal amount can't be mangled. 6 is the smallest
+// whole XEC above the 546-sat dust limit. Shared by login AND change-address (both
+// go through issueNonceChallenge); a payment is matched by its on-chain nonce, so
+// the amount is only an anti-dust floor, never the thing that identifies the tx.
+const PROOF_XEC = "6";                  // fixed proof amount, whole XEC (Android-safe)
+// Floor only. Kept at the old 550 (5.50 XEC) so a challenge issued just before this
+// shipped still verifies during the deploy window; new requests pay 600 sats.
+const PROOF_SATS_MIN = 550;             // 550 sats = 5.50 XEC, just above the 546 dust limit
 const NONCE_TTL_MINUTES = 5;
 const FRESH_SECONDS = 15 * 60;          // ignore txs older than this as a backstop
 

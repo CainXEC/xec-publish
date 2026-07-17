@@ -2,7 +2,7 @@
 // =============================================================================
 //  WalletLogin.tsx  —  unified wallet login (readers + authors)
 //  Neon style, sibling to MintHandle / ClaimHandle. No email, no password —
-//  prove you hold your wallet by sending a fixed 5.5 XEC dust tx carrying a
+//  prove you hold your wallet by sending a fixed 6 XEC dust tx carrying a
 //  one-time nonce (OP_RETURN). The sender address becomes your identity.
 //
 //  Talks to: POST /api/auth/start, GET /api/auth/status

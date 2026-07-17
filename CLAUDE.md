@@ -9,7 +9,7 @@ https://ecashskill.vercel.app/skills/SKILL.md
 
 ## Auth (wallet-only — Supabase Auth is fully retired)
 - HMAC-signed `pow_session` cookie (lib/session.ts), 90-day rolling.
-- Login = 5.5 XEC challenge payment with server UUID nonce in OP_RETURN
+- Login = 6 XEC challenge payment with server UUID nonce in OP_RETURN
   (replay protection). `auth_challenges` table: sweep-on-write, delete-on-use.
 - Identity key is `authorId` everywhere — never `user.id`.
 - No `auth.uid()` RLS policies remain. Pattern: service-role Supabase client
@@ -17,7 +17,7 @@ https://ecashskill.vercel.app/skills/SKILL.md
   (lib/authHelpers.ts). New tables: enable RLS, no policies, service-role only.
 - RPCs use SECURITY DEFINER with `set search_path = public`.
 - Address change (/api/account/change-address + walletAuth
-  startAddressChange/verifyAddressChange): challenge session REQUIRED + a 5.5
+  startAddressChange/verifyAddressChange): challenge session REQUIRED + a 6
   XEC nonce payment FROM the new wallet (proof of keys — never a form field).
   RPC change_primary_address swaps account_addresses / authors.xec_address /
   feed_posts.payout_address in one transaction; the OLD address stays linked

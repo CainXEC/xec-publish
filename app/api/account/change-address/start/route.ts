@@ -1,7 +1,7 @@
 // =============================================================================
 //  app/api/account/change-address/start/route.ts
 //  POST -> begin changing the logged-in account's wallet address: issue a
-//  challenge payment request (5.5 XEC, one-time nonce in OP_RETURN) that must
+//  challenge payment request (6 XEC, one-time nonce in OP_RETURN) that must
 //  be paid FROM THE NEW WALLET. Gated on a challenge-scope session — a weaker
 //  pay-minted session must never be able to redirect a creator's earnings.
 //  Thin wrapper over startAddressChange() in lib/walletAuth.ts.

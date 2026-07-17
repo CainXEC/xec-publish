@@ -3,7 +3,7 @@
 //
 //  POST { tokenId, action: "place" | "withdraw", amountXec?: number | null }
 //
-//  Login-gated (pow_session): the 5.5 XEC challenge login is the anti-spam
+//  Login-gated (pow_session): the 6 XEC challenge login is the anti-spam
 //  floor for v1 — offers themselves are free. Amounts are PRIVATE: stored
 //  here, surfaced only to the current holder via /api/handles/offers.
 //  One live offer per (handle, bidder); re-placing updates the same row.

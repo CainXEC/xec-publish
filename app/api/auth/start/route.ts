@@ -1,6 +1,6 @@
 // =============================================================================
 //  app/api/auth/start/route.ts
-//  POST -> issue a login challenge: a fixed 5.5 XEC payment request carrying a
+//  POST -> issue a login challenge: a fixed 6 XEC payment request carrying a
 //  one-time nonce in OP_RETURN. Rate-limited per IP (login-starts are rare).
 //  Thin wrapper over startAuth() in lib/walletAuth.ts.
 // =============================================================================

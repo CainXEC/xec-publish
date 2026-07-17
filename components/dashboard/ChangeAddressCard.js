@@ -3,7 +3,7 @@
 // =============================================================================
 //  ChangeAddressCard — the "Wallet address" panel in profile settings.
 //  Moving an account to a new wallet is NOT a form field: the user proves
-//  control of the new wallet by paying the same 5.5 XEC nonce challenge the
+//  control of the new wallet by paying the same 6 XEC nonce challenge the
 //  login uses, FROM that wallet. Mirrors WalletLogin's poll loop (1.2s interval
 //  + Chronik websocket nudge) against the change-address routes:
 //    POST /api/account/change-address/start, GET /api/account/change-address/status
@@ -182,7 +182,7 @@ export default function ChangeAddressCard({ currentAddress, handle = null }) {
         <>
           <ul className="addrx-warns">
             <li>
-              Prove you own the new wallet by sending a <strong>{started?.amountXec ?? '5.50'} XEC</strong>{' '}
+              Prove you own the new wallet by sending a <strong>{started?.amountXec ?? '6'} XEC</strong>{' '}
               check-in payment <strong>from that wallet</strong> — in Cashtab, switch to the new
               wallet before sending.
             </li>
