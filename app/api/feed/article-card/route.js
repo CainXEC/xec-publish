@@ -2,6 +2,7 @@ export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase-server'
+import { displayHandlesByAuthorId } from '@/lib/authorDisplayHandles'
 
 /**
  * Resolve an on-site article slug to a shallow preview card. Used to hydrate the
@@ -18,7 +19,7 @@ export async function GET(request) {
   const supabase = createServerSupabase()
   const { data: row } = await supabase
     .from('posts')
-    .select('slug, title, teaser, price_xec, reading_time_minutes, authors(username)')
+    .select('slug, title, teaser, price_xec, reading_time_minutes, author_id, authors(username)')
     .eq('slug', slug)
     .eq('published', true)
     .eq('legacy', false)
@@ -29,6 +30,10 @@ export async function GET(request) {
   }
 
   const author = Array.isArray(row.authors) ? row.authors[0] : row.authors
+  // Prefer the author's CURRENT handle (accounts.display_handle) over the frozen
+  // authors.username, matching getFeed's server-decorated card and the article
+  // page — so a rebound handle (@founder -> @beep) never shows stale here.
+  const handleMap = await displayHandlesByAuthorId([row.author_id], supabase)
 
   return NextResponse.json({
     ok: true,
@@ -38,7 +43,7 @@ export async function GET(request) {
       teaser: row.teaser ?? '',
       priceXec: row.price_xec ?? null,
       readingTimeMinutes: row.reading_time_minutes ?? null,
-      author: author?.username ?? null,
+      author: handleMap[row.author_id]?.handle ?? author?.username ?? null,
     },
   })
 }

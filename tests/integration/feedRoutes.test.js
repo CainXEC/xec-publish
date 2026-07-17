@@ -70,6 +70,15 @@ function makeSupabase(resolver) {
           state.filters[col] = val
           return b
         },
+        in(col, vals) {
+          state.filters[col] = vals
+          return b
+        },
+        not(col, op, val) {
+          state.notFilters = state.notFilters || {}
+          state.notFilters[col] = [op, val]
+          return b
+        },
         limit(n) {
           state.limit = n
           return b
@@ -505,5 +514,57 @@ describe('POST /api/feed/react/confirm', () => {
     expect(json.status).toBe('reacted')
     expect(json.event).toMatchObject(existing)
     expect(mocks.resolveOrCreateAccount).not.toHaveBeenCalled()
+  })
+})
+
+// A shared-article feed card must show the author's CURRENT handle, not the
+// frozen authors.username. Regression for a report where an author who rebound
+// @founder -> @beep still showed @founder on the card. The live source is
+// accounts.display_handle (same as the article page); username is only the
+// fallback for authors who never bound a handle.
+describe('GET /api/feed/article-card (byline follows the live handle)', () => {
+  const ARTICLE = {
+    slug: 'my-article',
+    title: 'Title',
+    teaser: 'teaser',
+    price_xec: 100,
+    reading_time_minutes: 3,
+    author_id: 'auth-1',
+    authors: { username: 'founder' },
+  }
+  const makeGetReq = (slug) => ({
+    nextUrl: { searchParams: new URLSearchParams({ slug }) },
+  })
+
+  it('renders the account current handle over the frozen authors.username', async () => {
+    useSupabase((state, term) => {
+      if (state.table === 'posts' && term === 'maybeSingle') return { data: ARTICLE, error: null }
+      // displayHandlesByAuthorId: this author has rebound their handle to @beep.
+      if (state.table === 'accounts' && term === 'list') {
+        return {
+          data: [{ author_id: 'auth-1', display_handle: 'beep', handle_color: null }],
+          error: null,
+        }
+      }
+      return { data: null, error: null }
+    })
+    const { GET } = await import('@/app/api/feed/article-card/route')
+    const res = await GET(makeGetReq('my-article'))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.ok).toBe(true)
+    expect(json.card.author).toBe('beep')
+  })
+
+  it('falls back to authors.username when the author never bound a handle', async () => {
+    useSupabase((state, term) => {
+      if (state.table === 'posts' && term === 'maybeSingle') return { data: ARTICLE, error: null }
+      if (state.table === 'accounts' && term === 'list') return { data: [], error: null }
+      return { data: null, error: null }
+    })
+    const { GET } = await import('@/app/api/feed/article-card/route')
+    const res = await GET(makeGetReq('my-article'))
+    const json = await res.json()
+    expect(json.card.author).toBe('founder')
   })
 })
