@@ -283,11 +283,10 @@ function CreateOrRestore({ pocket }) {
             Sign &amp; Verify in Cashtab →
           </a>
         </div>
-        <ol className="steps">
-          <li>In Cashtab, open the menu → <strong>Sign &amp; Verify Message</strong>.</li>
-          <li>Paste the sentence <em>exactly</em>, and make sure your login wallet is the active one.</li>
-          <li>Tap <strong>Sign</strong>, copy the signature, and come back here.</li>
-        </ol>
+        <p className="body">
+          Paste the copied sentence in Cashtab, click sign, copy the signature and come back to
+          this page.
+        </p>
       </div>
 
       <div className="panel">
@@ -621,7 +620,6 @@ const CSS = `
 .pow-pocket .mono{font-family:inherit;font-size:12px;word-break:break-all;}
 .pow-pocket .sentence{background:#04120c;border:1px dashed var(--neon);border-radius:10px;padding:14px 16px;margin:0 0 12px;}
 .pow-pocket .sentence code{font-size:13px;line-height:1.6;color:var(--neon);word-break:break-word;}
-.pow-pocket .steps{font-size:13.5px;line-height:1.7;color:#a6d8c9;margin:14px 0 0;padding-left:20px;}
 .pow-pocket .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 6px;}
 .pow-pocket .cta{background:transparent;color:var(--neon);border:1px solid var(--neon);border-radius:10px;
   padding:12px 18px;font:inherit;font-size:14px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
@@ -653,7 +651,7 @@ html:not(.dark) .pow-pocket{
   --neon:#12703c; --cyan:#0e6b74; --no:#a3312f;
 }
 html:not(.dark) .pow-pocket *{text-shadow:none;}
-html:not(.dark) .pow-pocket .sub,html:not(.dark) .pow-pocket .steps{color:#4a4d42;}
+html:not(.dark) .pow-pocket .sub{color:#4a4d42;}
 html:not(.dark) .pow-pocket .sentence{background:#fff;}
 html:not(.dark) .pow-pocket .paste{background:#fff;}
 html:not(.dark) .pow-pocket .cta:hover:not(:disabled){color:#fdfcf8;}
