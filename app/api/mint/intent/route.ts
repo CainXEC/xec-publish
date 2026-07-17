@@ -109,7 +109,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const amountXec = (expectedSats / 100).toFixed(2);
+  // Format the amount as plain XEC WITHOUT a forced ".00". Every tier price is a
+  // whole number of XEC, and a trailing-decimal amount like "10000.00" has been
+  // mis-parsed by some Cashtab clients (an Android user was quoted 10,000 XEC but
+  // Cashtab opened at 1,000,000 — the decimal point dropped, shifting ×100). A
+  // whole amount emits as "10000" — the same integer form the feed/unlock BIP21s
+  // use and no client mis-shifts; a fractional amount (shouldn't occur now that
+  // there's no jitter) still renders with cents.
+  const xecAmount = expectedSats / 100;
+  const amountXec = Number.isInteger(xecAmount) ? String(xecAmount) : xecAmount.toFixed(2);
   // Raw, UN-encoded BIP21. The client wraps this ONCE in encodeURIComponent for the
   // Cashtab deep link: https://cashtab.com/#/send?bip21=<encoded>
   const bip21 = `${MINT_ADDRESS}?amount=${amountXec}&op_return_raw=${opReturnRaw}`;
