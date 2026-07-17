@@ -6,7 +6,7 @@ import { buildPublishFeeBip21 } from '@/lib/paymentSplit'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 // Pocket-aware: a funded Pocket pays the flat publish fee locally (payDirect →
 // known txid, no address scan); otherwise the exact payWithCashtab behavior.
-import { payDirect } from '@/lib/pocket/payGateway'
+import { payDirect, spendEligibility } from '@/lib/pocket/payGateway'
 import {
   getSharedAudioContext,
   primeAudioContextOnUserGesture,
@@ -32,6 +32,11 @@ export default function PublishPaywallModal({
   // Set when the Pocket paid the fee: the txid is KNOWN, so verification
   // targets that tx directly instead of scanning the platform address.
   const pocketTxidRef = useRef('')
+  // True while a Pocket payment is in flight but its txid isn't known yet. It
+  // suppresses the platform-address scan during that ~1-2s window: the shared
+  // platform address is busy, and a concurrent publish landing there would trip
+  // verify-publish-payment's "does not match" hard-stop and strand this one.
+  const pocketExpectedRef = useRef(false)
   const publishAudioContextRef = useRef(null)
   const onPaymentConfirmedRef = useRef(onPaymentConfirmed)
   const onPublishPaymentPollingEndedRef = useRef(onPublishPaymentPollingEnded)
@@ -120,6 +125,7 @@ export default function PublishPaywallModal({
     }
     baselineTxidRef.current = ''
     lastHandledTxidRef.current = ''
+    pocketExpectedRef.current = false
   }, [])
 
   useEffect(() => {
@@ -175,6 +181,11 @@ export default function PublishPaywallModal({
         // Pocket-paid: the txid is known — verify it directly, skip the scan.
         let latestTxid = pocketTxidRef.current
         if (!latestTxid) {
+          // A Pocket payment is in flight but hasn't returned its txid yet —
+          // wait for it. Scanning the shared platform address here could pick
+          // up a concurrent publish and hard-stop on "does not match"; the
+          // Pocket path always hands us the exact txid a moment later.
+          if (pocketExpectedRef.current) return
           const latestTxRes = await fetch(
             `/api/latest-tx/${encodeURIComponent(platformAddressForLatestTx)}`,
           )
@@ -284,6 +295,11 @@ export default function PublishPaywallModal({
       /* ignore */
     }
     pocketTxidRef.current = ''
+    // Decide synchronously (before the async pay) whether the Pocket will take
+    // this — if so, the verify loop must WAIT for the Pocket's txid instead of
+    // scanning the shared platform address. Same eligibility check payDirect
+    // runs internally, so the two never disagree.
+    pocketExpectedRef.current = spendEligibility('publish', PUBLISH_FEE_XEC).eligible
     // Pocket if it can cover the flat fee (signs locally; .then hands us the
     // txid), else Cashtab extension popup or web tab — exactly one. Rejecting
     // in the extension popup drops back out of the waiting state.
@@ -298,6 +314,10 @@ export default function PublishPaywallModal({
         pocketTxidRef.current = res.txid
         return
       }
+      // The Pocket is NOT handling this payment (fell through to Cashtab,
+      // failed, or was denied) — resume the address scan so a Cashtab payment
+      // still gets detected.
+      pocketExpectedRef.current = false
       if (!res.ok && res.reason === 'denied') {
         stopPublishFeePolling()
         setWaiting(false)
