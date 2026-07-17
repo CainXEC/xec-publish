@@ -49,23 +49,24 @@ export default function PocketPanel() {
   return (
     <div className="pow-pocket">
       <style>{CSS}</style>
-      <p className="eyebrow">proofofwriting // pocket</p>
-      <h1 className="title">Pocket</h1>
+      <header className="pockethead">
+        <h1 className="title">Pocket</h1>
+        <p className="sub">
+          A spending balance for one-tap feed actions, article unlocks and publishing payments.
+          Pocket change, not where your money lives — your money stays in Cashtab.
+        </p>
+      </header>
 
       {pocket.status === 'disabled' && (
-        <p className="sub">The Pocket isn’t enabled on this deployment yet.</p>
+        <p className="body dim center">The Pocket isn’t enabled on this deployment yet.</p>
       )}
 
       {pocket.status === 'signedout' && (
-        <>
-          <p className="sub">
-            A spending balance for one-tap likes, replies, unlocks and comments — no wallet
-            round-trip for pocket change. Log in first, then set it up in a minute.
-          </p>
+        <p className="center">
           <Link className="cta" href="/login">
             Log in
           </Link>
-        </>
+        </p>
       )}
 
       {(pocket.status === 'idle' || pocket.status === 'none') && pocket.status === 'none' && (
@@ -264,11 +265,6 @@ function CreateOrRestore({ pocket }) {
 
   return (
     <>
-      <p className="sub">
-        A spending balance for one-tap likes, replies, unlocks and comments. Pocket change, not
-        where your money lives — your money stays in Cashtab.
-      </p>
-
       <div className="panel">
         <h2 className="h2">1 · Sign one sentence in Cashtab</h2>
         <p className="body">
@@ -440,11 +436,6 @@ function PocketDashboard({ pocket }) {
 
   return (
     <>
-      <p className="sub">
-        Spending balance — pays your likes, replies, unlocks and comments instantly, no wallet
-        round-trip. Your money lives in Cashtab; this is the change in your coat.
-      </p>
-
       {stale && (
         <div className="panel freeze">
           <p className="body">
@@ -614,10 +605,13 @@ const CSS = `
   max-width:640px; margin:0 auto; padding:40px 20px 110px; box-sizing:border-box;
   color:var(--text); text-align:left;
 }
-.pow-pocket .eyebrow{font-size:12px;letter-spacing:.34em;text-transform:uppercase;color:var(--cyan);margin:0 0 14px;}
-.pow-pocket .title{font-size:38px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--neon);margin:0 0 10px;
-  text-shadow:0 0 8px rgba(0,255,156,.55),0 0 26px rgba(0,255,156,.28);}
-.pow-pocket .sub{color:#a6d8c9;font-size:14.5px;line-height:1.6;margin:0 0 26px;}
+/* Header matches the marketplace page (MarketplaceClient .mkhead/.title/.sub). */
+.pow-pocket .pockethead{margin:0 0 26px;text-align:center;}
+.pow-pocket .title{font-size:40px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:var(--neon);
+  margin:0 0 14px;text-shadow:0 0 26px rgba(0,255,156,.28);}
+.pow-pocket .sub{color:#a6d8c9;font-size:14.5px;line-height:1.6;margin:0 auto;max-width:640px;}
+@media (max-width:520px){.pow-pocket .title{font-size:30px;}}
+.pow-pocket .center{text-align:center;}
 .pow-pocket .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin:0 0 18px;}
 .pow-pocket .panel.freeze{border-color:var(--no);}
 .pow-pocket .h2{font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);margin:0 0 10px;}
