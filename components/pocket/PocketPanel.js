@@ -41,7 +41,7 @@ import { encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
 import { payWithCashtab } from '@/lib/ecash/cashtabPay'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 
-const FUND_PRESETS = [5000, 10000, 20000]
+const FUND_PRESETS = [1000, 5000, 10000, 20000]
 
 export default function PocketPanel() {
   const pocket = usePocket()
@@ -473,7 +473,7 @@ function PocketDashboard({ pocket }) {
         <p className="body">
           The Pocket is always yours to empty — one click returns everything to your wallet.
         </p>
-        <div className="row">
+        <div className="row stretch">
           <button className="cta" onClick={() => void sweep()} disabled={busy || !(pocket.balanceSats > 0)}>
             {busy ? 'Sweeping…' : 'Sweep to my wallet'}
           </button>
@@ -488,8 +488,8 @@ function PocketDashboard({ pocket }) {
         <h2 className="h2">If you lose this device</h2>
         <p className="body dim">
           Nothing is lost. Sign the same sentence with your wallet on any device and the identical
-          Pocket — address, balance and all — reappears. The signature is the key: never share it,
-          never paste it anywhere but proofofwriting.com.
+          Pocket reappears. The signature is the key: never share it, never paste it anywhere but
+          proofofwriting.com.
         </p>
       </div>
     </>
@@ -621,6 +621,10 @@ const CSS = `
 .pow-pocket .sentence{background:#04120c;border:1px dashed var(--neon);border-radius:10px;padding:14px 16px;margin:0 0 12px;}
 .pow-pocket .sentence code{font-size:13px;line-height:1.6;color:var(--neon);word-break:break-word;}
 .pow-pocket .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 6px;}
+/* Mixed cta+ghost rows: stretch children to the tallest sibling so the pair
+   reads as one control group (the sweep/forget row). */
+.pow-pocket .row.stretch{align-items:stretch;}
+.pow-pocket .row.stretch .ghost{display:inline-flex;align-items:center;}
 .pow-pocket .cta{background:transparent;color:var(--neon);border:1px solid var(--neon);border-radius:10px;
   padding:12px 18px;font:inherit;font-size:14px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
   cursor:pointer;text-decoration:none;display:inline-block;
