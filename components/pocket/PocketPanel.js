@@ -293,7 +293,7 @@ function CreateOrRestore({ pocket }) {
         <h2 className="h2">2 · Paste the signature</h2>
         <textarea
           className="paste"
-          rows={3}
+          rows={2}
           placeholder="Paste the 88-character signature from Cashtab…"
           value={pasted}
           onChange={(e) => setPasted(e.target.value)}
@@ -601,7 +601,7 @@ const CSS = `
 .pow-pocket{
   --bg:#070b0a; --panel:#0d1513; --line:#173a33; --text:#d6fff0; --dim:#5f8a7e;
   --neon:#00ff9c; --cyan:#3df0ff; --no:#ff5c6c;
-  max-width:640px; margin:0 auto; padding:40px 20px 110px; box-sizing:border-box;
+  max-width:640px; margin:0 auto; padding:0 20px 110px; box-sizing:border-box;
   color:var(--text); text-align:left;
 }
 /* Header matches the marketplace page (MarketplaceClient .mkhead/.title/.sub). */
@@ -634,7 +634,7 @@ const CSS = `
   padding:8px 14px;font:inherit;font-size:12.5px;cursor:pointer;text-decoration:none;display:inline-block;}
 .pow-pocket .ghost:hover{border-color:var(--cyan);}
 .pow-pocket .ghost.tiny{padding:2px 8px;font-size:11px;margin-left:8px;}
-.pow-pocket .paste{display:block;width:100%;max-width:420px;box-sizing:border-box;background:#04120c;border:1px solid var(--line);border-radius:10px;
+.pow-pocket .paste{width:100%;box-sizing:border-box;background:#04120c;border:1px solid var(--line);border-radius:10px;
   color:var(--text);font:inherit;font-size:13px;padding:12px;margin:0 0 12px;resize:vertical;}
 .pow-pocket .paste:focus{outline:none;border-color:var(--neon);}
 .pow-pocket .warn{font-size:12.5px;color:#e8c06a;line-height:1.55;margin:12px 0 0;}
