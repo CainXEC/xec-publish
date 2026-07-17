@@ -239,6 +239,30 @@ function CreateOrRestore({ pocket }) {
     )
   }
 
+  // A pay-scope session (logged in by paying for something, not the full wallet
+  // challenge) can't create a Pocket — same bar as change-address, because the
+  // server can only confirm you own the account from the challenge login (the
+  // ceremony signature can't be sent; it IS the Pocket key). Gate UPFRONT with a
+  // login button so the user isn't walked through the whole sign-and-paste
+  // ceremony only to dead-end at the end. `next` returns them here after login.
+  if (needsWalletLogin) {
+    return (
+      <div className="panel">
+        <h2 className="h2">Log in with your wallet first</h2>
+        <p className="body">
+          Setting up a Pocket needs a full wallet login. Your session came from a
+          payment — enough to read and unlock, but a Pocket touches your keys, so we
+          ask you to prove your wallet first. It’s a quick, one-time login.
+        </p>
+        <p className="center">
+          <Link className="cta" href="/login?next=/pocket">
+            Log in with your wallet
+          </Link>
+        </p>
+      </div>
+    )
+  }
+
   if (frozen) {
     return (
       <div className="panel freeze">
