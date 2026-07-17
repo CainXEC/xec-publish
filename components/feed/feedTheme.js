@@ -117,14 +117,25 @@ export const FEED_CSS = `
    but no pocket yet. */
 .pow-feed .pocketbtn{order:1;position:relative;display:inline-flex;align-items:center;justify-content:center;
   box-sizing:border-box;width:34px;height:34px;min-width:34px;min-height:34px;max-width:34px;max-height:34px;
-  flex:none;align-self:center;background:transparent;border:1px solid var(--line);border-radius:8px;
-  color:var(--neon);line-height:1;cursor:pointer;text-decoration:none;
+  flex:none;align-self:center;padding:0;background:transparent;border:1px solid var(--line);border-radius:8px;
+  color:var(--neon);line-height:1;cursor:pointer;text-decoration:none;font:inherit;appearance:none;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation;
   transition:border-color .15s,box-shadow .15s;}
 .pow-feed .pocketbtn:hover{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
 .pow-feed .pocketbtn svg{display:block;}
 /* NB: modifier is prefixed — a bare .empty class collides with the feed's
    empty-state panel style (44px padding) further down this sheet. */
 .pow-feed .pocketbtn.pocketbtn-empty{color:var(--dim);border-style:dashed;}
+/* Balance popover: shown on HOVER (hover-capable devices) or on a TAP-toggled
+   .open class (touch — the chip's handler sets it; long-press opens /pocket
+   instead). Display-only (pointer-events:none) — the button owns the gestures. */
+.pow-feed .pocket-bal{position:absolute;top:calc(100% + 6px);left:0;z-index:60;
+  white-space:nowrap;font-size:12px;font-weight:700;letter-spacing:.02em;line-height:1.2;
+  color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  padding:5px 9px;box-shadow:0 6px 18px rgba(0,0,0,.35);
+  opacity:0;pointer-events:none;transform:translateY(-3px);transition:opacity .12s,transform .12s;}
+@media (hover:hover){.pow-feed .pocketbtn:hover .pocket-bal{opacity:1;transform:translateY(0);}}
+.pow-feed .pocketbtn.open .pocket-bal{opacity:1;transform:translateY(0);}
 .pow-feed .notifbadge{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;
   display:inline-flex;align-items:center;justify-content:center;border-radius:9px;
   background:var(--no);color:#0b0304;font-size:10px;font-weight:800;line-height:1;

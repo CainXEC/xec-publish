@@ -1,35 +1,105 @@
 'use client'
 
-import Link from 'next/link'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { usePocket } from '@/lib/pocket/store'
 
+// How long a touch must be held before it opens the Pocket page. A shorter tap
+// just reveals the balance.
+const LONG_PRESS_MS = 450
+
 /**
- * The topbar Pocket button — the notification bell's sibling: same 34px icon
- * chrome (.pocketbtn styles live in feedTheme.js next to .notifbtn), drawn as
- * a shirt pocket. Solid border when a pocket exists (tooltip carries the live
- * balance); dashed + dim when the signed-in account has none yet; renders
- * NOTHING when signed out or the feature flag is off — so with the flag off
- * the topbar is byte-identical to before. Always links to /pocket.
+ * Topbar Pocket button.
+ *   desktop : hover reveals the balance · click opens /pocket
+ *   mobile  : tap reveals the balance · long-press opens /pocket
+ * The reveal is CSS — `:hover` on hover-capable devices, a toggled `.open`
+ * class on touch (see .pocket-bal in feedTheme). Renders null when there's no
+ * pocket, so it never leaves an empty slot.
  */
 export default function PocketChip() {
   const pocket = usePocket()
+  const router = useRouter()
+  const [open, setOpen] = useState(false) // touch: balance popover toggled by tap
+  const rootRef = useRef(null)
+  const pressTimer = useRef(null)
+  const longPressed = useRef(false)
+  const lastPointerType = useRef('mouse')
 
-  if (pocket.status !== 'ready' && pocket.status !== 'none') return null
+  const openPocket = useCallback(() => {
+    setOpen(false)
+    router.push('/pocket')
+  }, [router])
 
-  const hasPocket = pocket.status === 'ready'
-  const title = hasPocket
-    ? `Pocket — ${formatXec(pocket.balanceSats)} XEC spending balance`
-    : 'Set up a Pocket — one-tap likes, replies and unlocks'
+  // Dismiss a tapped-open balance when tapping elsewhere.
+  useEffect(() => {
+    if (!open) return undefined
+    const onDown = (e) => {
+      if (!rootRef.current?.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
+  }, [open])
+
+  useEffect(() => () => { if (pressTimer.current) clearTimeout(pressTimer.current) }, [])
+
+  const status = pocket.status
+  if (status !== 'ready' && status !== 'none') return null
+  const hasPocket = status === 'ready'
+
+  const handlePointerDown = (e) => {
+    lastPointerType.current = e.pointerType
+    if (e.pointerType === 'touch') {
+      longPressed.current = false
+      pressTimer.current = setTimeout(() => {
+        longPressed.current = true
+        openPocket()
+      }, LONG_PRESS_MS)
+    }
+  }
+  const handlePointerUp = (e) => {
+    if (e.pointerType !== 'touch') return
+    if (pressTimer.current) clearTimeout(pressTimer.current)
+    if (!longPressed.current) {
+      // Short tap: reveal/hide the balance — don't navigate.
+      e.preventDefault()
+      setOpen((v) => !v)
+    }
+  }
+  const handlePointerCancel = () => {
+    if (pressTimer.current) clearTimeout(pressTimer.current)
+  }
+  const handleClick = (e) => {
+    if (e.detail === 0) { openPocket(); return } // keyboard (Enter/Space)
+    if (lastPointerType.current === 'touch') { e.preventDefault(); return } // touch handled above
+    openPocket() // desktop mouse click
+  }
+
+  const balanceText = hasPocket
+    ? pocket.balanceSats == null
+      ? 'Loading…'
+      : `${formatXec(pocket.balanceSats)} XEC`
+    : 'Set up your Pocket'
+  const ariaLabel = hasPocket
+    ? `Pocket balance ${balanceText}. Open the Pocket.`
+    : 'Set up a Pocket — one-tap likes, replies and unlocks.'
 
   return (
-    <Link
-      href="/pocket"
-      className={`pocketbtn${hasPocket ? '' : ' pocketbtn-empty'}`}
-      title={title}
-      aria-label={title}
+    <button
+      type="button"
+      ref={rootRef}
+      className={`pocketbtn${hasPocket ? '' : ' pocketbtn-empty'}${open ? ' open' : ''}`}
+      aria-label={ariaLabel}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onClick={handleClick}
+      onContextMenu={(e) => e.preventDefault()}
     >
       <PocketIcon />
-    </Link>
+      <span className="pocket-bal" role="status" aria-live="polite">
+        {balanceText}
+      </span>
+    </button>
   )
 }
 
@@ -53,7 +123,7 @@ function PocketIcon() {
   )
 }
 
-/** sats → compact XEC label for the tooltip: 4,920 · 12.3K · 1.2M. */
+/** sats → compact XEC label: 4,920 · 12.3K · 1.2M. */
 function formatXec(sats) {
   if (sats == null) return '…'
   const xec = Math.floor(sats / 100)
