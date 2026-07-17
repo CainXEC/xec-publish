@@ -280,7 +280,7 @@ function CreateOrRestore({ pocket }) {
             {copied ? 'copied ✓' : 'copy sentence'}
           </button>
           <a className="ghost" href={CASHTAB_SIGN_URL} target="_blank" rel="noopener noreferrer">
-            open Cashtab → Sign &amp; Verify ↗
+            Sign &amp; Verify in Cashtab →
           </a>
         </div>
         <ol className="steps">
