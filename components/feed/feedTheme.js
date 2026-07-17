@@ -73,7 +73,7 @@ export const FEED_CSS = `
 /* Nav links live in the hamburger at every width; the inline pill row is hidden. */
 .pow-feed .toplinks-text{display:none;}
 .pow-feed .topnav{display:inline-flex;justify-self:start;position:relative;}
-.pow-feed .hamburger{background:transparent;border:1px solid var(--line);border-radius:8px;width:38px;height:38px;
+.pow-feed .hamburger{background:transparent;border:1px solid var(--line);border-radius:8px;width:34px;height:34px;
   display:inline-flex;align-items:center;justify-content:center;color:var(--cyan);cursor:pointer;padding:0;
   transition:border-color .15s,box-shadow .15s;}
 .pow-feed .hamburger:hover{border-color:var(--cyan);box-shadow:0 0 16px rgba(61,240,255,.22);}
