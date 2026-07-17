@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export const metadata = {
   title: 'Pocket — proofofwriting',
   description:
-    'A spending balance for one-tap feed actions, article unlocks and publishing payments. Pocket change, not where your money lives — your money stays in Cashtab.',
+    'A spending balance for one-tap feed actions, article unlocks and publishing payments. A few coins for your pocket. The wallet is still Cashtab.',
 }
 
 // A route, not a modal: the setup ceremony hops to a Cashtab tab and back,

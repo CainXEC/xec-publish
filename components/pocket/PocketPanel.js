@@ -53,7 +53,7 @@ export default function PocketPanel() {
         <h1 className="title">Pocket</h1>
         <p className="sub">
           A spending balance for one-tap feed actions, article unlocks and publishing payments.
-          Pocket change, not where your money lives — your money stays in Cashtab.
+          A few coins for your pocket. The wallet is still Cashtab.
         </p>
       </header>
 
