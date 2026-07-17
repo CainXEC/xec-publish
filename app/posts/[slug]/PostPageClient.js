@@ -77,6 +77,11 @@ export default function PostPageClient({
   // Set when the Pocket paid the unlock: the txid is KNOWN, so verification
   // targets that tx directly instead of scanning the author's address.
   const payPocketTxidRef = useRef('')
+  // Fires the unlock chime + refresh exactly once. The 1.2s poll tick and the
+  // Chronik websocket can both reach the "unlocked" branch in the same instant
+  // (and a Pocket-paid unlock skips the txid dedupe), so without this latch each
+  // would ding. Re-armed at the start of every attempt (startPayTxAutoVerify).
+  const paySettledRef = useRef(false)
   /** Shared AudioContext, primed on Pay click (user gesture) for mobile unlock sound after async verify. */
   const unlockAudioContextRef = useRef(null)
 
@@ -530,6 +535,8 @@ export default function PostPageClient({
     // Fresh attempt: forget any pocket txid from a previous run. (openCashtab's
     // payDirect .then always resolves after this synchronous section.)
     payPocketTxidRef.current = ''
+    // Re-arm the settle latch so this attempt's unlock success can fire once.
+    paySettledRef.current = false
 
     try {
       const baselineRes = await fetch(
@@ -576,6 +583,9 @@ export default function PostPageClient({
         }
 
         if (verifyRes.ok && verifyData.unlocked) {
+          // Settle once — the poll tick and the websocket can both land here.
+          if (paySettledRef.current) return
+          paySettledRef.current = true
           triggerPaywallUnlockEffect()
           setPaymentFinalizing(false)
           setUnlocked(true)
@@ -604,6 +614,8 @@ export default function PostPageClient({
           )
           const unlockData = await unlockRes.json().catch(() => ({}))
           if (unlockData.unlocked) {
+            if (paySettledRef.current) return
+            paySettledRef.current = true
             triggerPaywallUnlockEffect()
             setPaymentFinalizing(false)
             setUnlocked(true)
