@@ -168,17 +168,25 @@ export default function FeedThreadClient({
   const [showQuote, setShowQuote] = useState(false)
   const [translated, setTranslated] = useState(null)
 
-  const addReply = useCallback((reply) => {
+  // Add a reply to the thread, idempotent by txid (the optimistic show and the
+  // confirm both call in). Does NOT close the box.
+  const addReplyLocal = useCallback((reply) => {
     if (!reply?.txid) return
     if (reply.author_account_id) {
       setViewerAccountId((cur) => cur ?? reply.author_account_id)
     }
-    setShowReply(false)
-    setReplies((prev) => {
-      if (prev.some((r) => r.txid === reply.txid)) return prev
-      return [...prev, reply]
-    })
+    setReplies((prev) => (prev.some((r) => r.txid === reply.txid) ? prev : [...prev, reply]))
   }, [])
+  // Optimistic: show the reply now, keep the box mounted so its confirm poll lives.
+  const handleOptimisticReply = useCallback((reply) => addReplyLocal(reply), [addReplyLocal])
+  // Confirm (or Cashtab): show it (idempotent) and close the box.
+  const addReply = useCallback(
+    (reply) => {
+      setShowReply(false)
+      addReplyLocal(reply)
+    },
+    [addReplyLocal],
+  )
 
   const removeReply = useCallback((txid) => {
     setReplies((prev) => prev.filter((r) => r.txid !== txid))
@@ -344,7 +352,9 @@ export default function FeedThreadClient({
                     autoFocus
                     compact
                     placeholder="Post your reply…"
+                    allowOptimistic
                     onPosted={addReply}
+                    onOptimisticPosted={handleOptimisticReply}
                     onCancel={() => setShowReply(false)}
                   />
                 </div>

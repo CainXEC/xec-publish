@@ -27,6 +27,11 @@ export default function ComposeBox({
   quotedTxid = null,
   quotedPost = null,
   onPosted,
+  // Optimistic show that must NOT close/reset the composer (a reply/quote box
+  // unmounts on close, which would kill the confirm poll). Consumers wire it to
+  // "add the post to the view but keep me open"; the confirm then closes the box.
+  // Falls back to onPosted for the persistent top composer (nothing to keep open).
+  onOptimisticPosted,
   onCancel,
   compact = false,
   autoFocus = false,
@@ -204,9 +209,17 @@ export default function ComposeBox({
           // the poll can re-send the exact content it hashes.
           if (allowOptimistic && !pollActive) {
             const snap = getPocketSnapshot()
-            onPosted?.({
+            // Show without closing where a keep-open handler is wired (reply/quote
+            // boxes); the persistent top composer has none, so fall back to onPosted.
+            const show = onOptimisticPosted || onPosted
+            show?.({
               txid: r.txid,
-              action: FEED_ACTION.POST,
+              action:
+                action === 'reply'
+                  ? FEED_ACTION.REPLY
+                  : action === 'quote'
+                    ? FEED_ACTION.QUOTE
+                    : FEED_ACTION.POST,
               parent_txid: parentTxid ?? null,
               quoted_txid: quotedTxid ?? null,
               content,
@@ -228,7 +241,7 @@ export default function ComposeBox({
               card_kind: null,
               card_meta: null,
               image_url: null,
-              quoted: null,
+              quoted: action === 'quote' && quotedPost ? quotedPost : null,
               parent: null,
               linkedPost: null,
               articleCard: null,
@@ -255,7 +268,7 @@ export default function ComposeBox({
     } finally {
       setSubmitting(false)
     }
-  }, [content, action, parentTxid, quotedTxid, priced.ok, priced.costXec, pollActive, pollEligibility, pollOptions, pollValid, resetToCompose, allowOptimistic, onPosted])
+  }, [content, action, parentTxid, quotedTxid, quotedPost, priced.ok, priced.costXec, pollActive, pollEligibility, pollOptions, pollValid, resetToCompose, allowOptimistic, onPosted, onOptimisticPosted])
 
   // Poll for the on-chain payment while paying.
   useEffect(() => {

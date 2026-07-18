@@ -177,7 +177,7 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
   )
 }
 
-export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = null, onDeleted, onBlocked, mintVariant = 'full', onOpenThread = null }) {
+export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = null, onDeleted, onBlocked, mintVariant = 'full', onOpenThread = null, allowOptimisticQuote = false }) {
   const router = useRouter()
   const [translated, setTranslated] = useState(null)
   const [showReply, setShowReply] = useState(false)
@@ -215,26 +215,49 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
     return id.startsWith('@') ? id : ''
   })()
 
+  // A reply/quote can arrive TWICE: once optimistically (the instant the pocket
+  // broadcasts — while the box stays mounted so its confirm poll keeps running)
+  // and once from that confirm. Dedup by txid so the count and the list move
+  // exactly once each.
+  const seenReplyRef = useRef(new Set())
+  const seenQuoteRef = useRef(new Set())
+
+  const addReply = (reply) => {
+    if (reply?.txid) {
+      if (seenReplyRef.current.has(reply.txid)) return
+      seenReplyRef.current.add(reply.txid)
+      setNewReplies((prev) => [...prev, reply])
+    }
+    setReplyCount((c) => c + 1)
+  }
+  // Optimistic: show the reply now, but DON'T close the box (its confirm poll must
+  // keep running until the reply is recorded).
+  const handleOptimisticReply = (reply) => addReply(reply)
+  // Confirm (or Cashtab): show it (idempotent) and close the box.
   const handleReplied = (reply) => {
     setShowReply(false)
-    setReplyCount((c) => c + 1)
-    if (reply?.txid) {
-      setNewReplies((prev) =>
-        prev.some((r) => r.txid === reply.txid) ? prev : [...prev, reply],
-      )
-    }
+    addReply(reply)
     onReplied?.(reply)
   }
 
   const removeNewReply = (txid) => {
+    seenReplyRef.current.delete(txid)
     setNewReplies((prev) => prev.filter((r) => r.txid !== txid))
     setReplyCount((c) => Math.max(0, c - 1))
   }
 
-  const handleQuoted = (quote) => {
-    setShowQuote(false)
+  const addQuote = (quote) => {
+    if (quote?.txid) {
+      if (seenQuoteRef.current.has(quote.txid)) return
+      seenQuoteRef.current.add(quote.txid)
+    }
     setQuoteCount((c) => c + 1)
     onQuoted?.(quote)
+  }
+  const handleOptimisticQuote = (quote) => addQuote(quote)
+  const handleQuoted = (quote) => {
+    setShowQuote(false)
+    addQuote(quote)
   }
 
   const handleDelete = async () => {
@@ -442,7 +465,9 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
             parentTxid={post.txid}
             autoFocus
             compact
+            allowOptimistic
             onPosted={handleReplied}
+            onOptimisticPosted={handleOptimisticReply}
             onCancel={() => setShowReply(false)}
           />
         </div>
@@ -456,7 +481,9 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
             quotedPost={post}
             autoFocus
             compact
+            allowOptimistic={allowOptimisticQuote}
             onPosted={handleQuoted}
+            onOptimisticPosted={allowOptimisticQuote ? handleOptimisticQuote : undefined}
             onCancel={() => setShowQuote(false)}
           />
         </div>
