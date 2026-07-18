@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePocket } from '@/lib/pocket/store'
+import { useRollingSats } from '@/lib/pocket/useRollingSats'
 
 // How long a touch must be held before it jumps straight to /pocket. A shorter
 // tap opens the balance card (which carries its own "Open Pocket →" button, so
@@ -171,35 +172,3 @@ function formatXec(sats) {
   return Math.floor(sats / 100).toLocaleString()
 }
 
-/**
- * Tween a sats value toward `target` (ease-out cubic, ~650ms) so the balance
- * rolls like the newer Cashtab wallet instead of snapping. First paint and
- * reduced-motion snap straight to the value; a spend or top-up rolls.
- */
-function useRollingSats(target) {
-  const [display, setDisplay] = useState(target)
-  const prevRef = useRef(target)
-  useEffect(() => {
-    const from = prevRef.current
-    prevRef.current = target
-    const reduce =
-      typeof window !== 'undefined' &&
-      window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
-    if (target == null || from == null || from === target || reduce) {
-      setDisplay(target)
-      return undefined
-    }
-    const start = performance.now()
-    const DUR = 650
-    let raf = 0
-    const tick = (now) => {
-      const t = Math.min(1, (now - start) / DUR)
-      const eased = 1 - Math.pow(1 - t, 3)
-      setDisplay(Math.round(from + (target - from) * eased))
-      if (t < 1) raf = requestAnimationFrame(tick)
-    }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [target])
-  return display
-}

@@ -26,6 +26,7 @@ import {
   refreshPocketBalance,
   POCKET_SOFT_CAP_XEC,
 } from '@/lib/pocket/store'
+import { useRollingSats } from '@/lib/pocket/useRollingSats'
 import {
   POCKET_SENTENCE_V1,
   CASHTAB_SIGN_URL,
@@ -347,6 +348,7 @@ function CreateOrRestore({ pocket }) {
 // -----------------------------------------------------------------------------
 function FundPocket({ restored, clipboardCleared, onClearClipboard }) {
   const pocket = usePocket()
+  const rollingSats = useRollingSats(pocket.balanceSats)
   return (
     <div className="panel">
       <h2 className="h2">{restored ? 'Pocket restored ✓' : 'Pocket created ✓'}</h2>
@@ -370,7 +372,7 @@ function FundPocket({ restored, clipboardCleared, onClearClipboard }) {
       )}
       <TopUp />
       <p className="body dim">
-        Balance: <strong>{pocket.balanceSats == null ? '…' : `${formatXecFull(pocket.balanceSats)} XEC`}</strong>
+        Balance: <strong>{pocket.balanceSats == null ? '…' : `${formatXecFull(rollingSats)} XEC`}</strong>
         {' · '}
         <Link href="/pocket">done → pocket overview</Link>
       </p>
@@ -386,6 +388,8 @@ function PocketDashboard({ pocket }) {
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
   const [serverPocket, setServerPocket] = useState(undefined) // undefined=loading, null=none
+  // Roll the balance to its new value — up when a top-up lands, down on a sweep.
+  const rollingSats = useRollingSats(pocket.balanceSats)
 
   // Cross-check the device record against the account's registered pocket —
   // catches "replaced on another device" (old record here) early.
@@ -471,7 +475,7 @@ function PocketDashboard({ pocket }) {
 
       <div className="panel">
         <p className="balance">
-          {pocket.balanceSats == null ? '…' : `${formatXecFull(pocket.balanceSats)} XEC`}
+          {pocket.balanceSats == null ? '…' : `${formatXecFull(rollingSats)} XEC`}
         </p>
         <p className="body dim mono" title={pocket.address ?? ''}>
           {pocket.address}
