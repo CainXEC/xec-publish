@@ -162,13 +162,13 @@ function PocketIcon() {
   )
 }
 
-/** sats → compact XEC label: 4,920 · 12.3K · 1.2M. */
+/** sats → the FULL whole-XEC balance with thousands separators: 4,920 · 12,340 ·
+ *  1,234,567. Never abbreviated (no 12.3K) and never decimal — so a 100-XEC spend
+ *  is always a visible digit change and the roll animation has something to show,
+ *  even on a five-figure balance. Matches the /pocket panel's formatXecFull. */
 function formatXec(sats) {
   if (sats == null) return '…'
-  const xec = Math.floor(sats / 100)
-  if (xec < 10000) return xec.toLocaleString()
-  if (xec < 1_000_000) return `${(xec / 1000).toFixed(1).replace(/\.0$/, '')}K`
-  return `${(xec / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
+  return Math.floor(sats / 100).toLocaleString()
 }
 
 /**
