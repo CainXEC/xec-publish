@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import FeedNotifications from '@/components/feed/FeedNotifications'
 import PocketChip from '@/components/pocket/PocketChip'
+import AdminQueueChip from '@/components/admin/AdminQueueChip'
 import ThemeToggle from '@/components/ThemeToggle'
 
 /**
@@ -137,6 +138,10 @@ export default function FeedTopbar({
       <div className="tb-bell">
         <FeedNotifications signedIn={signedIn} />
       </div>
+
+      {/* Admin-only agent-queue chip: self-fetching, null for everyone who
+          isn't an admin session — the sole nav entry into /admin/agent. */}
+      <AdminQueueChip signedIn={signedIn} />
 
       <Link href="/" className="wordmark" onClick={onWordmarkClick}>
         proofofwriting

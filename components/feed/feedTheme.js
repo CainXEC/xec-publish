@@ -122,6 +122,15 @@ export const FEED_CSS = `
   color:var(--neon);line-height:1;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
 .pow-feed .notifbtn:hover{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
 .pow-feed .notifbtn svg{display:block;}
+/* ---- admin agent-queue chip (renders only for admin sessions) ----
+   Same 34px chrome as the bell; order:2 seats it beside the bell on desktop
+   (after the bell's margin-left:auto push) and with the left cluster on
+   mobile. Reuses .notifbadge for the pending count. */
+.pow-feed .agentbtn{position:relative;display:inline-flex;align-items:center;justify-content:center;order:2;
+  flex:none;width:34px;height:34px;background:transparent;border:1px solid var(--line);border-radius:8px;
+  color:var(--cyan);line-height:1;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+.pow-feed .agentbtn:hover{border-color:var(--cyan);box-shadow:0 0 16px rgba(61,240,255,.22);}
+.pow-feed .agentbtn svg{display:block;}
 /* Pocket button — a standalone topbar item on the LEFT (same 34px chrome as the
    bell/toggle). order:1 puts it right after the hamburger on desktop
    ([hamburger][pocket] … [bell][theme]); on mobile the hamburger is gone and the
