@@ -108,6 +108,12 @@ export const FEED_CSS = `
   .pow-feed .toplink-toggle{width:30px;height:30px;}
   .pow-feed .toplink-toggle svg{width:15px;height:15px;}
 }
+/* Desktop reaches search through the hamburger menu (which only exists
+   >=1100px); the header magnifier is the mobile-only entry, keeping the
+   desktop bar to bell + theme toggle. */
+@media (min-width:1100px){
+  .pow-feed .tb-search{display:none;}
+}
 
 /* ---- notification bell ---- */
 .pow-feed .notifbell{position:relative;display:inline-flex;}

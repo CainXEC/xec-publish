@@ -72,6 +72,11 @@ export default function FeedTopbar({
   // or mobile menu rows ('hammenu-item'). Both close the menu on click.
   const renderLinks = (cls, mobile = false) => (
     <>
+      {/* Desktop entry point for search (the hamburger only renders >=1100px);
+          mobile uses the tb-search icon in the bar instead. */}
+      <Link href="/search" className={cls} onClick={() => setOpen(false)}>
+        search
+      </Link>
       {signedIn && showDashboard ? (
         <Link href="/dashboard" className={cls} onClick={() => setOpen(false)}>
           dashboard
@@ -140,9 +145,10 @@ export default function FeedTopbar({
       <div className="toplinks">
         {/* Text links — hidden on mobile (CSS), where they live in the hamburger. */}
         <span className="toplinks-text">{renderLinks('toplink')}</span>
-        {/* Search is an always-visible icon at every width (the hamburger and
-            bottom bar don't carry it), sitting just left of the theme toggle. */}
-        <Link href="/search" className="toplink toplink-toggle" aria-label="Search">
+        {/* Mobile search entry: an icon left of the theme toggle. Hidden on
+            desktop (>=1100px, CSS .tb-search), where search lives in the
+            hamburger menu instead — the bottom bar doesn't carry it either. */}
+        <Link href="/search" className="toplink toplink-toggle tb-search" aria-label="Search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <circle cx="11" cy="11" r="6.5" />
             <path d="M15.8 15.8L21 21" />
