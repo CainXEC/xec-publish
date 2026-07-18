@@ -329,6 +329,7 @@ export default function FeedClient({
           onPosted={prependPost}
           initialContent={initialCompose}
           autoFocus={Boolean(initialCompose) || focusCompose}
+          allowOptimistic
         />
 
         <div className="tabs" role="tablist">

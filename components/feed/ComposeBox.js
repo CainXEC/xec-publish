@@ -9,6 +9,8 @@ import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPayme
 // eligible → local sign + instant broadcast (r.txid feeds the confirm poll);
 // otherwise the exact extension/web-tab behavior this file always had.
 import { beginPayment, completePayment, abortPayment } from '@/lib/pocket/payGateway'
+import { getPocketSnapshot } from '@/lib/pocket/store'
+import { FEED_ACTION } from '@/lib/feedProtocol'
 
 /**
  * Compose + pay flow for a feed post, reply, or quote. Shared by the top-of-feed
@@ -30,10 +32,21 @@ export default function ComposeBox({
   autoFocus = false,
   placeholder,
   initialContent = '',
+  // Opt-in (persistent composers only): show the post OPTIMISTICALLY the moment
+  // the pocket broadcasts, before the server records it. Safe only where the box
+  // stays mounted through confirmation (the top-of-feed composer) — a reply/quote
+  // box unmounts when it closes, which would kill the confirm poll, so those keep
+  // the classic flow for now.
+  allowOptimistic = false,
 }) {
   const [content, setContent] = useState(initialContent)
   const [phase, setPhase] = useState('compose') // 'compose' | 'paying'
   const [intent, setIntent] = useState(null)
+  // True while a POCKET payment carries this compose: the paying screen is a
+  // compact "posting…" (no Cashtab instructions), and — when allowOptimistic — the
+  // post is shown the instant the pocket broadcasts. Cashtab / a pocket failure
+  // flip it false so the approve + manual panel shows.
+  const [payViaPocket, setPayViaPocket] = useState(false)
   // Poll composer (top-level posts only). pollRef snapshots the payload at pay
   // time so the confirm poll-loop reads a stable value, not a live closure.
   const [pollMode, setPollMode] = useState(false)
@@ -106,6 +119,7 @@ export default function ComposeBox({
   const resetToCompose = useCallback(() => {
     setPhase('compose')
     setIntent(null)
+    setPayViaPocket(false)
     setNotice('')
     setTxidInput('')
     setStatusMsg('Waiting for payment…')
@@ -158,6 +172,7 @@ export default function ComposeBox({
       kind: pollActive ? 'feed-poll' : `feed-${action}`,
       amountXec: priced.costXec,
     })
+    setPayViaPocket(handle.mode === 'pocket')
     try {
       const res = await fetch('/api/feed/prepare', {
         method: 'POST',
@@ -179,12 +194,56 @@ export default function ComposeBox({
         cashtabUrl: data.cashtabUrl,
       }).then((r) => {
         if (r.ok && r.via === 'pocket' && r.txid) {
-          setStatusMsg('Paid from your Pocket — recording on-chain…')
+          setStatusMsg('Posting…')
           setIntent((prev) => (prev ? { ...prev, pocketTxid: r.txid } : prev))
+          // Show the post NOW, the instant the pocket broadcasts — before the
+          // server records it. Only where the box stays mounted through confirm
+          // (allowOptimistic) and only for a plain post (polls keep the classic
+          // flow). The confirm poll still records it; its onPosted is deduped by
+          // txid so there's no duplicate, and we KEEP the draft until confirm so
+          // the poll can re-send the exact content it hashes.
+          if (allowOptimistic && !pollActive) {
+            const snap = getPocketSnapshot()
+            onPosted?.({
+              txid: r.txid,
+              action: FEED_ACTION.POST,
+              parent_txid: parentTxid ?? null,
+              quoted_txid: quotedTxid ?? null,
+              content,
+              content_hash: null,
+              author_account_id: snap.accountId ?? null,
+              author_identity: snap.identity ?? null,
+              displayIdentity: snap.identity ?? null,
+              displayColor: snap.handleColor ?? null,
+              payer_address: snap.primaryAddress ?? null,
+              payout_address: snap.primaryAddress ?? null,
+              amount_sats: null,
+              created_at: new Date().toISOString(),
+              deleted: false,
+              deleted_at: null,
+              reply_count: 0,
+              like_count: 0,
+              repost_count: 0,
+              quote_count: 0,
+              card_kind: null,
+              card_meta: null,
+              image_url: null,
+              quoted: null,
+              parent: null,
+              linkedPost: null,
+              articleCard: null,
+              likedByViewer: false,
+              repostedByViewer: false,
+              optimistic: true,
+            })
+          }
         } else if (!r.ok && r.reason === 'denied') {
           resetToCompose()
           setNotice('Payment cancelled — your draft is safe.')
         } else if (!r.ok && r.reason === 'pocket_error') {
+          // Pocket couldn't send — reveal the approve/manual panel so Cashtab can
+          // still complete it.
+          setPayViaPocket(false)
           setNotice(r.message || 'Pocket couldn’t send — use the Cashtab link below.')
         }
       })
@@ -196,7 +255,7 @@ export default function ComposeBox({
     } finally {
       setSubmitting(false)
     }
-  }, [content, action, parentTxid, quotedTxid, priced.ok, priced.costXec, pollActive, pollEligibility, pollOptions, pollValid, resetToCompose])
+  }, [content, action, parentTxid, quotedTxid, priced.ok, priced.costXec, pollActive, pollEligibility, pollOptions, pollValid, resetToCompose, allowOptimistic, onPosted])
 
   // Poll for the on-chain payment while paying.
   useEffect(() => {
@@ -288,6 +347,16 @@ export default function ComposeBox({
   const noun = isReply ? 'reply' : isQuote ? 'quote' : 'post'
 
   if (phase === 'paying' && intent) {
+    // Pocket paid locally — no Cashtab, nothing to confirm in a wallet. A compact
+    // "posting…" (the optimistic post, when enabled, is already showing above).
+    if (payViaPocket) {
+      return (
+        <div className="panel pay">
+          <p className="poll">Posting your {noun}…</p>
+          {notice ? <p className="notice">{notice}</p> : null}
+        </div>
+      )
+    }
     return (
       <div className="panel pay">
         <p className="payhead">
