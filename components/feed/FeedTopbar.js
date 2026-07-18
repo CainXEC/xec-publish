@@ -72,6 +72,9 @@ export default function FeedTopbar({
   // or mobile menu rows ('hammenu-item'). Both close the menu on click.
   const renderLinks = (cls, mobile = false) => (
     <>
+      <Link href="/search" className={cls} onClick={() => setOpen(false)}>
+        search
+      </Link>
       {signedIn && showDashboard ? (
         <Link href="/dashboard" className={cls} onClick={() => setOpen(false)}>
           dashboard

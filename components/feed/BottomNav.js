@@ -44,9 +44,16 @@ const USER = (
     <path d="M5 20a7 7 0 0114 0" />
   </svg>
 )
+const SEARCH = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="6.5" />
+    <path d="M15.8 15.8L21 21" />
+  </svg>
+)
 
 const TABS = [
   { href: '/', label: 'Feed', icon: HOME, match: (p) => p === '/' },
+  { href: '/search', label: 'Search', icon: SEARCH, match: (p) => p.startsWith('/search') },
   { href: '/paper', label: 'Paper', icon: PAPER, match: (p) => p.startsWith('/paper') },
   { href: '/live', label: 'Live', icon: LIVE, match: (p) => p.startsWith('/live') },
   { href: '/marketplace', label: 'Shop', icon: SHOP, match: (p) => p.startsWith('/marketplace') },
