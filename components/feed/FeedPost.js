@@ -215,10 +215,9 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
     return id.startsWith('@') ? id : ''
   })()
 
-  // A reply/quote can arrive TWICE: once optimistically (the instant the pocket
-  // broadcasts — while the box stays mounted so its confirm poll keeps running)
-  // and once from that confirm. Dedup by txid so the count and the list move
-  // exactly once each.
+  // Dedup by txid: a pocket-optimistic reply/quote shows the instant it broadcasts,
+  // and its background confirm won't call back — but guarding by txid keeps the
+  // count and list correct even if a handler ever fires twice.
   const seenReplyRef = useRef(new Set())
   const seenQuoteRef = useRef(new Set())
 
@@ -230,10 +229,6 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
     }
     setReplyCount((c) => c + 1)
   }
-  // Optimistic: show the reply now, but DON'T close the box (its confirm poll must
-  // keep running until the reply is recorded).
-  const handleOptimisticReply = (reply) => addReply(reply)
-  // Confirm (or Cashtab): show it (idempotent) and close the box.
   const handleReplied = (reply) => {
     setShowReply(false)
     addReply(reply)
@@ -254,7 +249,6 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
     setQuoteCount((c) => c + 1)
     onQuoted?.(quote)
   }
-  const handleOptimisticQuote = (quote) => addQuote(quote)
   const handleQuoted = (quote) => {
     setShowQuote(false)
     addQuote(quote)
@@ -467,7 +461,6 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
             compact
             allowOptimistic
             onPosted={handleReplied}
-            onOptimisticPosted={handleOptimisticReply}
             onCancel={() => setShowReply(false)}
           />
         </div>
@@ -483,7 +476,6 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
             compact
             allowOptimistic={allowOptimisticQuote}
             onPosted={handleQuoted}
-            onOptimisticPosted={allowOptimisticQuote ? handleOptimisticQuote : undefined}
             onCancel={() => setShowQuote(false)}
           />
         </div>

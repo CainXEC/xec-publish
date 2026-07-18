@@ -11,6 +11,7 @@ import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPayme
 import { beginPayment, completePayment, abortPayment } from '@/lib/pocket/payGateway'
 import { getPocketSnapshot } from '@/lib/pocket/store'
 import { FEED_ACTION } from '@/lib/feedProtocol'
+import { confirmFeedPostInBackground } from '@/lib/feed/confirmFeedPost'
 
 /**
  * Compose + pay flow for a feed post, reply, or quote. Shared by the top-of-feed
@@ -27,11 +28,6 @@ export default function ComposeBox({
   quotedTxid = null,
   quotedPost = null,
   onPosted,
-  // Optimistic show that must NOT close/reset the composer (a reply/quote box
-  // unmounts on close, which would kill the confirm poll). Consumers wire it to
-  // "add the post to the view but keep me open"; the confirm then closes the box.
-  // Falls back to onPosted for the persistent top composer (nothing to keep open).
-  onOptimisticPosted,
   onCancel,
   compact = false,
   autoFocus = false,
@@ -209,10 +205,22 @@ export default function ComposeBox({
           // the poll can re-send the exact content it hashes.
           if (allowOptimistic && !pollActive) {
             const snap = getPocketSnapshot()
-            // Show without closing where a keep-open handler is wired (reply/quote
-            // boxes); the persistent top composer has none, so fall back to onPosted.
-            const show = onOptimisticPosted || onPosted
-            show?.({
+            // Hand the RECORDING to a background confirm so the composer can be
+            // dismissed the instant the post shows (waiting for the chain made the
+            // box linger a beat, which felt slow) — and so posting again right away
+            // can't overwrite this one's in-flight confirm. Its result is discarded;
+            // the optimistic post below is what stays on screen.
+            confirmFeedPostInBackground({
+              txid: r.txid,
+              content,
+              action,
+              parentTxid,
+              quotedTxid,
+              poll: pollRef.current,
+              preparedAt: data.preparedAt,
+              payAddress: data.payAddress,
+            })
+            onPosted?.({
               txid: r.txid,
               action:
                 action === 'reply'
@@ -249,6 +257,9 @@ export default function ComposeBox({
               repostedByViewer: false,
               optimistic: true,
             })
+            // Composer's job is done — reset/hide it now. (A reply/quote box's
+            // onPosted already closed it; this clears the persistent top composer.)
+            resetToCompose()
           }
         } else if (!r.ok && r.reason === 'denied') {
           resetToCompose()
@@ -268,9 +279,10 @@ export default function ComposeBox({
     } finally {
       setSubmitting(false)
     }
-  }, [content, action, parentTxid, quotedTxid, quotedPost, priced.ok, priced.costXec, pollActive, pollEligibility, pollOptions, pollValid, resetToCompose, allowOptimistic, onPosted, onOptimisticPosted])
+  }, [content, action, parentTxid, quotedTxid, quotedPost, priced.ok, priced.costXec, pollActive, pollEligibility, pollOptions, pollValid, resetToCompose, allowOptimistic, onPosted])
 
-  // Poll for the on-chain payment while paying.
+  // Poll for the on-chain payment while paying (Cashtab + non-optimistic pocket;
+  // the optimistic path hands recording to confirmFeedPostInBackground instead).
   useEffect(() => {
     if (phase !== 'paying' || !intent) return undefined
     let stopped = false
