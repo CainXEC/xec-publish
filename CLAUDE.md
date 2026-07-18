@@ -118,6 +118,11 @@ https://ecashskill.vercel.app/skills/SKILL.md
   ecash:qrw35trzq7hagejru2h3eqf5eyhxxmg4cul69u7am3
 - Paywall: locked content must NEVER reach the client
   (splitPostBodyAtPaywall / verifyPostReaderEntitlement on the server).
+- Search (sql/search.sql): posts.search_tsv is a GENERATED column that splits
+  body at the paywall marker IN THE SCHEMA (post_public_search_text) — locked
+  text is physically never indexed, so search can't become a paywall oracle.
+  ts_headline snippets run over the same function. Same trust boundary as the
+  paywall split; proven hermetically by tests/integration/searchDb.test.js.
 - Payment finality: Avalanche Pre-Consensus polling (finality.js, ~2–3s).
 - OG images render at 2× (2400×1260); cache-bust with &v= params.
 - jsdom pinned to 25.0.1 (isomorphic-dompurify).
