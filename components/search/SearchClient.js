@@ -82,7 +82,7 @@ function ArticleRow({ r }) {
       </div>
       <div className="srch-meta">
         {r.byline?.handle ? (
-          <span className="srch-byline" style={r.byline.color ? { color: r.byline.color } : undefined}>
+          <span className="srch-byline" style={r.byline.color ? { '--hc': r.byline.color } : undefined}>
             @{r.byline.handle}
           </span>
         ) : null}
@@ -103,7 +103,7 @@ function PostRow({ r }) {
       <div className="srch-meta srch-post-head">
         <span
           className="srch-byline"
-          style={r.identityColor ? { color: r.identityColor } : undefined}
+          style={r.identityColor ? { '--hc': r.identityColor } : undefined}
         >
           {r.identity?.startsWith('@') ? r.identity : shortAddress(r.identity)}
         </span>
@@ -120,7 +120,7 @@ function PersonRow({ r }) {
     <Link href={r.route} className="srch-row srch-person">
       <span
         className={r.handle ? 'srch-handle' : 'srch-addr'}
-        style={r.handle && r.handleColor ? { color: r.handleColor } : undefined}
+        style={r.handle && r.handleColor ? { '--hc': r.handleColor } : undefined}
       >
         {label}
       </span>
@@ -315,12 +315,20 @@ const SEARCH_CSS = `
 .pow-feed .srch-meta{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-top:4px;
   font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;}
 .pow-feed .srch-post-head{margin-top:0;}
-.pow-feed .srch-byline{font-weight:700;color:var(--neon);}
+.pow-feed .srch-byline{font-weight:700;color:var(--hc,var(--neon));}
 .pow-feed .srch-price{color:var(--cyan);font-weight:700;}
 .pow-feed .srch-snip{margin:7px 0 0;font-size:13.5px;line-height:1.55;color:var(--dim);
   overflow-wrap:anywhere;}
 .pow-feed .srch-snip mark{background:none;color:var(--neon);font-weight:700;}
 .pow-feed .srch-person{display:flex;align-items:center;}
-.pow-feed .srch-handle{font-size:16px;font-weight:800;color:var(--neon);}
+.pow-feed .srch-handle{font-size:16px;font-weight:800;color:var(--hc,var(--neon));}
 .pow-feed .srch-addr{font-size:13px;color:var(--dim);word-break:break-all;}
+/* Paper: pull the account's neon swatch (carried on --hc, same mechanism as
+   the feed bylines) toward ink so it stays on-hue but reads on paper —
+   mirrors the html:not(.dark) .byline treatment in feedTheme.js. */
+html:not(.dark) .pow-feed .srch-byline,
+html:not(.dark) .pow-feed .srch-handle{
+  color:var(--hc,#008a55);
+  color:color-mix(in oklab, var(--hc,#00b06e) 55%, #000);
+}
 `
