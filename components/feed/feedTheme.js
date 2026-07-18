@@ -100,6 +100,14 @@ export const FEED_CSS = `
   .pow-feed .topbar{gap:8px;padding:12px 16px;}
   .pow-feed .toplinks{gap:6px;}
 }
+/* Very narrow phones: with two icon buttons on the right (search + theme), the
+   absolutely-centered wordmark needs less tracking and the buttons less width
+   or they collide below ~350px. */
+@media (max-width:379px){
+  .pow-feed .wordmark{font-size:14px;letter-spacing:.09em;}
+  .pow-feed .toplink-toggle{width:30px;height:30px;}
+  .pow-feed .toplink-toggle svg{width:15px;height:15px;}
+}
 
 /* ---- notification bell ---- */
 .pow-feed .notifbell{position:relative;display:inline-flex;}

@@ -72,9 +72,6 @@ export default function FeedTopbar({
   // or mobile menu rows ('hammenu-item'). Both close the menu on click.
   const renderLinks = (cls, mobile = false) => (
     <>
-      <Link href="/search" className={cls} onClick={() => setOpen(false)}>
-        search
-      </Link>
       {signedIn && showDashboard ? (
         <Link href="/dashboard" className={cls} onClick={() => setOpen(false)}>
           dashboard
@@ -143,6 +140,14 @@ export default function FeedTopbar({
       <div className="toplinks">
         {/* Text links — hidden on mobile (CSS), where they live in the hamburger. */}
         <span className="toplinks-text">{renderLinks('toplink')}</span>
+        {/* Search is an always-visible icon at every width (the hamburger and
+            bottom bar don't carry it), sitting just left of the theme toggle. */}
+        <Link href="/search" className="toplink toplink-toggle" aria-label="Search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <circle cx="11" cy="11" r="6.5" />
+            <path d="M15.8 15.8L21 21" />
+          </svg>
+        </Link>
         <ThemeToggle variant="feed" />
       </div>
     </div>
