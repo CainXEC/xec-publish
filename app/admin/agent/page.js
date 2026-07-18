@@ -4,6 +4,7 @@ import { createServerSupabase } from '@/lib/supabase-server'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import QueueItemActions from '@/components/admin/QueueItemActions'
+import CommissionForm, { DismissAssignmentButton } from '@/components/admin/CommissionForm'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,7 +30,7 @@ export default async function AgentQueuePage() {
   if (!acct?.isAdmin) notFound()
 
   const supabase = createServerSupabase()
-  const [pendingQ, recentQ] = await Promise.all([
+  const [pendingQ, recentQ, asgQ] = await Promise.all([
     supabase
       .from('agent_queue')
       .select('*')
@@ -42,10 +43,21 @@ export default async function AgentQueuePage() {
       .neq('status', 'pending')
       .order('created_at', { ascending: false })
       .limit(20),
+    supabase
+      .from('agent_assignments')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(30),
   ])
   const pending = pendingQ.data ?? []
   const recent = recentQ.data ?? []
   const loadError = pendingQ.error?.message ?? recentQ.error?.message ?? null
+  // Commissions degrade separately: before sql/agent_assignments.sql has been
+  // run the table is missing, and the queue below must keep working.
+  const asgError = asgQ.error?.message ?? null
+  const assignments = asgQ.data ?? []
+  const openAsg = assignments.filter((a) => a.status === 'open' || a.status === 'failed')
+  const doneAsg = assignments.filter((a) => a.status !== 'open' && a.status !== 'failed').slice(0, 6)
 
   return (
     <div className="pow-feed">
@@ -55,10 +67,31 @@ export default async function AgentQueuePage() {
       <main className="wrap">
         <h1 className="aq-head">Agent queue</h1>
         <p className="aq-sub">
-          AI_SATOSHI’s drafts, waiting for a human. Approve hands the essay to the
-          agent’s next scheduled run (it publishes on-chain by itself); veto needs a
-          written reason — that’s how taste compounds.
+          You direct AI_SATOSHI: commission a subject below and the agent drafts it on
+          its next scheduled run (the news-driven picker is off). Drafts land here for
+          review — approve hands one back to the agent to publish on-chain; veto needs
+          a written reason — that’s how taste compounds.
         </p>
+
+        <h2 className="aq-sec">
+          commission{openAsg.length ? ` · ${openAsg.length} waiting` : ''}
+        </h2>
+        <CommissionForm />
+        {asgError ? (
+          <div className="aq-empty">
+            Commissions need the agent_assignments table — run ai-satoshi’s
+            sql/agent_assignments.sql in the Supabase SQL editor. ({asgError})
+          </div>
+        ) : openAsg.length || doneAsg.length ? (
+          <div className="aq-audit aq-asglist">
+            {openAsg.map((a) => (
+              <AssignmentRow key={a.id} item={a} />
+            ))}
+            {doneAsg.map((a) => (
+              <AssignmentRow key={a.id} item={a} />
+            ))}
+          </div>
+        ) : null}
 
         {loadError ? <div className="aq-empty">Couldn’t load the queue: {loadError}</div> : null}
 
@@ -109,6 +142,12 @@ function PendingCard({ item }) {
           <a className="aq-srclink" href={source.url} target="_blank" rel="noreferrer">
             {source.title || source.url} ↗
           </a>
+        ) : source.commissioned ? (
+          // Commissioned essays have no news item: C named the subject.
+          <span>
+            commissioned{source.providedBy ? ` by ${source.providedBy}` : ''} — no news
+            source, quotes verify against the corpus alone
+          </span>
         ) : source.seeded ? (
           // Seeded manuscripts (essays C provided) have no news item behind them.
           <span>
@@ -122,6 +161,9 @@ function PendingCard({ item }) {
         {source.feed ? ` · ${source.feed}` : ''}
         {source.publishedAt ? ` · ${fmtWhen(source.publishedAt)}` : ''}
       </div>
+      {source.commissioned && source.notes ? (
+        <div className="aq-meta">your notes: {source.notes}</div>
+      ) : null}
       {source.selectionReason ? (
         <div className="aq-meta">picked because: {source.selectionReason}</div>
       ) : null}
@@ -195,6 +237,37 @@ function DraftBody({ text }) {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+/* ----------------------------- commission rows ----------------------------- */
+
+const ASG_STATUS_LABEL = {
+  open: 'waiting',
+  drafted: 'drafted',
+  dismissed: 'dismissed',
+  failed: 'failed',
+}
+
+function AssignmentRow({ item }) {
+  const status = String(item.status ?? '')
+  return (
+    <div className="aq-row">
+      <div className="aq-row-top">
+        <span className={`aq-status asg-${status}`}>{ASG_STATUS_LABEL[status] ?? status}</span>
+        <span className="aq-row-title">{item.subject}</span>
+        {status === 'open' || status === 'failed' ? <DismissAssignmentButton id={item.id} /> : null}
+      </div>
+      {item.notes ? <div className="aq-row-meta">notes: {item.notes}</div> : null}
+      <div className="aq-row-meta">
+        filed {fmtWhen(item.created_at)} ({ago(item.created_at)})
+        {status === 'open' ? ' · drafts on the agent’s next run' : ''}
+        {status === 'drafted' && item.drafted_at ? ` · drafted ${fmtWhen(item.drafted_at)} — review it below` : ''}
+        {status === 'failed'
+          ? ` · ${item.attempts ?? 2} draft attempts died in critique (see recent decisions) — rephrase and re-commission, or dismiss`
+          : ''}
+      </div>
     </div>
   )
 }
@@ -359,6 +432,22 @@ const AQ_CSS = `
 .pow-feed .aq-vetorow{display:flex;gap:10px;align-items:center;}
 .pow-feed .aq-error{width:100%;font-size:12px;color:var(--no);line-height:1.5;}
 .pow-feed .aq-done{margin-top:14px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--neon);}
+
+/* commission box */
+.pow-feed .aq-comm{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:14px;
+  background:var(--panel);padding:14px;margin-bottom:12px;}
+.pow-feed .aq-comm input,.pow-feed .aq-comm textarea{width:100%;background:var(--panel2);color:var(--text);
+  border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;font-size:13px;line-height:1.6;}
+.pow-feed .aq-comm textarea{resize:vertical;min-height:52px;}
+.pow-feed .aq-comm input:focus,.pow-feed .aq-comm textarea:focus{outline:none;border-color:var(--neon);}
+.pow-feed .aq-comm input::placeholder,.pow-feed .aq-comm textarea::placeholder{color:var(--dim);opacity:.8;}
+.pow-feed .aq-commrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.pow-feed .aq-flash{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--neon);}
+.pow-feed .aq-audit.aq-asglist{margin-bottom:8px;background:var(--panel);}
+.pow-feed .aq-status.asg-open{color:var(--cyan);border-color:var(--cyan);}
+.pow-feed .aq-status.asg-drafted{color:var(--neon);border-color:var(--neon);}
+.pow-feed .aq-status.asg-failed{color:var(--no);border-color:var(--no);}
+.pow-feed .aq-btn.aq-dismiss{padding:4px 10px;font-size:10.5px;}
 
 /* audit list */
 .pow-feed .aq-audit{border:1px solid var(--line);border-radius:14px;background:var(--panel2);padding:4px 14px;margin-bottom:40px;}

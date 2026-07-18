@@ -42,6 +42,47 @@ export async function approveQueueItem(id) {
   return { ok: true }
 }
 
+/** File a commission: a subject C wants the agent to write about. The agent
+ *  drafts the oldest open one on its next scheduled run (agent_assignments —
+ *  created by ai-satoshi's sql/agent_assignments.sql). */
+export async function createAssignment(subject, notes) {
+  const acct = await getAuthedAccount()
+  if (!acct?.isAdmin) return { error: 'Not authorized.' }
+
+  const subj = String(subject ?? '').trim().slice(0, 300)
+  if (!subj) return { error: 'A subject is required.' }
+  const note = String(notes ?? '').trim().slice(0, 2000)
+
+  const supabase = createServerSupabase()
+  const { error } = await supabase
+    .from('agent_assignments')
+    .insert({ subject: subj, notes: note || null })
+  if (error) return { error: error.message }
+
+  revalidatePath('/admin/agent')
+  return { ok: true }
+}
+
+/** Withdraw a commission the agent hasn't drafted yet (or clear a failed one).
+ *  Drafted assignments are final — their essay already sits in the queue. */
+export async function dismissAssignment(id) {
+  const denied = await gate(id)
+  if (denied) return denied
+
+  const supabase = createServerSupabase()
+  const { data, error } = await supabase
+    .from('agent_assignments')
+    .update({ status: 'dismissed' })
+    .eq('id', id)
+    .in('status', ['open', 'failed'])
+    .select('id')
+  if (error) return { error: error.message }
+  if (!data?.length) return { error: 'Commission already handled — reload the page.' }
+
+  revalidatePath('/admin/agent')
+  return { ok: true }
+}
+
 export async function vetoQueueItem(id, reason) {
   const denied = await gate(id)
   if (denied) return denied
