@@ -129,7 +129,14 @@ export const FEED_CSS = `
    ([bell][pocket] … [theme]) — matching its mobile corner. It renders nothing
    when there's no pocket, so it never leaves an empty slot. Dashed = signed in
    but no pocket yet. */
-.pow-feed .pocketbtn{order:1;position:relative;display:inline-flex;align-items:center;justify-content:center;
+/* The wrap is the header flex item + positioning context for the card. The 34px
+   chip button lives inside it; the balance card is a SIBLING (so it can hold a
+   real, tappable Open button — a <button> can't nest another). order:1 keeps the
+   pocket right after the hamburger; the topbar spaces items with gap, so wrapping
+   the chip doesn't disturb the layout. */
+.pow-feed .pocketbtn-wrap{order:1;position:relative;display:inline-flex;align-items:center;
+  justify-content:center;flex:none;align-self:center;}
+.pow-feed .pocketbtn{position:relative;display:inline-flex;align-items:center;justify-content:center;
   box-sizing:border-box;width:34px;height:34px;min-width:34px;min-height:34px;max-width:34px;max-height:34px;
   flex:none;align-self:center;padding:0;background:transparent;border:1px solid var(--line);border-radius:8px;
   color:var(--neon);line-height:1;cursor:pointer;text-decoration:none;font:inherit;appearance:none;
@@ -140,16 +147,28 @@ export const FEED_CSS = `
 /* NB: modifier is prefixed — a bare .empty class collides with the feed's
    empty-state panel style (44px padding) further down this sheet. */
 .pow-feed .pocketbtn.pocketbtn-empty{color:var(--dim);border-style:dashed;}
-/* Balance popover: shown on HOVER (hover-capable devices) or on a TAP-toggled
-   .open class (touch — the chip's handler sets it; long-press opens /pocket
-   instead). Display-only (pointer-events:none) — the button owns the gestures. */
+/* Balance + actions card: shown on HOVER (hover-capable devices) or a TAP-toggled
+   .open class (touch). The "Open Pocket →" button inside is the discoverable way
+   to the full screen on mobile; long-press to /pocket is now just a shortcut.
+   pointer-events flips to auto only while the card is revealed. */
 .pow-feed .pocket-bal{position:absolute;top:calc(100% + 6px);left:0;z-index:60;
-  white-space:nowrap;font-size:12px;font-weight:700;letter-spacing:.02em;line-height:1.2;
-  color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:8px;
-  padding:5px 9px;box-shadow:0 6px 18px rgba(0,0,0,.35);
+  display:flex;flex-direction:column;gap:6px;min-width:130px;
+  color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:8px;box-shadow:0 8px 22px rgba(0,0,0,.4);
   opacity:0;pointer-events:none;transform:translateY(-3px);transition:opacity .12s,transform .12s;}
-@media (hover:hover){.pow-feed .pocketbtn:hover .pocket-bal{opacity:1;transform:translateY(0);}}
-.pow-feed .pocketbtn.open .pocket-bal{opacity:1;transform:translateY(0);}
+/* transparent hover bridge over the 6px gap so a desktop mouse can travel from
+   the chip to the card without it closing (the card is a DOM descendant of the
+   wrap, so hovering it — or this bridge — keeps :hover alive). */
+.pow-feed .pocket-bal::before{content:"";position:absolute;top:-8px;left:0;right:0;height:8px;}
+.pow-feed .pocket-bal-amt{font-size:12px;font-weight:700;letter-spacing:.02em;line-height:1.2;
+  white-space:nowrap;color:var(--dim);padding:1px 3px;}
+.pow-feed .pocket-open{appearance:none;font:inherit;cursor:pointer;text-align:left;white-space:nowrap;
+  touch-action:manipulation;font-size:12.5px;font-weight:700;letter-spacing:.02em;line-height:1.2;
+  color:var(--neon);background:transparent;border:1px solid var(--line);border-radius:7px;padding:6px 9px;
+  transition:border-color .15s,background .15s;}
+.pow-feed .pocket-open:hover{border-color:var(--neon);background:rgba(0,255,156,.08);}
+@media (hover:hover){.pow-feed .pocketbtn-wrap:hover .pocket-bal{opacity:1;transform:translateY(0);pointer-events:auto;}}
+.pow-feed .pocketbtn-wrap.open .pocket-bal{opacity:1;transform:translateY(0);pointer-events:auto;}
 .pow-feed .notifbadge{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;
   display:inline-flex;align-items:center;justify-content:center;border-radius:9px;
   background:var(--no);color:#0b0304;font-size:10px;font-weight:800;line-height:1;

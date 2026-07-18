@@ -4,22 +4,25 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePocket } from '@/lib/pocket/store'
 
-// How long a touch must be held before it opens the Pocket page. A shorter tap
-// just reveals the balance.
+// How long a touch must be held before it jumps straight to /pocket. A shorter
+// tap opens the balance card (which carries its own "Open Pocket →" button, so
+// the long-press is now just a shortcut for repeat users).
 const LONG_PRESS_MS = 450
 
 /**
  * Topbar Pocket button.
- *   desktop : hover reveals the balance · click opens /pocket
- *   mobile  : tap reveals the balance · long-press opens /pocket
- * The reveal is CSS — `:hover` on hover-capable devices, a toggled `.open`
- * class on touch (see .pocket-bal in feedTheme). Renders null when there's no
- * pocket, so it never leaves an empty slot.
+ *   desktop : hover shows a balance card (with an Open button) · click opens /pocket
+ *   mobile  : tap shows the balance card · its "Open Pocket →" button opens the
+ *             full screen. Long-press is a shortcut.
+ * The card is a SIBLING of the chip (both inside .pocketbtn-wrap), not a child —
+ * a <button> can't nest another interactive element, and the whole point here is
+ * a real, tappable Open button so the way in is discoverable, not a hidden gesture.
+ * Renders null when there's no pocket, so it never leaves an empty slot.
  */
 export default function PocketChip() {
   const pocket = usePocket()
   const router = useRouter()
-  const [open, setOpen] = useState(false) // touch: balance popover toggled by tap
+  const [open, setOpen] = useState(false) // touch: balance card toggled by tap
   const rootRef = useRef(null)
   const pressTimer = useRef(null)
   const longPressed = useRef(false)
@@ -30,7 +33,7 @@ export default function PocketChip() {
     router.push('/pocket')
   }, [router])
 
-  // Dismiss a tapped-open balance when tapping elsewhere.
+  // Dismiss a tapped-open card when tapping elsewhere.
   useEffect(() => {
     if (!open) return undefined
     const onDown = (e) => {
@@ -46,6 +49,24 @@ export default function PocketChip() {
   if (status !== 'ready' && status !== 'none') return null
   const hasPocket = status === 'ready'
 
+  // Signed in but no pocket yet: nothing to preview — the chip goes straight to
+  // setup. No card, no long-press.
+  if (!hasPocket) {
+    return (
+      <div className="pocketbtn-wrap">
+        <button
+          type="button"
+          className="pocketbtn pocketbtn-empty"
+          aria-label="Set up a Pocket — one-tap likes, replies and unlocks."
+          onClick={openPocket}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <PocketIcon />
+        </button>
+      </div>
+    )
+  }
+
   const handlePointerDown = (e) => {
     lastPointerType.current = e.pointerType
     if (e.pointerType === 'touch') {
@@ -60,7 +81,7 @@ export default function PocketChip() {
     if (e.pointerType !== 'touch') return
     if (pressTimer.current) clearTimeout(pressTimer.current)
     if (!longPressed.current) {
-      // Short tap: reveal/hide the balance — don't navigate.
+      // Short tap: reveal/hide the balance card — its button does the navigating.
       e.preventDefault()
       setOpen((v) => !v)
     }
@@ -74,32 +95,32 @@ export default function PocketChip() {
     openPocket() // desktop mouse click
   }
 
-  const balanceText = hasPocket
-    ? pocket.balanceSats == null
-      ? 'Loading…'
-      : `${formatXec(pocket.balanceSats)} XEC`
-    : 'Set up your Pocket'
-  const ariaLabel = hasPocket
-    ? `Pocket balance ${balanceText}. Open the Pocket.`
-    : 'Set up a Pocket — one-tap likes, replies and unlocks.'
+  const balanceText =
+    pocket.balanceSats == null ? 'Loading…' : `${formatXec(pocket.balanceSats)} XEC`
 
   return (
-    <button
-      type="button"
-      ref={rootRef}
-      className={`pocketbtn${hasPocket ? '' : ' pocketbtn-empty'}${open ? ' open' : ''}`}
-      aria-label={ariaLabel}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerCancel}
-      onClick={handleClick}
-      onContextMenu={(e) => e.preventDefault()}
-    >
-      <PocketIcon />
-      <span className="pocket-bal" role="status" aria-live="polite">
-        {balanceText}
-      </span>
-    </button>
+    <div ref={rootRef} className={`pocketbtn-wrap${open ? ' open' : ''}`}>
+      <button
+        type="button"
+        className="pocketbtn"
+        aria-label={`Pocket balance ${balanceText}. Open the Pocket.`}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onClick={handleClick}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        <PocketIcon />
+      </button>
+      <div className="pocket-bal">
+        <span className="pocket-bal-amt" role="status" aria-live="polite">
+          {balanceText}
+        </span>
+        <button type="button" className="pocket-open" onClick={openPocket}>
+          Open Pocket →
+        </button>
+      </div>
+    </div>
   )
 }
 
