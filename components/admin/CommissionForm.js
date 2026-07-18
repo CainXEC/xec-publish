@@ -13,6 +13,7 @@ import { createAssignment, dismissAssignment } from '@/app/admin/agent/actions'
 export default function CommissionForm() {
   const [subject, setSubject] = useState('')
   const [notes, setNotes] = useState('')
+  const [links, setLinks] = useState('')
   const [error, setError] = useState('')
   const [flash, setFlash] = useState('')
   const [pending, startTransition] = useTransition()
@@ -21,12 +22,13 @@ export default function CommissionForm() {
     setError('')
     setFlash('')
     startTransition(async () => {
-      const res = await createAssignment(subject, notes)
+      const res = await createAssignment(subject, notes, links)
       if (res?.error) {
         setError(res.error)
       } else {
         setSubject('')
         setNotes('')
+        setLinks('')
         setFlash('commissioned — the agent drafts it on its next run')
       }
     })
@@ -49,6 +51,14 @@ export default function CommissionForm() {
         maxLength={2000}
         rows={2}
         placeholder="Optional notes — the angle to take, what to avoid…"
+        disabled={pending}
+      />
+      <textarea
+        className="aq-comm-links"
+        value={links}
+        onChange={(e) => setLinks(e.target.value)}
+        rows={2}
+        placeholder={'Optional links — up to 3 article URLs, one per line. The agent reads them at draft time and can quote them.'}
         disabled={pending}
       />
       <div className="aq-commrow">

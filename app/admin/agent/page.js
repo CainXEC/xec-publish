@@ -143,10 +143,25 @@ function PendingCard({ item }) {
             {source.title || source.url} ↗
           </a>
         ) : source.commissioned ? (
-          // Commissioned essays have no news item: C named the subject.
+          // Commissioned essays: C named the subject, optionally with links the
+          // agent read (their fetched text sits in the disclosure below).
           <span>
-            commissioned{source.providedBy ? ` by ${source.providedBy}` : ''} — no news
-            source, quotes verify against the corpus alone
+            commissioned{source.providedBy ? ` by ${source.providedBy}` : ''}
+            {Array.isArray(source.links) && source.links.length ? (
+              <>
+                {' — read: '}
+                {source.links.map((u, i) => (
+                  <span key={i}>
+                    {i > 0 ? ' · ' : ''}
+                    <a className="aq-srclink" href={u} target="_blank" rel="noreferrer">
+                      {linkLabel(u)} ↗
+                    </a>
+                  </span>
+                ))}
+              </>
+            ) : (
+              ' — no news source, quotes verify against the corpus alone'
+            )}
           </span>
         ) : source.seeded ? (
           // Seeded manuscripts (essays C provided) have no news item behind them.
@@ -260,14 +275,28 @@ function AssignmentRow({ item }) {
         {status === 'open' || status === 'failed' ? <DismissAssignmentButton id={item.id} /> : null}
       </div>
       {item.notes ? <div className="aq-row-meta">notes: {item.notes}</div> : null}
+      {Array.isArray(item.links) && item.links.length ? (
+        <div className="aq-row-meta">
+          reads:{' '}
+          {item.links.map((u, i) => (
+            <span key={i}>
+              {i > 0 ? ' · ' : ''}
+              <a href={u} target="_blank" rel="noreferrer">
+                {linkLabel(u)} ↗
+              </a>
+            </span>
+          ))}
+        </div>
+      ) : null}
       <div className="aq-row-meta">
         filed {fmtWhen(item.created_at)} ({ago(item.created_at)})
         {status === 'open' ? ' · drafts on the agent’s next run' : ''}
         {status === 'drafted' && item.drafted_at ? ` · drafted ${fmtWhen(item.drafted_at)} — review it below` : ''}
         {status === 'failed'
-          ? ` · ${item.attempts ?? 2} draft attempts died in critique (see recent decisions) — rephrase and re-commission, or dismiss`
+          ? ` · failed after ${item.attempts ?? 2} attempts — rephrase and re-commission, or dismiss`
           : ''}
       </div>
+      {item.fail_reason ? <div className="aq-reason">{item.fail_reason}</div> : null}
     </div>
   )
 }
@@ -363,6 +392,17 @@ function ago(iso) {
 function shortTxid(txid) {
   const t = String(txid ?? '')
   return t.length > 14 ? `${t.slice(0, 8)}…${t.slice(-4)}` : t
+}
+
+/** Compact label for a commissioned link: host + trimmed path. */
+function linkLabel(url) {
+  try {
+    const u = new URL(url)
+    const path = u.pathname.length > 28 ? `${u.pathname.slice(0, 28)}…` : u.pathname
+    return `${u.hostname.replace(/^www\./, '')}${path === '/' ? '' : path}`
+  } catch {
+    return String(url).slice(0, 60)
+  }
 }
 
 /* ---------------------------------- styles --------------------------------- */

@@ -42,10 +42,12 @@ export async function approveQueueItem(id) {
   return { ok: true }
 }
 
-/** File a commission: a subject C wants the agent to write about. The agent
- *  drafts the oldest open one on its next scheduled run (agent_assignments —
- *  created by ai-satoshi's sql/agent_assignments.sql). */
-export async function createAssignment(subject, notes) {
+/** File a commission: a subject C wants the agent to write about, optionally
+ *  with up to 3 article links to read + respond to. The agent drafts the
+ *  oldest open one on its next scheduled run (agent_assignments — created by
+ *  ai-satoshi's sql/agent_assignments.sql), fetching the links at draft time
+ *  so their text becomes the quotable 2026 fact pool. */
+export async function createAssignment(subject, notes, links) {
   const acct = await getAuthedAccount()
   if (!acct?.isAdmin) return { error: 'Not authorized.' }
 
@@ -53,10 +55,29 @@ export async function createAssignment(subject, notes) {
   if (!subj) return { error: 'A subject is required.' }
   const note = String(notes ?? '').trim().slice(0, 2000)
 
+  const urls = String(links ?? '')
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (urls.length > 3) return { error: 'At most 3 links per commission.' }
+  for (const u of urls) {
+    let parsed
+    try {
+      parsed = new URL(u)
+    } catch {
+      parsed = null
+    }
+    if (!parsed || (parsed.protocol !== 'http:' && parsed.protocol !== 'https:')) {
+      return { error: `Not a valid link: ${u.slice(0, 80)}` }
+    }
+  }
+
   const supabase = createServerSupabase()
-  const { error } = await supabase
-    .from('agent_assignments')
-    .insert({ subject: subj, notes: note || null })
+  // Only send the links column when links were given — a link-less commission
+  // then still works on a table created before the links ALTER ran.
+  const row = { subject: subj, notes: note || null }
+  if (urls.length) row.links = urls
+  const { error } = await supabase.from('agent_assignments').insert(row)
   if (error) return { error: error.message }
 
   revalidatePath('/admin/agent')
