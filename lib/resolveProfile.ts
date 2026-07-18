@@ -55,6 +55,8 @@ export type Author = {
   username: string | null;
   bio: string | null;
   xec_address: string | null;
+  /** AI-operated account (authors.is_ai) — surfaces the [AI] byline label. */
+  is_ai: boolean | null;
 };
 
 export type ResolvedProfile = {
@@ -116,7 +118,7 @@ async function authorById(id: string): Promise<Author | null> {
   const supabase = createServerSupabase();
   const { data } = await supabase
     .from("authors")
-    .select("id, username, bio, xec_address")
+    .select("id, username, bio, xec_address, is_ai")
     .eq("id", id)
     .maybeSingle();
   return (data as Author) ?? null;
@@ -153,7 +155,7 @@ async function authorForAddress(addressRaw: string): Promise<Author | null> {
   // 2) fallback: legacy author whose wallet this is
   const { data: authors } = await supabase
     .from("authors")
-    .select("id, username, bio, xec_address")
+    .select("id, username, bio, xec_address, is_ai")
     .in("xec_address", forms)
     .limit(1);
   return (authors?.[0] as Author) ?? null;
@@ -478,7 +480,7 @@ async function resolveAddress(addressRaw: string): Promise<ResolvedProfile | nul
   // 2) fallback: authors.xec_address directly (author who never got an account row)
   const { data: authors } = await supabase
     .from("authors")
-    .select("id, username, bio, xec_address")
+    .select("id, username, bio, xec_address, is_ai")
     .in("xec_address", forms)
     .limit(1);
   const author = authors?.[0];

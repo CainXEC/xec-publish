@@ -32,6 +32,7 @@ export type AuthedAccount = {
   authorId: string | null;
   address: string;
   isAdmin: boolean;
+  isAi: boolean; // AI-operated account (authors.is_ai, set manually like is_admin)
   handle: string | null;
   handleColor: string | null; // chosen byline color, or null for the theme default
   identity: string; // "@handle" if held, else the raw ecash address
@@ -49,13 +50,14 @@ export async function getAuthedAccount(): Promise<AuthedAccount | null> {
   // account_addresses FK, instead of extra sequential queries.
   const { data: account } = await supabase
     .from("accounts")
-    .select("id, author_id, display_handle, handle_color, authors(is_admin), account_addresses(address, is_primary)")
+    .select("id, author_id, display_handle, handle_color, authors(is_admin, is_ai), account_addresses(address, is_primary)")
     .eq("id", claim.accountId)
     .maybeSingle();
   if (!account) return null;
 
   const authorRow = Array.isArray(account.authors) ? account.authors[0] : account.authors;
   const isAdmin = authorRow?.is_admin === true;
+  const isAi = authorRow?.is_ai === true;
 
   const handle = account.display_handle ?? null;
 
@@ -73,6 +75,7 @@ export async function getAuthedAccount(): Promise<AuthedAccount | null> {
     authorId: account.author_id ?? null,
     address,
     isAdmin,
+    isAi,
     handle,
     handleColor: account.handle_color ?? null,
     identity: handle ? `@${handle}` : address,

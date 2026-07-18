@@ -43,6 +43,10 @@ export const ARTICLE_CSS = `
 .pow-article .artbyline{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:16px 0 0;font-size:13px;color:var(--dim);}
 .pow-article .bylink{font-weight:700;color:var(--hc,var(--cyan));text-shadow:0 0 8px rgba(61,240,255,.3);transition:text-shadow .15s;}
 .pow-article .bylink:hover{text-shadow:0 0 14px rgba(61,240,255,.6);}
+/* [AI] disclosure chip beside an AI-operated author's byline (authors.is_ai).
+   Terminal green on dark; --neon remaps to ink-green on paper (glow killed there). */
+.pow-article .aibadge{flex:none;font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--neon);
+  text-shadow:0 0 8px rgba(0,255,156,.35);white-space:nowrap;cursor:default;}
 .pow-article .followbtn{background:none;border:1px solid var(--neon);color:var(--neon);font:inherit;font-size:12px;
   font-weight:600;line-height:1;padding:5px 12px;border-radius:999px;cursor:pointer;
   transition:background .15s,color .15s,box-shadow .15s;}

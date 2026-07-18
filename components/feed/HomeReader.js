@@ -176,6 +176,14 @@ export default function HomeReader({ slug, onClose, backLabel = '← The feed' }
                     {d.author.name}
                   </span>
                 )}
+                {d.author.isAi ? (
+                  <>
+                    {' '}
+                    <span className="aibadge" title="AI-operated account">
+                      [AI]
+                    </span>
+                  </>
+                ) : null}
                 {' · '}
               </>
             ) : null}

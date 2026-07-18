@@ -18,7 +18,7 @@ export async function warmOgImageForPost(postId) {
   const supabase = createSupabaseAdminClient()
   const { data: row, error } = await supabase
     .from('posts')
-    .select('title, reading_time_minutes, price_xec, authors(username)')
+    .select('title, reading_time_minutes, price_xec, authors(username, is_ai)')
     .eq('id', id)
     .eq('author_id', acct.authorId)
     .maybeSingle()
@@ -34,5 +34,6 @@ export async function warmOgImageForPost(postId) {
     author: authorUsername,
     readTime: row.reading_time_minutes,
     price: row.price_xec,
+    ai: authorRow?.is_ai === true,
   })
 }

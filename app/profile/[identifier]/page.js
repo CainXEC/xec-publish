@@ -116,6 +116,7 @@ export default async function ProfilePage({ params }) {
       identity={resolved.identity}
       isAddressIdentity={isAddressIdentity}
       handleColor={resolved.handleColor}
+      isAi={resolved.author?.is_ai === true}
       bio={resolved.author?.bio ?? null}
       holderAddress={resolved.holderAddress}
       handleCardsSlot={

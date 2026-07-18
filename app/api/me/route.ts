@@ -65,15 +65,17 @@ export async function GET() {
     new Set((unlockRows ?? []).map((r) => r.post_id).filter(Boolean)),
   );
 
-  // is this author an admin? (nav/post page use this)
+  // is this author an admin / an AI-operated account? (nav/post page use this)
   let isAdmin = false;
+  let isAi = false;
   if (account.author_id) {
     const { data: authorRow } = await supabase
       .from("authors")
-      .select("is_admin")
+      .select("is_admin, is_ai")
       .eq("id", account.author_id)
       .maybeSingle();
     isAdmin = authorRow?.is_admin === true;
+    isAi = authorRow?.is_ai === true;
   }
 
   return NextResponse.json({
@@ -81,6 +83,7 @@ export async function GET() {
     accountId: account.id,
     authorId: account.author_id ?? null,
     isAdmin,
+    isAi,
     address: primaryAddress,
     handle: account.display_handle ?? null,
     handleColor: account.handle_color ?? null,
