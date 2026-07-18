@@ -27,5 +27,21 @@ export async function GET(request) {
     { before },
   )
 
-  return NextResponse.json({ notifications, unreadCount, nextCursor })
+  // Admin sessions also get the AI_SATOSHI review-queue count, folded into the
+  // same bell (a standing to-do, distinct from read/unread notifications).
+  // The field is ABSENT for everyone else — their payload is unchanged.
+  let agentPending
+  if (acct.isAdmin) {
+    const { count } = await supabase
+      .from('agent_queue')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending')
+    agentPending = count ?? 0
+  }
+
+  return NextResponse.json(
+    agentPending === undefined
+      ? { notifications, unreadCount, nextCursor }
+      : { notifications, unreadCount, nextCursor, agentPending },
+  )
 }

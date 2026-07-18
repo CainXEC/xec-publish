@@ -122,15 +122,16 @@ export const FEED_CSS = `
   color:var(--neon);line-height:1;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
 .pow-feed .notifbtn:hover{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
 .pow-feed .notifbtn svg{display:block;}
-/* ---- admin agent-queue chip (renders only for admin sessions) ----
-   Same 34px chrome as the bell; order:2 seats it beside the bell on desktop
-   (after the bell's margin-left:auto push) and with the left cluster on
-   mobile. Reuses .notifbadge for the pending count. */
-.pow-feed .agentbtn{position:relative;display:inline-flex;align-items:center;justify-content:center;order:2;
-  flex:none;width:34px;height:34px;background:transparent;border:1px solid var(--line);border-radius:8px;
-  color:var(--cyan);line-height:1;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
-.pow-feed .agentbtn:hover{border-color:var(--cyan);box-shadow:0 0 16px rgba(61,240,255,.22);}
-.pow-feed .agentbtn svg{display:block;}
+/* ---- pinned agent-queue row (admin sessions only) ----
+   A standing to-do at the top of the bell dropdown: persists until the drafts
+   are judged — mark-read never clears it. The API only sends the count to
+   admin sessions, so this row can't exist for anyone else. */
+.pow-feed .notif-agent{display:flex;align-items:center;gap:8px;padding:11px 14px;
+  font-size:12.5px;letter-spacing:.04em;color:var(--neon);
+  border-bottom:1px solid var(--line);background:rgba(0,255,156,.06);transition:background .12s;}
+.pow-feed .notif-agent:hover{background:rgba(0,255,156,.12);}
+.pow-feed .notif-agent-dot{width:7px;height:7px;border-radius:50%;background:var(--neon);
+  box-shadow:0 0 8px rgba(0,255,156,.8);flex:none;}
 /* Pocket button — a standalone topbar item on the LEFT (same 34px chrome as the
    bell/toggle). order:1 puts it right after the hamburger on desktop
    ([hamburger][pocket] … [bell][theme]); on mobile the hamburger is gone and the
@@ -1081,6 +1082,10 @@ html:not(.dark) .pow-feed .tnode.focused .tdot{background:var(--cyan);box-shadow
 /* Count badges: solid danger chip with paper text, no glow. */
 html:not(.dark) .pow-feed .notifbadge,
 html:not(.dark) .pow-feed .dashbadge{background:var(--no);color:#fdfcf8;box-shadow:none;}
+/* Pinned agent row on paper: ink-green on a soft green tint, glow killed. */
+html:not(.dark) .pow-feed .notif-agent{background:var(--accent-tint,#e7f0e7);}
+html:not(.dark) .pow-feed .notif-agent:hover{background:#dce9dc;}
+html:not(.dark) .pow-feed .notif-agent-dot{box-shadow:none;}
 
 /* Floating menus / popovers: a soft ink shadow, not the dark theme's rgba(0,0,0,.5). */
 html:not(.dark) .pow-feed .hammenu,
