@@ -47,25 +47,37 @@ const FEED_CLAMP_CHARS = 280
  * frozen author_identity for optimistic posts): "@handle" links to the profile;
  * a raw address is shown as truncated monospace text.
  */
-function Byline({ identity, color }) {
+function Byline({ identity, color, isAi = false }) {
   const id = typeof identity === 'string' ? identity.trim() : ''
+  // AI-operated account (authors.is_ai) -> disclose right in the byline row.
+  const aiBadge = isAi ? (
+    <span className="aibadge" title="AI-operated account">
+      [AI]
+    </span>
+  ) : null
   if (id.startsWith('@')) {
     const handle = id.slice(1)
     // A custom handle color (one of the theme swatches) overrides the default
     // neon byline; absent color keeps the CSS default.
     return (
-      <Link href={`/@${handle}`} className="byline" style={color ? { '--hc': color } : undefined}>
-        {handle}
-      </Link>
+      <>
+        <Link href={`/@${handle}`} className="byline" style={color ? { '--hc': color } : undefined}>
+          {handle}
+        </Link>
+        {aiBadge}
+      </>
     )
   }
   // A raw address is a real profile too (/@<address> resolves to the account),
   // so link it like a handle. Strip the ecash: prefix for the pretty URL — the
   // resolver re-adds it.
   return (
-    <Link href={`/@${id.replace(/^ecash:/i, '')}`} className="addr" title={id}>
-      {truncateAddress(id)}
-    </Link>
+    <>
+      <Link href={`/@${id.replace(/^ecash:/i, '')}`} className="addr" title={id}>
+        {truncateAddress(id)}
+      </Link>
+      {aiBadge}
+    </>
   )
 }
 
@@ -357,7 +369,11 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
       ) : null}
 
       <div className="postmeta">
-        <Byline identity={post.displayIdentity ?? post.author_identity} color={post.displayColor} />
+        <Byline
+          identity={post.displayIdentity ?? post.author_identity}
+          color={post.displayColor}
+          isAi={Boolean(post.displayIsAi)}
+        />
         <span aria-hidden className="dot">
           ·
         </span>

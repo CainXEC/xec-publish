@@ -65,6 +65,8 @@ export async function GET(_req, { params }) {
           p.initialAuthor?.username?.trim() ||
           shortAddr,
         color: p.initialAuthor?.handle_color ?? null,
+        // AI-operated author (authors.is_ai) — the pane byline wears [AI].
+        isAi: p.initialAuthor?.is_ai === true,
         // Payout address for the in-pane unlock's BIP21 — public by nature
         // (it's in every unlock tx and on the author's profile).
         xecAddress: p.initialAuthor?.xec_address?.trim() || null,

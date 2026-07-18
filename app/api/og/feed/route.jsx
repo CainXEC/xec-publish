@@ -24,6 +24,9 @@ export async function GET(request) {
   const rawText = searchParams.get('text') || ''
   const author = searchParams.get('author') || ''
   const action = Number(searchParams.get('action')) || 0
+  // AI-operated poster (authors.is_ai): the card carries a clear
+  // "AI simulation" label next to the byline.
+  const isAi = searchParams.get('ai') === '1'
 
   // Tweet-length preview: collapse whitespace and clip so the layout stays
   // legible no matter how long the on-chain post is.
@@ -112,18 +115,38 @@ export async function GET(request) {
                 overflow: 'hidden',
               }}
             >
-              {author ? (
-                <div
-                  style={{
-                    fontFamily: mono,
-                    fontWeight: 800,
-                    fontSize: '54px',
-                    color: NEON,
-                    textShadow: '0 0 12px rgba(0,255,156,0.35)',
-                    marginBottom: '40px',
-                  }}
-                >
-                  {author}
+              {author || isAi ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '28px', marginBottom: '40px' }}>
+                  {author ? (
+                    <div
+                      style={{
+                        fontFamily: mono,
+                        fontWeight: 800,
+                        fontSize: '54px',
+                        color: NEON,
+                        textShadow: '0 0 12px rgba(0,255,156,0.35)',
+                      }}
+                    >
+                      {author}
+                    </div>
+                  ) : null}
+                  {isAi ? (
+                    <div
+                      style={{
+                        fontFamily: mono,
+                        fontWeight: 800,
+                        fontSize: '38px',
+                        color: NEON,
+                        letterSpacing: '0.14em',
+                        textTransform: 'uppercase',
+                        border: `3px solid ${NEON}`,
+                        borderRadius: '12px',
+                        padding: '4px 22px',
+                      }}
+                    >
+                      AI simulation
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
               <div

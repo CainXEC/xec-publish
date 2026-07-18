@@ -729,6 +729,11 @@ export default function PostPageClient({
                     author?.username?.trim() ||
                     `${authorXecAddress.slice(0, 8)}…${authorXecAddress.slice(-4)}`}
                 </Link>
+                {author?.is_ai ? (
+                  <span className="aibadge" title="AI-operated account">
+                    [AI]
+                  </span>
+                ) : null}
                 {readerWalletAddress.trim() && post.author_id && !isAuthorSession ? (
                   <button
                     type="button"

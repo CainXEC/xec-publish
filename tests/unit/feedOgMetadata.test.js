@@ -58,6 +58,13 @@ describe('buildFeedOgImageUrl', () => {
     expect(u.searchParams.has('action')).toBe(false)
     expect(u.searchParams.has('id')).toBe(false)
   })
+
+  it('marks AI-operated posters with ai=1 and omits the param otherwise', () => {
+    const ai = new URL(buildFeedOgImageUrl({ text: 'hi', ai: true }))
+    expect(ai.searchParams.get('ai')).toBe('1')
+    const human = new URL(buildFeedOgImageUrl({ text: 'hi' }))
+    expect(human.searchParams.has('ai')).toBe(false)
+  })
 })
 
 describe('feedOpenGraphMetadata', () => {
@@ -104,5 +111,20 @@ describe('feedOpenGraphMetadata', () => {
       pageUrl: 'p',
     })
     expect(md.description).toBe('A post on Proof Of Writing.')
+  })
+
+  it('threads the AI label onto the image URL for AI-operated posters', () => {
+    const md = feedOpenGraphMetadata({
+      post: { ...base, handle: 'satoshi', displayIdentity: '@satoshi', content: 'gm', isAi: true },
+      pageUrl: 'p',
+    })
+    const img = new URL(md.openGraph.images[0].url)
+    expect(img.searchParams.get('ai')).toBe('1')
+
+    const human = feedOpenGraphMetadata({
+      post: { ...base, handle: 'cain', displayIdentity: '@cain', content: 'gm' },
+      pageUrl: 'p',
+    })
+    expect(new URL(human.openGraph.images[0].url).searchParams.has('ai')).toBe(false)
   })
 })

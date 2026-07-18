@@ -26,6 +26,7 @@ export async function generateMetadata({
   return articleOpenGraphMetadata({
     post,
     authorUsername,
+    authorIsAi: author?.is_ai === true,
     pageUrl: `${siteUrl}/posts/${encodeURIComponent(post.slug)}`,
   });
 }

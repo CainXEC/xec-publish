@@ -19,6 +19,9 @@ export async function GET(request) {
   const author = searchParams.get('author') || ''
   const readTime = searchParams.get('readTime') || ''
   const price = searchParams.get('price') || ''
+  // AI-operated author (authors.is_ai): the card must carry a clear
+  // "AI simulation" label — publishing without it is a hard no for the agent.
+  const isAi = searchParams.get('ai') === '1'
 
   if (title.length > 120) title = title.slice(0, 119).trimEnd() + '…'
 
@@ -120,6 +123,22 @@ export async function GET(request) {
                 flexShrink: 0,
               }}
             >
+              {isAi ? (
+                <span
+                  style={{
+                    color: NEON,
+                    fontWeight: 800,
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    border: `3px solid ${NEON}`,
+                    borderRadius: '12px',
+                    padding: '4px 24px',
+                  }}
+                >
+                  AI simulation
+                </span>
+              ) : null}
+              {isAi && author ? <span style={{ color: DIM }}>·</span> : null}
               {author ? <span style={{ color: NEON, fontWeight: 800 }}>{`@${author}`}</span> : null}
               {author && readTime ? <span style={{ color: DIM }}>·</span> : null}
               {readTime ? <span style={{ color: DIM }}>{`${readTime} min read`}</span> : null}

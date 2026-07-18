@@ -238,6 +238,7 @@ export default function AuthorProfilePageClient({
   identity,
   isAddressIdentity = false,
   handleColor = null,
+  isAi = false,
   bio = null,
   holderAddress = null,
   handleCards = [],
@@ -463,6 +464,11 @@ export default function AuthorProfilePageClient({
             style={!isAddressIdentity && handleColor ? { '--hc': handleColor } : undefined}
           >
             {isAddressIdentity ? identity : String(identity ?? '').replace(/^@/, '')}
+            {isAi ? (
+              <span className="aibadge" title="AI-operated account">
+                [AI]
+              </span>
+            ) : null}
           </h1>
 
           {holderAddress ? (

@@ -359,6 +359,12 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .byline:hover{text-shadow:0 0 14px rgba(0,255,156,.6);}
 .pow-feed .addr{font-size:13px;color:var(--cyan);text-decoration:none;}
 .pow-feed a.addr:hover{text-decoration:underline;}
+/* [AI] disclosure chip beside an AI-operated account's byline (authors.is_ai).
+   The literal brackets are the chrome — terminal green on dark; on paper the
+   --neon token remaps to ink-green and the global paper rule kills the glow. */
+.pow-feed .aibadge{flex:none;font-size:10.5px;font-weight:700;letter-spacing:.1em;color:var(--neon);
+  text-shadow:0 0 8px rgba(0,255,156,.35);white-space:nowrap;cursor:default;}
+.pow-feed .profname .aibadge{font-size:14px;margin-left:10px;vertical-align:middle;}
 .pow-feed .dot{color:var(--line);}
 .pow-feed .time{font-size:12px;color:var(--dim);}
 .pow-feed .time:hover{color:var(--cyan);}
