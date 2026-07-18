@@ -58,7 +58,7 @@ export default function CommissionForm() {
         value={links}
         onChange={(e) => setLinks(e.target.value)}
         rows={2}
-        placeholder={'Optional links — up to 3 article URLs, one per line. The agent reads them at draft time and can quote them.'}
+        placeholder={'Optional links — up to 3, one per line: articles or YouTube videos (the agent reads the captions). Podcast audio can’t be read — use the episode’s YouTube upload.'}
         disabled={pending}
       />
       <div className="aq-commrow">

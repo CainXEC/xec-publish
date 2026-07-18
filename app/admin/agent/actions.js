@@ -70,6 +70,16 @@ export async function createAssignment(subject, notes, links) {
     if (!parsed || (parsed.protocol !== 'http:' && parsed.protocol !== 'https:')) {
       return { error: `Not a valid link: ${u.slice(0, 80)}` }
     }
+    // Podcast platforms serve show notes, not the interview — the agent can't
+    // listen to audio. Refuse here with guidance rather than let the draft
+    // attempt fail later (the agent refuses these too, belt and braces).
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, '')
+    if (host === 'open.spotify.com' || host === 'podcasts.apple.com') {
+      return {
+        error:
+          'Podcast audio can’t be read — link the episode’s YouTube upload instead, or a page with a published transcript.',
+      }
+    }
   }
 
   const supabase = createServerSupabase()
