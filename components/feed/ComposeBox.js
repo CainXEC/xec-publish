@@ -198,11 +198,9 @@ export default function ComposeBox({
           setStatusMsg('Posting…')
           setIntent((prev) => (prev ? { ...prev, pocketTxid: r.txid } : prev))
           // Show the post NOW, the instant the pocket broadcasts — before the
-          // server records it. Only where the box stays mounted through confirm
-          // (allowOptimistic) and only for a plain post (polls keep the classic
-          // flow). The confirm poll still records it; its onPosted is deduped by
-          // txid so there's no duplicate, and we KEEP the draft until confirm so
-          // the poll can re-send the exact content it hashes.
+          // server records it. Only where the caller opted in (allowOptimistic) and
+          // only for a plain post (polls keep the classic flow). Recording is handed
+          // to a background confirm (below) so the composer can be cleared right away.
           if (allowOptimistic && !pollActive) {
             const snap = getPocketSnapshot()
             // Hand the RECORDING to a background confirm so the composer can be
@@ -220,7 +218,11 @@ export default function ComposeBox({
               preparedAt: data.preparedAt,
               payAddress: data.payAddress,
             })
-            onPosted?.({
+            // handlePosted shows the post (onPosted) AND clears the draft + poll
+            // state + resets to the empty composer — the whole reason the text field
+            // was left populated before was calling onPosted+resetToCompose, which
+            // does NOT clear the draft.
+            handlePosted({
               txid: r.txid,
               action:
                 action === 'reply'
@@ -257,9 +259,6 @@ export default function ComposeBox({
               repostedByViewer: false,
               optimistic: true,
             })
-            // Composer's job is done — reset/hide it now. (A reply/quote box's
-            // onPosted already closed it; this clears the persistent top composer.)
-            resetToCompose()
           }
         } else if (!r.ok && r.reason === 'denied') {
           resetToCompose()
@@ -279,7 +278,7 @@ export default function ComposeBox({
     } finally {
       setSubmitting(false)
     }
-  }, [content, action, parentTxid, quotedTxid, quotedPost, priced.ok, priced.costXec, pollActive, pollEligibility, pollOptions, pollValid, resetToCompose, allowOptimistic, onPosted])
+  }, [content, action, parentTxid, quotedTxid, quotedPost, priced.ok, priced.costXec, pollActive, pollEligibility, pollOptions, pollValid, resetToCompose, allowOptimistic, handlePosted])
 
   // Poll for the on-chain payment while paying (Cashtab + non-optimistic pocket;
   // the optimistic path hands recording to confirmFeedPostInBackground instead).
