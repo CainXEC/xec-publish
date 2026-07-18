@@ -45,6 +45,21 @@ export default function PocketChip() {
 
   useEffect(() => () => { if (pressTimer.current) clearTimeout(pressTimer.current) }, [])
 
+  // Roll the balance toward its new value, and flash the card open for a beat on
+  // every spend — so a pocket-paid action reads as "money moved" even when the
+  // card is closed. Both honor reduced-motion (instant, no flash).
+  const rollingSats = useRollingSats(pocket.balanceSats)
+  const [flash, setFlash] = useState(false)
+  const pulseRef = useRef(pocket.spendPulse)
+  useEffect(() => {
+    if (pocket.spendPulse === pulseRef.current) return undefined
+    pulseRef.current = pocket.spendPulse
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return undefined
+    setFlash(true)
+    const id = setTimeout(() => setFlash(false), 1800)
+    return () => clearTimeout(id)
+  }, [pocket.spendPulse])
+
   const status = pocket.status
   if (status !== 'ready' && status !== 'none') return null
   const hasPocket = status === 'ready'
@@ -96,10 +111,13 @@ export default function PocketChip() {
   }
 
   const balanceText =
-    pocket.balanceSats == null ? 'Loading…' : `${formatXec(pocket.balanceSats)} XEC`
+    rollingSats == null ? 'Loading…' : `${formatXec(rollingSats)} XEC`
 
   return (
-    <div ref={rootRef} className={`pocketbtn-wrap${open ? ' open' : ''}`}>
+    <div
+      ref={rootRef}
+      className={`pocketbtn-wrap${open ? ' open' : ''}${flash ? ' flash' : ''}`}
+    >
       <button
         type="button"
         className="pocketbtn"
@@ -151,4 +169,37 @@ function formatXec(sats) {
   if (xec < 10000) return xec.toLocaleString()
   if (xec < 1_000_000) return `${(xec / 1000).toFixed(1).replace(/\.0$/, '')}K`
   return `${(xec / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
+}
+
+/**
+ * Tween a sats value toward `target` (ease-out cubic, ~650ms) so the balance
+ * rolls like the newer Cashtab wallet instead of snapping. First paint and
+ * reduced-motion snap straight to the value; a spend or top-up rolls.
+ */
+function useRollingSats(target) {
+  const [display, setDisplay] = useState(target)
+  const prevRef = useRef(target)
+  useEffect(() => {
+    const from = prevRef.current
+    prevRef.current = target
+    const reduce =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+    if (target == null || from == null || from === target || reduce) {
+      setDisplay(target)
+      return undefined
+    }
+    const start = performance.now()
+    const DUR = 650
+    let raf = 0
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / DUR)
+      const eased = 1 - Math.pow(1 - t, 3)
+      setDisplay(Math.round(from + (target - from) * eased))
+      if (t < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [target])
+  return display
 }

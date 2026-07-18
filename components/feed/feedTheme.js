@@ -155,7 +155,8 @@ export const FEED_CSS = `
   display:flex;flex-direction:column;gap:6px;min-width:130px;
   color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:10px;
   padding:8px;box-shadow:0 8px 22px rgba(0,0,0,.4);
-  opacity:0;pointer-events:none;transform:translateY(-3px);transition:opacity .12s,transform .12s;}
+  opacity:0;pointer-events:none;transform:translateY(-3px);
+  transition:opacity .12s,transform .12s,border-color .2s,box-shadow .2s;}
 /* transparent hover bridge over the 6px gap so a desktop mouse can travel from
    the chip to the card without it closing (the card is a DOM descendant of the
    wrap, so hovering it — or this bridge — keeps :hover alive). */
@@ -168,7 +169,15 @@ export const FEED_CSS = `
   transition:border-color .15s,background .15s;}
 .pow-feed .pocket-open:hover{border-color:var(--neon);background:rgba(0,255,156,.08);}
 @media (hover:hover){.pow-feed .pocketbtn-wrap:hover .pocket-bal{opacity:1;transform:translateY(0);pointer-events:auto;}}
-.pow-feed .pocketbtn-wrap.open .pocket-bal{opacity:1;transform:translateY(0);pointer-events:auto;}
+.pow-feed .pocketbtn-wrap.open .pocket-bal,
+.pow-feed .pocketbtn-wrap.flash .pocket-bal{opacity:1;transform:translateY(0);pointer-events:auto;}
+/* Spend flash: a green breath on the card + chip so a pocket-paid action reads as
+   "money moved" even with the card closed, then it fades back to just the icon.
+   Driven by the store's spendPulse; PocketChip removes .flash after ~1.8s. */
+.pow-feed .pocketbtn-wrap.flash .pocket-bal{border-color:var(--neon);
+  box-shadow:0 0 0 1px var(--neon),0 8px 22px rgba(0,0,0,.45);}
+.pow-feed .pocketbtn-wrap.flash .pocket-bal-amt{color:var(--neon);}
+.pow-feed .pocketbtn-wrap.flash .pocketbtn{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
 .pow-feed .notifbadge{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;
   display:inline-flex;align-items:center;justify-content:center;border-radius:9px;
   background:var(--no);color:#0b0304;font-size:10px;font-weight:800;line-height:1;

@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   pocketSpend: vi.fn(async () => ({ ok: true, txid: 'f'.repeat(64) })),
   warmPocketWallet: vi.fn(async () => {}),
   refreshPocketBalance: vi.fn(),
+  applyOptimisticSpend: vi.fn(),
+  undoOptimisticSpend: vi.fn(),
   extensionAvailable: false,
   payWithCashtab: vi.fn(async () => ({ ok: true, via: 'extension', txid: 'e'.repeat(64) })),
   beginCashtabPayment: vi.fn(() => ({ hasExtension: false, placeholderWindow: null })),
@@ -22,6 +24,8 @@ vi.mock('@/lib/pocket/store', () => ({
   getPocketSnapshot: () => mocks.snapshot,
   getPocketSpendContext: () => mocks.spendContext,
   refreshPocketBalance: mocks.refreshPocketBalance,
+  applyOptimisticSpend: mocks.applyOptimisticSpend,
+  undoOptimisticSpend: mocks.undoOptimisticSpend,
 }))
 vi.mock('@/lib/pocket/wallet', () => ({
   pocketSpend: mocks.pocketSpend,
@@ -96,6 +100,10 @@ describe('beginPayment / completePayment', () => {
     // The click-time warm ran in parallel with the (caller's) prepare fetch.
     expect(mocks.warmPocketWallet).toHaveBeenCalledWith(mocks.spendContext.skHex)
     expect(mocks.refreshPocketBalance).toHaveBeenCalled()
+    // The balance drops optimistically the instant we broadcast, and is NOT rolled
+    // back on success — Chronik reconciles the exact figure.
+    expect(mocks.applyOptimisticSpend).toHaveBeenCalled()
+    expect(mocks.undoOptimisticSpend).not.toHaveBeenCalled()
     expect(mocks.completeCashtabPayment).not.toHaveBeenCalled()
   })
 
@@ -122,6 +130,9 @@ describe('beginPayment / completePayment', () => {
     expect(r.reason).toBe('pocket_error')
     expect(r.message).toMatch(/balance/i)
     expect(mocks.payWithCashtab).not.toHaveBeenCalled()
+    // The optimistic drop is rolled back — the pocket didn't actually pay.
+    expect(mocks.applyOptimisticSpend).toHaveBeenCalled()
+    expect(mocks.undoOptimisticSpend).toHaveBeenCalled()
   })
 
   it('a failed pocket spend WITH the extension silently retries via the extension popup', async () => {
@@ -131,6 +142,9 @@ describe('beginPayment / completePayment', () => {
     const r = await completePayment({ mode: 'pocket' }, PAY)
     expect(mocks.payWithCashtab).toHaveBeenCalledWith(PAY)
     expect(r.via).toBe('extension')
+    // Rolled back before the extension takes over (the extension pays from the
+    // main wallet, not the pocket).
+    expect(mocks.undoOptimisticSpend).toHaveBeenCalled()
   })
 
   it('a vanished pocket record falls back gracefully', async () => {
@@ -191,6 +205,8 @@ describe('flag off — literal pass-throughs', () => {
       getPocketSnapshot: () => mocks.snapshot,
       getPocketSpendContext: () => mocks.spendContext,
       refreshPocketBalance: mocks.refreshPocketBalance,
+      applyOptimisticSpend: mocks.applyOptimisticSpend,
+      undoOptimisticSpend: mocks.undoOptimisticSpend,
     }))
     const { beginPayment, spendEligibility } = await import('@/lib/pocket/payGateway')
     expect(spendEligibility('like', 100)).toEqual({ eligible: false, reason: 'disabled' })
