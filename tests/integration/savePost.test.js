@@ -122,6 +122,13 @@ describe('savePost published semantics', () => {
     expect(db.state.lastUpdatePayload.published).toBe(false)
   })
 
+  it('action result does not echo storedBody (autosave response stays small)', async () => {
+    const { savePost } = await import('@/app/dashboard/savePost')
+    const res = await savePost({ title: 'T', body: BODY, priceXec: 100 })
+    expect(res.ok).toBe(true)
+    expect('storedBody' in res).toBe(false)
+  })
+
   it('fresh draft INSERT defaults published:false', async () => {
     const { savePost } = await import('@/app/dashboard/savePost')
     const res = await savePost({
