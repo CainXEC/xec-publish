@@ -46,6 +46,13 @@ export default function EngagementBar({
   // Which reaction is mid-payment, if any: 'like' | 'repost' | null.
   const [pending, setPending] = useState(null)
   const [intent, setIntent] = useState(null)
+  // True while a POCKET payment is carrying the reaction. The pocket broadcasts
+  // locally and instantly, so the action reads as DONE the moment you tap — no
+  // disabled button, no "recording on-chain…" panel. The confirm poll still runs,
+  // silently, to record it server-side and roll back on the rare failure. Cashtab
+  // (and a pocket that fails over to it) flip this false so the approve/manual UI
+  // shows, because there you genuinely have to wait on the wallet.
+  const [payViaPocket, setPayViaPocket] = useState(false)
   const [notice, setNotice] = useState('')
   const [txidInput, setTxidInput] = useState('')
   const startingRef = useRef(false)
@@ -74,6 +81,7 @@ export default function EngagementBar({
   const finalizeReacted = useCallback(() => {
     setPending(null)
     setIntent(null)
+    setPayViaPocket(false)
     setTxidInput('')
     setNotice('')
     if (typeof window !== 'undefined') {
@@ -104,6 +112,8 @@ export default function EngagementBar({
       // pre-opens about:blank so the deep link survives popup blockers once
       // /prepare returns.
       const handle = beginPayment({ kind: action, amountXec: amount ?? 100 })
+      // Pocket carries it silently (no pending UI); Cashtab shows the approve panel.
+      setPayViaPocket(handle.mode === 'pocket')
       // Warm the shared ws and flip the button optimistically so the reaction
       // feels instant; both are undone below if the payment can't be started.
       prewarmPaymentWatch()
@@ -122,6 +132,7 @@ export default function EngagementBar({
         if (!res.ok || !data.ok) {
           abortPayment(handle)
           revertReaction(action)
+          setPayViaPocket(false)
           setNotice(data.error || 'Could not start the payment. Try again.')
           return
         }
@@ -139,8 +150,12 @@ export default function EngagementBar({
             revertReaction(action)
             setPending(null)
             setIntent(null)
+            setPayViaPocket(false)
             setNotice('Payment cancelled.')
           } else if (!r.ok && r.reason === 'pocket_error') {
+            // Pocket couldn't send — surface the approve/manual panel so the
+            // payment can still complete via Cashtab.
+            setPayViaPocket(false)
             setNotice(r.message || 'Pocket couldn’t send — use Open Cashtab below.')
           }
         })
@@ -149,6 +164,7 @@ export default function EngagementBar({
       } catch {
         abortPayment(handle)
         revertReaction(action)
+        setPayViaPocket(false)
         setNotice('Network hiccup — try again.')
       } finally {
         startingRef.current = false
@@ -236,6 +252,7 @@ export default function EngagementBar({
     if (pending) revertReaction(pending) // undo the optimistic flip
     setPending(null)
     setIntent(null)
+    setPayViaPocket(false)
     setTxidInput('')
     setNotice('')
   }, [pending, revertReaction])
@@ -247,7 +264,7 @@ export default function EngagementBar({
           <button
             type="button"
             className={`likebtn${liked ? ' on' : ''}`}
-            disabled={Boolean(pending)}
+            disabled={Boolean(pending) && !payViaPocket}
             aria-pressed={liked}
             aria-haspopup="menu"
             aria-label={liked ? 'Liked' : 'Like'}
@@ -324,7 +341,7 @@ export default function EngagementBar({
         ) : null}
       </div>
 
-      {pending && intent ? (
+      {pending && intent && !payViaPocket ? (
         <div className="reactpay">
           <p className="poll">
             {intent.pocketTxid ? (
