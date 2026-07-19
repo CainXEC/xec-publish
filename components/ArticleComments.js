@@ -9,6 +9,8 @@ import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPayme
 // eligible → local sign + instant broadcast (r.txid feeds the confirm poll);
 // otherwise the exact extension/web-tab behavior this file always had.
 import { beginPayment, completePayment, abortPayment } from '@/lib/pocket/payGateway'
+import { getPocketSnapshot } from '@/lib/pocket/store'
+import { confirmCommentInBackground } from '@/lib/comments/confirmComment'
 
 // =============================================================================
 //  ArticleComments — paid, threaded comments on an article.
@@ -78,14 +80,20 @@ function buildThreadOrder(comments) {
   return roots.slice().sort(byCreated).flatMap(collect)
 }
 
-/** Compose + pay a top-level comment (parentId null) or a reply. */
-function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted, onCancel }) {
+/** Compose + pay a top-level comment (parentId null) or a reply.
+ *  onPosted    — show + close (the optimistic broadcast and the Cashtab confirm).
+ *  onConfirmed — swap the optimistic row for the recorded one (real DB id), used
+ *                by the background confirm; must NOT close the composer. */
+function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted, onConfirmed, onCancel }) {
   const [content, setContent] = useState('')
   const [phase, setPhase] = useState('compose') // 'compose' | 'paying'
   const [intent, setIntent] = useState(null)
   const [notice, setNotice] = useState('')
   const [txidInput, setTxidInput] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // True when the click resolved to a pocket payment — drives the compact
+  // "Posting…" screen and the optimistic dismiss (vs the Cashtab wait screen).
+  const [payViaPocket, setPayViaPocket] = useState(false)
   const textareaRef = useRef(null)
 
   const priced = priceFeedPost(content)
@@ -122,6 +130,7 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
     setIntent(null)
     setNotice('')
     setTxidInput('')
+    setPayViaPocket(false)
   }, [])
 
   const handlePosted = useCallback(
@@ -144,6 +153,7 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
     // Pocket-vs-Cashtab decided AT the click (the client prices the comment
     // itself, so eligibility is synchronous). Pocket opens nothing.
     const handle = beginPayment({ kind: 'comment', amountXec: priced.costXec })
+    setPayViaPocket(handle.mode === 'pocket')
     try {
       const res = await fetch('/api/comments/prepare', {
         method: 'POST',
@@ -153,6 +163,7 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) {
         abortPayment(handle)
+        setPayViaPocket(false)
         setNotice(data.error || 'Could not start the payment. Try again.')
         return
       }
@@ -161,11 +172,38 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
         cashtabUrl: data.cashtabUrl,
       }).then((r) => {
         if (r.ok && r.via === 'pocket' && r.txid) {
-          setIntent((prev) => (prev ? { ...prev, pocketTxid: r.txid } : prev))
+          // The pocket broadcast the moment it was clicked — show the comment NOW
+          // and dismiss the composer, don't wait for the chain. Recording is handed
+          // to a background confirm that swaps this optimistic row for the recorded
+          // one (its real DB id lets replies thread correctly).
+          const snap = getPocketSnapshot()
+          confirmCommentInBackground({
+            postId,
+            content,
+            parentId,
+            txid: r.txid,
+            preparedAt: data.preparedAt,
+            payAddress: data.payAddress,
+            onConfirmed: onConfirmed || onPosted,
+          })
+          handlePosted({
+            id: `optimistic-${r.txid}`,
+            txid: r.txid,
+            parent_id: parentId ?? null,
+            parent_txid: null,
+            content,
+            author_account_id: snap.accountId ?? null,
+            author_identity: snap.identity ?? null,
+            payer_address: snap.primaryAddress ?? null,
+            created_at: new Date().toISOString(),
+            deleted: false,
+            optimistic: true,
+          })
         } else if (!r.ok && r.reason === 'denied') {
           resetToCompose()
           setNotice('Payment cancelled — your draft is safe.')
         } else if (!r.ok && r.reason === 'pocket_error') {
+          setPayViaPocket(false)
           setNotice(r.message || 'Pocket couldn’t send — use the Cashtab link below.')
         }
       })
@@ -173,15 +211,17 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
       setPhase('paying')
     } catch {
       abortPayment(handle)
+      setPayViaPocket(false)
       setNotice('Network hiccup — try again.')
     } finally {
       setSubmitting(false)
     }
-  }, [content, parentId, postId, priced.ok, priced.costXec, resetToCompose])
+  }, [content, parentId, postId, priced.ok, priced.costXec, resetToCompose, handlePosted, onPosted, onConfirmed])
 
-  // Poll for the on-chain payment while paying.
+  // Poll for the on-chain payment while paying via Cashtab. (The pocket path is
+  // optimistic — it hands recording to confirmCommentInBackground instead.)
   useEffect(() => {
-    if (phase !== 'paying' || !intent) return undefined
+    if (phase !== 'paying' || !intent || payViaPocket) return undefined
     let stopped = false
     const confirm = async (manualTxid) => {
       try {
@@ -222,7 +262,7 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
       clearInterval(id)
       unwatch()
     }
-  }, [phase, intent, content, parentId, postId, handlePosted])
+  }, [phase, intent, payViaPocket, content, parentId, postId, handlePosted])
 
   const verifyManual = useCallback(async () => {
     const t = txidInput.trim()
@@ -251,6 +291,19 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
   }, [txidInput, content, parentId, postId, handlePosted])
 
   const noun = isReply ? 'reply' : 'comment'
+
+  // Pocket path: the payment is already broadcasting locally — a compact "Posting…"
+  // beat, then the optimistic dismiss lands the comment (~instant).
+  if (phase === 'paying' && payViaPocket) {
+    return (
+      <div className={`commentpay${isReply ? ' commentpay-reply' : ''}`}>
+        <div className="commentpay-poll">
+          <span className="spinner" aria-hidden />
+          <span>Posting your {noun}…</span>
+        </div>
+      </div>
+    )
+  }
 
   if (phase === 'paying' && intent) {
     return (
@@ -378,16 +431,32 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
     [],
   )
 
-  const handlePosted = useCallback(
+  // Upsert by txid: append a new comment, OR replace an existing row with the
+  // same txid. The replace is what lets a pocket comment show OPTIMISTICALLY (a
+  // temp `optimistic-<txid>` id) and then, when its background confirm lands, take
+  // on the REAL DB id — so replies to it thread correctly. Does NOT close any
+  // composer, so a confirm landing can't yank away an unrelated open reply box.
+  const upsertComment = useCallback(
     (comment) => {
       setComments((prev) => {
-        if (comment.txid && prev.some((c) => c.txid === comment.txid)) return prev
+        if (comment.txid && prev.some((c) => c.txid === comment.txid)) {
+          return prev.map((c) => (c.txid === comment.txid ? { ...comment, deleted: false } : c))
+        }
         return [...prev, { ...comment, deleted: false }]
       })
-      setReplyingTo(null)
       onChanged?.()
     },
     [onChanged],
+  )
+
+  // Initial post (optimistic broadcast or Cashtab confirm): show it AND close the
+  // composer that made it.
+  const handlePosted = useCallback(
+    (comment) => {
+      upsertComment(comment)
+      setReplyingTo(null)
+    },
+    [upsertComment],
   )
 
   const handleDelete = useCallback(
@@ -461,7 +530,7 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
         {liveCount} {liveCount === 1 ? 'comment' : 'comments'}
       </p>
 
-      <CommentComposer postId={postId} onPosted={handlePosted} />
+      <CommentComposer postId={postId} onPosted={handlePosted} onConfirmed={upsertComment} />
 
       {actionError ? (
         <p className="commenterr" role="alert">
@@ -503,11 +572,13 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
               !comment.deleted &&
               (isAuthorSession || (byline && ownedIds.includes(byline)) || (copyAddr && ownedIds.includes(copyAddr)))
             // Any comment can be replied to (threaded by id; the reply pays the
-            // parent's author 94/6, paid or legacy). Tombstones can't.
-            const canReply = canComment && !comment.deleted
+            // parent's author 94/6, paid or legacy). Tombstones can't — nor can a
+            // still-optimistic comment (no real DB id yet; Reply returns the
+            // instant its background confirm swaps in the recorded row).
+            const canReply = canComment && !comment.deleted && !comment.optimistic
 
             return (
-              <li key={comment.id} className="commentitem">
+              <li key={comment.txid || comment.id} className="commentitem">
                 {parent ? (
                   <p className="comment-replyingto">
                     <span className="comment-replyarrow">↳</span> Replying to{' '}
@@ -579,6 +650,7 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
                     parentId={comment.id}
                     autoFocus
                     onPosted={handlePosted}
+                    onConfirmed={upsertComment}
                     onCancel={() => setReplyingTo(null)}
                   />
                 ) : null}
