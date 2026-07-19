@@ -1,5 +1,15 @@
 -- Sum of unlocks.amount_xec per post (optional time window on unlocks.unlocked_at).
--- Mirrors get_unlock_counts(post_ids, since) but aggregates SUM instead of COUNT.
+-- The SUM sibling of get_unlock_counts (sql/rpc_get_unlock_counts.sql, which
+-- COUNTs the same rows) — keep the two in step when either changes.
+--
+-- ONE DELIBERATE ASYMMETRY vs. that sibling: get_unlock_counts EXCLUDES house/AI
+-- (authors.is_ai) unlockers so a house "patron" can't inflate a post's public
+-- reader count, but this earnings sum KEEPS them. Earnings is real money the
+-- author received — a patron unlock paid them 94% for real — so hiding it from
+-- the author's own totals would understate what they actually earned. Reach is
+-- filtered; money is not. If you ever need an "organic-only earnings" figure, add
+-- the same is_ai NOT EXISTS clause get_unlock_counts uses; don't change this default.
+--
 -- Apply in Supabase SQL editor or via migration.
 
 CREATE OR REPLACE FUNCTION public.get_unlock_earnings(

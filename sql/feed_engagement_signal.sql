@@ -29,6 +29,16 @@
 -- and never enters COUNT/SUM. "Filter before the tally" — gamed reactions are
 -- gone before any aggregation happens, not discounted afterward.
 --
+-- HOUSE/AI SUPPORTERS ARE EXCLUDED THE SAME WAY. The platform runs AI agents
+-- (authors.is_ai) that pay to react to real users' posts — e.g. a "herald" that
+-- likes/reposts. Those payments are REAL (the target author still receives 94%)
+-- and stay visible on the post, but they must not buy organic rank. So a reaction
+-- whose SUPPORTER account maps to an is_ai author is anti-joined out (ai_accounts
+-- CTE) at the SAME "filter before the tally" stage as a self/alt-ring reaction —
+-- it adds neither breadth nor amount. This filters is_ai SUPPORTERS only; whether
+-- an is_ai account's OWN posts stay in the ranked window is a separate policy
+-- call, made upstream in getFeed's candidate query, not here.
+--
 -- FINALITY: we intentionally do NOT gate on finalized_at. Reactions are recorded
 -- at 0-conf so the signal is as fresh as the counters, and the reconcile sweep
 -- hard-deletes any reaction whose tx never finalizes (a lost double-spend that
@@ -50,7 +60,17 @@ STABLE
 SECURITY DEFINER
 SET search_path TO 'public'
 AS $$
-  WITH targets AS (
+  WITH ai_accounts AS (
+    -- House/AI-operated accounts (authors.is_ai): the herald and any other agent
+    -- that pays to react. Materialized once, then anti-joined out of both reaction
+    -- branches below so an is_ai supporter adds neither breadth nor amount. In
+    -- practice this set is a handful of rows (usually empty) = near-zero overhead.
+    SELECT acc.id AS account_id
+    FROM public.accounts acc
+    JOIN public.authors au ON au.id = acc.author_id
+    WHERE au.is_ai = true
+  ),
+  targets AS (
     -- Each candidate post with its author's effective cluster (own id if unlinked).
     SELECT
       p.txid,
@@ -68,6 +88,8 @@ AS $$
     FROM public.feed_events e
     LEFT JOIN public.account_links al ON al.account_id = e.actor_account_id
     WHERE e.target_txid = ANY (post_txids)
+      -- Drop house/AI reactors: still visible on-chain, but they buy no rank.
+      AND NOT EXISTS (SELECT 1 FROM ai_accounts x WHERE x.account_id = e.actor_account_id)
 
     UNION ALL
 
@@ -84,6 +106,8 @@ AS $$
         (c.action = 2 AND c.parent_txid = ANY (post_txids)) OR
         (c.action = 3 AND c.quoted_txid = ANY (post_txids))
       )
+      -- Same house/AI exclusion for paid replies/quotes.
+      AND NOT EXISTS (SELECT 1 FROM ai_accounts x WHERE x.account_id = c.author_account_id)
   )
   SELECT
     t.txid AS target_txid,

@@ -7,9 +7,10 @@
 //    lead     = readers × freshness — (1 + unlocks_7d) · exp(−age_days / 3)
 //    latest   = pure chronology
 //    mostRead = a plain 7-day unlock counter
-//  Reader counts come from the same get_unlock_counts RPC the feed ranking
-//  uses (self/alt-ring filtering included), so "readers" here always means
-//  verified on-chain unlocks, never views.
+//  Reader counts come from the get_unlock_counts RPC, so "readers" here always
+//  means verified on-chain unlocks, never views. That RPC also excludes house/AI
+//  unlockers (authors.is_ai) — a patron's grants pay the author for real but must
+//  not inflate this public reach ranking (see sql/rpc_get_unlock_counts.sql).
 //
 //  posts.published_at is null on paid-flow posts — created_at is the real
 //  publication moment there, so both are selected and coalesced.
