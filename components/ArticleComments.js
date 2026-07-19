@@ -171,11 +171,13 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
         bip21: data.bip21Url,
         cashtabUrl: data.cashtabUrl,
       }).then((r) => {
-        if (r.ok && r.via === 'pocket' && r.txid) {
-          // The pocket broadcast the moment it was clicked — show the comment NOW
-          // and dismiss the composer, don't wait for the chain. Recording is handed
-          // to a background confirm that swaps this optimistic row for the recorded
-          // one (its real DB id lets replies thread correctly).
+        if (r.ok && r.txid) {
+          // A txid = proof the payment broadcast: the Pocket always returns one, and
+          // the Cashtab EXTENSION returns one the instant you approve — both show the
+          // comment NOW and dismiss the composer. The web tab has no txid, so it stays
+          // on the confirm poll. Recording is handed to a background confirm that swaps
+          // this optimistic row for the recorded one (its real DB id lets replies
+          // thread correctly); that swap also corrects the byline if it wasn't known.
           const snap = getPocketSnapshot()
           confirmCommentInBackground({
             postId,
