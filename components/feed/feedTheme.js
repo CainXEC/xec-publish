@@ -378,6 +378,18 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .dot{color:var(--line);}
 .pow-feed .time{font-size:12px;color:var(--dim);}
 .pow-feed .time:hover{color:var(--cyan);}
+/* Top-right cluster on a post's meta row: Copy link, then the "+" menu. The
+   cluster owns the margin-left:auto so the two sit together at the right edge
+   whether or not the menu is showing (it's viewer/ownership dependent). */
+.pow-feed .postactions{margin-left:auto;align-self:center;display:inline-flex;align-items:center;gap:2px;}
+.pow-feed .postactions .postmenu{margin-left:0;}
+.pow-feed .postcopy{display:inline-flex;align-items:center;justify-content:center;width:26px;height:22px;
+  background:none;border:none;padding:0;border-radius:6px;color:var(--dim);cursor:pointer;
+  transition:color .15s,background .15s;}
+.pow-feed .postcopy:hover{color:var(--cyan);background:rgba(255,255,255,.05);}
+.pow-feed .postcopy.copied{color:var(--neon);}
+.pow-feed .postcopy.failed{color:var(--no);}
+.pow-feed .postcopy-ok{font-size:14px;line-height:1;}
 /* overflow (···) menu on a post / profile — Follow + Block live here */
 .pow-feed .postmenu{position:relative;align-self:center;display:inline-flex;margin-left:auto;}
 .pow-feed .menubtn{background:none;border:none;color:var(--dim);font:inherit;font-size:19px;font-weight:600;line-height:1;
@@ -1102,6 +1114,7 @@ html:not(.dark) .pow-feed .dashnotif-more:hover,
 html:not(.dark) .pow-feed .tippreset:hover{background:var(--accent-tint);}
 html:not(.dark) .pow-feed .notifitem.unread:hover{background:#dce8dc;}
 html:not(.dark) .pow-feed .menubtn:hover{background:rgba(26,28,23,.06);}
+html:not(.dark) .pow-feed .postcopy:hover{background:rgba(26,28,23,.06);}
 
 /* Inset fields / recessed surfaces read as a slightly darker paper, not teal. */
 html:not(.dark) .pow-feed .manualrow input,
