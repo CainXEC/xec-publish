@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ComposeBox from '@/components/feed/ComposeBox'
 import FeedPost from '@/components/feed/FeedPost'
+import PostCopyLink from '@/components/feed/PostCopyLink'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import ActivityRail from '@/components/feed/ActivityRail'
 import ArticleRail from '@/components/feed/ArticleRail'
@@ -265,6 +266,11 @@ export default function FeedThreadClient({
                 >
                   on-chain
                 </a>
+                {!rootDeleted ? (
+                  <span className="postactions">
+                    <PostCopyLink txid={post.txid} />
+                  </span>
+                ) : null}
               </div>
               {rootDeleted ? (
                 <p className="focusbody tombstone">This post was deleted.</p>
@@ -399,7 +405,7 @@ export default function FeedThreadClient({
 
   // Desktop shell: the shared-post page is a top entry point for new visitors,
   // so it wears the same 3-column shell as the home feed — the front page
-  // (≥1400px) on the left, the thread in the center column, the live activity
+  // (≥1280px) on the left, the thread in the center column, the live activity
   // rail (≥1100px) on the right. Rails are in navigation mode (no inline panes
   // here), and their default breakpoints match the feed shell exactly. Below
   // 1100px the rails aren't grid items and this is the plain single column.

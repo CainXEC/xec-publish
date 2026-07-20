@@ -90,14 +90,28 @@ const POLL_MS = 60_000
  * recent feed notifications (replies, quotes, likes, reposts, follows). Polls
  * the count on an interval; opening the dropdown marks everything read. Renders
  * nothing for a signed-out viewer.
+ *
+ * Admin sessions additionally get the AI_SATOSHI review queue folded in: the
+ * API returns `agentPending` (absent for everyone else), which adds to the
+ * badge and pins a row at the top of the dropdown. It's a standing to-do, not
+ * a notification — mark-read never clears it; judging the drafts does.
+ * `onAgentPending` reports the count (or null = not admin) up to FeedTopbar,
+ * which uses it to reveal the admin "agent" item in the hamburger menu.
  */
-export default function FeedNotifications({ signedIn = false }) {
+export default function FeedNotifications({ signedIn = false, onAgentPending }) {
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState([])
   const [unread, setUnread] = useState(0)
+  const [agentPending, setAgentPending] = useState(null) // null = not an admin session
   const [cursor, setCursor] = useState(null) // next-page cursor, null = no more
   const [loadingMore, setLoadingMore] = useState(false)
   const rootRef = useRef(null)
+
+  // Ref'd so refresh() keeps its stable identity (no re-created intervals).
+  const onAgentPendingRef = useRef(onAgentPending)
+  useEffect(() => {
+    onAgentPendingRef.current = onAgentPending
+  }, [onAgentPending])
 
   // The polling refresh reloads page 1 (and resets the cursor), which would
   // collapse any "Load more" pages the user has opened. Track open state in a
@@ -116,6 +130,9 @@ export default function FeedNotifications({ signedIn = false }) {
       setItems(Array.isArray(data.notifications) ? data.notifications : [])
       setUnread(Number(data.unreadCount) || 0)
       setCursor(data.nextCursor ?? null)
+      const pending = typeof data.agentPending === 'number' ? data.agentPending : null
+      setAgentPending(pending)
+      onAgentPendingRef.current?.(pending)
     } catch {
       /* best-effort; the bell just won't update this cycle */
     }
@@ -157,6 +174,15 @@ export default function FeedNotifications({ signedIn = false }) {
     return () => clearInterval(id)
   }, [signedIn, refresh])
 
+  // Approve/veto on /admin/agent fires this so the queue count updates
+  // instantly instead of waiting for the next poll.
+  useEffect(() => {
+    if (!signedIn) return
+    const onQueueChange = () => void refresh()
+    window.addEventListener('agent-queue-changed', onQueueChange)
+    return () => window.removeEventListener('agent-queue-changed', onQueueChange)
+  }, [signedIn, refresh])
+
   // Close on outside click.
   useEffect(() => {
     if (!open) return
@@ -183,6 +209,10 @@ export default function FeedNotifications({ signedIn = false }) {
 
   if (!signedIn) return null
 
+  // The badge is unread notifications + pending agent drafts (admin only) —
+  // the queue part survives mark-read; only judging the drafts clears it.
+  const badgeCount = unread + (agentPending ?? 0)
+
   return (
     <span className="notifbell" ref={rootRef}>
       <button
@@ -191,16 +221,26 @@ export default function FeedNotifications({ signedIn = false }) {
         onClick={toggleOpen}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={unread > 0 ? `Notifications (${unread} unread)` : 'Notifications'}
+        aria-label={badgeCount > 0 ? `Notifications (${badgeCount})` : 'Notifications'}
       >
         <BellIcon />
-        {unread > 0 ? (
-          <span className="notifbadge">{unread > 99 ? '99+' : unread}</span>
+        {badgeCount > 0 ? (
+          <span className="notifbadge">{badgeCount > 99 ? '99+' : badgeCount}</span>
         ) : null}
       </button>
       {open ? (
         <div className="notifpop" role="menu">
           <div className="notifpop-head">Notifications</div>
+          {agentPending != null && agentPending > 0 ? (
+            <Link
+              href="/admin/agent"
+              className="notif-agent"
+              onClick={() => setOpen(false)}
+            >
+              <span className="notif-agent-dot" aria-hidden />
+              {agentPending} agent draft{agentPending === 1 ? '' : 's'} awaiting review →
+            </Link>
+          ) : null}
           {items.length === 0 ? (
             <p className="notifempty">Nothing yet.</p>
           ) : (

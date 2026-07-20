@@ -260,7 +260,15 @@ export default function DashboardClient({
   following = [],
 }) {
   const [posts, setPosts] = useState(initialPosts)
-  const [sortMode, setSortMode] = useState('newest')
+  // Articles opens on Drafts when there's unfinished writing to get back to —
+  // the thing you most likely came for — and on Newest otherwise. Decided once
+  // from the server-provided list (same non-legacy + unpublished test as
+  // draftPosts below); switching the filter afterwards is untouched.
+  const [sortMode, setSortMode] = useState(() =>
+    (initialPosts ?? []).some((p) => p.legacy !== true && !p.published)
+      ? 'drafts'
+      : 'newest',
+  )
   const [librarySort, setLibrarySort] = useState('recent')
   // Which follow list is open under the stat band: null | 'followers' | 'following'
   const [followsOpen, setFollowsOpen] = useState(null)

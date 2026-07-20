@@ -431,7 +431,7 @@ export default function AuthorProfilePageClient({
 
       <FeedTopbar signedIn={viewerAccountId != null} isAuthor={viewerIsAuthor} />
 
-      {/* The author's spread: their own paper + handles on the left (≥1400px),
+      {/* The author's spread: their own paper + handles on the left (≥1280px),
           their live economy on the right (≥1100px). Same grid the home feed
           uses; phones render the untouched single column. */}
       <div className="feed-cols">

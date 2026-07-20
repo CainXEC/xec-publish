@@ -194,15 +194,18 @@ export default function ComposeBox({
         bip21: data.bip21Url,
         cashtabUrl: data.cashtabUrl,
       }).then((r) => {
-        if (r.ok && r.via === 'pocket' && r.txid) {
+        if (r.ok && r.txid) {
+          // A txid in hand = proof the payment broadcast: the Pocket always returns
+          // one, and the Cashtab EXTENSION returns one the moment you approve — both
+          // show optimistically. The web tab resolves with no txid (it can't know you
+          // paid until the chain shows it), so it skips this and stays on the poll.
           setStatusMsg('Posting…')
-          setIntent((prev) => (prev ? { ...prev, pocketTxid: r.txid } : prev))
-          // Show the post NOW, the instant the pocket broadcasts — before the
-          // server records it. Only where the caller opted in (allowOptimistic) and
-          // only for a plain post (polls keep the classic flow). Recording is handed
-          // to a background confirm (below) so the composer can be cleared right away.
-          if (allowOptimistic && !pollActive) {
-            const snap = getPocketSnapshot()
+          setIntent((prev) => (prev ? { ...prev, knownTxid: r.txid } : prev))
+          const snap = getPocketSnapshot()
+          // Only where the caller opted in (allowOptimistic), only for a plain post
+          // (polls keep the classic flow), and only when we have a byline to render
+          // (the pocket store supplies it) — else fall through so a post never blanks.
+          if (allowOptimistic && !pollActive && (snap.identity || snap.primaryAddress)) {
             // Hand the RECORDING to a background confirm so the composer can be
             // dismissed the instant the post shows (waiting for the chain made the
             // box linger a beat, which felt slow) — and so posting again right away
@@ -289,7 +292,7 @@ export default function ComposeBox({
       try {
         // A pocket-paid post knows its txid up front — send it so confirm does
         // a single-tx verify (records on the first request, no address scan).
-        const knownTxid = manualTxid ?? intent.pocketTxid
+        const knownTxid = manualTxid ?? intent.knownTxid
         const res = await fetch('/api/feed/confirm', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },

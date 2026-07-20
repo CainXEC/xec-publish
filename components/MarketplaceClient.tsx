@@ -36,6 +36,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { priceForHandle, type Tier } from "@/lib/handlePricing";
+import HandleCardImage from "@/components/HandleCardImage";
 
 export type GalleryView = "forsale" | "all";
 export type TierFilter = "all" | Tier;
@@ -454,8 +455,17 @@ function Card({
   const body = (
     <>
       <div className="mkart">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={item.imageUrl ?? `/api/handle-card/${item.tokenId}`} alt={`@${item.handle}`} loading="lazy" />
+        {/* Gallery tiles are small (the grid packs 4–5 per row) and the
+            provenance overlay slides up over the bottom of the art, so the
+            shared hover-to-enlarge preview is what actually lets you SEE the
+            piece you're shopping for — same affordance as profile pages. */}
+        <HandleCardImage
+          src={item.imageUrl}
+          tokenId={item.tokenId}
+          handle={item.handle}
+          alt={`@${item.handle}`}
+          loading="lazy"
+        />
         <div className="mkprov" aria-hidden>{provLines}</div>
       </div>
       <div className="mkmeta">

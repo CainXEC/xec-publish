@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import FeedNotifications from '@/components/feed/FeedNotifications'
 import PocketChip from '@/components/pocket/PocketChip'
-import AdminQueueChip from '@/components/admin/AdminQueueChip'
 import ThemeToggle from '@/components/ThemeToggle'
 
 /**
@@ -29,6 +28,11 @@ export default function FeedTopbar({
   showDashboard = true,
 }) {
   const [open, setOpen] = useState(false)
+  // null = not an admin session; a number = the AI_SATOSHI review-queue count,
+  // reported up by the bell's poll (one fetch serves both surfaces). Drives
+  // the admin-only "agent" item in the hamburger — desktop-only for free,
+  // since the hamburger doesn't render below 1100px (the bottom bar takes over).
+  const [agentPending, setAgentPending] = useState(null)
   const rootRef = useRef(null)
   const router = useRouter()
   const pathname = usePathname()
@@ -81,6 +85,11 @@ export default function FeedTopbar({
       {signedIn && showDashboard ? (
         <Link href="/dashboard" className={cls} onClick={() => setOpen(false)}>
           dashboard
+        </Link>
+      ) : null}
+      {agentPending != null ? (
+        <Link href="/admin/agent" className={cls} onClick={() => setOpen(false)}>
+          agent{agentPending > 0 ? ` · ${agentPending}` : ''}
         </Link>
       ) : null}
       {!signedIn && !isAuthor ? (
@@ -136,12 +145,8 @@ export default function FeedTopbar({
           the bottom bar takes over navigation. One instance either way (never
           double-mounted → never double-polls). */}
       <div className="tb-bell">
-        <FeedNotifications signedIn={signedIn} />
+        <FeedNotifications signedIn={signedIn} onAgentPending={setAgentPending} />
       </div>
-
-      {/* Admin-only agent-queue chip: self-fetching, null for everyone who
-          isn't an admin session — the sole nav entry into /admin/agent. */}
-      <AdminQueueChip signedIn={signedIn} />
 
       <Link href="/" className="wordmark" onClick={onWordmarkClick}>
         proofofwriting

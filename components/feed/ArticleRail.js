@@ -21,6 +21,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { WIDE_RAIL_MIN } from '@/components/feed/feedTheme'
 
 const REFRESH_MS = 5 * 60_000 // publishes are rare; the ticker announces them live
 
@@ -162,7 +163,7 @@ function Entry({ story, now, onOpen }) {
   )
 }
 
-export default function ArticleRail({ minWidth = 1400, currentSlug = null, onOpenStory = null }) {
+export default function ArticleRail({ minWidth = WIDE_RAIL_MIN, currentSlug = null, onOpenStory = null }) {
   const [data, setData] = useState(null)
   // The front page only exists above the host page's breakpoint — don't
   // fetch where it can't show.

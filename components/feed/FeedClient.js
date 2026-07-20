@@ -304,7 +304,7 @@ export default function FeedClient({
 
       <FeedTopbar signedIn={signedIn} isAuthor={isAuthor} />
 
-      {/* Desktop shell: one grid — the front page (≥1400px) on the left, the
+      {/* Desktop shell: one grid — the front page (≥1280px) on the left, the
           feed column at its usual 640px, the live activity rail (≥1100px) on
           the right. Hidden rails aren't grid items, so each tier lays out
           cleanly; below 1100px this wrapper is a plain block and phones

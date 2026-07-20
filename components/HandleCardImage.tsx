@@ -31,14 +31,22 @@ export type CardAnchor = { cx: number; top: number; bottom: number }
 const PREVIEW_SIZE = 420 // px; the enlarged art. Native is 1024, so this is crisp.
 const GAP = 12 // px between the card and its floating preview
 
-// The enlarged art, clamped so it always fits the viewport (with room for the
-// label + margins). Small desktop windows get a smaller preview rather than one
-// that spills off screen.
-function fitPreview(requested: number): number {
+const MARGIN = 8 // px kept clear of every viewport edge
+// Popup chrome around the art: 10px padding top+bottom, plus the label's own
+// line + the 8px gap above it. Used to reserve vertical room so the sizing and
+// the placement math agree on how tall the popup actually is.
+const CHROME = 20
+const LABEL_BLOCK = 34
+
+// The enlarged art, clamped so the WHOLE popup (art + label + padding) fits the
+// viewport. Small desktop windows get a smaller preview rather than one that
+// spills off screen.
+function fitPreview(requested: number, hasLabel = true): number {
   if (typeof document === 'undefined') return requested
   const w = document.documentElement.clientWidth || requested
   const h = document.documentElement.clientHeight || requested
-  return Math.max(160, Math.min(requested, w - 32, h - 96))
+  const vertical = h - MARGIN * 2 - CHROME - (hasLabel ? LABEL_BLOCK : 0)
+  return Math.max(160, Math.min(requested, w - MARGIN * 4, vertical))
 }
 
 /**
@@ -61,18 +69,30 @@ export function HandleCardPreview({
 }) {
   if (typeof window === 'undefined') return null
 
-  const size = fitPreview(rawSize)
-  // Prefer above the card; flip below when there isn't room (card near the top
-  // of the viewport). Height is estimated — exact enough for the flip decision.
-  const estHeight = (src ? size : 0) + (label ? 40 : 0) + 20
-  const placeBelow = anchor.top - GAP - estHeight < 8
+  const size = fitPreview(rawSize, Boolean(label))
+  const height = (src ? size + CHROME : 24) + (label ? LABEL_BLOCK : 0)
+  const vw = document.documentElement?.clientWidth || window.innerWidth || size
+  const vh = document.documentElement?.clientHeight || window.innerHeight || height
+
+  // Prefer above the card, flip below when the card sits too near the top —
+  // but pick whichever side actually has more room when NEITHER fits, so a card
+  // in the middle of a short window doesn't get shoved off the bottom edge.
+  const roomAbove = anchor.top - GAP - MARGIN
+  const roomBelow = vh - anchor.bottom - GAP - MARGIN
+  const placeBelow = height <= roomAbove ? false : height <= roomBelow || roomBelow > roomAbove
+
+  // Then clamp into the viewport regardless: the popup is pointer-events:none,
+  // so overlapping the hovered card in a cramped window is harmless — being cut
+  // off by the window edge is not. Position from the real top (no vertical
+  // transform) so this clamp is exact.
+  const wanted = placeBelow ? anchor.bottom + GAP : anchor.top - GAP - height
+  const top = Math.min(Math.max(wanted, MARGIN), Math.max(MARGIN, vh - height - MARGIN))
+
   // Keep the horizontally-centered popup fully on screen. Pin the popup width
   // (image + 10px padding each side) so the centering math matches what renders.
-  const popupWidth = (src ? size : 120) + 20
+  const popupWidth = (src ? size : 120) + CHROME
   const half = popupWidth / 2
-  const vw =
-    document.documentElement?.clientWidth || window.innerWidth || popupWidth + 16
-  const left = Math.min(Math.max(anchor.cx, half + 8), vw - half - 8)
+  const left = Math.min(Math.max(anchor.cx, half + MARGIN), Math.max(half + MARGIN, vw - half - MARGIN))
 
   return (
     <div
@@ -80,8 +100,8 @@ export function HandleCardPreview({
       style={{
         position: 'fixed',
         left,
-        top: placeBelow ? anchor.bottom + GAP : anchor.top - GAP,
-        transform: placeBelow ? 'translate(-50%, 0)' : 'translate(-50%, -100%)',
+        top,
+        transform: 'translateX(-50%)',
         zIndex: 10000,
         pointerEvents: 'none',
         boxSizing: 'border-box',

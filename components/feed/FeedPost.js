@@ -11,6 +11,7 @@ import ArticleCard from '@/components/feed/ArticleCard'
 import MintCard from '@/components/feed/MintCard'
 import PollCard from '@/components/feed/PollCard'
 import FeedBody from '@/components/feed/FeedBody'
+import PostCopyLink from '@/components/feed/PostCopyLink'
 import TranslateButton from '@/components/TranslateButton'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
@@ -380,14 +381,17 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
         <Link href={`/feed/${post.txid}`} className="time">
           {timeAgo(post.created_at)}
         </Link>
-        {canManageAuthor ? (
-          <PostMenu
-            authorAccountId={post.author_account_id}
-            authorLabel={authorLabel}
-            initialFollowing={Boolean(post.followedByViewer)}
-            onBlocked={onBlocked}
-          />
-        ) : null}
+        <span className="postactions">
+          {!post.deleted ? <PostCopyLink txid={post.txid} /> : null}
+          {canManageAuthor ? (
+            <PostMenu
+              authorAccountId={post.author_account_id}
+              authorLabel={authorLabel}
+              initialFollowing={Boolean(post.followedByViewer)}
+              onBlocked={onBlocked}
+            />
+          ) : null}
+        </span>
       </div>
 
       {isMintCard && !compactMint ? (

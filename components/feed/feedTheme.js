@@ -6,6 +6,16 @@
 //  drop <style>{FEED_CSS}</style> once near the top.
 // =============================================================================
 
+// The width at which the front page (left rail) joins the shell. A standard
+// Windows laptop is 1366px wide, or 1280 CSS px at the 1920×1080/150% scaling
+// Windows ships by default — both used to fall under the old 1400 floor and
+// lost the rail entirely. The three-column tier now starts at 1280 with the
+// rails narrowed, and widens back to the roomy 300/640/330 by 1400.
+//
+// EXPORTED because ArticleRail matchMedia()s the same number to decide whether
+// to fetch: if the two ever disagree, the rail renders as an empty box.
+export const WIDE_RAIL_MIN = 1280
+
 export const FEED_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap');
 
@@ -122,15 +132,16 @@ export const FEED_CSS = `
   color:var(--neon);line-height:1;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
 .pow-feed .notifbtn:hover{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
 .pow-feed .notifbtn svg{display:block;}
-/* ---- admin agent-queue chip (renders only for admin sessions) ----
-   Same 34px chrome as the bell; order:2 seats it beside the bell on desktop
-   (after the bell's margin-left:auto push) and with the left cluster on
-   mobile. Reuses .notifbadge for the pending count. */
-.pow-feed .agentbtn{position:relative;display:inline-flex;align-items:center;justify-content:center;order:2;
-  flex:none;width:34px;height:34px;background:transparent;border:1px solid var(--line);border-radius:8px;
-  color:var(--cyan);line-height:1;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
-.pow-feed .agentbtn:hover{border-color:var(--cyan);box-shadow:0 0 16px rgba(61,240,255,.22);}
-.pow-feed .agentbtn svg{display:block;}
+/* ---- pinned agent-queue row (admin sessions only) ----
+   A standing to-do at the top of the bell dropdown: persists until the drafts
+   are judged — mark-read never clears it. The API only sends the count to
+   admin sessions, so this row can't exist for anyone else. */
+.pow-feed .notif-agent{display:flex;align-items:center;gap:8px;padding:11px 14px;
+  font-size:12.5px;letter-spacing:.04em;color:var(--neon);
+  border-bottom:1px solid var(--line);background:rgba(0,255,156,.06);transition:background .12s;}
+.pow-feed .notif-agent:hover{background:rgba(0,255,156,.12);}
+.pow-feed .notif-agent-dot{width:7px;height:7px;border-radius:50%;background:var(--neon);
+  box-shadow:0 0 8px rgba(0,255,156,.8);flex:none;}
 /* Pocket button — a standalone topbar item on the LEFT (same 34px chrome as the
    bell/toggle). order:1 puts it right after the hamburger on desktop
    ([hamburger][pocket] … [bell][theme]); on mobile the hamburger is gone and the
@@ -377,6 +388,18 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .dot{color:var(--line);}
 .pow-feed .time{font-size:12px;color:var(--dim);}
 .pow-feed .time:hover{color:var(--cyan);}
+/* Top-right cluster on a post's meta row: Copy link, then the "+" menu. The
+   cluster owns the margin-left:auto so the two sit together at the right edge
+   whether or not the menu is showing (it's viewer/ownership dependent). */
+.pow-feed .postactions{margin-left:auto;align-self:center;display:inline-flex;align-items:center;gap:2px;}
+.pow-feed .postactions .postmenu{margin-left:0;}
+.pow-feed .postcopy{display:inline-flex;align-items:center;justify-content:center;width:26px;height:22px;
+  background:none;border:none;padding:0;border-radius:6px;color:var(--dim);cursor:pointer;
+  transition:color .15s,background .15s;}
+.pow-feed .postcopy:hover{color:var(--cyan);background:rgba(255,255,255,.05);}
+.pow-feed .postcopy.copied{color:var(--neon);}
+.pow-feed .postcopy.failed{color:var(--no);}
+.pow-feed .postcopy-ok{font-size:14px;line-height:1;}
 /* overflow (···) menu on a post / profile — Follow + Block live here */
 .pow-feed .postmenu{position:relative;align-self:center;display:inline-flex;margin-left:auto;}
 .pow-feed .menubtn{background:none;border:none;color:var(--dim);font:inherit;font-size:19px;font-weight:600;line-height:1;
@@ -815,11 +838,18 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
   .pow-feed .feed-rail{display:block;position:sticky;top:76px;align-self:start;
     max-height:calc(100dvh - 96px);overflow-y:auto;}
 }
-/* Wide desktop: the front page joins on the left. 300+640+330 + 18px gaps +
-   page padding = 1346, so a 1440 laptop qualifies and a 1280 keeps two panes. */
-@media (min-width:1400px){
+/* Wide desktop: the front page joins on the left. The rails are elastic rather
+   than fixed so ONE tier covers every laptop instead of an all-or-nothing jump:
+   at the 1280 floor they sit at their minimums (240 + 640 + 290 + gaps/padding
+   = ~1237, which still clears a 1280 window carrying a classic Windows
+   scrollbar), and they grow to the roomy 300/330 by ~1400. The center reading
+   column never moves off 640 — it's the spine of the page, so the rails give
+   up the width instead. */
+@media (min-width:${WIDE_RAIL_MIN}px){
   .pow-feed.has-rail .topbar{max-width:1346px;}
-  .pow-feed.has-rail .feed-cols{grid-template-columns:300px minmax(0,640px) 330px;}
+  .pow-feed.has-rail .feed-cols{
+    grid-template-columns:minmax(240px,300px) 640px minmax(288px,330px);
+    gap:clamp(12px,1.2vw,18px);padding:0 clamp(12px,1.4vw,20px);}
   .pow-feed .feed-left{display:block;position:sticky;top:76px;align-self:start;
     max-height:calc(100dvh - 96px);overflow-y:auto;}
 }
@@ -897,9 +927,10 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 @media (min-width:1100px){.pow-feed .dash-mobile-only{display:none;}}
 
 /* author profile spread: the handle carousel lives in the CENTER column
-   below 1400px (unchanged mobile) and moves into the left rail on wide
-   desktop, where it gets room + the make-an-offer link. */
-@media (min-width:1400px){
+   below the wide tier (unchanged mobile) and moves into the left rail on wide
+   desktop, where it gets room + the make-an-offer link. Must fire at the SAME
+   width the left rail appears at, or the carousel renders twice. */
+@media (min-width:${WIDE_RAIL_MIN}px){
   .pow-feed.has-rail .prof-handles-center{display:none;}
 }
 .pow-feed .prof-handles-rail{margin-top:14px;}
@@ -1081,6 +1112,10 @@ html:not(.dark) .pow-feed .tnode.focused .tdot{background:var(--cyan);box-shadow
 /* Count badges: solid danger chip with paper text, no glow. */
 html:not(.dark) .pow-feed .notifbadge,
 html:not(.dark) .pow-feed .dashbadge{background:var(--no);color:#fdfcf8;box-shadow:none;}
+/* Pinned agent row on paper: ink-green on a soft green tint, glow killed. */
+html:not(.dark) .pow-feed .notif-agent{background:var(--accent-tint,#e7f0e7);}
+html:not(.dark) .pow-feed .notif-agent:hover{background:#dce9dc;}
+html:not(.dark) .pow-feed .notif-agent-dot{box-shadow:none;}
 
 /* Floating menus / popovers: a soft ink shadow, not the dark theme's rgba(0,0,0,.5). */
 html:not(.dark) .pow-feed .hammenu,
@@ -1097,6 +1132,7 @@ html:not(.dark) .pow-feed .dashnotif-more:hover,
 html:not(.dark) .pow-feed .tippreset:hover{background:var(--accent-tint);}
 html:not(.dark) .pow-feed .notifitem.unread:hover{background:#dce8dc;}
 html:not(.dark) .pow-feed .menubtn:hover{background:rgba(26,28,23,.06);}
+html:not(.dark) .pow-feed .postcopy:hover{background:rgba(26,28,23,.06);}
 
 /* Inset fields / recessed surfaces read as a slightly darker paper, not teal. */
 html:not(.dark) .pow-feed .manualrow input,

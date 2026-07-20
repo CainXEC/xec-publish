@@ -52,7 +52,10 @@ export default function EngagementBar({
   // silently, to record it server-side and roll back on the rare failure. Cashtab
   // (and a pocket that fails over to it) flip this false so the approve/manual UI
   // shows, because there you genuinely have to wait on the wallet.
-  const [payViaPocket, setPayViaPocket] = useState(false)
+  // True when the payment happens IN-PAGE (Pocket or the Cashtab extension) — the
+  // reaction flips instantly and needs no pending panel. Only the web-tab path
+  // (a separate cashtab.com tab, no signal back) shows the approve/record panel.
+  const [inPagePay, setInPagePay] = useState(false)
   const [notice, setNotice] = useState('')
   const [txidInput, setTxidInput] = useState('')
   const startingRef = useRef(false)
@@ -112,8 +115,9 @@ export default function EngagementBar({
       // pre-opens about:blank so the deep link survives popup blockers once
       // /prepare returns.
       const handle = beginPayment({ kind: action, amountXec: amount ?? 100 })
-      // Pocket carries it silently (no pending UI); Cashtab shows the approve panel.
-      setPayViaPocket(handle.mode === 'pocket')
+      // Pocket + the Cashtab extension carry it in-page (no pending panel); only the
+      // web tab shows the approve panel. hasExtension is known here at click time.
+      setInPagePay(handle.mode === 'pocket' || Boolean(handle.gesture?.hasExtension))
       // Warm the shared ws and flip the button optimistically so the reaction
       // feels instant; both are undone below if the payment can't be started.
       prewarmPaymentWatch()
@@ -132,7 +136,7 @@ export default function EngagementBar({
         if (!res.ok || !data.ok) {
           abortPayment(handle)
           revertReaction(action)
-          setPayViaPocket(false)
+          setInPagePay(false)
           setNotice(data.error || 'Could not start the payment. Try again.')
           return
         }
@@ -144,18 +148,21 @@ export default function EngagementBar({
           bip21: data.bip21Url,
           cashtabUrl: data.cashtabUrl,
         }).then((r) => {
-          if (r.ok && r.via === 'pocket' && r.txid) {
-            setIntent((prev) => (prev ? { ...prev, pocketTxid: r.txid } : prev))
+          // Pocket AND the extension resolve with a txid — feed it to the poll so the
+          // reaction records via a direct single-tx verify (no chain scan). The web
+          // tab has no txid; its poll scans the pay address as before.
+          if (r.ok && r.txid) {
+            setIntent((prev) => (prev ? { ...prev, knownTxid: r.txid } : prev))
           } else if (!r.ok && r.reason === 'denied') {
             revertReaction(action)
             setPending(null)
             setIntent(null)
-            setPayViaPocket(false)
+            setInPagePay(false)
             setNotice('Payment cancelled.')
           } else if (!r.ok && r.reason === 'pocket_error') {
             // Pocket couldn't send — surface the approve/manual panel so the
             // payment can still complete via Cashtab.
-            setPayViaPocket(false)
+            setInPagePay(false)
             setNotice(r.message || 'Pocket couldn’t send — use Open Cashtab below.')
           }
         })
@@ -164,7 +171,7 @@ export default function EngagementBar({
       } catch {
         abortPayment(handle)
         revertReaction(action)
-        setPayViaPocket(false)
+        setInPagePay(false)
         setNotice('Network hiccup — try again.')
       } finally {
         startingRef.current = false
@@ -181,7 +188,7 @@ export default function EngagementBar({
       try {
         // A pocket-paid reaction knows its txid up front — send it so confirm
         // verifies THAT tx directly (records on the first request, no scan).
-        const knownTxid = manualTxid ?? intent.pocketTxid
+        const knownTxid = manualTxid ?? intent.knownTxid
         const res = await fetch('/api/feed/react/confirm', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -264,7 +271,7 @@ export default function EngagementBar({
           <button
             type="button"
             className={`likebtn${liked ? ' on' : ''}`}
-            disabled={Boolean(pending) && !payViaPocket}
+            disabled={Boolean(pending) && !inPagePay}
             aria-pressed={liked}
             aria-haspopup="menu"
             aria-label={liked ? 'Liked' : 'Like'}
@@ -341,19 +348,11 @@ export default function EngagementBar({
         ) : null}
       </div>
 
-      {pending && intent && !payViaPocket ? (
+      {pending && intent && !inPagePay ? (
         <div className="reactpay">
           <p className="poll">
-            {intent.pocketTxid ? (
-              <>
-                <strong>{intent.amountXec} XEC</strong> paid from your Pocket — recording on-chain…
-              </>
-            ) : (
-              <>
-                Confirm <strong>{intent.amountXec} XEC</strong> in Cashtab to{' '}
-                {isLike ? 'like' : 'repost'} this post…
-              </>
-            )}
+            Confirm <strong>{intent.amountXec} XEC</strong> in Cashtab to{' '}
+            {isLike ? 'like' : 'repost'} this post…
           </p>
           <details className="manual">
             <summary>Cashtab didn&apos;t open, or already paid?</summary>
