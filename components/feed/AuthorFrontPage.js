@@ -11,7 +11,7 @@
 //
 //  No fetching: everything renders from the hydrated articles the profile
 //  page already loads (per-story unlock counts included), so this rail is
-//  free — hidden below 1400px purely by CSS.
+//  free — hidden below 1280px purely by CSS.
 // =============================================================================
 
 import { useState } from 'react'

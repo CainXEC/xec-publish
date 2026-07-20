@@ -405,7 +405,7 @@ export default function FeedThreadClient({
 
   // Desktop shell: the shared-post page is a top entry point for new visitors,
   // so it wears the same 3-column shell as the home feed — the front page
-  // (≥1400px) on the left, the thread in the center column, the live activity
+  // (≥1280px) on the left, the thread in the center column, the live activity
   // rail (≥1100px) on the right. Rails are in navigation mode (no inline panes
   // here), and their default breakpoints match the feed shell exactly. Below
   // 1100px the rails aren't grid items and this is the plain single column.

@@ -6,6 +6,16 @@
 //  drop <style>{FEED_CSS}</style> once near the top.
 // =============================================================================
 
+// The width at which the front page (left rail) joins the shell. A standard
+// Windows laptop is 1366px wide, or 1280 CSS px at the 1920×1080/150% scaling
+// Windows ships by default — both used to fall under the old 1400 floor and
+// lost the rail entirely. The three-column tier now starts at 1280 with the
+// rails narrowed, and widens back to the roomy 300/640/330 by 1400.
+//
+// EXPORTED because ArticleRail matchMedia()s the same number to decide whether
+// to fetch: if the two ever disagree, the rail renders as an empty box.
+export const WIDE_RAIL_MIN = 1280
+
 export const FEED_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap');
 
@@ -828,11 +838,18 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
   .pow-feed .feed-rail{display:block;position:sticky;top:76px;align-self:start;
     max-height:calc(100dvh - 96px);overflow-y:auto;}
 }
-/* Wide desktop: the front page joins on the left. 300+640+330 + 18px gaps +
-   page padding = 1346, so a 1440 laptop qualifies and a 1280 keeps two panes. */
-@media (min-width:1400px){
+/* Wide desktop: the front page joins on the left. The rails are elastic rather
+   than fixed so ONE tier covers every laptop instead of an all-or-nothing jump:
+   at the 1280 floor they sit at their minimums (240 + 640 + 290 + gaps/padding
+   = ~1237, which still clears a 1280 window carrying a classic Windows
+   scrollbar), and they grow to the roomy 300/330 by ~1400. The center reading
+   column never moves off 640 — it's the spine of the page, so the rails give
+   up the width instead. */
+@media (min-width:${WIDE_RAIL_MIN}px){
   .pow-feed.has-rail .topbar{max-width:1346px;}
-  .pow-feed.has-rail .feed-cols{grid-template-columns:300px minmax(0,640px) 330px;}
+  .pow-feed.has-rail .feed-cols{
+    grid-template-columns:minmax(240px,300px) 640px minmax(288px,330px);
+    gap:clamp(12px,1.2vw,18px);padding:0 clamp(12px,1.4vw,20px);}
   .pow-feed .feed-left{display:block;position:sticky;top:76px;align-self:start;
     max-height:calc(100dvh - 96px);overflow-y:auto;}
 }
@@ -910,9 +927,10 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 @media (min-width:1100px){.pow-feed .dash-mobile-only{display:none;}}
 
 /* author profile spread: the handle carousel lives in the CENTER column
-   below 1400px (unchanged mobile) and moves into the left rail on wide
-   desktop, where it gets room + the make-an-offer link. */
-@media (min-width:1400px){
+   below the wide tier (unchanged mobile) and moves into the left rail on wide
+   desktop, where it gets room + the make-an-offer link. Must fire at the SAME
+   width the left rail appears at, or the carousel renders twice. */
+@media (min-width:${WIDE_RAIL_MIN}px){
   .pow-feed.has-rail .prof-handles-center{display:none;}
 }
 .pow-feed .prof-handles-rail{margin-top:14px;}

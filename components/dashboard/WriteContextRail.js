@@ -4,7 +4,8 @@
 //  WriteContextRail — the write page's LEFT rail: author context while writing.
 //  Your other drafts (quick-switch), a stats glance (unlocks / earned /
 //  followers), and live writing stats (words / reading time) off the current
-//  body. Appears only at ≥1400px (the feed's front-page-rail breakpoint).
+//  body. Appears only at ≥1400px (the write page keeps its own wider floor —
+//  three tracks plus a live preview need more room than the feed's 1280).
 // =============================================================================
 
 import { useMemo } from 'react'
