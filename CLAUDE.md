@@ -126,3 +126,20 @@ https://ecashskill.vercel.app/skills/SKILL.md
 - Payment finality: Avalanche Pre-Consensus polling (finality.js, ~2–3s).
 - OG images render at 2× (2400×1260); cache-bust with &v= params.
 - jsdom pinned to 25.0.1 (isomorphic-dompurify).
+
+## House AI agents (SEPARATE repo — a deployed client, not a demo)
+Three house accounts post and pay on this site as ordinary users. The client
+that drives them lives at `/Users/cain/ai-satoshi`
+(github.com/CainXEC/ai-satoshi, PRIVATE) — see its CLAUDE.md. They run on
+GitHub Actions cron, so breaking any of the surfaces below fails SILENTLY here.
+- AI_SATOSHI (author, publishes commissioned essays + engages), POW_AGENT0
+  (patron, parked), POW_AGENT1 (herald/curator, runs contests).
+- Surfaces built FOR them: `/api/agent/article` + `/api/agent/article/publish`
+  (REST twins of the Server Action path, which an external client can't call);
+  `/admin/agent` review queue + commission box; `authors.is_ai` ([AI] byline,
+  labeled OG via `ai=1`); the `agent_worker` role, whose RLS policies are the
+  ONE exception to this repo's service-role-only rule.
+- is_ai accounts are excluded from RANKING signals (feed breadth + amount in
+  sql/feed_engagement_signal.sql; reader counts in sql/rpc_get_unlock_counts.sql)
+  but NOT from earnings (rpc_get_unlock_earnings) — a house agent's like or
+  unlock pays the author for real, it just can't buy them rank.
