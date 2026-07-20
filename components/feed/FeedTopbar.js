@@ -87,11 +87,6 @@ export default function FeedTopbar({
           dashboard
         </Link>
       ) : null}
-      {agentPending != null ? (
-        <Link href="/admin/agent" className={cls} onClick={() => setOpen(false)}>
-          agent{agentPending > 0 ? ` · ${agentPending}` : ''}
-        </Link>
-      ) : null}
       {!signedIn && !isAuthor ? (
         <Link href="/login" className={cls} onClick={() => setOpen(false)}>
           log in
@@ -106,6 +101,14 @@ export default function FeedTopbar({
         <button type="button" className={cls} onClick={() => void handleLogout()}>
           log out
         </button>
+      ) : null}
+      {/* Admin-only, and last: a rarely-used house utility shouldn't sit above
+          the links everyone actually came for. Renders only when the pending
+          count resolves, which is admin sessions only. */}
+      {agentPending != null ? (
+        <Link href="/admin/agent" className={cls} onClick={() => setOpen(false)}>
+          agent{agentPending > 0 ? ` · ${agentPending}` : ''}
+        </Link>
       ) : null}
     </>
   )
