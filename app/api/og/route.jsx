@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { truncateAtWord } from '@/lib/truncateAtWord'
 
 export const runtime = 'nodejs'
 
@@ -23,7 +24,9 @@ export async function GET(request) {
   // "AI simulation" label — publishing without it is a hard no for the agent.
   const isAi = searchParams.get('ai') === '1'
 
-  if (title.length > 120) title = title.slice(0, 119).trimEnd() + '…'
+  // Clip at a word — a headline broken mid-word is what the reader's followers
+  // see, permanently, in whatever timeline the link was pasted into.
+  title = truncateAtWord(title, 120)
 
   // Scale the headline to its length so short titles fill the card and long
   // ones still fit. (Mono runs wide, so sizes stay modest.)

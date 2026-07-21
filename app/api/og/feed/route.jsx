@@ -2,6 +2,7 @@ import { ImageResponse } from 'next/og'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { FEED_ACTION } from '@/lib/feedProtocol'
+import { truncateAtWord } from '@/lib/truncateAtWord'
 
 export const runtime = 'nodejs'
 
@@ -29,9 +30,10 @@ export async function GET(request) {
   const isAi = searchParams.get('ai') === '1'
 
   // Tweet-length preview: collapse whitespace and clip so the layout stays
-  // legible no matter how long the on-chain post is.
-  let text = rawText.replace(/\s+/g, ' ').trim()
-  if (text.length > 280) text = text.slice(0, 279).trimEnd() + '…'
+  // legible no matter how long the on-chain post is. Callers (feedOgMetadata)
+  // already clip at a word — this is the backstop for a hand-built or
+  // older-cached URL, and it clips at a word too so no path can cut mid-word.
+  const text = truncateAtWord(rawText.replace(/\s+/g, ' ').trim(), 280)
 
   // Scale the body to the amount of text: short posts fill the card, long ones
   // shrink to fit without overflowing. (Mono runs wide, so sizes stay modest.)
