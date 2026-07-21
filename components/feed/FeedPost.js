@@ -42,6 +42,12 @@ function truncateAddress(addr) {
 // always one tap away via "Show more" (or by opening the thread).
 const FEED_CLAMP_CHARS = 280
 
+// Context previews are held well under the body clamp on purpose: the post the
+// reader came for has to stay the loudest thing in the row. The parent of a
+// reply and the reply hanging under a post get a taste, not a copy.
+const PARENT_CLAMP_CHARS = 140
+const TOP_REPLY_CLAMP_CHARS = 120
+
 /**
  * One feed post. The byline uses the poster's live identity (displayIdentity,
  * resolved from the account's current handle at load time; falls back to the
@@ -309,6 +315,17 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
     ? String(post.parent.displayIdentity ?? post.parent.author_identity ?? '').trim()
     : ''
   const parentIsHandle = parentId.startsWith('@')
+  // The parent's own words, stripped of link-only text the same way a post body
+  // is (a bare on-site URL renders as a card, never as raw text) and clamped —
+  // this is context for the reply, not a second post.
+  const parentPreviewText = (() => {
+    if (!post.parent || post.parent.deleted) return ''
+    const raw = typeof post.parent.content === 'string' ? post.parent.content : ''
+    let t = extractArticleSlug(raw) ? stripArticleLink(raw) : raw
+    t = extractFeedPostTxid(t) ? stripFeedPostLink(t) : t
+    t = t.trim()
+    return t.length > PARENT_CLAMP_CHARS ? `${t.slice(0, PARENT_CLAMP_CHARS).trimEnd()}…` : t
+  })()
 
   // "Reposted by @X" context: the Following feed resurfaces a post at the moment
   // one of your followees reposted it (post.repostedBy). Show who did, linking to
@@ -328,6 +345,20 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   // A poll's question is the normal post body; the options/results card renders
   // right beneath it (see below). Polls have no compact variant.
   const isPoll = post.card_kind === 'poll' && !post.deleted
+
+  // The best reply, hung under a post that has one (For You only — timelines
+  // that carry reply rows of their own don't send it). Suppressed once the
+  // viewer's own replies are showing inline, so the same conversation isn't
+  // previewed and listed at the same time.
+  const topReply = !post.deleted && newReplies.length === 0 ? (post.topReply ?? null) : null
+  const topReplyText = (() => {
+    if (!topReply) return ''
+    const raw = typeof topReply.content === 'string' ? topReply.content : ''
+    let t = extractArticleSlug(raw) ? stripArticleLink(raw) : raw
+    t = extractFeedPostTxid(t) ? stripFeedPostLink(t) : t
+    t = t.trim()
+    return t.length > TOP_REPLY_CLAMP_CHARS ? `${t.slice(0, TOP_REPLY_CLAMP_CHARS).trimEnd()}…` : t
+  })()
 
   return (
     <li className={`post${compactMint ? ' mintline' : ''}`} onClick={openThread} style={{ cursor: 'pointer' }}>
@@ -353,19 +384,28 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
         </div>
       ) : null}
 
+      {/* A reply shown in a timeline (Following) carries the post it answers.
+          The name alone isn't enough — "exactly this, and it's why the 6%
+          matters" means nothing without what it's replying to — so the parent's
+          own words come with it, clamped to a couple of lines. */}
       {post.parent ? (
         <Link href={`/feed/${post.parent.txid}`} className="replyingto">
-          <span aria-hidden className="replyarrow">↳</span> Replying to{' '}
-          <span
-            className="replyingto-who"
-            style={parentIsHandle && post.parent.displayColor ? { '--hc': post.parent.displayColor } : undefined}
-          >
-            {post.parent.deleted
-              ? 'a deleted post'
-              : parentIsHandle
-                ? parentId
-                : truncateAddress(parentId)}
+          <span className="replyingto-head">
+            <span aria-hidden className="replyarrow">↳</span> Replying to{' '}
+            <span
+              className="replyingto-who"
+              style={parentIsHandle && post.parent.displayColor ? { '--hc': post.parent.displayColor } : undefined}
+            >
+              {post.parent.deleted
+                ? 'a deleted post'
+                : parentIsHandle
+                  ? parentId
+                  : truncateAddress(parentId)}
+            </span>
           </span>
+          {parentPreviewText ? (
+            <span className="replyingto-body">{parentPreviewText}</span>
+          ) : null}
         </Link>
       ) : null}
 
@@ -435,6 +475,22 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
           ) : null}
         </>
       )}
+
+      {/* Conversation teaser: For You carries no reply rows, so a replied-to post
+          brings its best reply along (highest-paid, by someone other than the
+          author — see attachTopReply). No extra click target: the whole row
+          already opens this post's thread, which is exactly where the reply is. */}
+      {topReply && topReplyText ? (
+        <div className="toprep">
+          <span aria-hidden className="toprep-arrow">↳</span>
+          <Byline
+            identity={topReply.displayIdentity ?? topReply.author_identity}
+            color={topReply.displayColor}
+            isAi={Boolean(topReply.displayIsAi)}
+          />
+          <span className="toprep-body">{topReplyText}</span>
+        </div>
+      ) : null}
 
       <div className="actions">
         <button

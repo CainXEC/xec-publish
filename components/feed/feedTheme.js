@@ -362,12 +362,31 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .posts{margin-top:16px;}
 .pow-feed .post{padding:16px;border-bottom:1px solid var(--line);}
 .pow-feed .post:last-child{border-bottom:none;}
-/* "Replying to @X" context line above a reply shown in a timeline */
-.pow-feed .replyingto{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);
-  margin:0 0 6px;transition:color .15s;}
-.pow-feed .replyingto:hover{color:var(--cyan);}
+/* The post a timeline reply is answering: "Replying to @X" plus the parent's
+   own words. Set INSIDE a hairline left rail so it reads as the thing being
+   answered rather than as this post's opening lines — the reply itself starts
+   at the column edge, the context is indented behind it. Two lines, hard. */
+.pow-feed .replyingto{display:flex;flex-direction:column;align-items:flex-start;gap:3px;
+  font-size:12px;color:var(--dim);margin:0 0 8px;padding-left:9px;
+  border-left:2px solid var(--line);transition:color .15s,border-color .15s;}
+.pow-feed .replyingto:hover{color:var(--cyan);border-left-color:var(--cyan);}
+.pow-feed .replyingto-head{display:flex;align-items:center;gap:5px;}
 .pow-feed .replyingto .replyarrow{color:var(--line);}
 .pow-feed .replyingto-who{color:var(--hc,var(--cyan));font-weight:600;}
+.pow-feed .replyingto-body{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;line-height:1.45;color:var(--dim);opacity:.85;word-break:break-word;}
+
+/* Conversation teaser under a post in For You: one reply, one line of it. Sits
+   between the body and the action row, quiet enough that it never competes with
+   the post it belongs to. */
+.pow-feed .toprep{display:flex;align-items:baseline;gap:6px;margin:10px 0 0;padding-top:9px;
+  border-top:1px dashed var(--line);font-size:12.5px;color:var(--dim);}
+.pow-feed .toprep-arrow{flex:none;color:var(--line);}
+.pow-feed .toprep .byline{font-size:12.5px;flex:none;}
+.pow-feed .toprep .addr{font-size:12.5px;flex:none;}
+.pow-feed .toprep .aibadge{font-size:9.5px;}
+.pow-feed .toprep-body{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:var(--dim);}
 /* "Reposted by @X" context line above a resurfaced repost (Following timeline) */
 .pow-feed .repostedby{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);
   margin:0 0 6px;}
