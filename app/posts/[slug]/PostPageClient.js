@@ -230,6 +230,27 @@ export default function PostPageClient({
     triggerPaymentSuccessEffect(unlockAudioContextRef.current ?? undefined)
   }, [])
 
+  // Paint the now-entitled full body without waiting on a router.refresh() SSR
+  // round-trip. The pay path already gets the body inline on the verify response;
+  // this covers the other unlock paths (initial address/cookie check, "already
+  // used" recovery) by re-reading the reader route, which returns the full body
+  // now that the unlock cookie/session is set. Best-effort — router.refresh()
+  // still runs as the backstop, so a failure here just falls back to the old wait.
+  const revealFullBody = useCallback(async () => {
+    if (!slug) return
+    try {
+      const res = await fetch(`/api/posts/reader/${encodeURIComponent(slug)}`, {
+        cache: 'no-store',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.unlocked && typeof data.bodyHtml === 'string') {
+        setBodyHtml(data.bodyHtml)
+      }
+    } catch {
+      /* fall back to router.refresh() */
+    }
+  }, [slug])
+
   const checkUnlock = useCallback(async (postId, walletAddress) => {
     const url = walletAddress
       ? `/api/check-unlock/${encodeURIComponent(postId)}?walletAddress=${encodeURIComponent(walletAddress)}`
@@ -241,6 +262,7 @@ export default function PostPageClient({
       if (data.unlocked) {
         setUnlocked(true)
         setPollingActive(false)
+        void revealFullBody()
         router.refresh()
         return true
       }
@@ -249,7 +271,7 @@ export default function PostPageClient({
       // The polling checks re-run, so a transient failure self-heals.
     }
     return false
-  }, [router])
+  }, [router, revealFullBody])
 
   const fetchCommentCount = useCallback(async (postId) => {
     if (!postId) return
@@ -590,6 +612,9 @@ export default function PostPageClient({
           setPaymentFinalizing(false)
           setUnlocked(true)
           setPollingActive(false)
+          // Paint the entitled text immediately from the reader route instead of
+          // waiting on the refresh below (the "delay before the text appears").
+          void revealFullBody()
           router.refresh()
           if (payTxPollRef.current) {
             clearInterval(payTxPollRef.current)
@@ -620,6 +645,7 @@ export default function PostPageClient({
             setPaymentFinalizing(false)
             setUnlocked(true)
             setPollingActive(false)
+            void revealFullBody()
             router.refresh()
             if (payTxPollRef.current) {
               clearInterval(payTxPollRef.current)
@@ -658,6 +684,7 @@ export default function PostPageClient({
     fetchUnlockCount,
     persistReaderAfterPaywallUnlock,
     post?.id,
+    revealFullBody,
     router,
     triggerPaywallUnlockEffect,
   ])

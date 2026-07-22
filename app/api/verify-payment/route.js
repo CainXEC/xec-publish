@@ -20,7 +20,12 @@ const supabase = createServerSupabase()
 
 export async function POST(request) {
   const ip = getClientIp(request)
-  if (!(await rateLimit(ip, 10, 60, 'verify-payment'))) {
+  // 60/60s matches the sibling pay-flow endpoints (latest-tx, check-unlock): the
+  // client polls this every 1.2s while a payment finalizes, so the old 10/60s
+  // cap was exhausted after ~12s and stalled the reader on a 429 for the rest of
+  // the minute — the "finalization is way too slow" symptom. Nothing here mutates
+  // until the tx is Avalanche-final, so the looser cap doesn't widen abuse.
+  if (!(await rateLimit(ip, 60, 60, 'verify-payment'))) {
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },
       { status: 429 },
