@@ -138,6 +138,48 @@ describe('matchFeedTx — reactions (like / repost)', () => {
     expect(m).toMatchObject({ sats: 10000 })
   })
 
+  it('records the ACTUAL amount when a like carries a tip above the floor', () => {
+    // A 10,000 XEC tip: 94% to the author, 6% to the platform. The floor is only
+    // 100 XEC, so this passes — and must record 10,000 XEC, not the floor.
+    const commit = encodeFeedOpReturnRaw({ action: FEED_ACTION.LIKE, targetTxid: TARGET })
+    const t = tx(commit, [out(AUTHOR, 9400), out(PLATFORM, 600)])
+    const m = matchFeedTx(t, {
+      action: FEED_ACTION.LIKE,
+      parentTxid: TARGET,
+      contentHash: null,
+      platformAddress: PLATFORM.address,
+      payoutAddress: AUTHOR.address,
+      costXec: 100, // the confirm route passes the floor as the expectation
+    })
+    expect(m.sats).toBe(1_000_000) // 10,000 XEC, not 10,000 sats (= 100 XEC)
+  })
+
+  it('does not let a SELF-like fold change into the recorded amount', () => {
+    // Liking your OWN post: the author output is also the payer's wallet, so the
+    // tx's change returns there. Summing that output would report a wild amount;
+    // the platform leg (6 XEC = the floor) must anchor the total at 100 XEC.
+    const SELF = AUTHOR // payer address == payout address
+    const commit = encodeFeedOpReturnRaw({ action: FEED_ACTION.LIKE, targetTxid: TARGET })
+    const t = {
+      txid: 'f'.repeat(64),
+      inputs: [{ outputScript: SELF.script }],
+      outputs: [
+        { outputScript: `6a${commit}`, sats: 0 },
+        out(SELF, 94 + 50_000), // author leg (94) + change (50,000) to the same wallet
+        out(PLATFORM, 6),
+      ],
+    }
+    const m = matchFeedTx(t, {
+      action: FEED_ACTION.LIKE,
+      parentTxid: TARGET,
+      contentHash: null,
+      platformAddress: PLATFORM.address,
+      payoutAddress: SELF.address,
+      costXec: 100,
+    })
+    expect(m.sats).toBe(10_000) // 100 XEC, NOT 50,094 XEC
+  })
+
   it('accepts a REPOST split 94/6', () => {
     const commit = encodeFeedOpReturnRaw({ action: FEED_ACTION.REPOST, targetTxid: TARGET })
     const t = tx(commit, [out(AUTHOR, 94), out(PLATFORM, 6)])
