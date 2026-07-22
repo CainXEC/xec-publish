@@ -6,7 +6,8 @@ import { ARTICLE_CSS } from '@/app/posts/[slug]/articleTheme'
 import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { sanitizePostBodyHtml } from '@/lib/sanitizePostBodyHtml'
-import { publishDraftPost } from './actions'
+import { splitPostBodyAtPaywall } from '@/lib/splitPostBodyAtPaywall'
+import PreviewPublishControls from '@/components/dashboard/PreviewPublishControls'
 
 function authorFromPost(post) {
   const a = post.authors
@@ -33,7 +34,7 @@ export default async function DraftPreviewPage({ params, searchParams }) {
   const { data: post, error } = await supabase
     .from('posts')
     .select(
-      'id, title, slug, teaser, body, created_at, author_id, published, publish_paid, authors(username)',
+      'id, title, slug, teaser, body, price_xec, created_at, author_id, published, publish_paid, authors(username)',
     )
     .eq('id', id)
     .eq('author_id', acct.authorId)
@@ -49,10 +50,19 @@ export default async function DraftPreviewPage({ params, searchParams }) {
 
   const author = authorFromPost(post)
   const username = author?.username?.trim()
+  // Mirror the reader's paywall exactly: the "Preview" is everything BEFORE the
+  // paywall marker (what a non-paying reader sees), and the rest is the locked
+  // remainder shown ONCE below the divider — not the short `teaser` field over
+  // the top of the full body, which showed too little and then repeated it all.
+  const { bodyPublic, bodyLocked, hasPaywall } = splitPostBodyAtPaywall(post.body, {
+    postId: post.id,
+  })
   // Sanitize even though this is the author's own draft: every other article
   // render path goes through sanitizePostBodyHtml (bodies are stored raw), and a
   // dangerouslySetInnerHTML sink on raw DB HTML is a self-XSS footgun otherwise.
-  const bodyHtml = sanitizePostBodyHtml(post.body)
+  const publicHtml = sanitizePostBodyHtml(bodyPublic)
+  const lockedHtml = bodyLocked != null ? sanitizePostBodyHtml(bodyLocked) : ''
+  const priceLabel = Number(post.price_xec) > 0 ? Number(post.price_xec).toLocaleString() : null
 
   return (
     <div className="pow-article">
@@ -71,21 +81,10 @@ export default async function DraftPreviewPage({ params, searchParams }) {
         <span className="previewbar-label">
           <span aria-hidden>●</span> Preview — not yet published
         </span>
-        {post.publish_paid === true ? (
-          <form action={publishDraftPost}>
-            <input type="hidden" name="postId" value={post.id} />
-            <button type="submit" className="publishbtn">
-              Publish
-            </button>
-          </form>
-        ) : (
-          <Link
-            href={`/dashboard/edit/${encodeURIComponent(post.id)}`}
-            className="publishbtn publishlink"
-          >
-            Pay &amp; publish in editor
-          </Link>
-        )}
+        <PreviewPublishControls
+          postId={post.id}
+          publishPaid={post.publish_paid === true}
+        />
       </div>
 
       {post.publish_paid !== true ? (
@@ -93,7 +92,7 @@ export default async function DraftPreviewPage({ params, searchParams }) {
           {paymentBlocked
             ? 'Publishing was blocked: the 1,000 XEC publish fee has not been paid for this draft. '
             : 'Publishing costs a one-time 1,000 XEC fee. '}
-          Open the draft in the editor to pay and go live.
+          Pay it right here to go live — no need to return to the editor.
         </p>
       ) : null}
 
@@ -111,21 +110,38 @@ export default async function DraftPreviewPage({ params, searchParams }) {
             )}
           </div>
 
-          {post.teaser ? (
-            <section className="section">
-              <p className="preview-head">Preview</p>
-              <div className="prose">
-                <p style={{ whiteSpace: 'pre-wrap' }}>{post.teaser}</p>
-              </div>
-            </section>
-          ) : null}
+          {hasPaywall ? (
+            <>
+              {/* The free preview: exactly what a reader sees before paying. */}
+              <section className="section">
+                <p className="preview-head">Preview — what readers see free</p>
+                <div className="prose" dangerouslySetInnerHTML={{ __html: publicHtml }} />
+              </section>
 
-          <section className="section">
-            <div
-              className="prose"
-              dangerouslySetInnerHTML={{ __html: bodyHtml }}
-            />
-          </section>
+              {/* The paywall line, then the locked remainder ONCE (you can read
+                  it — it's your draft — but it's clearly the paid portion). */}
+              <div className="paywalldiv" role="separator">
+                <span className="paywalldiv-line" aria-hidden />
+                <span className="paywalldiv-label">
+                  🔒 Paywall{priceLabel ? ` — readers pay ${priceLabel} XEC to unlock` : ''}
+                </span>
+                <span className="paywalldiv-line" aria-hidden />
+              </div>
+
+              {lockedHtml ? (
+                <section className="section lockedsection">
+                  <div className="prose" dangerouslySetInnerHTML={{ __html: lockedHtml }} />
+                </section>
+              ) : null}
+            </>
+          ) : (
+            // No paywall marker: the whole article is free — show it once, and
+            // say so, since a reader would get all of it without paying.
+            <section className="section">
+              <p className="preview-head">No paywall — readers see the whole article free</p>
+              <div className="prose" dangerouslySetInnerHTML={{ __html: publicHtml }} />
+            </section>
+          )}
         </article>
       </main>
     </div>
@@ -145,6 +161,17 @@ const PREVIEW_CSS = `
   box-shadow:0 0 16px rgba(0,255,156,.14),inset 0 0 12px rgba(0,255,156,.05);
   transition:background .15s,color .15s,box-shadow .15s;}
 .pow-article .publishbtn:hover{background:var(--neon);color:#04120c;box-shadow:0 0 26px rgba(0,255,156,.5);}
+.pow-article .publishbtn:disabled{opacity:.6;cursor:default;box-shadow:none;}
 .pow-article .publishlink{display:inline-block;text-decoration:none;}
 .pow-article .feenote{max-width:760px;margin:10px auto 0;padding:0 16px;font-size:13px;line-height:1.5;color:#f0c04b;}
+
+/* Paywall divider between the free preview and the locked remainder — the same
+   boundary the reader hits, drawn once so the author sees exactly where it lands. */
+.pow-article .paywalldiv{max-width:760px;margin:34px auto 8px;display:flex;align-items:center;gap:14px;}
+.pow-article .paywalldiv-line{flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--neon),transparent);opacity:.5;}
+.pow-article .paywalldiv-label{flex:none;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--neon);white-space:nowrap;}
+/* The locked remainder is legible (it's the author's own draft) but dimmed so
+   it reads as "behind the paywall", not as more free preview. */
+.pow-article .lockedsection{position:relative;}
+.pow-article .lockedsection .prose{opacity:.82;}
 `

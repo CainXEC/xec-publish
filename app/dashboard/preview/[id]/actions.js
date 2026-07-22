@@ -28,7 +28,7 @@ export async function publishDraftPost(formData) {
   // publish-fee bypass — it flipped published=true for any unpaid draft.
   const { data: existing, error: exErr } = await supabase
     .from('posts')
-    .select('id, publish_paid, published_at')
+    .select('id, slug, publish_paid, published_at')
     .eq('id', postId)
     .eq('author_id', acct.authorId)
     .maybeSingle()
@@ -64,5 +64,9 @@ export async function publishDraftPost(formData) {
 
   revalidatePath('/dashboard')
   revalidatePath('/')
-  redirect('/dashboard')
+  // Land on the freshly published article — "you published, here it is" — rather
+  // than the dashboard or (worse) back in the editor. Fall back to the dashboard
+  // only if the slug is somehow missing.
+  const slug = typeof existing.slug === 'string' ? existing.slug.trim() : ''
+  redirect(slug ? `/posts/${encodeURIComponent(slug)}` : '/dashboard')
 }
