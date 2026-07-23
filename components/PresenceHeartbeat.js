@@ -16,7 +16,14 @@
 
 import { useEffect } from 'react'
 
-const PING_MS = 25_000
+const PING_MS = 90_000
+// Ask the server for the live count this rarely; the frequent beats in between
+// just refresh presence (a single cheap Redis command). Reading the count is the
+// expensive part, so we do it sparingly to stay under the Redis request cap.
+// Tuned for the free Upstash tier (500k requests/month) as the permanent plan:
+// at ~90s beats + a 5-min count refresh, one always-open tab costs ~55k/month,
+// so the cap comfortably absorbs the handful of concurrent readers this site has.
+const COUNT_EVERY_MS = 300_000
 const STORE_KEY = 'pow_tab_id'
 const PRESENCE_EVENT = 'pow:presence'
 // A freshly-mounted listener (the activity rail after an in-app navigation)
@@ -59,28 +66,36 @@ export default function PresenceHeartbeat() {
     if (!id) return
     let stopped = false
     let lastPingAt = 0
+    let lastCountAt = 0
 
-    const ping = async () => {
+    // `wantCount` asks the server to compute + return the live count. We only
+    // want it on the first beat and then ~every COUNT_EVERY_MS; the beats in
+    // between are cheap presence refreshes and keep the last number on screen.
+    const ping = async (wantCount = false) => {
       lastPingAt = Date.now()
+      const includeCount = wantCount || lastCountAt === 0 || lastPingAt - lastCountAt >= COUNT_EVERY_MS
+      if (includeCount) lastCountAt = lastPingAt
       try {
         const res = await fetch('/api/presence', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id }),
+          body: JSON.stringify({ id, count: includeCount }),
           cache: 'no-store',
           keepalive: true,
         })
         const data = await res.json()
+        // A refresh-only beat returns no count; keep whatever we last showed.
         if (!stopped && typeof data?.count === 'number') publishCount(data.count)
       } catch {
         /* best-effort; the next beat covers it */
       }
     }
 
-    void ping()
-    const iv = setInterval(ping, PING_MS)
+    void ping(true)
+    const iv = setInterval(() => void ping(), PING_MS)
+    // A returning reader should be counted (and see a fresh number) promptly.
     const onVis = () => {
-      if (document.visibilityState === 'visible') void ping()
+      if (document.visibilityState === 'visible') void ping(true)
     }
     document.addEventListener('visibilitychange', onVis)
 
@@ -93,7 +108,11 @@ export default function PresenceHeartbeat() {
           new CustomEvent(PRESENCE_EVENT, { detail: window.__powPresenceCount }),
         )
       }
-      if (Date.now() - lastPingAt > 5_000) void ping()
+      // No cached number yet (a fresh load with the rail already on screen) →
+      // fetch one now; otherwise let the normal cadence handle the refresh.
+      if (typeof window.__powPresenceCount !== 'number' && Date.now() - lastPingAt > 5_000) {
+        void ping(true)
+      }
     }
     window.addEventListener(PRESENCE_REQUEST, onRequest)
 
