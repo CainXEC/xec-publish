@@ -37,7 +37,7 @@ export async function GET(_request, { params }) {
 
   const { data, error } = await supabase
     .from('comments')
-    .select('id, txid, action, parent_id, parent_txid, payer_address, author_identity, content, created_at, deleted_at')
+    .select('id, txid, action, parent_id, parent_txid, payer_address, author_account_id, author_identity, content, created_at, deleted_at')
     .eq('post_id', postId)
     .order('created_at', { ascending: true })
 
@@ -45,14 +45,35 @@ export async function GET(_request, { params }) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
+  // AI-operated accounts (authors.is_ai) disclose an [AI] tag on their byline,
+  // same as feed posts and the article byline. Resolve it per comment from the
+  // stamped account id (comments link to accounts.id, whose author carries the
+  // flag). Keyed independently of any handle, so an AI account still discloses
+  // even without a display handle.
+  const accountIds = [...new Set((data ?? []).map((c) => c.author_account_id).filter(Boolean))]
+  const aiAccounts = new Set()
+  if (accountIds.length > 0) {
+    const { data: accts } = await supabase
+      .from('accounts')
+      .select('id, authors(is_ai)')
+      .in('id', accountIds)
+    for (const a of accts ?? []) {
+      const author = Array.isArray(a.authors) ? a.authors[0] : a.authors
+      if (author?.is_ai === true) aiAccounts.add(a.id)
+    }
+  }
+
   // A deleted comment is kept as a tombstone (so replies under it keep their
   // context) but its content is never sent to the client. Legacy free comments
-  // (txid IS NULL) come through unchanged.
-  const comments = (data ?? []).map((c) =>
-    c.deleted_at
-      ? { ...c, content: '', deleted: true }
-      : { ...c, deleted: false },
-  )
+  // (txid IS NULL) come through unchanged. The account id resolves isAi, then is
+  // dropped from the payload (no need to expose account UUIDs to the client).
+  const comments = (data ?? []).map((c) => {
+    const { author_account_id, ...rest } = c
+    const isAi = author_account_id ? aiAccounts.has(author_account_id) : false
+    return c.deleted_at
+      ? { ...rest, isAi, content: '', deleted: true }
+      : { ...rest, isAi, deleted: false }
+  })
 
   return NextResponse.json({ comments })
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
 import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
 import TranslateButton from '@/components/TranslateButton'
 import EmojiPicker from '@/components/EmojiPicker'
@@ -31,6 +32,18 @@ function truncateIdentity(id) {
   const t = String(id ?? '').trim()
   if (t.length <= 16) return t
   return `${t.slice(0, 10)}…${t.slice(-4)}`
+}
+
+// A comment byline links to the commenter's profile, same as everywhere else:
+// "@handle" → /@handle, a raw eCash address → /@<address> (the profile route
+// resolves either to the account). Placeholder bylines (Anonymous, a [deleted]
+// tombstone) aren't linkable.
+function profileHref(identity) {
+  const id = String(identity ?? '').trim()
+  if (!id || id === 'Anonymous' || id === '[deleted]') return null
+  if (id.startsWith('@')) return `/@${encodeURIComponent(id.slice(1))}`
+  const bare = id.toLowerCase().replace(/^ecash:/, '')
+  return /^[a-z0-9]{42}$/.test(bare) ? `/@${bare}` : null
 }
 
 function formatCommentDate(iso) {
@@ -397,9 +410,7 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
   const [replyingTo, setReplyingTo] = useState(null) // parent txid, or null
   const [deletingId, setDeletingId] = useState(null)
   const [actionError, setActionError] = useState(null)
-  const [copiedIds, setCopiedIds] = useState({})
   const [translations, setTranslations] = useState({}) // { [commentId]: translatedText }
-  const copyTimeouts = useRef({})
 
   const fetchComments = useCallback(async () => {
     if (!postId) return
@@ -425,13 +436,6 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
   useEffect(() => {
     if (postId && canComment) void fetchComments()
   }, [postId, canComment, fetchComments])
-
-  useEffect(
-    () => () => {
-      Object.values(copyTimeouts.current).forEach((t) => clearTimeout(t))
-    },
-    [],
-  )
 
   // Upsert by txid: append a new comment, OR replace an existing row with the
   // same txid. The replace is what lets a pocket comment show OPTIMISTICALLY (a
@@ -489,21 +493,6 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
     },
     [postId, onChanged],
   )
-
-  const handleCopy = useCallback(async (id, addr) => {
-    if (!id || !addr) return
-    try {
-      await navigator.clipboard.writeText(addr)
-      setCopiedIds((prev) => ({ ...prev, [id]: true }))
-      if (copyTimeouts.current[id]) clearTimeout(copyTimeouts.current[id])
-      copyTimeouts.current[id] = window.setTimeout(() => {
-        setCopiedIds((prev) => ({ ...prev, [id]: false }))
-        delete copyTimeouts.current[id]
-      }, 2000)
-    } catch {
-      /* ignore */
-    }
-  }, [])
 
   const ordered = useMemo(() => buildThreadOrder(comments), [comments])
   const byId = useMemo(() => {
@@ -578,6 +567,8 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
             // still-optimistic comment (no real DB id yet; Reply returns the
             // instant its background confirm swaps in the recorded row).
             const canReply = canComment && !comment.deleted && !comment.optimistic
+            // The byline links to the commenter's profile (handle or address).
+            const profileTo = comment.deleted ? null : profileHref(byline)
 
             return (
               <li key={comment.txid || comment.id} className="commentitem">
@@ -589,14 +580,23 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
                 ) : null}
                 <div className="commenthead">
                   <div>
-                    <p
-                      className="commentaddr"
-                      title={copyAddr ? 'Click to copy' : undefined}
-                      onClick={() => copyAddr && void handleCopy(comment.id, copyAddr)}
-                    >
-                      {truncateIdentity(byline)}
-                    </p>
-                    {copiedIds[comment.id] ? <p className="commentcopied">Copied!</p> : null}
+                    {profileTo ? (
+                      <Link href={profileTo} className="commentaddr">
+                        {truncateIdentity(byline)}
+                      </Link>
+                    ) : (
+                      <span className="commentaddr commentaddr--plain">
+                        {truncateIdentity(byline)}
+                      </span>
+                    )}
+                    {!comment.deleted && comment.isAi ? (
+                      <>
+                        {' '}
+                        <span className="aibadge" title="AI-operated account">
+                          [AI]
+                        </span>
+                      </>
+                    ) : null}
                     <p className="commentdate">{formatCommentDate(comment.created_at)}</p>
                   </div>
                   {canDelete ? (

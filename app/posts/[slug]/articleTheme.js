@@ -158,9 +158,9 @@ export const ARTICLE_CSS = `
 .pow-article .commentitem{border:1px solid var(--line);background:var(--panel2);border-radius:12px;padding:14px 16px;}
 .pow-article .commenthead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
 .pow-article .commentaddr{cursor:pointer;word-break:break-all;font-size:13px;font-weight:600;color:var(--cyan);
-  transition:text-shadow .15s;}
-.pow-article .commentaddr:hover{text-shadow:0 0 10px rgba(61,240,255,.4);}
-.pow-article .commentcopied{margin:2px 0 0;font-size:11px;font-weight:600;color:var(--neon);}
+  text-decoration:none;transition:text-shadow .15s;}
+.pow-article .commentaddr--plain{cursor:default;}
+.pow-article a.commentaddr:hover{text-shadow:0 0 10px rgba(61,240,255,.4);}
 .pow-article .commentdate{margin:2px 0 0;font-size:11px;color:var(--dim);}
 .pow-article .commentbody{margin:12px 0 0;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.6;color:var(--ink);}
 .pow-article .delbtn{background:transparent;border:1px solid #6e2831;color:var(--no);font:inherit;font-size:12px;
