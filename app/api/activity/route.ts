@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { priceForHandle } from "@/lib/handlePricing";
+import { displayHandlesByAccountId } from "@/lib/authorDisplayHandles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -116,7 +117,7 @@ export async function GET(req: NextRequest) {
 
   let postsQuery = supabase
     .from("feed_posts")
-    .select("txid, action, author_identity, amount_sats, content, created_at, card_kind")
+    .select("txid, action, author_account_id, author_identity, payer_address, amount_sats, content, created_at, card_kind")
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(PER_SOURCE);
@@ -128,7 +129,7 @@ export async function GET(req: NextRequest) {
 
   let eventsQuery = supabase
     .from("feed_events")
-    .select("txid, action, actor_identity, amount_sats, target_txid, created_at")
+    .select("txid, action, actor_account_id, actor_identity, payer_address, amount_sats, target_txid, created_at")
     .order("created_at", { ascending: false })
     .limit(PER_SOURCE);
   if (scoped) {
@@ -179,7 +180,7 @@ export async function GET(req: NextRequest) {
       ? Promise.resolve({ data: [] as Array<never> })
       : supabase
           .from("comments")
-          .select("txid, author_identity, amount_sats, content, created_at, posts!inner(title, slug, legacy)")
+          .select("txid, author_account_id, author_identity, payer_address, amount_sats, content, created_at, posts!inner(title, slug, legacy)")
           .is("deleted_at", null)
           .not("txid", "is", null)
           .order("created_at", { ascending: false })
@@ -188,21 +189,90 @@ export async function GET(req: NextRequest) {
 
   const items: ActivityItem[] = [];
 
-  // ---- feed posts / replies / quotes (mint cards ride `handles` instead) ----
+  // ---- row shapes for the DB-backed sources whose bylines resolve live ----
   type PostRow = {
-    txid: string; action: number; author_identity: string | null;
+    txid: string; action: number; author_account_id: string | null;
+    author_identity: string | null; payer_address: string | null;
     amount_sats: number | null; content: string | null; created_at: string;
     card_kind: string | null;
   };
+  type EventRow = {
+    txid: string; action: number; actor_account_id: string | null;
+    actor_identity: string | null; payer_address: string | null;
+    amount_sats: number | null; target_txid: string | null; created_at: string;
+  };
+  type CommentRow = {
+    txid: string; author_account_id: string | null; author_identity: string | null;
+    payer_address: string | null; amount_sats: number | null;
+    content: string | null; created_at: string;
+    posts: { title: string | null; slug: string | null; legacy?: boolean | null } | null;
+  };
   const posts = (postsQ.data ?? []) as PostRow[];
+  const events = (eventsQ.data ?? []) as EventRow[];
+  const comments = (commentsQ.data ?? []) as unknown as CommentRow[];
+
+  // ---- resolve the liked/reposted target posts: their CONTENT is what a
+  //      like/repost line references ("liked '…the post…'"), with the author
+  //      byline as a fallback for a text-less card (e.g. an image). ----
+  type TargetInfo = {
+    authorAccountId: string | null; authorIdentity: string | null;
+    payerAddress: string | null; content: string | null;
+  };
+  const targetTxids = [...new Set(events.map((e) => e.target_txid).filter(Boolean))] as string[];
+  const targetInfo = new Map<string, TargetInfo>();
+  if (targetTxids.length > 0) {
+    const { data: targets } = await supabase
+      .from("feed_posts")
+      .select("txid, author_account_id, author_identity, payer_address, content")
+      .in("txid", targetTxids);
+    for (const t of (targets ?? []) as Array<{
+      txid: string; author_account_id: string | null; author_identity: string | null;
+      payer_address: string | null; content: string | null;
+    }>) {
+      targetInfo.set(t.txid, {
+        authorAccountId: t.author_account_id,
+        authorIdentity: t.author_identity,
+        payerAddress: t.payer_address,
+        content: t.content,
+      });
+    }
+  }
+
+  // ---- bylines resolve LIVE from each poster's CURRENT account handle, exactly
+  //      like the feed/profile/post-detail (lib/getFeed.js attachLiveIdentity,
+  //      via the same displayHandlesByAccountId helper). The frozen
+  //      author_identity/actor_identity is only the last-resort fallback, so a
+  //      handle an account has since sold or unbound stops appearing on its old
+  //      activity here — otherwise the rail links to the wrong profile. ----
+  const bylineAccountIds = [
+    ...posts.map((p) => p.author_account_id),
+    ...events.map((e) => e.actor_account_id),
+    ...[...targetInfo.values()].map((t) => t.authorAccountId),
+    ...comments.map((c) => c.author_account_id),
+  ].filter(Boolean) as string[];
+  const handleMap = await displayHandlesByAccountId(bylineAccountIds, supabase);
+  // @handle when the account currently holds one, else the raw payer address,
+  // else the frozen snapshot — identical precedence to getFeed's identityFor.
+  const liveIdentity = (
+    accountId: string | null | undefined,
+    payerAddress: string | null | undefined,
+    frozen: string | null | undefined,
+  ): string | null => {
+    const entry = accountId ? handleMap[accountId] : null;
+    if (entry?.handle) return `@${entry.handle}`;
+    return payerAddress || frozen || null;
+  };
+
+  // ---- feed posts / replies / quotes (mint cards ride `handles` instead) ----
   for (const p of posts) {
     if (p.card_kind === "handle_mint") continue; // deduped: mints come from `handles`
     const kind = p.action === 2 ? "reply" : p.action === 3 ? "quote" : "post";
+    const identity = liveIdentity(p.author_account_id, p.payer_address, p.author_identity);
     items.push({
       id: `fp:${p.txid}`,
       kind,
-      actor: displayIdentity(p.author_identity, "someone"),
-      actorHref: profileHref(p.author_identity),
+      actor: displayIdentity(identity, "someone"),
+      actorHref: profileHref(identity),
       target: snippet(p.content),
       amountXec: p.amount_sats == null ? null : p.amount_sats / 100,
       at: p.created_at,
@@ -211,38 +281,23 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // ---- likes / tips / reposts — resolve who the target post belongs to ----
-  type EventRow = {
-    txid: string; action: number; actor_identity: string | null;
-    amount_sats: number | null; target_txid: string | null; created_at: string;
-  };
-  const events = (eventsQ.data ?? []) as EventRow[];
-  const targetTxids = [...new Set(events.map((e) => e.target_txid).filter(Boolean))] as string[];
-  // Resolve the liked/reposted post itself — its CONTENT is what the line should
-  // reference ("liked '…the post…'"), not just whose post it was. Keep the
-  // author byline as a fallback for a post with no text (e.g. an image card).
-  const targetInfo = new Map<string, { author: string | null; content: string | null }>();
-  if (targetTxids.length > 0) {
-    const { data: targets } = await supabase
-      .from("feed_posts")
-      .select("txid, author_identity, content")
-      .in("txid", targetTxids);
-    for (const t of (targets ?? []) as Array<{ txid: string; author_identity: string | null; content: string | null }>) {
-      targetInfo.set(t.txid, { author: t.author_identity, content: t.content });
-    }
-  }
+  // ---- likes / tips / reposts ----
   for (const e of events) {
     const kind =
       e.action === 4 ? "repost" : (e.amount_sats ?? 0) > LIKE_FLOOR_SATS ? "tip" : "like";
     const info = e.target_txid ? targetInfo.get(e.target_txid) : null;
+    const targetIdentity = info
+      ? liveIdentity(info.authorAccountId, info.payerAddress, info.authorIdentity)
+      : null;
     const targetText =
       (info ? snippet(info.content) : null) ??
-      (info?.author ? displayIdentity(info.author, "") || null : null);
+      (targetIdentity ? displayIdentity(targetIdentity, "") || null : null);
+    const actorIdentity = liveIdentity(e.actor_account_id, e.payer_address, e.actor_identity);
     items.push({
       id: `fe:${e.txid}`,
       kind,
-      actor: displayIdentity(e.actor_identity, "someone"),
-      actorHref: profileHref(e.actor_identity),
+      actor: displayIdentity(actorIdentity, "someone"),
+      actorHref: profileHref(actorIdentity),
       target: targetText,
       amountXec: e.amount_sats == null ? null : e.amount_sats / 100,
       at: e.created_at,
@@ -368,19 +423,15 @@ export async function GET(req: NextRequest) {
   }
 
   // ---- paid article comments / replies — link to the article's comments ----
-  type CommentRow = {
-    txid: string; author_identity: string | null; amount_sats: number | null;
-    content: string | null; created_at: string;
-    posts: { title: string | null; slug: string | null; legacy?: boolean | null } | null;
-  };
-  for (const c of (commentsQ.data ?? []) as unknown as CommentRow[]) {
+  for (const c of comments) {
     const cp = Array.isArray(c.posts) ? c.posts[0] : c.posts;
     if (!cp?.slug) continue;
+    const identity = liveIdentity(c.author_account_id, c.payer_address, c.author_identity);
     items.push({
       id: `cm:${c.txid}`,
       kind: "comment",
-      actor: displayIdentity(c.author_identity, "someone"),
-      actorHref: profileHref(c.author_identity),
+      actor: displayIdentity(identity, "someone"),
+      actorHref: profileHref(identity),
       target: snippet(c.content),
       amountXec: c.amount_sats == null ? null : c.amount_sats / 100,
       at: c.created_at,
