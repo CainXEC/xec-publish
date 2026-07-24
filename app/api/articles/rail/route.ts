@@ -1,16 +1,20 @@
 // =============================================================================
 //  app/api/articles/rail/route.ts — the desktop left rail's "front page".
 //
-//  One payload for the newspaper rail: a LEAD story, the LATEST list, and
-//  MOST READ (7 days) — plus dateline stats. Ranking is deliberately LEGIBLE
+//  One payload for the newspaper rail: a LEAD story, a MORE STORIES list, and
+//  MOST READ THIS WEEK — plus dateline stats. Ranking is deliberately LEGIBLE
 //  (the anti-black-box to the feed's engagement ranker):
-//    lead     = readers × freshness — (1 + unlocks_7d) · exp(−age_days / 3)
-//    latest   = pure chronology
-//    mostRead = a plain 7-day unlock counter
+//    lead     = (1 + all-time readers) · exp(−age_days / 3) · sublinear price nudge
+//    more     = pure chronology (newest first)
+//    mostRead = ranked by RECENT (7-day) unlock volume — this is how an OLD or
+//               legacy article being unlocked a lot right now resurfaces on the
+//               front page, independent of its age.
 //  Reader counts come from the get_unlock_counts RPC, so "readers" here always
-//  means verified on-chain unlocks, never views. That RPC also excludes house/AI
-//  unlockers (authors.is_ai) — a patron's grants pay the author for real but must
-//  not inflate this public reach ranking (see sql/rpc_get_unlock_counts.sql).
+//  means verified on-chain unlocks, never views. That RPC — and its sibling
+//  get_recent_hot_posts, which pulls hot legacy posts into the candidate pool so
+//  they can appear here at all — excludes house/AI unlockers (authors.is_ai): a
+//  patron's grants pay the author for real but must not inflate this public reach
+//  ranking (see sql/rpc_get_unlock_counts.sql, sql/rpc_get_recent_hot_posts.sql).
 //
 //  posts.published_at is null on paid-flow posts — created_at is the real
 //  publication moment there, so both are selected and coalesced.
@@ -34,6 +38,12 @@ const CANDIDATES = 40;
 // column), so "More stories" can run long without shifting the page — 12 gives a
 // fuller front page while staying curated.
 const MORE_N = 12;
+// "Most Read this week": how many recently-hot articles the section lists, and how
+// many hot posts to pull into the candidate pool so an OLD/legacy article being
+// unlocked a lot right now can resurface — the recency-only pools below would never
+// include it. See sql/rpc_get_recent_hot_posts.sql.
+const MOST_READ_N = 6;
+const HOT_CANDIDATES = 24;
 
 type RailStory = {
   id: string;
@@ -76,17 +86,43 @@ export async function GET() {
   // is null (created_at is their real go-live moment); the published_at pool
   // (nulls last) catches the long-drafted just-published case. The JS ranking
   // below then sorts the merged set by published_at ?? created_at.
-  const [byCreated, byPublished] = await Promise.all([
+  const [byCreated, byPublished, hotRes] = await Promise.all([
     supabase
       .from("posts").select(COLS).eq("published", true)
       .order("created_at", { ascending: false }).limit(CANDIDATES),
     supabase
       .from("posts").select(COLS).eq("published", true)
       .order("published_at", { ascending: false, nullsFirst: false }).limit(CANDIDATES),
+    // Recently-hot posts by 7-day unlock volume (house/AI excluded). This is the
+    // ONLY way an old/legacy article enters the pool — the two pools above are
+    // pure publication recency. Best-effort: if the RPC isn't applied yet we log
+    // and carry on with just the recency pools, so the rail never breaks on it.
+    supabase.rpc("get_recent_hot_posts", { since: since7d, max_posts: HOT_CANDIDATES }),
   ]);
 
+  // Pull the full post rows for the hot ids the recency pools didn't already cover.
+  const hotIds = Array.isArray(hotRes.data)
+    ? (hotRes.data as Array<{ post_id: string }>).map((r) => r.post_id).filter(Boolean)
+    : [];
+  if (hotRes.error) {
+    console.warn(
+      "[articles/rail] get_recent_hot_posts unavailable — legacy resurfacing off until sql/rpc_get_recent_hot_posts.sql is applied:",
+      hotRes.error.message,
+    );
+  }
+  let hotPosts: PostRow[] = [];
+  if (hotIds.length > 0) {
+    const { data: hotRows } = await supabase
+      .from("posts").select(COLS).eq("published", true).in("id", hotIds);
+    hotPosts = (hotRows ?? []) as PostRow[];
+  }
+
   const byId = new Map<string, PostRow>();
-  for (const p of [...(byCreated.data ?? []), ...(byPublished.data ?? [])] as PostRow[]) {
+  for (const p of [
+    ...(byCreated.data ?? []),
+    ...(byPublished.data ?? []),
+    ...hotPosts,
+  ] as PostRow[]) {
     if (!byId.has(p.id)) byId.set(p.id, p);
   }
   const posts = [...byId.values()].filter((p) => p.slug && p.title);
@@ -168,8 +204,18 @@ export async function GET() {
     .sort((a, b) => (a.at < b.at ? 1 : -1))
     .slice(0, MORE_N);
 
+  // "Most Read this week": ranked purely by recent (7-day) unlock volume, so an
+  // OLD or legacy piece being unlocked a lot right now resurfaces here regardless
+  // of age. readers7d comes from get_unlock_counts, so house/AI unlocks are
+  // already excluded. Drop the lead (no hero dupe) and anything with zero recent
+  // unlocks (nothing to be "most read" about). Ties break toward the newer piece.
+  const mostRead = stories
+    .filter((s) => s.id !== lead?.id && s.readers7d > 0)
+    .sort((a, b) => b.readers7d - a.readers7d || (a.at < b.at ? 1 : -1))
+    .slice(0, MOST_READ_N);
+
   return NextResponse.json(
-    { ok: true, lead, more },
+    { ok: true, lead, more, mostRead },
     // Publishes are rare events; a minute of CDN cache keeps this free.
     { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
   );

@@ -5,7 +5,10 @@
 //  An editor-less newspaper whose editor is the chain: a LEAD story chosen by
 //  breadth × freshness × a sublinear price nudge (readers dominate; a pricier
 //  piece only edges an equally-read cheaper one), then MORE STORIES in pure
-//  chronology. The feed is social time; this rail is editorial time.
+//  chronology, then MOST READ THIS WEEK — a ranked list by recent (7-day) unlock
+//  volume, where an old or even legacy article being unlocked a lot right now
+//  resurfaces regardless of age. The feed is social time; this rail is editorial
+//  time.
 //
 //  Newspaper-ness comes from STRUCTURE (masthead between double rules, a
 //  dateline folio, a hero lead, hairline-separated entries below), not from
@@ -145,6 +148,29 @@ function Lead({ story, now, onOpen }) {
   )
 }
 
+// A "Most read this week" row: rank · serif headline · recent-unlock count. The
+// count is the 7-DAY tally (readers7d), not all-time — this section is where an
+// old or legacy article being unlocked a lot right now resurfaces, so it's ranked
+// and labelled by recent reads, deliberately distinct from the all-time 🔓 meta
+// the lead and More rows carry.
+function MostReadEntry({ story, rank, now, onOpen }) {
+  const reads = Number(story.readers7d) || 0
+  return (
+    <Link
+      className={`np-rank${now ? ' now' : ''}`}
+      href={`/posts/${story.slug}`}
+      onClick={onOpen ? (e) => onOpen(e, story.slug) : undefined}
+      data-no-navprogress={onOpen ? '' : undefined}
+    >
+      <span className="np-rank-n">{rank}</span>
+      <span className="np-serif np-rank-h">{story.title}</span>
+      <span className="np-rank-c" title="unlocks in the last 7 days">
+        {reads.toLocaleString()} {reads === 1 ? 'read' : 'reads'}
+      </span>
+    </Link>
+  )
+}
+
 // A More-stories row: headline + meta; the whole row opens the story on click.
 function Entry({ story, now, onOpen }) {
   return (
@@ -212,6 +238,7 @@ export default function ArticleRail({ minWidth = WIDE_RAIL_MIN, currentSlug = nu
 
   const lead = data?.lead ?? null
   const more = data?.more ?? []
+  const mostRead = data?.mostRead ?? []
 
   return (
     <div className="npaper">
@@ -236,6 +263,21 @@ export default function ArticleRail({ minWidth = WIDE_RAIL_MIN, currentSlug = nu
               <div className="np-sec">More stories</div>
               {more.map((s) => (
                 <Entry key={s.id} story={s} now={isNow(s)} onOpen={interceptOpen} />
+              ))}
+            </>
+          ) : null}
+
+          {mostRead.length > 0 ? (
+            <>
+              <div className="np-sec">Most read this week</div>
+              {mostRead.map((s, i) => (
+                <MostReadEntry
+                  key={s.id}
+                  story={s}
+                  rank={i + 1}
+                  now={isNow(s)}
+                  onOpen={interceptOpen}
+                />
               ))}
             </>
           ) : null}
