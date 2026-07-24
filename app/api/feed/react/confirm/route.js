@@ -181,13 +181,17 @@ export async function POST(request) {
     return NextResponse.json({ error: insertError.message }, { status: 500 })
   }
 
-  // Notify the post's owner that it was liked/reposted (best-effort).
+  // Notify the post's owner that it was liked/reposted (best-effort). A like is
+  // a tip, so carry the amount actually paid (match.sats, which can exceed the
+  // flat floor) for the bell to show "· N XEC".
+  const isLike = action === FEED_ACTION.LIKE
   await recordFeedNotification(supabase, {
     recipientAccountId: target.author_account_id,
     actorAccountId: resolved.accountId,
     actorIdentity: actorIdentity,
-    type: action === FEED_ACTION.LIKE ? 'like' : 'repost',
+    type: isLike ? 'like' : 'repost',
     postTxid: targetTxid,
+    amountSats: isLike ? match.sats : null,
   })
 
   const response = NextResponse.json({ ok: true, status: 'reacted', event: inserted })

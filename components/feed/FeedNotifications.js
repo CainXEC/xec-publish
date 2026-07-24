@@ -51,6 +51,15 @@ function notifText(n) {
       ? `offered ${Number(n.offerAmountXec).toLocaleString()} XEC for ${name}`
       : `made an offer on ${name}`
   }
+  // A like is a tip: when we recorded what was paid, append the amount (in XEC;
+  // amount_sats is sats, 1 XEC = 100 sats). Older likes with no stored amount
+  // fall back to the plain verb.
+  if (n.type === 'like') {
+    const xec = n.amount_sats != null ? Number(n.amount_sats) / 100 : null
+    return xec != null && xec > 0
+      ? `${VERB.like} · ${xec.toLocaleString()} XEC`
+      : VERB.like
+  }
   // Unlock/comment name the article when we resolved its title, else fall back
   // to the generic verb ("unlocked your article").
   if (n.type === 'unlock' || n.type === 'comment') {
