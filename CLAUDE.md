@@ -35,8 +35,10 @@ https://ecashskill.vercel.app/skills/SKILL.md
   accounts.active_handle_token_id / display_handle / display_handle_checked_at.
 - Profile routing (Choice A): /@handle → current on-chain holder → account
   → posts. No-handle accounts get /a/<address>. Legacy /u/[username] 301s in.
-- GROUP genesis (rehearsal): 7c32a2aaf1248d6ee45e468e1dc707bf92e4a4feb379013712ae88729312cdfe
-  (ticker POWH). Real launch = fresh mint wallet + new GROUP genesis.
+- GROUP genesis (LIVE launch): 04311f17fe204e501a38b5c296381e4f4824f504337659127f21722c4bde42e0
+  (name "POW Handles", ticker WRITE, 10k + baton kept). Mint wallet / MINT_PAYMENT_ADDRESS =
+  ecash:qpw8gv2d7lahzfzsnakwefmfs6jhwex5zyfnejs2k6. Supersedes the rehearsal GROUP
+  7c32a2aaf1248d6ee45e468e1dc707bf92e4a4feb379013712ae88729312cdfe (ticker POWH).
 
 ## ecash-wallet gotchas (hard-won)
 - `build()` requires explicit `sats: 546n` on EVERY token output, or it
