@@ -266,15 +266,6 @@ export default function ArticleRail({ minWidth = WIDE_RAIL_MIN, currentSlug = nu
             </>
           ) : null}
 
-          {more.length > 0 ? (
-            <>
-              <div className="np-sec">More stories</div>
-              {more.map((s) => (
-                <Entry key={s.id} story={s} now={isNow(s)} onOpen={interceptOpen} />
-              ))}
-            </>
-          ) : null}
-
           {mostRead.length > 0 ? (
             <>
               <div className="np-sec">Most read this week</div>
@@ -286,6 +277,15 @@ export default function ArticleRail({ minWidth = WIDE_RAIL_MIN, currentSlug = nu
                   now={isNow(s)}
                   onOpen={interceptOpen}
                 />
+              ))}
+            </>
+          ) : null}
+
+          {more.length > 0 ? (
+            <>
+              <div className="np-sec">More stories</div>
+              {more.map((s) => (
+                <Entry key={s.id} story={s} now={isNow(s)} onOpen={interceptOpen} />
               ))}
             </>
           ) : null}
