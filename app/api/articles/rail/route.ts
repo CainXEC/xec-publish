@@ -205,11 +205,6 @@ export async function GET() {
     ? [...stories].sort((a, b) => score(b) - score(a))[0]
     : null;
 
-  const more = stories
-    .filter((s) => s.id !== lead?.id)
-    .sort((a, b) => (a.at < b.at ? 1 : -1))
-    .slice(0, MORE_N);
-
   // "Most Read this week": ranked purely by recent (7-day) unlock volume, so an
   // OLD or legacy piece being unlocked a lot right now resurfaces here regardless
   // of age. readers7d comes from get_unlock_counts, so house/AI unlocks are
@@ -219,6 +214,16 @@ export async function GET() {
     .filter((s) => s.id !== lead?.id && s.readers7d > 0)
     .sort((a, b) => b.readers7d - a.readers7d || (a.at < b.at ? 1 : -1))
     .slice(0, MOST_READ_N);
+
+  // "More stories": newest-first, but skip the lead AND anything already shown in
+  // "Most read this week" directly above — a repeat there reads as a bug.
+  const shownIds = new Set(
+    [lead?.id, ...mostRead.map((s) => s.id)].filter(Boolean),
+  );
+  const more = stories
+    .filter((s) => !shownIds.has(s.id))
+    .sort((a, b) => (a.at < b.at ? 1 : -1))
+    .slice(0, MORE_N);
 
   return NextResponse.json(
     { ok: true, lead, more, mostRead },
