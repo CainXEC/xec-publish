@@ -1,7 +1,25 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { getOutputScriptFromAddress } from 'ecashaddrjs'
 import { toSatsFromXec, verifyAndRecordUnlock } from '@/lib/verifyPaymentUnlock'
 import { encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
+
+// The verifier builds a module-level service-role client. Stub it so the money
+// check can run past the (now removed) finality gate into the unlock lookup
+// without a live DB. maybeSingle() reports this txid as already used, giving a
+// deterministic early return right after the recipient check.
+vi.mock('@/lib/supabase-server', () => ({
+  createServerSupabase: () => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          limit: () => ({
+            maybeSingle: async () => ({ data: { id: 'existing-unlock' }, error: null }),
+          }),
+        }),
+      }),
+    }),
+  }),
+}))
 
 describe('toSatsFromXec', () => {
   it('converts 1 XEC to 100 satoshis', () => {
@@ -96,15 +114,18 @@ describe('verifyAndRecordUnlock — recipient binding', () => {
     expect(res.error).toMatch(/platform output/i)
   })
 
-  it('accepts correct author + platform outputs (reaches the finality gate)', async () => {
-    // isFinal:false makes the recipient check pass and stop at the finality
-    // gate — proving the money check accepted the correctly-addressed payment
-    // without needing to mock Supabase.
+  it('accepts correct author + platform outputs on FIRST-SEEN — no finality wait', async () => {
+    // The finality gate was removed (2026-07-23): a 0-conf (isFinal:false) payment
+    // with correct outputs no longer returns 'finalizing' — it proceeds PAST the
+    // money check to the unlock record. The stubbed lookup reports the txid as
+    // already used, so it returns there, proving both that the recipient check
+    // accepted the payment AND that isFinal:false no longer blocks.
     const res = await run(
       [unlockOpReturn, payTo(AUTHOR_ADDR, BIG), payTo(PLATFORM_ADDR, BIG)],
       { isFinal: false },
     )
     expect(res.ok).toBe(false)
-    expect(res.reason).toBe('finalizing')
+    expect(res.reason).toBeUndefined() // NOT 'finalizing' — the gate is gone
+    expect(res.error).toMatch(/already used/i) // reached the replay check
   })
 })
