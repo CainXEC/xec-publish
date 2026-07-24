@@ -25,6 +25,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { WIDE_RAIL_MIN } from '@/components/feed/feedTheme'
+import { articleRouteFor } from '@/lib/searchResults'
 
 const REFRESH_MS = 5 * 60_000 // publishes are rare; the ticker announces them live
 
@@ -117,14 +118,17 @@ function Meta({ story }) {
 // page, else its own page); there are no buttons — the unlock flow lives in the
 // story itself, so a reader opens it and scrolls down to unlock.
 function Lead({ story, now, onOpen }) {
-  const open = onOpen ? (e) => onOpen(e, story.slug) : undefined
+  const href = articleRouteFor(story.slug, story.legacy)
+  // Legacy posts render only on their own root page — never intercept them into
+  // the in-pane reader (its route resolves current posts only). They just navigate.
+  const open = onOpen && !story.legacy ? (e) => onOpen(e, story.slug) : undefined
   return (
     <div className={`np-lead${now ? ' now' : ''}`}>
       <Link
         className="np-lead-hl"
-        href={`/posts/${story.slug}`}
+        href={href}
         onClick={open}
-        data-no-navprogress={onOpen ? '' : undefined}
+        data-no-navprogress={open ? '' : undefined}
       >
         <span className="np-serif np-lead-h">
           {isFresh(story.at) ? <span className="np-dot" aria-hidden /> : null}
@@ -137,9 +141,9 @@ function Lead({ story, now, onOpen }) {
       {story.teaser ? (
         <Link
           className="np-lead-teaser-link"
-          href={`/posts/${story.slug}`}
+          href={href}
           onClick={open}
-          data-no-navprogress={onOpen ? '' : undefined}
+          data-no-navprogress={open ? '' : undefined}
         >
           <p className="np-lead-teaser">{story.teaser}</p>
         </Link>
@@ -155,12 +159,14 @@ function Lead({ story, now, onOpen }) {
 // the lead and More rows carry.
 function MostReadEntry({ story, rank, now, onOpen }) {
   const reads = Number(story.readers7d) || 0
+  const href = articleRouteFor(story.slug, story.legacy)
+  const open = onOpen && !story.legacy ? (e) => onOpen(e, story.slug) : undefined
   return (
     <Link
       className={`np-rank${now ? ' now' : ''}`}
-      href={`/posts/${story.slug}`}
-      onClick={onOpen ? (e) => onOpen(e, story.slug) : undefined}
-      data-no-navprogress={onOpen ? '' : undefined}
+      href={href}
+      onClick={open}
+      data-no-navprogress={open ? '' : undefined}
     >
       <span className="np-rank-n">{rank}</span>
       <span className="np-serif np-rank-h">{story.title}</span>
@@ -173,12 +179,14 @@ function MostReadEntry({ story, rank, now, onOpen }) {
 
 // A More-stories row: headline + meta; the whole row opens the story on click.
 function Entry({ story, now, onOpen }) {
+  const href = articleRouteFor(story.slug, story.legacy)
+  const open = onOpen && !story.legacy ? (e) => onOpen(e, story.slug) : undefined
   return (
     <Link
       className={`np-entry${now ? ' now' : ''}`}
-      href={`/posts/${story.slug}`}
-      onClick={onOpen ? (e) => onOpen(e, story.slug) : undefined}
-      data-no-navprogress={onOpen ? '' : undefined}
+      href={href}
+      onClick={open}
+      data-no-navprogress={open ? '' : undefined}
     >
       <span className="np-serif np-entry-h">
         {isFresh(story.at) ? <span className="np-dot" aria-hidden /> : null}

@@ -49,6 +49,10 @@ type RailStory = {
   id: string;
   title: string;
   slug: string;
+  // Imported legacy posts keep their root permalink /{slug} (app/[slug]/page.js);
+  // current posts live at /posts/{slug}. The client routes on this flag so a
+  // resurfaced legacy article links to the page that can actually serve it.
+  legacy: boolean;
   teaser: string | null;
   priceXec: number | null;
   readMinutes: number | null;
@@ -70,12 +74,13 @@ export async function GET() {
     id: string; title: string | null; slug: string | null; teaser: string | null;
     price_xec: number | null; reading_time_minutes: number | null;
     published_at: string | null; created_at: string | null; author_id: string | null;
+    legacy: boolean | null;
   };
 
   const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const COLS =
-    "id, title, slug, teaser, price_xec, reading_time_minutes, published_at, created_at, author_id";
+    "id, title, slug, teaser, price_xec, reading_time_minutes, published_at, created_at, author_id, legacy";
 
   // The candidate pool must be picked by PUBLICATION recency, not draft
   // creation — a long-drafted post goes live today with an old created_at, so a
@@ -165,6 +170,7 @@ export async function GET() {
     id: p.id,
     title: p.title as string,
     slug: p.slug as string,
+    legacy: p.legacy === true,
     teaser: p.teaser,
     priceXec: p.price_xec,
     readMinutes: p.reading_time_minutes,
