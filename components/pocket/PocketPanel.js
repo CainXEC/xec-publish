@@ -24,6 +24,8 @@ import {
   usePocket,
   refreshPocket,
   refreshPocketBalance,
+  applyOptimisticSpend,
+  undoOptimisticSpend,
   POCKET_SOFT_CAP_XEC,
 } from '@/lib/pocket/store'
 import { useRollingSats } from '@/lib/pocket/useRollingSats'
@@ -421,20 +423,21 @@ function PocketDashboard({ pocket }) {
     }
   }, [pocket.address])
 
+  // Sweep on a single press — no confirm dialog. The whole Pocket goes back to
+  // the login wallet (recoverable any time by re-signing), so there's nothing to
+  // guard against. The displayed balance rolls to zero the instant it's pressed
+  // via the optimistic overlay (whole balance leaving), reconciled by the Chronik
+  // nudge after the tx lands — and rolled back up if the sweep fails.
   const sweep = useCallback(async () => {
-    if (busy || !pocket.primaryAddress) return
-    if (
-      !window.confirm(
-        `Sweep the entire Pocket balance back to your wallet (${shorten(pocket.primaryAddress)})?`,
-      )
-    ) {
-      return
-    }
+    if (busy || !pocket.primaryAddress || !(pocket.balanceSats > 0)) return
     setBusy(true)
     setNotice('')
+    const sweeping = pocket.balanceSats ?? 0
+    applyOptimisticSpend(sweeping)
     try {
       const record = loadPocket(pocket.accountId)
       if (!record) {
+        undoOptimisticSpend(sweeping)
         setNotice('No pocket key on this device.')
         return
       }
@@ -444,12 +447,16 @@ function PocketDashboard({ pocket }) {
         setNotice(`Swept ${formatXecFull(Number(r.sats))} XEC back to your wallet ✓`)
         refreshPocketBalance()
       } else {
+        undoOptimisticSpend(sweeping)
         setNotice(r.error)
       }
+    } catch {
+      undoOptimisticSpend(sweeping)
+      setNotice('Could not sweep. Try again.')
     } finally {
       setBusy(false)
     }
-  }, [busy, pocket.accountId, pocket.primaryAddress])
+  }, [busy, pocket.accountId, pocket.primaryAddress, pocket.balanceSats])
 
   const forget = useCallback(() => {
     const hasFunds = (pocket.balanceSats ?? 0) > 100
