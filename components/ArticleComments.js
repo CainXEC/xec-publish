@@ -1,8 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
+import { tokenizeUrls } from '@/lib/contentLinks'
 import TranslateButton from '@/components/TranslateButton'
 import EmojiPicker from '@/components/EmojiPicker'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
@@ -32,6 +33,22 @@ function truncateIdentity(id) {
   const t = String(id ?? '').trim()
   if (t.length <= 16) return t
   return `${t.slice(0, 10)}…${t.slice(-4)}`
+}
+
+// Render comment text with same-site URLs (proofofwriting.com) as clickable
+// internal links; external URLs stay inert plain text. Text runs are emitted as
+// raw nodes so `.commentbody`'s white-space: pre-wrap keeps newlines intact.
+function CommentBody({ text }) {
+  const tokens = tokenizeUrls(text)
+  return tokens.map((t, i) =>
+    t.type === 'link' ? (
+      <Link key={i} href={t.href}>
+        {t.value}
+      </Link>
+    ) : (
+      <Fragment key={i}>{t.value}</Fragment>
+    ),
+  )
 }
 
 // A comment byline links to the commenter's profile, same as everywhere else:
@@ -614,7 +631,9 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
                 {comment.deleted ? (
                   <p className="commentbody commenttomb">[comment deleted]</p>
                 ) : (
-                  <p className="commentbody">{translations[comment.id] ?? comment.content}</p>
+                  <p className="commentbody">
+                    <CommentBody text={translations[comment.id] ?? comment.content} />
+                  </p>
                 )}
 
                 {!comment.deleted ? (

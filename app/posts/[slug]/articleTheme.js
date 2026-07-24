@@ -163,6 +163,10 @@ export const ARTICLE_CSS = `
 .pow-article a.commentaddr:hover{text-shadow:0 0 10px rgba(61,240,255,.4);}
 .pow-article .commentdate{margin:2px 0 0;font-size:11px;color:var(--dim);}
 .pow-article .commentbody{margin:12px 0 0;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.6;color:var(--ink);}
+/* Same-site URLs in a comment linkify (see CommentBody); style them like the
+   article prose links — cyan, underlined — rather than the inherited plain text. */
+.pow-article .commentbody a[href]{color:var(--cyan);text-decoration:underline;text-underline-offset:2px;}
+.pow-article .commentbody a[href]:hover{text-shadow:0 0 10px rgba(61,240,255,.45);}
 .pow-article .delbtn{background:transparent;border:1px solid #6e2831;color:var(--no);font:inherit;font-size:12px;
   padding:5px 12px;border-radius:8px;cursor:pointer;flex:none;transition:border-color .15s,color .15s,box-shadow .15s;}
 .pow-article .delbtn:hover:not(:disabled){border-color:var(--no);color:#ff8892;box-shadow:0 0 12px rgba(255,92,108,.2);}
