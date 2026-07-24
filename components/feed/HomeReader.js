@@ -219,7 +219,20 @@ export default function HomeReader({ slug, onClose, backLabel = '← The feed' }
               priceXec={d.priceXec}
               authorAddress={d.author?.xecAddress}
               slug={slug}
-              onUnlocked={() => load({ quiet: true })}
+              onUnlocked={(bodyHtml) => {
+                // Optimistic paint: verify-payment handed back the full body, so
+                // swap it in now — the paywall melts and the story opens in the
+                // same tick, no refetch wait. Then reconcile counts/session-derived
+                // bits quietly. (Recovery races pass no body → just reconcile.)
+                if (typeof bodyHtml === 'string' && bodyHtml) {
+                  setState((cur) =>
+                    cur.data
+                      ? { ...cur, data: { ...cur.data, bodyHtml, unlocked: true } }
+                      : cur,
+                  )
+                }
+                void load({ quiet: true })
+              }}
             />
           ) : null}
 

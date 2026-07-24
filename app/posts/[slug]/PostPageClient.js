@@ -230,13 +230,19 @@ export default function PostPageClient({
     triggerPaymentSuccessEffect(unlockAudioContextRef.current ?? undefined)
   }, [])
 
-  // Paint the now-entitled full body without waiting on a router.refresh() SSR
-  // round-trip. The pay path already gets the body inline on the verify response;
-  // this covers the other unlock paths (initial address/cookie check, "already
-  // used" recovery) by re-reading the reader route, which returns the full body
-  // now that the unlock cookie/session is set. Best-effort — router.refresh()
-  // still runs as the backstop, so a failure here just falls back to the old wait.
-  const revealFullBody = useCallback(async () => {
+  // Paint the now-entitled full body without a router.refresh() SSR round-trip.
+  //   - Fast path: the pay flow's verify-payment response carries the full body
+  //     inline; pass it here and it paints in the same tick (no network at all).
+  //   - Fallback: the other unlock paths (initial address/cookie check, "already
+  //     used" recovery) have no inline body, so re-read the reader route, which
+  //     returns the full body now that the unlock cookie/session is set.
+  // Best-effort either way — on failure the paywall just stays until the next
+  // check, rather than flashing stale preview text.
+  const revealFullBody = useCallback(async (inlineHtml) => {
+    if (typeof inlineHtml === 'string' && inlineHtml) {
+      setBodyHtml(inlineHtml)
+      return
+    }
     if (!slug) return
     try {
       const res = await fetch(`/api/posts/reader/${encodeURIComponent(slug)}`, {
@@ -247,7 +253,7 @@ export default function PostPageClient({
         setBodyHtml(data.bodyHtml)
       }
     } catch {
-      /* fall back to router.refresh() */
+      /* leave the preview in place; the next check re-attempts */
     }
   }, [slug])
 
@@ -571,16 +577,24 @@ export default function PostPageClient({
       payBaselineTxidRef.current = ''
     }
 
-    const checkLatest = async () => {
+    const checkLatest = async (pushedTxid) => {
       try {
         // Pocket-paid: the txid is known — verify it directly, skip the scan.
         let latestTxid = payPocketTxidRef.current
         if (!latestTxid) {
-          const latestTxRes = await fetch(
-            `/api/latest-tx/${encodeURIComponent(authorAddressForLatestTx)}`,
-          )
-          const latestTxData = await latestTxRes.json().catch(() => ({}))
-          latestTxid = latestTxRes.ok ? latestTxData.txid : ''
+          // Websocket fast path: the Chronik push already carries the exact txid,
+          // so verify it directly and skip the /api/latest-tx scan — one fewer
+          // Chronik round-trip per nudge. The interval poll passes no txid and
+          // still scans, so a missed push is always covered.
+          if (pushedTxid) {
+            latestTxid = pushedTxid
+          } else {
+            const latestTxRes = await fetch(
+              `/api/latest-tx/${encodeURIComponent(authorAddressForLatestTx)}`,
+            )
+            const latestTxData = await latestTxRes.json().catch(() => ({}))
+            latestTxid = latestTxRes.ok ? latestTxData.txid : ''
+          }
           if (!latestTxid) return
           if (latestTxid === payBaselineTxidRef.current) return
           if (latestTxid === payLastHandledTxidRef.current) return
@@ -612,10 +626,12 @@ export default function PostPageClient({
           setPaymentFinalizing(false)
           setUnlocked(true)
           setPollingActive(false)
-          // Paint the entitled text immediately from the reader route instead of
-          // waiting on the refresh below (the "delay before the text appears").
-          void revealFullBody()
-          router.refresh()
+          // Paint the entitled text in this same tick. verify-payment now returns
+          // the full body inline, so revealFullBody() paints with zero network and
+          // there's no second round-trip / stale-preview flash. (Falls back to the
+          // reader-route fetch only if the inline body was somehow absent.) No
+          // router.refresh() — it was a duplicate reveal that raced this one.
+          void revealFullBody(verifyData.bodyHtml)
           if (payTxPollRef.current) {
             clearInterval(payTxPollRef.current)
             payTxPollRef.current = null
@@ -645,8 +661,10 @@ export default function PostPageClient({
             setPaymentFinalizing(false)
             setUnlocked(true)
             setPollingActive(false)
+            // No inline body on this recovery path (check-unlock only reports
+            // entitlement), so revealFullBody() fetches the reader route once.
+            // No router.refresh() — it was a duplicate reveal.
             void revealFullBody()
-            router.refresh()
             if (payTxPollRef.current) {
               clearInterval(payTxPollRef.current)
               payTxPollRef.current = null
@@ -676,7 +694,7 @@ export default function PostPageClient({
     // was suspended in Cashtab — check immediately on return.
     payWatchRef.current = watchPaymentAddress(
       authorAddressForLatestTx,
-      () => { void checkLatest() },
+      (txid) => { void checkLatest(txid) },
       () => { void checkLatest() },
     )
   }, [
@@ -685,7 +703,6 @@ export default function PostPageClient({
     persistReaderAfterPaywallUnlock,
     post?.id,
     revealFullBody,
-    router,
     triggerPaywallUnlockEffect,
   ])
 

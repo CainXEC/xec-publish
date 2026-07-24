@@ -71,7 +71,7 @@ export default function PaneUnlock({ postId, priceXec, authorAddress, slug, onUn
   // whenever they're next asked (e.g. on the story's own page).
   useEffect(() => stop, [stop])
 
-  const succeed = useCallback(() => {
+  const succeed = useCallback((bodyHtml) => {
     if (doneRef.current) return
     doneRef.current = true
     stop()
@@ -87,18 +87,28 @@ export default function PaneUnlock({ postId, priceXec, authorAddress, slug, onUn
     } catch {
       /* ignore */
     }
-    if (onUnlocked) void onUnlocked()
+    // Hand the parent the full body (verify-payment now returns it inline) so it
+    // can paint the story in this same tick instead of waiting on a refetch.
+    if (onUnlocked) void onUnlocked(bodyHtml)
   }, [stop, onUnlocked])
 
-  const checkLatest = useCallback(async () => {
+  const checkLatest = useCallback(async (pushedTxid) => {
     if (doneRef.current) return
     try {
       // Pocket-paid: the txid is known — verify it directly, skip the scan.
       let txid = pocketTxidRef.current
       if (!txid) {
-        const latestRes = await fetch(`/api/latest-tx/${encodeURIComponent(authorAddress)}`)
-        const latestData = await latestRes.json().catch(() => ({}))
-        txid = latestRes.ok ? latestData.txid : ''
+        // Websocket fast path: the Chronik push carries the exact txid, so verify
+        // it directly and skip the /api/latest-tx scan (one fewer Chronik round-
+        // trip per nudge). The interval poll passes no txid and still scans, so a
+        // missed push is always covered.
+        if (pushedTxid) {
+          txid = pushedTxid
+        } else {
+          const latestRes = await fetch(`/api/latest-tx/${encodeURIComponent(authorAddress)}`)
+          const latestData = await latestRes.json().catch(() => ({}))
+          txid = latestRes.ok ? latestData.txid : ''
+        }
         if (!txid || txid === baselineRef.current || txid === handledRef.current) return
         handledRef.current = txid
       }
@@ -120,7 +130,7 @@ export default function PaneUnlock({ postId, priceXec, authorAddress, slug, onUn
       }
 
       if (verifyRes.ok && verifyData.unlocked) {
-        succeed()
+        succeed(verifyData.bodyHtml)
         return
       }
 
@@ -182,7 +192,7 @@ export default function PaneUnlock({ postId, priceXec, authorAddress, slug, onUn
     pollRef.current = setInterval(() => void checkLatest(), 1200)
     watchRef.current = watchPaymentAddress(
       authorAddress,
-      () => void checkLatest(),
+      (txid) => void checkLatest(txid),
       () => void checkLatest(),
     )
   }, [cashtabUrl, bip21, priceXec, authorAddress, checkLatest, stop])

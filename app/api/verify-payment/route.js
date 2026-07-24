@@ -7,6 +7,8 @@ import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { createServerSupabase } from '@/lib/supabase-server'
 import { verifyAndRecordUnlock } from '@/lib/verifyPaymentUnlock'
 import { resolveOrCreateAccount } from '@/lib/walletAuth'
+import { splitPostBodyAtPaywall } from '@/lib/splitPostBodyAtPaywall'
+import { sanitizePostBodyHtml } from '@/lib/sanitizePostBodyHtml'
 import {
   verifySession,
   signSession,
@@ -137,7 +139,36 @@ export async function POST(request) {
       )
     }
 
-    const response = NextResponse.json({ unlocked: true })
+    // Piggyback the now-entitled full body on the unlock response. Entitlement
+    // was just recorded (result.ok), so we build the full body directly with the
+    // same paywall-split + sanitize the reader route uses — identical bytes. This
+    // lets the client paint the story in the SAME tick it flips to "unlocked",
+    // killing the second round-trip to /api/posts/reader/[slug] (the visible
+    // "text pops in a beat late" glitch). Best-effort: on any failure we return
+    // a null body and the client falls back to the reader-route refetch.
+    let bodyHtml = null
+    try {
+      const { data: bodyRow } = await supabase
+        .from('posts')
+        .select('body')
+        .eq('id', postId)
+        .maybeSingle()
+      if (bodyRow?.body) {
+        const { bodyPublic, bodyLocked } = splitPostBodyAtPaywall(bodyRow.body, {
+          postId,
+        })
+        const fullBody =
+          bodyLocked != null ? `${bodyPublic}${bodyLocked}` : bodyPublic
+        bodyHtml = sanitizePostBodyHtml(fullBody)
+      }
+    } catch (bodyErr) {
+      console.error(
+        '[verify-payment] inline body build failed (client will refetch)',
+        bodyErr,
+      )
+    }
+
+    const response = NextResponse.json({ unlocked: true, bodyHtml })
     response.cookies.set({
       name: `unlock_${postId}`,
       value: cookieValue,
