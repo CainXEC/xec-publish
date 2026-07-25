@@ -397,10 +397,8 @@ function CreateOrRestore({ pocket }) {
           </button>
         </div>
         <p className="body dim">
-          With the Cashtab <strong>extension</strong>, approve the signature in the popup — nothing
-          leaves the page and your Pocket derives on the spot. Otherwise Cashtab opens in a new tab
-          with the sentence copied to your clipboard: paste it into Sign &amp; Verify, sign, copy the
-          signature, then come back and paste it below.
+          Cashtab opens in a new tab with the sentence copied to your clipboard: paste it into Sign
+          &amp; Verify, sign, copy the signature, then come back and paste it below.
         </p>
       </div>
 
@@ -408,8 +406,7 @@ function CreateOrRestore({ pocket }) {
         <h2 className="h2">2 · Paste the signature</h2>
         <p className="body dim">
           After signing in Cashtab, paste the signature here — tap <em>Paste signature</em> to grab it
-          straight from your clipboard, or paste it into the box. (Extension users are already done —
-          this step is only for the web tab.)
+          straight from your clipboard, or paste it into the box.
         </p>
         <div className="row">
           <button className="ghost" onClick={() => void pasteFromClipboard()} disabled={busy}>
