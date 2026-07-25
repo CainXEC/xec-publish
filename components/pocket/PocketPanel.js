@@ -575,15 +575,13 @@ function PocketDashboard({ pocket }) {
     }
   }, [busy, pocket.accountId, pocket.primaryAddress, pocket.balanceSats])
 
+  // Forget on a single press — no confirm dialog. It only drops the local key
+  // record; any funds stay on the pocket address and come back any time you sign
+  // the sentence again, so there's nothing to lose and nothing to guard against.
   const forget = useCallback(() => {
-    const hasFunds = (pocket.balanceSats ?? 0) > 100
-    const msg = hasFunds
-      ? 'This pocket still has funds. They stay on the pocket address — you can get them back any time by signing the sentence again — but consider sweeping to your wallet first.\n\nForget the pocket on this device?'
-      : 'Forget the pocket on this device? You can rebuild it any time by signing the sentence again.'
-    if (!window.confirm(msg)) return
     forgetPocket(pocket.accountId)
     refreshPocket()
-  }, [pocket.accountId, pocket.balanceSats])
+  }, [pocket.accountId])
 
   return (
     <>
