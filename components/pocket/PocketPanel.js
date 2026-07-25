@@ -47,7 +47,7 @@ import {
 } from '@/lib/ecash/cashtabPay'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 
-const FUND_PRESETS = [1000, 5000, 10000, 20000]
+const FUND_PRESETS = [1000, 5000, 10000, 25000]
 
 export default function PocketPanel() {
   const pocket = usePocket()
@@ -613,7 +613,9 @@ function PocketDashboard({ pocket }) {
       </div>
 
       <div className="panel">
-        <h2 className="h2">Top up from Cashtab</h2>
+        <h2 className="h2">
+          Top up from Cashtab <span className="h2note">(25K XEC max)</span>
+        </h2>
         <TopUp />
       </div>
 
@@ -626,8 +628,8 @@ function PocketDashboard({ pocket }) {
           <button className="cta" onClick={() => void sweep()} disabled={busy || !(pocket.balanceSats > 0)}>
             {busy ? 'Sweeping…' : 'Sweep to my wallet'}
           </button>
-          <button className="ghost" onClick={forget} disabled={busy}>
-            forget on this device
+          <button className="cta" onClick={forget} disabled={busy}>
+            Forget this device
           </button>
         </div>
         {notice && <p className="notice ok">{notice}</p>}
@@ -700,7 +702,7 @@ function TopUp() {
               disabled={overCap}
               title={overCap ? 'That’s more than pocket change — keep the rest in Cashtab.' : undefined}
             >
-              +{amt.toLocaleString()} XEC
+              {amt / 1000}K XEC
             </button>
           )
         })}
@@ -762,6 +764,7 @@ const CSS = `
 .pow-pocket .panel{padding:0;margin:0 0 20px;background:none;border:none;border-radius:0;box-shadow:none;}
 .pow-pocket .panel.freeze{border-left:2px solid var(--no);padding-left:16px;}
 .pow-pocket .h2{font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);margin:0 0 10px;}
+.pow-pocket .h2note{text-transform:none;font-weight:400;font-size:12px;letter-spacing:0;color:var(--dim);}
 .pow-pocket .body{font-size:14px;line-height:1.6;color:var(--text);margin:0 0 12px;}
 .pow-pocket .body.dim{color:var(--dim);}
 .pow-pocket .body a{color:var(--cyan);}
@@ -769,11 +772,10 @@ const CSS = `
 .pow-pocket .sentence{background:#04120c;border:1px dashed var(--neon);border-radius:10px;padding:14px 16px;margin:0 0 12px;}
 .pow-pocket .sentence code{font-size:13px;line-height:1.6;color:var(--neon);word-break:break-word;}
 .pow-pocket .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 6px;}
-/* Mixed cta+ghost rows (the sweep/forget row): equal-width halves that always
-   stay on one row and match the taller sibling's height. */
+/* The sweep/forget row: two equal-width buttons that always stay on one row and
+   match the taller sibling's height, content centered. */
 .pow-pocket .row.stretch{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch;}
-.pow-pocket .row.stretch>.cta,.pow-pocket .row.stretch>.ghost{min-width:0;box-sizing:border-box;text-align:center;}
-.pow-pocket .row.stretch .ghost{display:inline-flex;align-items:center;justify-content:center;}
+.pow-pocket .row.stretch>.cta{min-width:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;}
 .pow-pocket .cta{background:transparent;color:var(--neon);border:1px solid var(--neon);border-radius:10px;
   padding:12px 18px;font:inherit;font-size:14px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
   cursor:pointer;text-decoration:none;display:inline-block;
