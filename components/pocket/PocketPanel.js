@@ -31,8 +31,7 @@ import {
 import { useRollingSats } from '@/lib/pocket/useRollingSats'
 import {
   POCKET_SENTENCE_V1,
-  buildCashtabSignUrl,
-  parseSignatureFromCallbackHash,
+  CASHTAB_SIGN_URL,
   parsePastedSignature,
   verifySignatureAgainstPrimary,
   derivePocketFromSignature,
@@ -42,7 +41,11 @@ import {
 import { savePocket, forgetPocket, loadPocket } from '@/lib/pocket/storage'
 import { buildPublishFeeBip21 } from '@/lib/paymentSplit'
 import { encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
-import { payWithCashtab } from '@/lib/ecash/cashtabPay'
+import {
+  payWithCashtab,
+  isCashtabExtensionAvailable,
+  signMessageWithCashtabExtension,
+} from '@/lib/ecash/cashtabPay'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 
 const FUND_PRESETS = [1000, 5000, 10000, 20000]
@@ -93,12 +96,11 @@ function CreateOrRestore({ pocket }) {
   const [restored, setRestored] = useState(false)
   const [copied, setCopied] = useState(false)
   const [clipboardCleared, setClipboardCleared] = useState(false)
-  // True while we auto-process a signature Cashtab bounced back in the URL
-  // fragment (the mobile callback flow) — shows a "deriving" panel instead of
-  // the sign form so the return feels like one continuous step.
+  // True while we derive from a signature the Cashtab extension just returned —
+  // shows a "deriving" panel instead of the sign form for that brief moment.
   const [autoDeriving, setAutoDeriving] = useState(false)
-  // Guards the return-fragment handler so a signature is processed exactly once.
-  const hashHandled = useRef(false)
+  // True while the Cashtab extension's signMessage approval popup is open.
+  const [extSigning, setExtSigning] = useState(false)
   // A derived pocket that CONFLICTS with the account's registered one. Never
   // silently adopted — the user must explicitly replace (or use the right wallet).
   const [frozen, setFrozen] = useState(null) // { derived, currentAddress }
@@ -228,25 +230,51 @@ function CreateOrRestore({ pocket }) {
     }
   }, [busy, pasted, pocket.primaryAddress, needsWalletLogin, registerPocket, finishCreate])
 
-  // Kick the "sign one sentence" ceremony to Cashtab. Same-tab navigation (the
-  // OAuth-redirect pattern): new Cashtab prefills the sentence via ?msg=, and on
-  // sign+confirm bounces straight back to /pocket#sig= where the effect below
-  // finishes the derive. We also drop the sentence on the clipboard first so an
-  // OLDER Cashtab (which ignores the params and shows a blank sign screen) can
-  // still paste it by hand.
-  const signInCashtab = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(POCKET_SENTENCE_V1)
-    } catch {
-      /* best-effort; the sentence is on-screen too */
+  // Open Cashtab's Sign & Verify in a new tab and leave the sentence on the
+  // clipboard so it can be pasted in. POW stays open here so the user can return
+  // and paste the signature (via the button below or the textarea).
+  const openWebSignTab = useCallback(() => {
+    navigator.clipboard.writeText(POCKET_SENTENCE_V1).catch(() => {})
+    const win = window.open(CASHTAB_SIGN_URL, '_blank', 'noopener,noreferrer')
+    if (!win) {
+      setError(
+        'Couldn’t open Cashtab automatically. Go to cashtab.com → Sign & Verify, paste the ' +
+          'sentence (it’s on your clipboard), sign, then come back and paste the signature below.',
+      )
     }
-    const callback = `${window.location.origin}/pocket`
-    window.location.href = buildCashtabSignUrl(callback)
   }, [])
 
-  // Fallback for wallets/returns that don't carry the signature back for us
-  // (older Cashtab): the user copied it in Cashtab; one tap reads the clipboard
-  // and submits — no field focus / long-press / paste dance.
+  // Kick the "sign one sentence" ceremony to Cashtab.
+  //  - Desktop EXTENSION: sign through cashtab-connect's in-page approval popup.
+  //    The signature returns in memory — no tab, no clipboard, no URL — and we
+  //    derive on the spot. The preferred path (the sanctioned wallet channel).
+  //  - Otherwise (mobile / no extension / an extension too old for signMessage):
+  //    open the web Sign & Verify screen; the user signs, copies the signature,
+  //    returns, and pastes it below.
+  const signInCashtab = useCallback(async () => {
+    setError('')
+    if (isCashtabExtensionAvailable()) {
+      setExtSigning(true)
+      const res = await signMessageWithCashtabExtension(POCKET_SENTENCE_V1)
+      setExtSigning(false)
+      if (res.ok) {
+        setPasted(res.signature)
+        setAutoDeriving(true)
+        await submitSignature(res.signature)
+        return
+      }
+      if (res.reason === 'denied') {
+        setError('You declined the signature in Cashtab. Tap “Sign in Cashtab” to try again.')
+        return
+      }
+      // 'unsupported' | 'timeout' | 'unavailable' | 'error' → open the web screen.
+    }
+    openWebSignTab()
+  }, [submitSignature, openWebSignTab])
+
+  // The user signed in the web Sign & Verify screen and copied the signature;
+  // one tap reads it from the clipboard and submits — no field focus / long-press
+  // / paste dance.
   const pasteFromClipboard = useCallback(async () => {
     let text = ''
     try {
@@ -261,20 +289,6 @@ function CreateOrRestore({ pocket }) {
     }
     setPasted(text)
     void submitSignature(text)
-  }, [submitSignature])
-
-  // Return leg of the Cashtab callback: a signature arrives in the URL fragment.
-  // Wipe it from the address bar/history the instant we read it (it IS the
-  // pocket key), then derive. Runs once, guarded by hashHandled.
-  useEffect(() => {
-    if (hashHandled.current || typeof window === 'undefined') return
-    const sig = parseSignatureFromCallbackHash(window.location.hash)
-    if (!sig) return
-    hashHandled.current = true
-    window.history.replaceState(null, '', window.location.pathname + window.location.search)
-    setPasted(sig)
-    setAutoDeriving(true)
-    void submitSignature(sig)
   }, [submitSignature])
 
   const replaceConfirmed = useCallback(async () => {
@@ -375,26 +389,27 @@ function CreateOrRestore({ pocket }) {
           <code>{POCKET_SENTENCE_V1}</code>
         </div>
         <div className="row">
-          <button className="cta" onClick={() => void signInCashtab()}>
-            Sign in Cashtab →
+          <button className="cta" onClick={() => void signInCashtab()} disabled={extSigning}>
+            {extSigning ? 'Check Cashtab…' : 'Sign in Cashtab →'}
           </button>
           <button className="ghost" onClick={() => void copySentence()}>
             {copied ? 'copied ✓' : 'copy sentence'}
           </button>
         </div>
         <p className="body dim">
-          Cashtab opens with the sentence already filled in. Sign it, and Cashtab brings you
-          straight back here — your Pocket derives automatically. On an older Cashtab that leaves
-          you on the sign screen, copy the signature there, return, and use <em>Paste signature</em>{' '}
-          below (the sentence is already on your clipboard to paste in).
+          With the Cashtab <strong>extension</strong>, approve the signature in the popup — nothing
+          leaves the page and your Pocket derives on the spot. Otherwise Cashtab opens in a new tab
+          with the sentence copied to your clipboard: paste it into Sign &amp; Verify, sign, copy the
+          signature, then come back and paste it below.
         </p>
       </div>
 
       <div className="panel">
         <h2 className="h2">2 · Paste the signature</h2>
         <p className="body dim">
-          Came back on your own? You’re already done — nothing to paste here. This step is only for
-          an older Cashtab that didn’t return you automatically.
+          After signing in Cashtab, paste the signature here — tap <em>Paste signature</em> to grab it
+          straight from your clipboard, or paste it into the box. (Extension users are already done —
+          this step is only for the web tab.)
         </p>
         <div className="row">
           <button className="ghost" onClick={() => void pasteFromClipboard()} disabled={busy}>

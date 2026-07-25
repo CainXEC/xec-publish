@@ -73,6 +73,69 @@ async function sendViaExtension(bip21: string): Promise<CashtabResult> {
   }
 }
 
+// -----------------------------------------------------------------------------
+//  Message signing via the extension (cashtab-connect signMessage).
+//  The Pocket derives its key from a signature over a fixed sentence; on the
+//  desktop extension we get that signature through the SAME in-page approval
+//  popup that drives payments — it returns in memory, never touching a tab, the
+//  clipboard, or a URL. Requires an extension new enough to support signMessage;
+//  anything older resolves to 'unsupported'/'timeout' so the caller can fall
+//  back to the web sign flow.
+// -----------------------------------------------------------------------------
+
+export type SignMessageResult =
+  | { ok: true; signature: string; address?: string }
+  | {
+      ok: false
+      reason: 'unavailable' | 'unsupported' | 'denied' | 'timeout' | 'error'
+    }
+
+// cashtab-connect gained signMessage after the version we build against, so we
+// feature-detect it rather than depend on the type. Shape mirrors the address/
+// tx responses: resolves { signature, address } or throws a denied/timeout error.
+type SignCapableConnect = {
+  signMessage?: (
+    message: string,
+  ) => Promise<{ signature?: string; address?: string }>
+}
+
+function classifySignError(err: unknown): 'denied' | 'timeout' | 'error' {
+  const name = (err as { name?: string } | null)?.name ?? ''
+  if (
+    name === 'CashtabSignatureDeniedError' ||
+    err instanceof CashtabTransactionDeniedError
+  ) {
+    return 'denied'
+  }
+  if (err instanceof CashtabTimeoutError) return 'timeout'
+  return 'error'
+}
+
+/**
+ * Ask the Cashtab EXTENSION to sign a message via its in-page approval popup.
+ * Only ever call after isCashtabExtensionAvailable(); on any non-success the
+ * caller should fall back to the web sign flow (except 'denied', a deliberate
+ * user no).
+ */
+export async function signMessageWithCashtabExtension(
+  message: string,
+): Promise<SignMessageResult> {
+  if (!isCashtabExtensionAvailable()) return { ok: false, reason: 'unavailable' }
+  const connect = getConnect() as (CashtabConnect & SignCapableConnect) | null
+  if (!connect || typeof connect.signMessage !== 'function') {
+    return { ok: false, reason: 'unsupported' }
+  }
+  try {
+    const res = await connect.signMessage(message)
+    if (res && typeof res.signature === 'string' && res.signature) {
+      return { ok: true, signature: res.signature, address: res.address }
+    }
+    return { ok: false, reason: 'error' }
+  } catch (err) {
+    return { ok: false, reason: classifySignError(err) }
+  }
+}
+
 function openTab(cashtabUrl: string): void {
   if (typeof window !== 'undefined' && cashtabUrl) {
     window.open(cashtabUrl, '_blank', 'noopener,noreferrer')
