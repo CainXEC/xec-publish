@@ -19,7 +19,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { QRCodeSVG } from 'qrcode.react'
 import {
   usePocket,
   refreshPocket,
@@ -721,10 +720,6 @@ function TopUp() {
             </span>{' '}
             balance updates the moment it lands.
           </p>
-          <p className="body dim">Cashtab didn’t open? Scan instead:</p>
-          <div className="qr">
-            <QRCodeSVG value={fundBip21} size={164} bgColor="#dffff2" fgColor="#05130d" />
-          </div>
         </div>
       )}
     </>
@@ -758,11 +753,13 @@ const CSS = `
 .pow-pocket .pockethead{margin:0 0 26px;text-align:center;}
 .pow-pocket .title{font-size:40px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:var(--neon);
   margin:0 0 14px;text-shadow:0 0 26px rgba(0,255,156,.28);}
-.pow-pocket .sub{color:#a6d8c9;font-size:14.5px;line-height:1.6;margin:0 auto;max-width:640px;}
+.pow-pocket .sub{color:#a6d8c9;font-size:14.5px;line-height:1.6;margin:0 auto;max-width:640px;
+  text-align:justify;-webkit-hyphens:auto;hyphens:auto;}
 @media (max-width:520px){.pow-pocket .title{font-size:30px;}}
 .pow-pocket .center{text-align:center;}
-.pow-pocket .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin:0 0 18px;}
-.pow-pocket .panel.freeze{border-color:var(--no);}
+/* Flat sections — no tile cards, separated by whitespace. */
+.pow-pocket .panel{padding:0;margin:0 0 30px;}
+.pow-pocket .panel.freeze{border-left:2px solid var(--no);padding-left:16px;}
 .pow-pocket .h2{font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);margin:0 0 10px;}
 .pow-pocket .body{font-size:14px;line-height:1.6;color:var(--text);margin:0 0 12px;}
 .pow-pocket .body.dim{color:var(--dim);}
@@ -796,7 +793,6 @@ const CSS = `
 .pow-pocket .notice.ok{color:var(--neon);}
 .pow-pocket .balance{font-size:34px;font-weight:800;color:var(--neon);margin:0 0 8px;
   text-shadow:0 0 10px rgba(0,255,156,.4);}
-.pow-pocket .qr{display:inline-block;padding:10px;background:#dffff2;border-radius:12px;margin:6px 0 0;}
 .pow-pocket .fundwait{margin-top:10px;}
 
 /* PAPER (light mode) — manuscript grounds, ink type, glow killed. */
