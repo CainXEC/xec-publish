@@ -118,10 +118,11 @@ function Meta({ story }) {
 // page, else its own page); there are no buttons — the unlock flow lives in the
 // story itself, so a reader opens it and scrolls down to unlock.
 function Lead({ story, now, onOpen }) {
+  // Home-page clicks open in the center pane (the reader route resolves legacy
+  // and current posts alike); href stays the story's real permalink — legacy at
+  // /<slug>, current at /posts/<slug> — so cmd-click and no-JS still navigate right.
   const href = articleRouteFor(story.slug, story.legacy)
-  // Legacy posts render only on their own root page — never intercept them into
-  // the in-pane reader (its route resolves current posts only). They just navigate.
-  const open = onOpen && !story.legacy ? (e) => onOpen(e, story.slug) : undefined
+  const open = onOpen ? (e) => onOpen(e, story.slug) : undefined
   return (
     <div className={`np-lead${now ? ' now' : ''}`}>
       <Link
@@ -160,7 +161,7 @@ function Lead({ story, now, onOpen }) {
 function MostReadEntry({ story, rank, now, onOpen }) {
   const reads = Number(story.readers7d) || 0
   const href = articleRouteFor(story.slug, story.legacy)
-  const open = onOpen && !story.legacy ? (e) => onOpen(e, story.slug) : undefined
+  const open = onOpen ? (e) => onOpen(e, story.slug) : undefined
   return (
     <Link
       className={`np-rank${now ? ' now' : ''}`}
@@ -180,7 +181,7 @@ function MostReadEntry({ story, rank, now, onOpen }) {
 // A More-stories row: headline + meta; the whole row opens the story on click.
 function Entry({ story, now, onOpen }) {
   const href = articleRouteFor(story.slug, story.legacy)
-  const open = onOpen && !story.legacy ? (e) => onOpen(e, story.slug) : undefined
+  const open = onOpen ? (e) => onOpen(e, story.slug) : undefined
   return (
     <Link
       className={`np-entry${now ? ' now' : ''}`}

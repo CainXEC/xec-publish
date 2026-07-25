@@ -26,7 +26,16 @@ export async function GET(_req, { params }) {
     return NextResponse.json({ ok: false, error: 'bad slug' }, { status: 400 })
   }
 
-  const data = await getPublishedPostBySlug(slug)
+  // Current posts (legacy=false) live at /posts/<slug>; the imported legacy
+  // archive (legacy=true) lives at root /<slug>. The reader pane serves both —
+  // try current first, then fall back to the legacy archive — so a legacy story
+  // opens in-pane on the home page instead of navigating away.
+  let data = await getPublishedPostBySlug(slug)
+  let legacy = false
+  if (!data) {
+    data = await getPublishedPostBySlug(slug, true)
+    legacy = true
+  }
   if (!data) {
     return NextResponse.json({ ok: false, error: 'Story not found' }, { status: 404 })
   }
@@ -46,6 +55,7 @@ export async function GET(_req, { params }) {
     {
       ok: true,
       slug,
+      legacy,
       postId: p.initialPost?.id ?? null,
       authorId: p.initialPost?.author_id ?? null,
       title: p.initialPost?.title ?? '',

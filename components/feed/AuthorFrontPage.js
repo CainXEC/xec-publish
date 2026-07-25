@@ -71,7 +71,7 @@ function Entry({ story, open, onToggle, onOpen }) {
         className="np-hl"
         href={hrefOf(story)}
         onClick={onOpen ? (e) => onOpen(e, story) : undefined}
-        data-no-navprogress={onOpen && !story.legacy ? true : undefined}
+        data-no-navprogress={onOpen ? true : undefined}
       >
         <span className="np-serif np-entry-h">{story.title}</span>
       </Link>
@@ -83,7 +83,7 @@ function Entry({ story, open, onToggle, onOpen }) {
               className="np-btn"
               href={hrefOf(story)}
               onClick={onOpen ? (e) => onOpen(e, story) : undefined}
-              data-no-navprogress={onOpen && !story.legacy ? true : undefined}
+              data-no-navprogress={onOpen ? true : undefined}
             >
               Read →
             </Link>
@@ -108,11 +108,11 @@ export default function AuthorFrontPage({ identity, stories = [], onOpenStory = 
   const toggle = (id) => setOpenId((cur) => (cur === id ? null : id))
 
   // Host page provides a reading pane: intercept plain clicks and open the
-  // story in place. Legacy imports live on a different route/renderer, and
-  // modifier clicks (new tab etc.) always fall through to real navigation.
+  // story in place — legacy and current posts alike (the reader route resolves
+  // both). Modifier clicks (new tab etc.) always fall through to real navigation
+  // at the story's own permalink (legacy at /<slug>, current at /posts/<slug>).
   const interceptOpen = onOpenStory
     ? (e, story) => {
-        if (story.legacy) return
         if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1) return
         e.preventDefault()
         onOpenStory(story.slug)

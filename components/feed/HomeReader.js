@@ -98,8 +98,13 @@ export default function HomeReader({ slug, onClose, backLabel = '← The feed' }
   // The pane never touches the address bar, so — like CopyLinkButton — the share
   // targets are built from the slug, not window.location (which is the feed's URL
   // here). Title comes from the loaded story. Mirrors the standalone article
-  // page's share handlers (PostPageClient handleShareX / handleSharePow).
-  const articleUrl = () => `${window.location.origin}/posts/${encodeURIComponent(slug)}`
+  // page's share handlers (PostPageClient handleShareX / handleSharePow). A legacy
+  // story's permalink is root /<slug>, not /posts/<slug>, so honor the flag the
+  // reader route returns (falls back to /posts/<slug> until the body loads).
+  const articlePath = d?.legacy
+    ? `/${encodeURIComponent(slug)}`
+    : `/posts/${encodeURIComponent(slug)}`
+  const articleUrl = () => `${window.location.origin}${articlePath}`
   const shareToX = () => {
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
       tr?.title ?? d?.title ?? '',
@@ -132,7 +137,7 @@ export default function HomeReader({ slug, onClose, backLabel = '← The feed' }
               </button>
             </>
           ) : null}
-          <CopyLinkButton path={`/posts/${encodeURIComponent(slug)}`} />
+          <CopyLinkButton path={articlePath} />
         </div>
       </div>
 
