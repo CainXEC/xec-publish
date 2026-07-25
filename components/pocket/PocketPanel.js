@@ -757,8 +757,9 @@ const CSS = `
   text-align:justify;-webkit-hyphens:auto;hyphens:auto;}
 @media (max-width:520px){.pow-pocket .title{font-size:30px;}}
 .pow-pocket .center{text-align:center;}
-/* Flat sections — no tile cards, separated by whitespace. */
-.pow-pocket .panel{padding:0;margin:0 0 30px;}
+/* Flat sections — no tile cards, separated by whitespace. Reset the card look
+   inherited from FEED_CSS's .pow-feed .panel (bg/border/radius/shadow). */
+.pow-pocket .panel{padding:0;margin:0 0 30px;background:none;border:none;border-radius:0;box-shadow:none;}
 .pow-pocket .panel.freeze{border-left:2px solid var(--no);padding-left:16px;}
 .pow-pocket .h2{font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);margin:0 0 10px;}
 .pow-pocket .body{font-size:14px;line-height:1.6;color:var(--text);margin:0 0 12px;}
@@ -801,6 +802,8 @@ html:not(.dark) .pow-pocket{
   --neon:#12703c; --cyan:#0e6b74; --no:#a3312f;
 }
 html:not(.dark) .pow-pocket *{text-shadow:none;}
+/* Kill the paper card-shadow FEED_CSS puts on .pow-feed .panel in light mode. */
+html:not(.dark) .pow-pocket .panel{box-shadow:none;}
 html:not(.dark) .pow-pocket .sub{color:#4a4d42;}
 html:not(.dark) .pow-pocket .sentence{background:#fff;}
 html:not(.dark) .pow-pocket .paste{background:#fff;}
