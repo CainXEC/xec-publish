@@ -204,16 +204,31 @@ function articlePriceLabel(priceXec) {
   if (!Number.isFinite(n) || n <= 0) return 'Free'
   return `${formatArticleXec(priceXec)} XEC`
 }
-function ArticleRow({ post }) {
+function ArticleRow({ post, onOpen }) {
   const href = post.legacy
     ? `/${encodeURIComponent(post.slug)}`
     : `/posts/${encodeURIComponent(post.slug)}`
   const unlocks = articleUnlockCount(post)
   const readTime = formatReadingTimeLabel(post.reading_time_minutes)
   const date = formatArticleDate(post.published_at ?? post.created_at)
+  // Open the story in the center reading pane (the reader route resolves legacy
+  // and current posts alike). Modifier clicks (new tab etc.) fall through to the
+  // real permalink in `href`, same as the front page and the left "pages" rail.
+  const open = onOpen
+    ? (e) => {
+        if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1) return
+        e.preventDefault()
+        onOpen(post.slug)
+      }
+    : undefined
   return (
     <li className="artrow">
-      <Link href={href} className="artrow-title">
+      <Link
+        href={href}
+        className="artrow-title"
+        onClick={open}
+        data-no-navprogress={open ? '' : undefined}
+      >
         {post.title || 'Untitled'}
       </Link>
       <div className="artrow-meta">
@@ -609,7 +624,7 @@ export default function AuthorProfilePageClient({
             {articleList.length > 0 ? (
               <ul className="panel artlist">
                 {articleList.map((post) => (
-                  <ArticleRow key={post.id} post={post} />
+                  <ArticleRow key={post.id} post={post} onOpen={openStory} />
                 ))}
               </ul>
             ) : null}
@@ -618,7 +633,7 @@ export default function AuthorProfilePageClient({
                 <summary>Legacy posts ({legacyList.length})</summary>
                 <ul className="panel artlist">
                   {legacyList.map((post) => (
-                    <ArticleRow key={post.id} post={post} />
+                    <ArticleRow key={post.id} post={post} onOpen={openStory} />
                   ))}
                 </ul>
               </details>
