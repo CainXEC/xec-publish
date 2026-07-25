@@ -184,13 +184,17 @@ export async function GET(request) {
       { width: 2400, height: 1260, fonts: fonts.length > 0 ? fonts : undefined, emoji: 'twemoji' },
     )
 
-    return new Response(image.body, {
-      headers: {
-        ...Object.fromEntries(image.headers.entries()),
-        'Cache-Control': 'public, max-age=31536000, immutable',
-        'CDN-Cache-Control': 'public, max-age=31536000',
-      },
-    })
+    // Build headers via Headers.set (case-INSENSITIVE) so our immutable cache
+    // directive REPLACES next/og's default `cache-control: max-age=0,
+    // must-revalidate` instead of appending to it. Spreading
+    // Object.fromEntries(...) alongside a differently-cased 'Cache-Control' key
+    // produced a malformed doubled header
+    // ("...max-age=0, must-revalidate, public, max-age=31536000, immutable")
+    // whose max-age=0 half fought the year-long cache we want for share cards.
+    const headers = new Headers(image.headers)
+    headers.set('Cache-Control', 'public, max-age=31536000, immutable')
+    headers.set('CDN-Cache-Control', 'public, max-age=31536000')
+    return new Response(image.body, { headers })
   } catch (err) {
     console.error('[og/feed] ImageResponse failed:', err)
     return new Response('Failed to generate image', {

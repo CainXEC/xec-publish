@@ -1,10 +1,11 @@
 export const runtime = 'nodejs'
 
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { createServerSupabase } from '@/lib/supabase-server'
-import { FEED_CACHE_TAG } from '@/lib/getFeed'
+import { FEED_CACHE_TAG, getFeedPostForCard } from '@/lib/getFeed'
+import { feedOpenGraphMetadata } from '@/lib/feedOgMetadata'
 import { priceFeedPost } from '@/lib/feedPricing'
 import { contentHashHex, FEED_ACTION } from '@/lib/feedProtocol'
 import { normalizePoll } from '@/lib/feedPoll'
@@ -311,6 +312,32 @@ export async function POST(request) {
   } catch (e) {
     console.error('[feed-confirm] session mint failed (post still ok)', e)
   }
+
+  // Pre-warm this post's X/OG share card so the crawler never eats the ~4-5s
+  // cold render. Each post's card is a UNIQUE next/og URL, so when the poster
+  // shares the fresh link, Twitterbot is the FIRST to fetch it — a cold render
+  // that overruns its timeout, after which X caches a no-card result. Warming the
+  // CDN here (post-response via after(), so the poster isn't blocked) means that
+  // crawler fetch is served from cache in ~100ms. Best-effort; content posts only.
+  after(async () => {
+    try {
+      const card = await getFeedPostForCard(inserted.txid)
+      if (!card?.content) return
+      const siteUrl =
+        process.env.NEXT_PUBLIC_SITE_URL || 'https://www.proofofwriting.com'
+      const meta = feedOpenGraphMetadata({
+        post: card,
+        pageUrl: `${siteUrl}/feed/${card.txid}`,
+      })
+      const imgUrl = meta?.openGraph?.images?.[0]?.url
+      if (imgUrl) await fetch(imgUrl, { headers: { 'user-agent': 'pow-og-warm' } })
+    } catch (e) {
+      console.warn(
+        '[feed-confirm] OG card pre-warm failed (non-fatal):',
+        e instanceof Error ? e.message : e,
+      )
+    }
+  })
 
   return response
 }
