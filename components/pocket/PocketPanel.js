@@ -234,7 +234,29 @@ function CreateOrRestore({ pocket }) {
   // clipboard so it can be pasted in. POW stays open here so the user can return
   // and paste the signature (via the button below or the textarea).
   const openWebSignTab = useCallback(() => {
-    navigator.clipboard.writeText(POCKET_SENTENCE_V1).catch(() => {})
+    // Put the sentence on the clipboard so it can be pasted straight into
+    // Cashtab's Sign box. The async Clipboard API can lose the write when
+    // window.open steals focus a tick later, so we ALSO do a synchronous
+    // execCommand copy, which commits before the new tab opens.
+    try {
+      navigator.clipboard?.writeText(POCKET_SENTENCE_V1).catch(() => {})
+    } catch {
+      /* ignore */
+    }
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = POCKET_SENTENCE_V1
+      ta.setAttribute('readonly', '')
+      ta.style.position = 'fixed'
+      ta.style.top = '-1000px'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    } catch {
+      /* ignore */
+    }
     const win = window.open(CASHTAB_SIGN_URL, '_blank', 'noopener,noreferrer')
     if (!win) {
       setError(
