@@ -750,16 +750,16 @@ const CSS = `
   color:var(--text); text-align:left;
 }
 /* Header matches the marketplace page (MarketplaceClient .mkhead/.title/.sub). */
-.pow-pocket .pockethead{margin:0 0 26px;text-align:center;}
+.pow-pocket .pockethead{margin:0 0 16px;text-align:left;}
 .pow-pocket .title{font-size:40px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:var(--neon);
-  margin:0 0 14px;text-shadow:0 0 26px rgba(0,255,156,.28);}
-.pow-pocket .sub{color:#a6d8c9;font-size:14.5px;line-height:1.6;margin:0 auto;max-width:640px;
+  margin:0 0 8px;text-shadow:0 0 26px rgba(0,255,156,.28);}
+.pow-pocket .sub{color:#a6d8c9;font-size:14.5px;line-height:1.6;margin:0;max-width:640px;
   text-align:justify;-webkit-hyphens:auto;hyphens:auto;}
 @media (max-width:520px){.pow-pocket .title{font-size:30px;}}
 .pow-pocket .center{text-align:center;}
 /* Flat sections — no tile cards, separated by whitespace. Reset the card look
    inherited from FEED_CSS's .pow-feed .panel (bg/border/radius/shadow). */
-.pow-pocket .panel{padding:0;margin:0 0 30px;background:none;border:none;border-radius:0;box-shadow:none;}
+.pow-pocket .panel{padding:0;margin:0 0 20px;background:none;border:none;border-radius:0;box-shadow:none;}
 .pow-pocket .panel.freeze{border-left:2px solid var(--no);padding-left:16px;}
 .pow-pocket .h2{font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);margin:0 0 10px;}
 .pow-pocket .body{font-size:14px;line-height:1.6;color:var(--text);margin:0 0 12px;}
@@ -769,10 +769,11 @@ const CSS = `
 .pow-pocket .sentence{background:#04120c;border:1px dashed var(--neon);border-radius:10px;padding:14px 16px;margin:0 0 12px;}
 .pow-pocket .sentence code{font-size:13px;line-height:1.6;color:var(--neon);word-break:break-word;}
 .pow-pocket .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 6px;}
-/* Mixed cta+ghost rows: stretch children to the tallest sibling so the pair
-   reads as one control group (the sweep/forget row). */
-.pow-pocket .row.stretch{align-items:stretch;}
-.pow-pocket .row.stretch .ghost{display:inline-flex;align-items:center;}
+/* Mixed cta+ghost rows (the sweep/forget row): equal-width halves that always
+   stay on one row and match the taller sibling's height. */
+.pow-pocket .row.stretch{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch;}
+.pow-pocket .row.stretch>.cta,.pow-pocket .row.stretch>.ghost{min-width:0;box-sizing:border-box;text-align:center;}
+.pow-pocket .row.stretch .ghost{display:inline-flex;align-items:center;justify-content:center;}
 .pow-pocket .cta{background:transparent;color:var(--neon);border:1px solid var(--neon);border-radius:10px;
   padding:12px 18px;font:inherit;font-size:14px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
   cursor:pointer;text-decoration:none;display:inline-block;
