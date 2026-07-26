@@ -19,7 +19,7 @@ export default async function PocketPage() {
     <div className="pow-feed">
       <style>{FEED_CSS}</style>
       <FeedTopbar signedIn={acct != null} isAuthor={Boolean(acct?.authorId)} />
-      <main className="wrap" style={{ paddingTop: '28px' }}>
+      <main className="wrap" style={{ paddingTop: '28px', paddingLeft: '12px', paddingRight: '12px' }}>
         <PocketPanel />
       </main>
     </div>

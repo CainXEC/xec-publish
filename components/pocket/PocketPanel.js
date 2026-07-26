@@ -748,7 +748,7 @@ const CSS = `
 .pow-pocket{
   --bg:#070b0a; --panel:#0d1513; --line:#173a33; --text:#d6fff0; --dim:#5f8a7e;
   --neon:#00ff9c; --cyan:#3df0ff; --no:#ff5c6c;
-  max-width:640px; margin:0 auto; padding:0 20px 0; box-sizing:border-box;
+  max-width:640px; margin:0 auto; padding:0; box-sizing:border-box;
   color:var(--text); text-align:left;
 }
 /* Header matches the marketplace page (MarketplaceClient .mkhead/.title/.sub). */
@@ -765,7 +765,9 @@ const CSS = `
 .pow-pocket .panel.freeze{border-left:2px solid var(--no);padding-left:16px;}
 .pow-pocket .h2{font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);margin:0 0 10px;}
 .pow-pocket .h2note{text-transform:none;font-weight:400;font-size:12px;letter-spacing:0;color:var(--dim);}
-.pow-pocket .body{font-size:14px;line-height:1.6;color:var(--text);margin:0 0 12px;}
+.pow-pocket .body{font-size:14px;line-height:1.6;color:var(--text);margin:0 0 12px;
+  text-align:justify;-webkit-hyphens:auto;hyphens:auto;}
+.pow-pocket .body.center{text-align:center;}
 .pow-pocket .body.dim{color:var(--dim);}
 .pow-pocket .body a{color:var(--cyan);}
 .pow-pocket .mono{font-family:inherit;font-size:12px;word-break:break-all;}
@@ -775,7 +777,8 @@ const CSS = `
 /* The sweep/forget row: two equal-width buttons that always stay on one row and
    match the taller sibling's height, content centered. */
 .pow-pocket .row.stretch{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch;}
-.pow-pocket .row.stretch>.cta{min-width:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;}
+.pow-pocket .row.stretch>.cta{min-width:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;
+  padding:12px 6px;letter-spacing:0;font-size:13px;}
 .pow-pocket .cta{background:transparent;color:var(--neon);border:1px solid var(--neon);border-radius:10px;
   padding:12px 18px;font:inherit;font-size:14px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
   cursor:pointer;text-decoration:none;display:inline-block;
