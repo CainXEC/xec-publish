@@ -127,6 +127,14 @@ export default function NewPostForm({
     [body, isEditMode, priceXec, published, router, slug, title],
   )
 
+  // Leave the editor with a HARD navigation, not router.push: awaiting the
+  // savePost server action and then soft-pushing in the same handler races with
+  // the action's transition, which lands after the push and snaps the router
+  // back to the editor. A full navigation to /dashboard can't be reverted.
+  const goToDashboard = useCallback(() => {
+    window.location.assign('/dashboard')
+  }, [])
+
   const handlePublishPaymentConfirmed = useCallback(async () => {
     setPublishPaid(true)
     setShowPublishPaywall(false)
@@ -146,14 +154,14 @@ export default function NewPostForm({
       if (result.id) {
         void warmOgImageForPost(result.id).catch(() => {})
       }
-      router.push('/dashboard')
+      goToDashboard()
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Could not save post.'
       setSubmitError(msg)
     } finally {
       setSubmitting(false)
     }
-  }, [persistDraft, router])
+  }, [persistDraft, goToDashboard])
 
   useEffect(() => {
     return () => {
@@ -244,7 +252,7 @@ export default function NewPostForm({
           setSubmitError(result?.error || 'Could not save post.')
           return
         }
-        router.push('/dashboard')
+        goToDashboard()
         return
       }
 
@@ -287,7 +295,7 @@ export default function NewPostForm({
         void warmOgImageForPost(pubResult.id).catch(() => {})
       }
 
-      router.push('/dashboard')
+      goToDashboard()
     } finally {
       setSubmitting(false)
     }
