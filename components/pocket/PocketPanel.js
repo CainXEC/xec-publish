@@ -275,24 +275,17 @@ function CreateOrRestore({ pocket }) {
     openWebSignTab()
   }, [submitSignature, openWebSignTab])
 
-  // The user signed in the web Sign & Verify screen and copied the signature;
-  // one tap reads it from the clipboard and submits — no field focus / long-press
-  // / paste dance.
-  const pasteFromClipboard = useCallback(async () => {
-    let text = ''
-    try {
-      text = await navigator.clipboard.readText()
-    } catch {
-      /* handled below */
-    }
-    text = (text || '').trim()
-    if (!text) {
-      setError('Couldn’t read your clipboard — paste the signature into the box below instead.')
-      return
-    }
-    setPasted(text)
-    void submitSignature(text)
-  }, [submitSignature])
+  // The user pastes the signature straight into the field — we auto-derive on
+  // the paste event. Reading e.clipboardData here needs NO permission prompt,
+  // unlike navigator.clipboard.readText(), which forces the browser's own
+  // "Paste" confirmation dialog (a second click the user shouldn't need).
+  const handleSignaturePaste = useCallback(
+    (e) => {
+      const text = (e.clipboardData?.getData('text') || '').trim()
+      if (text) void submitSignature(text)
+    },
+    [submitSignature],
+  )
 
   const replaceConfirmed = useCallback(async () => {
     if (!frozen?.derived || busy) return
@@ -402,15 +395,13 @@ function CreateOrRestore({ pocket }) {
 
       <div className="panel">
         <h2 className="h2">2 · Paste the signature</h2>
-        <button className="cta full" onClick={() => void pasteFromClipboard()} disabled={busy}>
-          Paste signature ↓
-        </button>
         <textarea
           className="paste"
           rows={2}
-          placeholder=""
+          placeholder="Paste the signature here"
           value={pasted}
           onChange={(e) => setPasted(e.target.value)}
+          onPaste={handleSignaturePaste}
           spellCheck={false}
           autoComplete="off"
         />
