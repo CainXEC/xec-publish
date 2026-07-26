@@ -565,10 +565,14 @@ function PocketDashboard({ pocket }) {
         <p className="balance">
           {pocket.balanceSats == null ? '…' : `${formatXecFull(rollingSats)} XEC`}
         </p>
-        <p className="body dim mono" title={pocket.address ?? ''}>
-          {pocket.address}
-          <button className="ghost tiny" onClick={() => void copyAddr()}>
-            {copied ? 'copied ✓' : 'copy'}
+        <p className="body dim mono">
+          <button
+            type="button"
+            className="addrcopy"
+            onClick={() => void copyAddr()}
+            title="Click to copy"
+          >
+            {copied ? 'copied ✓' : pocket.address}
           </button>
         </p>
         {!pocket.registered && (
@@ -738,6 +742,8 @@ const CSS = `
 .pow-pocket .body.dim{color:var(--dim);}
 .pow-pocket .body a{color:var(--cyan);}
 .pow-pocket .mono{font-family:inherit;font-size:12px;word-break:break-all;}
+.pow-pocket .addrcopy{background:none;border:none;padding:0;margin:0;font:inherit;color:inherit;cursor:pointer;text-align:left;word-break:break-all;}
+.pow-pocket .addrcopy:hover{color:var(--cyan);}
 .pow-pocket .sentence{background:#04120c;border:1px dashed var(--neon);border-radius:10px;padding:14px 16px;margin:0 0 12px;}
 .pow-pocket .sentence code{font-size:13px;line-height:1.6;color:var(--neon);word-break:break-word;}
 .pow-pocket .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 6px;}
