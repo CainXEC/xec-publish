@@ -147,7 +147,6 @@ export default function NewPostForm({
         void warmOgImageForPost(result.id).catch(() => {})
       }
       router.push('/dashboard')
-      router.refresh()
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Could not save post.'
       setSubmitError(msg)
@@ -246,7 +245,6 @@ export default function NewPostForm({
           return
         }
         router.push('/dashboard')
-        router.refresh()
         return
       }
 
@@ -290,7 +288,6 @@ export default function NewPostForm({
       }
 
       router.push('/dashboard')
-      router.refresh()
     } finally {
       setSubmitting(false)
     }
