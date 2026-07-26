@@ -408,7 +408,7 @@ function CreateOrRestore({ pocket }) {
         <textarea
           className="paste"
           rows={2}
-          placeholder="…or paste the 88-character signature from Cashtab here"
+          placeholder=""
           value={pasted}
           onChange={(e) => setPasted(e.target.value)}
           spellCheck={false}
@@ -719,11 +719,11 @@ const CSS = `
   color:var(--text); text-align:left;
 }
 /* Header matches the marketplace page (MarketplaceClient .mkhead/.title/.sub). */
-.pow-pocket .pockethead{margin:0 0 16px;text-align:left;}
+.pow-pocket .pockethead{margin:0 0 16px;text-align:center;}
 .pow-pocket .title{font-size:40px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:var(--neon);
   margin:0 0 8px;text-shadow:0 0 26px rgba(0,255,156,.28);}
-.pow-pocket .sub{color:#a6d8c9;font-size:14.5px;line-height:1.6;margin:0;max-width:640px;
-  text-align:justify;-webkit-hyphens:auto;hyphens:auto;}
+.pow-pocket .sub{color:#a6d8c9;font-size:14.5px;line-height:1.6;margin:0 auto;max-width:640px;
+  text-align:center;}
 @media (max-width:520px){.pow-pocket .title{font-size:30px;}}
 .pow-pocket .center{text-align:center;}
 /* Flat sections — no tile cards, separated by whitespace. Reset the card look
