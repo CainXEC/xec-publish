@@ -58,8 +58,7 @@ export default function PocketPanel() {
       <header className="pockethead">
         <h1 className="title">Pocket</h1>
         <p className="sub">
-          A spending balance for one-tap feed actions, article unlocks and publishing payments.
-          A few coins for your pocket. The wallet is still Cashtab.
+          Send a few coins to your pocket for one-tap actions.
         </p>
       </header>
 
@@ -93,7 +92,6 @@ function CreateOrRestore({ pocket }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [restored, setRestored] = useState(false)
-  const [copied, setCopied] = useState(false)
   const [clipboardCleared, setClipboardCleared] = useState(false)
   // True while we derive from a signature the Cashtab extension just returned —
   // shows a "deriving" panel instead of the sign form for that brief moment.
@@ -105,16 +103,6 @@ function CreateOrRestore({ pocket }) {
   const [frozen, setFrozen] = useState(null) // { derived, currentAddress }
 
   const needsWalletLogin = pocket.sessionVia !== 'challenge'
-
-  const copySentence = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(POCKET_SENTENCE_V1)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      /* the sentence is visible; manual copy still works */
-    }
-  }, [])
 
   const clearClipboard = useCallback(async () => {
     try {
@@ -256,13 +244,7 @@ function CreateOrRestore({ pocket }) {
     } catch {
       /* ignore */
     }
-    const win = window.open(CASHTAB_SIGN_URL, '_blank', 'noopener,noreferrer')
-    if (!win) {
-      setError(
-        'Couldn’t open Cashtab automatically. Go to cashtab.com → Sign & Verify, paste the ' +
-          'sentence (it’s on your clipboard), sign, then come back and paste the signature below.',
-      )
-    }
+    window.open(CASHTAB_SIGN_URL, '_blank', 'noopener,noreferrer')
   }, [])
 
   // Kick the "sign one sentence" ceremony to Cashtab.
@@ -400,40 +382,29 @@ function CreateOrRestore({ pocket }) {
   return (
     <>
       <div className="panel">
-        <h2 className="h2">1 · Sign one sentence in Cashtab</h2>
+        <h2 className="h2">1 · Sign this sentence in Cashtab</h2>
         <p className="body">
           Your signature <em>is</em> the key to your Pocket: the same wallet signing the same
           sentence always produces the same key, so you can rebuild your Pocket on any device by
-          signing again. Nothing to back up, nothing to lose.
+          signing again.
         </p>
         <div className="sentence">
           <code>{POCKET_SENTENCE_V1}</code>
         </div>
-        <div className="row">
-          <button className="cta" onClick={() => void signInCashtab()} disabled={extSigning}>
-            {extSigning ? 'Check Cashtab…' : 'Sign in Cashtab →'}
-          </button>
-          <button className="ghost" onClick={() => void copySentence()}>
-            {copied ? 'copied ✓' : 'copy sentence'}
-          </button>
-        </div>
+        <button className="cta full" onClick={() => void signInCashtab()} disabled={extSigning}>
+          {extSigning ? 'Check Cashtab…' : 'Sign in Cashtab →'}
+        </button>
         <p className="body dim">
-          Cashtab opens in a new tab with the sentence copied to your clipboard: paste it into Sign
-          &amp; Verify, sign, copy the signature, then come back and paste it below.
+          Cashtab opens in a new tab with the sentence copied to your clipboard. Paste it into the
+          Message to sign field, click sign, then come back and paste the signature below.
         </p>
       </div>
 
       <div className="panel">
         <h2 className="h2">2 · Paste the signature</h2>
-        <p className="body dim">
-          After signing in Cashtab, paste the signature here — tap <em>Paste signature</em> to grab it
-          straight from your clipboard, or paste it into the box.
-        </p>
-        <div className="row">
-          <button className="ghost" onClick={() => void pasteFromClipboard()} disabled={busy}>
-            Paste signature from Cashtab
-          </button>
-        </div>
+        <button className="cta full" onClick={() => void pasteFromClipboard()} disabled={busy}>
+          Paste signature ↓
+        </button>
         <textarea
           className="paste"
           rows={2}
@@ -444,16 +415,12 @@ function CreateOrRestore({ pocket }) {
           autoComplete="off"
         />
         <button
-          className="cta"
+          className="cta full"
           onClick={() => void submitSignature()}
           disabled={busy || !pasted.trim()}
         >
           {busy ? 'Checking…' : 'Create my pocket'}
         </button>
-        <p className="warn">
-          The signature is the key to your Pocket. Never share it or paste it on any other site
-          unless you’re willing to risk losing your Pocket change.
-        </p>
         {error && <p className="notice">{error}</p>}
       </div>
     </>
@@ -786,6 +753,8 @@ const CSS = `
 .pow-pocket .cta:hover:not(:disabled){background:var(--neon);color:#04120c;}
 .pow-pocket .cta:disabled{border-color:var(--line);color:var(--dim);cursor:not-allowed;}
 .pow-pocket .cta.preset{padding:10px 14px;font-size:13px;}
+/* Full-width stacked buttons (sign / paste / create) — all identical size. */
+.pow-pocket .cta.full{display:block;width:100%;box-sizing:border-box;text-align:center;margin:0 0 12px;}
 .pow-pocket .cta.danger{border-color:var(--no);color:var(--no);}
 .pow-pocket .cta.danger:hover:not(:disabled){background:var(--no);color:#140507;}
 .pow-pocket .ghost{background:transparent;border:1px solid var(--line);color:var(--cyan);border-radius:8px;
