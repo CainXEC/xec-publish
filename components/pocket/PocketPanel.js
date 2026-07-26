@@ -58,7 +58,7 @@ export default function PocketPanel() {
       <header className="pockethead">
         <h1 className="title">Pocket</h1>
         <p className="sub">
-          Send a few coins to your pocket for one-tap actions.
+          Pocket a few coins for one-tap actions.
         </p>
       </header>
 
