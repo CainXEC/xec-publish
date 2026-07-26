@@ -319,25 +319,36 @@ export async function POST(request) {
   // that overruns its timeout, after which X caches a no-card result. Warming the
   // CDN here (post-response via after(), so the poster isn't blocked) means that
   // crawler fetch is served from cache in ~100ms. Best-effort; content posts only.
-  after(async () => {
-    try {
-      const card = await getFeedPostForCard(inserted.txid)
-      if (!card?.content) return
-      const siteUrl =
-        process.env.NEXT_PUBLIC_SITE_URL || 'https://www.proofofwriting.com'
-      const meta = feedOpenGraphMetadata({
-        post: card,
-        pageUrl: `${siteUrl}/feed/${card.txid}`,
-      })
-      const imgUrl = meta?.openGraph?.images?.[0]?.url
-      if (imgUrl) await fetch(imgUrl, { headers: { 'user-agent': 'pow-og-warm' } })
-    } catch (e) {
-      console.warn(
-        '[feed-confirm] OG card pre-warm failed (non-fatal):',
-        e instanceof Error ? e.message : e,
-      )
-    }
-  })
+  // after() throws SYNCHRONOUSLY when called outside a request scope — e.g. when
+  // this handler is invoked directly in integration tests rather than through the
+  // Next server runtime. The warm is best-effort, so guard the registration too;
+  // under the real runtime after() registers the callback and returns normally.
+  try {
+    after(async () => {
+      try {
+        const card = await getFeedPostForCard(inserted.txid)
+        if (!card?.content) return
+        const siteUrl =
+          process.env.NEXT_PUBLIC_SITE_URL || 'https://www.proofofwriting.com'
+        const meta = feedOpenGraphMetadata({
+          post: card,
+          pageUrl: `${siteUrl}/feed/${card.txid}`,
+        })
+        const imgUrl = meta?.openGraph?.images?.[0]?.url
+        if (imgUrl) await fetch(imgUrl, { headers: { 'user-agent': 'pow-og-warm' } })
+      } catch (e) {
+        console.warn(
+          '[feed-confirm] OG card pre-warm failed (non-fatal):',
+          e instanceof Error ? e.message : e,
+        )
+      }
+    })
+  } catch (e) {
+    console.warn(
+      '[feed-confirm] OG card pre-warm skipped (no request scope):',
+      e instanceof Error ? e.message : e,
+    )
+  }
 
   return response
 }
