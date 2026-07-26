@@ -282,7 +282,13 @@ function CreateOrRestore({ pocket }) {
   const handleSignaturePaste = useCallback(
     (e) => {
       const text = (e.clipboardData?.getData('text') || '').trim()
-      if (text) void submitSignature(text)
+      if (!text) return
+      // Fully control the field value so a retry (pasting a corrected signature)
+      // replaces cleanly instead of appending to the previous one.
+      e.preventDefault()
+      setPasted(text)
+      setAutoDeriving(true)
+      void submitSignature(text)
     },
     [submitSignature],
   )
@@ -398,20 +404,13 @@ function CreateOrRestore({ pocket }) {
         <textarea
           className="paste"
           rows={2}
-          placeholder="Paste the signature here"
+          placeholder=""
           value={pasted}
           onChange={(e) => setPasted(e.target.value)}
           onPaste={handleSignaturePaste}
           spellCheck={false}
           autoComplete="off"
         />
-        <button
-          className="cta full"
-          onClick={() => void submitSignature()}
-          disabled={busy || !pasted.trim()}
-        >
-          {busy ? 'Checking…' : 'Create my pocket'}
-        </button>
         {error && <p className="notice">{error}</p>}
       </div>
     </>
