@@ -78,7 +78,7 @@ function targetNode(it) {
 
 export default function ActivityRail({
   minWidth = 1100,
-  heading = 'Live on eCash',
+  heading = 'Live on proofofwriting',
   sub = 'Real economic activity — every line links to its on-chain transaction.',
   emptyText = 'Quiet for now — the next post, unlock or mint lands here.',
   // Author-profile scoping: { authorId, address } narrows the stream to
