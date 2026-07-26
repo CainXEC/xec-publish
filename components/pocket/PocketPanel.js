@@ -293,6 +293,26 @@ function CreateOrRestore({ pocket }) {
     [submitSignature],
   )
 
+  // The Paste signature button — a one-tap convenience that reads the clipboard.
+  // This is the path that can trigger the browser's own "Paste" confirmation
+  // (Safari every time, Chrome once); pasting straight into the field avoids it.
+  const pasteFromClipboard = useCallback(async () => {
+    let text = ''
+    try {
+      text = await navigator.clipboard.readText()
+    } catch {
+      /* handled below */
+    }
+    text = (text || '').trim()
+    if (!text) {
+      setError('Couldn’t read your clipboard — paste the signature into the box below instead.')
+      return
+    }
+    setPasted(text)
+    setAutoDeriving(true)
+    void submitSignature(text)
+  }, [submitSignature])
+
   const replaceConfirmed = useCallback(async () => {
     if (!frozen?.derived || busy) return
     setBusy(true)
@@ -401,6 +421,9 @@ function CreateOrRestore({ pocket }) {
 
       <div className="panel">
         <h2 className="h2">2 · Paste the signature</h2>
+        <button className="cta full" onClick={() => void pasteFromClipboard()} disabled={busy}>
+          Paste signature ↓
+        </button>
         <textarea
           className="paste"
           rows={2}
