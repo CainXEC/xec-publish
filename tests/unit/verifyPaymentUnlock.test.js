@@ -7,8 +7,8 @@ import { encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
 // check can run past the (now removed) finality gate into the unlock lookup
 // without a live DB. maybeSingle() reports this txid as already used, giving a
 // deterministic early return right after the recipient check.
-vi.mock('@/lib/supabase-server', () => ({
-  createServerSupabase: () => ({
+vi.mock('@/lib/db', () => ({
+  adminDb: () => ({
     from: () => ({
       select: () => ({
         eq: () => ({

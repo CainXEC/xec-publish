@@ -16,8 +16,9 @@ const mocks = vi.hoisted(() => ({
   displayHandlesByAccountId: vi.fn(async () => ({})),
 }))
 
-vi.mock('@/lib/supabase-server', () => ({
-  createServerSupabase: () => ({ rpc: mocks.rpc }),
+// Route reads its client from lib/db (adminDb) — the single server entry point.
+vi.mock('@/lib/db', () => ({
+  adminDb: () => ({ rpc: mocks.rpc }),
 }))
 // Keep the REAL normalizeAddress (the address classifier under test) and mock
 // only the resolver so no Chronik/Supabase call leaves the process.
