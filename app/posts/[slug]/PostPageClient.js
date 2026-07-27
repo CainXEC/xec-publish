@@ -49,6 +49,7 @@ export default function PostPageClient({
   initialUnlocked = false,
   hasPaywallMarker = false,
   initialAuthor,
+  initialAuthorAccountId = null,
   initialUnlockCount,
   initialCommentCount,
   slug = '',
@@ -56,6 +57,11 @@ export default function PostPageClient({
   const router = useRouter()
   const [post] = useState(initialPost)
   const [author] = useState(initialAuthor)
+  // The author's account id — the followee key for the account-keyed follow
+  // graph (feed_follows). Both the follow-state read and the toggle go through
+  // the session-authed /api/feed/* endpoints, so the viewer is derived from the
+  // pow_session cookie server-side and can never be spoofed from the body.
+  const [authorAccountId] = useState(initialAuthorAccountId)
   const [bodyHtml, setBodyHtml] = useState(initialBodyHtml ?? '')
   // AI translation ({ translated: html, title }); null = original.
   const [tr, setTr] = useState(null)
@@ -138,21 +144,29 @@ export default function PostPageClient({
     void refetchMe()
   }, [refetchMe])
 
+  // Read the viewer's follow state from the account-keyed feed graph. The
+  // session-authed viewer-state endpoint resolves "who am I" from the cookie, so
+  // no wallet/author is sent from the client. Not signed in → returns empty.
   useEffect(() => {
-    const wallet = readerWalletAddress.trim()
-    const authorId = post?.author_id
-    if (!wallet || !authorId) {
+    const viewerAccountId = me?.accountId
+    if (!viewerAccountId || !authorAccountId) {
       setIsFollowingAuthor(false)
       return
     }
     let cancelled = false
-    fetch(
-      `/api/follows?walletAddress=${encodeURIComponent(wallet)}&authorId=${encodeURIComponent(authorId)}`,
-      { cache: 'no-store' },
-    )
+    fetch('/api/feed/viewer-state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify({ authorIds: [authorAccountId] }),
+    })
       .then((r) => r.json())
       .then((data) => {
-        if (!cancelled) setIsFollowingAuthor(data.following ?? false)
+        if (!cancelled) {
+          setIsFollowingAuthor(
+            Array.isArray(data?.followed) && data.followed.includes(authorAccountId),
+          )
+        }
       })
       .catch(() => {
         if (!cancelled) setIsFollowingAuthor(false)
@@ -160,27 +174,25 @@ export default function PostPageClient({
     return () => {
       cancelled = true
     }
-  }, [readerWalletAddress, post?.author_id])
+  }, [me?.accountId, authorAccountId])
 
   const handleFollowAuthor = useCallback(async () => {
-    const wallet = readerWalletAddress.trim()
-    const authorId = post?.author_id
-    if (!wallet || !authorId || followAuthorBusy) return
+    if (!me?.accountId || !authorAccountId || followAuthorBusy) return
     setFollowAuthorBusy(true)
     try {
-      const res = await fetch('/api/follows', {
+      const res = await fetch('/api/feed/follow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress: wallet, authorId }),
+        body: JSON.stringify({ followeeAccountId: authorAccountId }),
       })
       const data = await res.json().catch(() => ({}))
-      setIsFollowingAuthor(data.following ?? false)
+      if (data?.ok) setIsFollowingAuthor(data.following ?? false)
     } catch {
       /* ignore */
     } finally {
       setFollowAuthorBusy(false)
     }
-  }, [followAuthorBusy, post?.author_id, readerWalletAddress])
+  }, [authorAccountId, followAuthorBusy, me?.accountId])
 
   useEffect(() => {
     return () => {
@@ -778,7 +790,7 @@ export default function PostPageClient({
                     [AI]
                   </span>
                 ) : null}
-                {readerWalletAddress.trim() && post.author_id && !isAuthorSession ? (
+                {me?.accountId && authorAccountId && !isAuthorSession ? (
                   <button
                     type="button"
                     title={isFollowingAuthor ? undefined : 'Follow'}
