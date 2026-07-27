@@ -7,6 +7,7 @@ import { priceFeedPost } from '@/lib/feedPricing'
 import { computePaymentSplit, buildPaywallBip21 } from '@/lib/paymentSplit'
 import { contentHashHex, encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
 import { resolveCommenter, resolveParentPayout, toEcashAddr } from '@/lib/commentGate'
+import { payoutAddressForAuthorId } from '@/lib/accountAuthorLink'
 
 /**
  * Build the payment request (BIP21 + OP_RETURN) for a paid article comment.
@@ -96,12 +97,7 @@ export async function POST(request) {
     if (!post?.author_id) {
       return NextResponse.json({ error: 'Article not found' }, { status: 404 })
     }
-    const { data: author } = await supabase
-      .from('authors')
-      .select('xec_address')
-      .eq('id', post.author_id)
-      .maybeSingle()
-    payoutAddress = toEcashAddr(author?.xec_address)
+    payoutAddress = toEcashAddr(await payoutAddressForAuthorId(supabase, post.author_id))
     if (!payoutAddress) {
       return NextResponse.json({ error: "This article's author can't receive comments yet" }, { status: 409 })
     }
