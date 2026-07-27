@@ -12,12 +12,13 @@ const db = vi.hoisted(() => {
   const eq1 = vi.fn(() => ({ in: inFn }))
   const select = vi.fn(() => ({ eq: eq1 }))
   const from = vi.fn(() => ({ select }))
-  const createServerSupabase = vi.fn(() => ({ from }))
-  return { maybeSingle, limit, inFn, eq1, select, from, createServerSupabase }
+  const adminDb = vi.fn(() => ({ from }))
+  return { maybeSingle, limit, inFn, eq1, select, from, adminDb }
 })
 
-vi.mock('@/lib/supabase-server', () => ({
-  createServerSupabase: db.createServerSupabase,
+// The route reads its client from lib/db (adminDb), the single server entry point.
+vi.mock('@/lib/db', () => ({
+  adminDb: db.adminDb,
 }))
 
 const verifyCookieValue = vi.fn(() => ({ valid: false, txid: '' }))

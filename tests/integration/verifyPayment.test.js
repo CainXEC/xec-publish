@@ -5,8 +5,9 @@ const eq = vi.fn(() => ({ maybeSingle }))
 const select = vi.fn(() => ({ eq }))
 const from = vi.fn(() => ({ select }))
 
-vi.mock('@/lib/supabase-server', () => ({
-  createServerSupabase: () => ({ from }),
+// Route reads its client from lib/db (adminDb) — the single server entry point.
+vi.mock('@/lib/db', () => ({
+  adminDb: () => ({ from }),
 }))
 
 const verifyAndRecordUnlock = vi.fn()

@@ -29,7 +29,8 @@ vi.mock('next/cache', () => ({
   revalidateTag: vi.fn(),
   unstable_cache: (fn) => fn,
 }))
-vi.mock('@/lib/supabase-server', () => ({ createServerSupabase: mocks.createServerSupabase }))
+// Routes read their client from lib/db (adminDb) — the single server entry point.
+vi.mock('@/lib/db', () => ({ adminDb: mocks.createServerSupabase }))
 vi.mock('@/lib/rateLimit', () => ({ rateLimit: mocks.rateLimit, getClientIp: () => 'test-ip' }))
 vi.mock('@/lib/verifyFeedPost', () => ({
   findFeedPayment: mocks.findFeedPayment,

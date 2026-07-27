@@ -48,8 +48,9 @@ const db = vi.hoisted(() => {
   return { from, state }
 })
 
-vi.mock('@/lib/supabase-admin', () => ({
-  createSupabaseAdminClient: vi.fn(() => ({ from: db.from })),
+// Routes read their client from lib/db (adminDb) — the single server entry point.
+vi.mock('@/lib/db', () => ({
+  adminDb: vi.fn(() => ({ from: db.from })),
 }))
 
 const getAuthedAccount = vi.fn(async () => ({ authorId: 'author-1', accountId: 'acct-1' }))
