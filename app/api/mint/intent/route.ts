@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { adminDb } from "@/lib/db";
 import { validateHandleSyntax, skeleton, displayHandle } from "@/lib/handleSkeleton";
 import { priceForHandle } from "@/lib/handlePricing";
 import { encodeFeedOpReturnRaw, FEED_ACTION } from "@/lib/feedProtocol";
@@ -17,7 +17,7 @@ import { handleReservedByGrant } from "@/lib/grantReservation";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const supabase = createClient((process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
+const supabase = adminDb();
 const MINT_ADDRESS = process.env.MINT_PAYMENT_ADDRESS!; // the mint wallet's ecash: address
 const PAY_WINDOW_MINUTES = 15;
 

@@ -6,7 +6,7 @@ import { getOutputScriptFromAddress } from 'ecashaddrjs'
 import { decodeOpReturnToPostId } from '@/lib/opReturnEncode'
 import { decodeFeedOpReturn, contentHashHex, FEED_ACTION } from '@/lib/feedProtocol'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
-import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { CHRONIK_URLS } from '@/lib/ecash/chronikEndpoints'
 
@@ -62,7 +62,7 @@ export async function POST(request) {
     }
     const authorId = acct.authorId
 
-    const admin = createSupabaseAdminClient()
+    const admin = adminDb()
     if (!admin) {
       return NextResponse.json(
         { error: 'Server configuration error: missing Supabase admin credentials' },

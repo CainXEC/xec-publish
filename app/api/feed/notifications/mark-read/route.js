@@ -1,7 +1,7 @@
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { markFeedNotificationsRead } from '@/lib/feedNotifications'
 
@@ -15,7 +15,7 @@ export async function POST() {
     return NextResponse.json({ ok: false, error: 'Sign in first.' }, { status: 401 })
   }
 
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
   await markFeedNotificationsRead(supabase, acct.accountId)
 
   return NextResponse.json({ ok: true })

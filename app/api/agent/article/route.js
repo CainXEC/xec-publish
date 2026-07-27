@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
-import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { savePostCore } from '@/lib/savePostCore'
 
@@ -36,7 +36,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const admin = createSupabaseAdminClient()
+  const admin = adminDb()
   if (!admin) {
     return NextResponse.json(
       { error: 'Server configuration error: missing Supabase admin credentials' },

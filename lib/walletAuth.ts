@@ -27,7 +27,7 @@
 //  Env: AUTH_PROOF_ADDRESS (falls back to MINT_PAYMENT_ADDRESS), COOKIE_SECRET.
 // =============================================================================
 
-import { createClient } from "@supabase/supabase-js";
+import { adminDb } from "@/lib/db";
 import { ChronikClient } from "chronik-client";
 import { encodeCashAddress } from "ecashaddrjs";
 import { randomUUID } from "node:crypto";
@@ -43,11 +43,7 @@ import { CHRONIK_URLS } from "@/lib/ecash/chronikEndpoints";
 let _chronik: ChronikClient | null = null;
 const chronik = () => (_chronik ??= new ChronikClient(CHRONIK_URLS));
 
-const supabase = createClient(
-  (process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { persistSession: false } },
-);
+const supabase = adminDb();
 
 const AUTH_ADDRESS = process.env.AUTH_PROOF_ADDRESS ?? process.env.MINT_PAYMENT_ADDRESS!;
 // Signed, HttpOnly cookie that binds a login challenge to the browser that

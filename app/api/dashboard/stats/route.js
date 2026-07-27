@@ -1,6 +1,6 @@
 export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
-import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 
 export async function GET() {
@@ -10,7 +10,7 @@ export async function GET() {
   }
   const authorId = acct.authorId
 
-  const admin = createSupabaseAdminClient()
+  const admin = adminDb()
   if (!admin) {
     return NextResponse.json(
       { error: 'Server configuration error: missing Supabase admin credentials' },

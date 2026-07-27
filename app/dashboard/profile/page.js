@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { heldHandlesForAddress } from '@/lib/heldHandles'
 import { blockedAccountsForViewer } from '@/lib/feedBlocks'
@@ -11,7 +11,7 @@ export default async function ProfileSettingsPage() {
     redirect('/login')
   }
 
-  const supabase = createSupabaseAdminClient()
+  const supabase = adminDb()
 
   // The display-handle carousel lives on this page. Fetch the held handles + the
   // currently-bound one on the server so it renders with the rest of the page —

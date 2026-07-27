@@ -1,7 +1,7 @@
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { displayHandlesByAuthorId } from '@/lib/authorDisplayHandles'
 
 /**
@@ -16,7 +16,7 @@ export async function GET(request) {
     return NextResponse.json({ ok: false, error: 'Missing slug.' }, { status: 400 })
   }
 
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
   const { data: row } = await supabase
     .from('posts')
     .select('slug, title, teaser, price_xec, reading_time_minutes, author_id, authors(username)')

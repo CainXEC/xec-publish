@@ -2,7 +2,7 @@ export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { FEED_CACHE_TAG } from '@/lib/getFeed'
 
@@ -24,7 +24,7 @@ export async function DELETE(_request, context) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
   const { data: post, error: fetchError } = await supabase
     .from('feed_posts')
     .select('author_account_id, deleted_at')

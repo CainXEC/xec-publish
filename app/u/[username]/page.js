@@ -1,7 +1,7 @@
 import { permanentRedirect, notFound } from 'next/navigation'
 import AuthorProfilePageClient from '@/components/AuthorProfilePageClient'
 import { loadAuthorProfileByUsername } from '@/lib/loadAuthorProfile'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 
 // Legacy author URL. Folds into the unified /@ system:
 //   /u/<username>  ->  308  ->  /@<currentHandle>   (if the account holds one)
@@ -20,7 +20,7 @@ export default async function LegacyAuthorProfilePage({ params }) {
 
   const username = decodeURIComponent(raw.trim())
 
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
 
   const { data: author } = await supabase
     .from('authors')

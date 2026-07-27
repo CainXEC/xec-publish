@@ -12,7 +12,7 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { adminDb } from "@/lib/db";
 import { verifyMintTxid, findMintPayment } from "@/lib/mintPayments";
 import { processPaidMint } from "@/lib/mintProcessor";
 import { autoLoginByPayment } from "@/lib/payAutoLogin";
@@ -20,7 +20,7 @@ import { autoLoginByPayment } from "@/lib/payAutoLogin";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const supabase = createClient((process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
+const supabase = adminDb();
 const MINT_ADDRESS = process.env.MINT_PAYMENT_ADDRESS!;
 
 export async function GET(req: NextRequest) {

@@ -10,7 +10,7 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { adminDb } from "@/lib/db";
 import { ChronikClient } from "chronik-client";
 import { decodeCashAddress } from "ecashaddrjs";
 import { getSession } from "@/lib/session";
@@ -21,11 +21,7 @@ import { CHRONIK_URLS } from "@/lib/ecash/chronikEndpoints";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const supabase = createClient(
-  (process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { persistSession: false } },
-);
+const supabase = adminDb();
 
 let _chronik: ChronikClient | null = null;
 const chronik = () => (_chronik ??= new ChronikClient(CHRONIK_URLS));

@@ -1,6 +1,6 @@
 'use server'
 
-import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { savePostCore } from '@/lib/savePostCore'
 
@@ -30,7 +30,7 @@ export async function savePost(input = {}) {
     return { ok: false, unauthorized: true, error: 'You must be signed in.' }
   }
 
-  const admin = createSupabaseAdminClient()
+  const admin = adminDb()
   if (!admin) {
     return {
       ok: false,

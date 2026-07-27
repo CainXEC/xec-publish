@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { createServerSupabase } from "@/lib/supabase-server";
+import { adminDb } from "@/lib/db";
 
 const siteUrl = "https://www.proofofwriting.com";
 
@@ -13,7 +13,7 @@ export async function generateMetadata({
     typeof rawUsername === "string" ? decodeURIComponent(rawUsername).trim() : "";
   if (!username) return {};
 
-  const supabase = createServerSupabase();
+  const supabase = adminDb();
   const { data: author } = await supabase
     .from("authors")
     .select("username, bio")

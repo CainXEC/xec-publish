@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import NewPostForm from '@/components/dashboard/NewPostForm'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import { FEED_CSS } from '@/components/feed/feedTheme'
-import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { getWriteSidebarData } from '@/lib/getWriteSidebarData'
 
@@ -41,7 +41,7 @@ export default async function EditPostPage({ params }) {
     redirect('/login')
   }
 
-  const supabase = createSupabaseAdminClient()
+  const supabase = adminDb()
   const { data: post, error: postError } = await supabase
     .from('posts')
     .select(

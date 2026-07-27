@@ -3,7 +3,7 @@ export const runtime = 'nodejs'
 import { NextResponse, after } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { FEED_CACHE_TAG, getFeedPostForCard } from '@/lib/getFeed'
 import { feedOpenGraphMetadata } from '@/lib/feedOgMetadata'
 import { priceFeedPost } from '@/lib/feedPricing'
@@ -111,7 +111,7 @@ export async function POST(request) {
     cardKind = 'poll'
   }
 
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
 
   // `targetTxid` is the referenced post (reply→parent, quote→quoted). It rides
   // in the OP_RETURN and, for a reply, determines who gets paid.

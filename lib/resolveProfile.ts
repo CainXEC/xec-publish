@@ -32,7 +32,7 @@
 
 import { cache } from "react";
 import { after } from "next/server";
-import { createServerSupabase } from "@/lib/supabase-server";
+import { adminDb } from "@/lib/db";
 import { skeleton, displayHandle } from "@/lib/handleSkeleton";
 import { ChronikClient } from "chronik-client";
 import { encodeCashAddress, decodeCashAddress } from "ecashaddrjs";
@@ -115,7 +115,7 @@ function addressForms(bare: string): string[] {
 // ---------------------------------------------------------------------------
 
 async function authorById(id: string): Promise<Author | null> {
-  const supabase = createServerSupabase();
+  const supabase = adminDb();
   const { data } = await supabase
     .from("authors")
     .select("id, username, bio, xec_address, is_ai")
@@ -130,7 +130,7 @@ async function authorById(id: string): Promise<Author | null> {
 async function authorForAddress(addressRaw: string): Promise<Author | null> {
   const bare = normalizeAddress(addressRaw);
   if (!bare) return null;
-  const supabase = createServerSupabase();
+  const supabase = adminDb();
   const forms = addressForms(bare);
 
   // 1) via a linked account -> its author
@@ -167,7 +167,7 @@ async function authorForAddress(addressRaw: string): Promise<Author | null> {
 async function accountColorForAddress(addressRaw: string): Promise<string | null> {
   const bare = normalizeAddress(addressRaw);
   if (!bare) return null;
-  const supabase = createServerSupabase();
+  const supabase = adminDb();
   const forms = addressForms(bare);
   const { data: links } = await supabase
     .from("account_addresses")
@@ -239,7 +239,7 @@ async function freshDisplayHandle(account: {
   const fresh = Date.now() - lastChecked < HOLDER_TTL_MS;
   if (fresh) return account.display_handle;
 
-  const supabase = createServerSupabase();
+  const supabase = adminDb();
 
   // Who does this account claim as its primary wallet?
   const { data: primary } = await supabase
@@ -291,7 +291,7 @@ async function reverifyHandleBinding(
     const holder = await currentTokenHolder(tokenId);
     if (!holder || !primaryAddress) return; // couldn't verify -> keep cache, don't churn
 
-    const supabase = createServerSupabase();
+    const supabase = adminDb();
     const now = new Date().toISOString();
     if (holder === primaryAddress) {
       await supabase
@@ -311,7 +311,7 @@ async function reverifyHandleBinding(
 }
 
 async function resolveHandle(handleRaw: string): Promise<ResolvedProfile | null> {
-  const supabase = createServerSupabase();
+  const supabase = adminDb();
   const sk = skeleton(handleRaw);
 
   // Normally a skeleton maps to exactly one handle. The grandfathered
@@ -440,7 +440,7 @@ async function resolveAddress(addressRaw: string): Promise<ResolvedProfile | nul
   const address = normalizeAddress(addressRaw);
   if (!address) return null;
 
-  const supabase = createServerSupabase();
+  const supabase = adminDb();
   const forms = addressForms(address);
 
   // 1) via account_addresses -> account -> author

@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { getAuthedAccount } from '@/lib/authHelpers'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import QueueItemActions from '@/components/admin/QueueItemActions'
@@ -29,7 +29,7 @@ export default async function AgentQueuePage() {
   const acct = await getAuthedAccount()
   if (!acct?.isAdmin) notFound()
 
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
   const [pendingQ, recentQ, asgQ] = await Promise.all([
     supabase
       .from('agent_queue')

@@ -19,7 +19,7 @@
 import { Resvg } from "@resvg/resvg-js";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { createClient } from "@supabase/supabase-js";
+import { adminDb } from "@/lib/db";
 import { submitTokenIcon } from "../submitTokenIcon";
 import { renderAsciiCard, CANVAS } from "./render";
 
@@ -35,11 +35,7 @@ const LABEL_FONT_URL = new URL("../../assets/fonts/CourierPrime-Bold.ttf", impor
 const ART_FONT_URL = new URL("./fonts/DejaVuSansMono-Bold.ttf", import.meta.url);
 const UNI_FONT_URL = new URL("./fonts/unifont.otf", import.meta.url);
 
-const supabase = createClient(
-  (process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { persistSession: false } }
-);
+const supabase = adminDb();
 
 // Resolve the bundled font files once. resvg loads them explicitly so the card
 // renders the same on any machine regardless of installed system fonts.

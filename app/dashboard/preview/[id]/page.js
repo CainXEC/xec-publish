@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import { ARTICLE_CSS } from '@/app/posts/[slug]/articleTheme'
-import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { sanitizePostBodyHtml } from '@/lib/sanitizePostBodyHtml'
 import { splitPostBodyAtPaywall } from '@/lib/splitPostBodyAtPaywall'
@@ -30,7 +30,7 @@ export default async function DraftPreviewPage({ params, searchParams }) {
     redirect('/login')
   }
 
-  const supabase = createSupabaseAdminClient()
+  const supabase = adminDb()
   const { data: post, error } = await supabase
     .from('posts')
     .select(

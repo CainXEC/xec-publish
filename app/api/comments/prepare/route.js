@@ -2,7 +2,7 @@ export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { priceFeedPost } from '@/lib/feedPricing'
 import { computePaymentSplit, buildPaywallBip21 } from '@/lib/paymentSplit'
 import { contentHashHex, encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
@@ -38,7 +38,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Missing postId' }, { status: 400 })
   }
 
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
 
   // Must be a proven reader of the article to comment.
   const who = await resolveCommenter(request, postId, supabase)

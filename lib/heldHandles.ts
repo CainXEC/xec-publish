@@ -18,7 +18,7 @@
 //  reason to CLEAR an existing valid choice.
 // =============================================================================
 
-import { createServerSupabase } from "@/lib/supabase-server";
+import { adminDb } from "@/lib/db";
 import { ChronikClient } from "chronik-client";
 import { CHRONIK_URLS } from "@/lib/ecash/chronikEndpoints";
 import { chronikBudget } from "@/lib/ecash/chronikBudget";
@@ -66,7 +66,7 @@ export async function heldHandlesForAddress(address: string): Promise<HeldHandle
   const tokenIds = await chronikBudget(tokenIdsAtAddress(address), 2500, [] as string[]);
   if (tokenIds.length === 0) return [];
 
-  const supabase = createServerSupabase();
+  const supabase = adminDb();
   const { data } = await supabase
     .from("handles")
     .select("token_id, handle, image_url, created_at")

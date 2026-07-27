@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { warmOgImageForPost } from '@/app/dashboard/warmOgImage'
-import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 
 export async function publishDraftPost(formData) {
@@ -18,7 +18,7 @@ export async function publishDraftPost(formData) {
     redirect('/login')
   }
 
-  const supabase = createSupabaseAdminClient()
+  const supabase = adminDb()
   if (!supabase) {
     redirect('/dashboard')
   }

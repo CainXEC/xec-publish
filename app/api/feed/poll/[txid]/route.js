@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 // =============================================================================
 
 import { NextResponse } from 'next/server'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
 
@@ -73,7 +73,7 @@ export async function GET(_request, { params }) {
   if (!isTxid(txid)) {
     return NextResponse.json({ error: 'Invalid poll id' }, { status: 400 })
   }
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
   const poll = await loadPoll(supabase, txid)
   if (!poll) return NextResponse.json({ error: 'Poll not found' }, { status: 404 })
 
@@ -106,7 +106,7 @@ export async function POST(request, { params }) {
     /* handled below */
   }
 
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
   const poll = await loadPoll(supabase, txid)
   if (!poll) return NextResponse.json({ error: 'Poll not found' }, { status: 404 })
 

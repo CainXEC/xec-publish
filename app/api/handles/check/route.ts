@@ -15,7 +15,7 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { adminDb } from "@/lib/db";
 import { validateHandleSyntax, skeleton, displayHandle } from "@/lib/handleSkeleton";
 import { priceForHandle } from "@/lib/handlePricing";
 import { handleReservedByGrant } from "@/lib/grantReservation";
@@ -25,11 +25,7 @@ export const runtime = "nodejs";
 // Never cache availability — it changes constantly.
 export const dynamic = "force-dynamic";
 
-const supabase = createClient(
-  (process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!, // server-only; route handlers run on the server
-  { auth: { persistSession: false } }
-);
+const supabase = adminDb();
 
 export async function GET(req: NextRequest) {
   const raw = req.nextUrl.searchParams.get("handle") ?? "";

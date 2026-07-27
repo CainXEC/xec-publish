@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
-import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { adminDb } from '@/lib/db'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { getXecBalanceSats } from '@/lib/xecBalance'
@@ -35,7 +35,7 @@ export default async function DashboardPage() {
     viewerAccountId: acct.accountId,
   })
   const authorId = acct.authorId
-  const admin = createSupabaseAdminClient()
+  const admin = adminDb()
   const supabase = admin // all queries below run on the service-role client now
   const [
     { data: posts, error: postsError },

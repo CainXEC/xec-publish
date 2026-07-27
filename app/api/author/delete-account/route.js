@@ -1,7 +1,7 @@
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
-import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { clearSessionCookie, getChallengeSession } from '@/lib/session'
 
@@ -23,7 +23,7 @@ export async function DELETE() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const admin = createSupabaseAdminClient()
+  const admin = adminDb()
   if (!admin) {
     return NextResponse.json(
       { error: 'Server configuration error: missing SUPABASE_SERVICE_ROLE_KEY' },

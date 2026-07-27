@@ -21,17 +21,13 @@
 // =============================================================================
 
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { adminDb } from "@/lib/db";
 import { fetchAllUnlockCountRows } from "@/lib/supabaseUnlockCounts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const supabase = createClient(
-  (process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { persistSession: false } }
-);
+const supabase = adminDb();
 
 const CANDIDATES = 40;
 // The front-page rail scrolls independently (.feed-left is a sticky, overflowing

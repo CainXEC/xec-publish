@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 import { ChronikClient } from 'chronik-client'
 import { signCookieValue } from '@/lib/cookieSigner'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { verifyAndRecordUnlock } from '@/lib/verifyPaymentUnlock'
 import { resolveOrCreateAccount } from '@/lib/walletAuth'
 import { splitPostBodyAtPaywall } from '@/lib/splitPostBodyAtPaywall'
@@ -18,7 +18,7 @@ import {
 import { CHRONIK_URLS } from '@/lib/ecash/chronikEndpoints'
 
 const chronik = new ChronikClient(CHRONIK_URLS)
-const supabase = createServerSupabase()
+const supabase = adminDb()
 
 export async function POST(request) {
   const ip = getClientIp(request)

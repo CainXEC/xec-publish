@@ -2,10 +2,10 @@ export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
 import { verifyCookieValue } from '@/lib/cookieSigner'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 
-const supabase = createServerSupabase()
+const supabase = adminDb()
 
 /** All stored forms of an ecash address, prefix-agnostic (matches /api/me). */
 function addressForms(address) {
@@ -102,7 +102,7 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ error: 'Missing commentId' }, { status: 400 })
   }
 
-  const supabaseService = createServerSupabase()
+  const supabaseService = adminDb()
 
   const { data: comment, error: commentError } = await supabaseService
     .from('comments')

@@ -2,7 +2,7 @@ export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 
 /**
@@ -44,7 +44,7 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: "You can't block yourself." }, { status: 400 })
   }
 
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
 
   const { data: existing, error: existingErr } = await supabase
     .from('feed_blocks')

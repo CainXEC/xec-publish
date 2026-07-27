@@ -2,7 +2,7 @@ export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { priceFeedPost } from '@/lib/feedPricing'
 import { computePaymentSplit, buildPaywallBip21, buildPublishFeeBip21 } from '@/lib/paymentSplit'
 import { contentHashHex, encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
@@ -60,7 +60,7 @@ export async function POST(request) {
     if (!/^[0-9a-f]{64}$/.test(targetTxid)) {
       return NextResponse.json({ error: 'Invalid parent post' }, { status: 400 })
     }
-    const supabase = createServerSupabase()
+    const supabase = adminDb()
     const { data: parent, error } = await supabase
       .from('feed_posts')
       .select('payout_address')
@@ -78,7 +78,7 @@ export async function POST(request) {
     if (!/^[0-9a-f]{64}$/.test(targetTxid)) {
       return NextResponse.json({ error: 'Invalid quoted post' }, { status: 400 })
     }
-    const supabase = createServerSupabase()
+    const supabase = adminDb()
     const { data: quoted, error } = await supabase
       .from('feed_posts')
       .select('txid, deleted_at')

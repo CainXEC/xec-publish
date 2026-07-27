@@ -1,6 +1,6 @@
 'use server'
 
-import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 
 /**
@@ -18,7 +18,7 @@ export async function deletePost(postId) {
     return { ok: false, error: 'You must be signed in to delete a post.' }
   }
 
-  const admin = createSupabaseAdminClient()
+  const admin = adminDb()
   if (!admin) {
     return {
       ok: false,

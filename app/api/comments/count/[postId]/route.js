@@ -1,9 +1,9 @@
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 
-const supabase = createServerSupabase()
+const supabase = adminDb()
 
 export async function GET(_request, { params }) {
   const { postId } = await params

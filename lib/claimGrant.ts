@@ -28,7 +28,7 @@
 //       MINT_WALLET_MNEMONIC | MINT_WALLET_SK, CLAIM_WINDOW_ENDS (ISO date).
 // =============================================================================
 
-import { createClient } from "@supabase/supabase-js";
+import { adminDb } from "@/lib/db";
 import { createHash, timingSafeEqual, randomUUID } from "node:crypto";
 import { skeleton, displayHandle, validateHandleSyntax } from "./handleSkeleton";
 import { priceForHandle } from "./handlePricing";
@@ -41,7 +41,7 @@ import { resolveOfficialAccount } from "./officialAccount";
 import { contentHashHex } from "./feedProtocol";
 
 import { CHRONIK_URLS } from "@/lib/ecash/chronikEndpoints";
-const supabase = createClient((process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
+const supabase = adminDb();
 const PROOF_ADDRESS = process.env.MINT_PAYMENT_ADDRESS!;
 const OFFICIAL_HANDLE = "proofofwriting"; // byline for handle-mint feed cards
 const CLAIM_WINDOW_ENDS = process.env.CLAIM_WINDOW_ENDS ? Date.parse(process.env.CLAIM_WINDOW_ENDS) : Infinity;

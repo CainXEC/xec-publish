@@ -14,18 +14,14 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { adminDb } from "@/lib/db";
 import { priceForHandle } from "@/lib/handlePricing";
 import { displayHandlesByAccountId } from "@/lib/authorDisplayHandles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const supabase = createClient(
-  (process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { persistSession: false } }
-);
+const supabase = adminDb();
 
 // A plain like is the 100 XEC floor; anything above it is a tip.
 const LIKE_FLOOR_SATS = 10_000;

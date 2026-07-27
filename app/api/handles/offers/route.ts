@@ -12,18 +12,14 @@
 // =============================================================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { adminDb } from "@/lib/db";
 import { getAuthedAccount } from "@/lib/authHelpers";
 import { bidderDisplayMap, holderAccountIdForToken } from "@/lib/handleOffers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const supabase = createClient(
-  (process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { persistSession: false } }
-);
+const supabase = adminDb();
 
 type OfferRow = {
   bidder_account_id: string;

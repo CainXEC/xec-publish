@@ -3,7 +3,7 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { signCookieValue, verifyCookieValue } from '@/lib/cookieSigner'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 
 /** All stored forms of every address linked to an account, prefix-agnostic
@@ -26,7 +26,7 @@ async function accountAddressForms(supabase, accountId, sessionAddress) {
 }
 
 export async function GET(request, { params }) {
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
   const ip = getClientIp(request)
   if (!(await rateLimit(ip, 60, 60, 'check-unlock'))) {
     return NextResponse.json(

@@ -2,7 +2,7 @@ export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
-import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { encodeFeedOpReturnRaw, contentHashHex, FEED_ACTION } from '@/lib/feedProtocol'
 
@@ -31,7 +31,7 @@ export async function GET(request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const admin = createSupabaseAdminClient()
+  const admin = adminDb()
   if (!admin) {
     return NextResponse.json(
       { error: 'Server configuration error: missing Supabase admin credentials' },

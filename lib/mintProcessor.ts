@@ -4,7 +4,7 @@
 //  mint broadcasts at a time (group-UTXO race). Auto-refunds on failure.
 // =============================================================================
 
-import { createClient } from "@supabase/supabase-js";
+import { adminDb } from "@/lib/db";
 import { skeleton } from "./handleSkeleton";
 import { priceForHandle } from "./handlePricing";
 import { loadMintWallet, mintHandleChild } from "./mintHandleChild";
@@ -17,7 +17,7 @@ import { CHRONIK_URLS } from "./ecash/chronikEndpoints";
 
 const OFFICIAL_HANDLE = "proofofwriting"; // byline for handle-mint feed cards
 
-const supabase = createClient((process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
+const supabase = adminDb();
 
 const LOCK_HOLDER = () => `${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
 

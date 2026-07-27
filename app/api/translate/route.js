@@ -19,7 +19,7 @@ export const dynamic = 'force-dynamic'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { getPublishedPostBySlug } from '@/lib/getPublishedPostBySlug'
 import { preparePublicPostPageData } from '@/lib/preparePublicPostPageData'
 import { contentHashHex } from '@/lib/feedProtocol'
@@ -132,7 +132,7 @@ export async function POST(request) {
 
   try {
     if (kind === 'feed') {
-      const supabase = createServerSupabase()
+      const supabase = adminDb()
       const { data: post } = await supabase
         .from('feed_posts')
         .select('content, content_hash, deleted_at')
@@ -144,7 +144,7 @@ export async function POST(request) {
       sourceText = typeof post.content === 'string' ? post.content : ''
       hash = post.content_hash || contentHashHex(sourceText)
     } else if (kind === 'comment') {
-      const supabase = createServerSupabase()
+      const supabase = adminDb()
       const { data: comment } = await supabase
         .from('comments')
         .select('content, content_hash, post_id, deleted_at')

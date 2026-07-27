@@ -27,7 +27,7 @@
 
 import { renderHandleCard } from "./renderHandleCard";
 import { submitTokenIcon } from "./submitTokenIcon";
-import { createClient } from "@supabase/supabase-js";
+import { adminDb } from "@/lib/db";
 import { Resvg } from "@resvg/resvg-js";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -42,11 +42,7 @@ const DEFAULT_FONT_URL = new URL(
   import.meta.url,
 );
 
-const supabase = createClient(
-  (process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL)!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { persistSession: false } }
-);
+const supabase = adminDb();
 
 // Resolve the font file path once. resvg loads it explicitly, so the card renders
 // the same on any machine regardless of installed system fonts. An optional

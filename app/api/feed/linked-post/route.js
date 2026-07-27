@@ -1,7 +1,7 @@
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { displayHandlesByAccountId } from '@/lib/authorDisplayHandles'
 
 /**
@@ -19,7 +19,7 @@ export async function GET(request) {
     return NextResponse.json({ ok: false, error: 'Bad txid.' }, { status: 400 })
   }
 
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
   const { data: row } = await supabase
     .from('feed_posts')
     .select('txid, content, deleted_at, author_account_id, author_identity, payer_address')

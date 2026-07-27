@@ -7,7 +7,7 @@ import { hydrateAuthorProfile } from '@/lib/loadAuthorProfile'
 import { heldHandlesForAddress } from '@/lib/heldHandles'
 import { getAccountFeedPage } from '@/lib/getFeed'
 import { getAuthedAccount } from '@/lib/authHelpers'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { viewerBlocksAccount } from '@/lib/feedBlocks'
 import {
   accountIdForAddress,
@@ -89,7 +89,7 @@ export default async function ProfilePage({ params }) {
       followerCountForAccount(profileAccountId),
       viewerFollowsAccount(viewerAccountId, profileAccountId),
       profileAccountId
-        ? viewerBlocksAccount(createServerSupabase(), viewerAccountId, profileAccountId)
+        ? viewerBlocksAccount(adminDb(), viewerAccountId, profileAccountId)
         : Promise.resolve(false),
       profileAccountId
         ? getAccountFeedPage({ accountId: profileAccountId, viewerAddress, viewerAccountId })

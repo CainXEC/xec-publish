@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { txFinalityState } from '@/lib/ecash/finality'
 import { pruneOldFeedNotifications } from '@/lib/feedNotifications'
 
@@ -76,7 +76,7 @@ async function reconcileTable(supabase, table, now, { requireTxid = false } = {}
 }
 
 async function runSweep() {
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
   const now = Date.now()
   const [posts, events, comments] = await Promise.all([
     reconcileTable(supabase, 'feed_posts', now),
@@ -116,7 +116,7 @@ export async function GET(request) {
     // table-wide delete once an hour is plenty to keep the table bounded.
     let prunedNotifications
     if (trusted && new Date().getUTCMinutes() === 0) {
-      prunedNotifications = await pruneOldFeedNotifications(createServerSupabase(), {
+      prunedNotifications = await pruneOldFeedNotifications(adminDb(), {
         olderThanDays: NOTIF_RETENTION_DAYS,
       })
     }

@@ -13,7 +13,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getAuthedAccount } from '@/lib/authHelpers'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -28,7 +28,7 @@ export async function approveQueueItem(id) {
   const denied = await gate(id)
   if (denied) return denied
 
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
   const { data, error } = await supabase
     .from('agent_queue')
     .update({ status: 'approved', approved_at: new Date().toISOString() })
@@ -82,7 +82,7 @@ export async function createAssignment(subject, notes, links) {
     }
   }
 
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
   // Only send the links column when links were given — a link-less commission
   // then still works on a table created before the links ALTER ran.
   const row = { subject: subj, notes: note || null }
@@ -100,7 +100,7 @@ export async function dismissAssignment(id) {
   const denied = await gate(id)
   if (denied) return denied
 
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
   const { data, error } = await supabase
     .from('agent_assignments')
     .update({ status: 'dismissed' })
@@ -123,7 +123,7 @@ export async function vetoQueueItem(id, reason) {
   const trimmed = String(reason ?? '').trim().slice(0, 2000)
   if (!trimmed) return { error: 'A written reason is required — unwritten taste doesn’t compound.' }
 
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
   const { data, error } = await supabase
     .from('agent_queue')
     .update({ status: 'vetoed', veto_reason: trimmed })

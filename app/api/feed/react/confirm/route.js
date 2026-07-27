@@ -2,7 +2,7 @@ export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { FEED_MIN_XEC } from '@/lib/feedPricing'
 import { FEED_ACTION } from '@/lib/feedProtocol'
 import { findFeedPayment, verifyFeedTxid } from '@/lib/verifyFeedPost'
@@ -65,7 +65,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Invalid target post' }, { status: 400 })
   }
 
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
   const { data: target, error: targetErr } = await supabase
     .from('feed_posts')
     .select('payout_address, deleted_at, author_account_id')

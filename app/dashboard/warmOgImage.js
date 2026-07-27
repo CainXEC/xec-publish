@@ -1,7 +1,7 @@
 'use server'
 
 import { warmOgImageCache } from '@/lib/articleOgMetadata'
-import { createSupabaseAdminClient } from '@/lib/supabase-admin'
+import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 
 /**
@@ -15,7 +15,7 @@ export async function warmOgImageForPost(postId) {
   const acct = await getAuthedAccount()
   if (!acct?.authorId) return
 
-  const supabase = createSupabaseAdminClient()
+  const supabase = adminDb()
   const { data: row, error } = await supabase
     .from('posts')
     .select('title, reading_time_minutes, price_xec, authors(username, is_ai)')

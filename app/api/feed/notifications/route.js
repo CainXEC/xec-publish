@@ -1,7 +1,7 @@
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { getFeedNotifications } from '@/lib/feedNotifications'
 
@@ -20,7 +20,7 @@ export async function GET(request) {
   // notifications from the oldest one already shown.
   const before = request.nextUrl.searchParams.get('before') || null
 
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
   const { notifications, unreadCount, nextCursor } = await getFeedNotifications(
     supabase,
     acct.accountId,

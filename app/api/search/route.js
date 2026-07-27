@@ -12,7 +12,7 @@
 // =============================================================================
 
 import { NextResponse } from 'next/server'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { normalizeAddress, resolveProfileByIdentifier } from '@/lib/resolveProfile'
 import {
   displayHandlesByAuthorId,
@@ -63,7 +63,7 @@ export async function GET(request) {
   }
 
   // ---- full-text + fuzzy handles via the unified RPC ----------------------
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
   const { data, error } = await supabase.rpc('search_site', {
     p_query: q,
     p_type: type,

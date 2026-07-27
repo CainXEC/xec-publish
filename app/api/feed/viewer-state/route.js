@@ -2,7 +2,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { FEED_ACTION } from '@/lib/feedProtocol'
 import { blockedAccountIds } from '@/lib/feedBlocks'
@@ -36,7 +36,7 @@ export async function POST(request) {
   const acct = await getAuthedAccount()
   if (!acct) return NextResponse.json(empty)
 
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
 
   const liked = []
   const reposted = []

@@ -2,7 +2,7 @@ export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
-import { createServerSupabase } from '@/lib/supabase-server'
+import { adminDb } from '@/lib/db'
 import { FEED_MIN_XEC, normalizeTipXec } from '@/lib/feedPricing'
 import { computePaymentSplit, buildPaywallBip21 } from '@/lib/paymentSplit'
 import { encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
@@ -62,7 +62,7 @@ export async function POST(request) {
     )
   }
 
-  const supabase = createServerSupabase()
+  const supabase = adminDb()
   const { data: target, error } = await supabase
     .from('feed_posts')
     .select('payout_address, deleted_at')
