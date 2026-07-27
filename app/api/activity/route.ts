@@ -162,7 +162,7 @@ export async function GET(req: NextRequest) {
       : publishesQuery.eq("txid", "-");
   }
 
-  const [postsQ, eventsQ, unlocksQ, publishesQ, mintsQ, commentsQ, ownRepostsQ] = await Promise.all([
+  const [postsQ, eventsQ, unlocksQ, publishesQ, mintsQ, commentsQ, ownReactionsQ] = await Promise.all([
     postsQuery,
     eventsQuery,
     unlocksQuery,
@@ -185,18 +185,17 @@ export async function GET(req: NextRequest) {
           .not("txid", "is", null)
           .order("created_at", { ascending: false })
           .limit(PER_SOURCE),
-    // Scoped only: the author's OWN reposts. The main events query returns
-    // reactions the author RECEIVED (payout_address = them); a repost is a
-    // content action like a reply/quote — which already appear as their
-    // feed_posts — so without this an author who reposts but isn't reposted
-    // shows none. Likes/tips they MADE stay out (value spent, shown on the
-    // payee's economy, not content). Merged + de-duped into `events` below.
+    // Scoped only: the author's OWN reactions — likes, tips AND reposts. The
+    // main events query returns reactions the author RECEIVED (payout_address =
+    // them); without this, an author who likes/reposts but hasn't been liked or
+    // reposted back shows none of their own engagement — even though their
+    // replies and quotes already appear (those are stored as feed_posts). Merged
+    // + de-duped into `events` below.
     scoped && scopedAccountId
       ? supabase
           .from("feed_events")
           .select("txid, action, actor_account_id, actor_identity, payer_address, amount_sats, target_txid, created_at")
           .eq("actor_account_id", scopedAccountId)
-          .eq("action", 4)
           .order("created_at", { ascending: false })
           .limit(PER_SOURCE)
       : Promise.resolve({ data: [] as Array<never> }),
@@ -224,12 +223,12 @@ export async function GET(req: NextRequest) {
   };
   const posts = (postsQ.data ?? []) as PostRow[];
   const comments = (commentsQ.data ?? []) as unknown as CommentRow[];
-  // Reactions the author received + (scoped) their own reposts, de-duped by txid
-  // — the final items.sort() below orders the merged stream by time.
+  // Reactions the author received + (scoped) their own likes/tips/reposts,
+  // de-duped by txid — the final items.sort() below orders the merged stream.
   const seenEventTxids = new Set<string>();
   const events = [
     ...((eventsQ.data ?? []) as EventRow[]),
-    ...((ownRepostsQ.data ?? []) as EventRow[]),
+    ...((ownReactionsQ.data ?? []) as EventRow[]),
   ].filter((e) => {
     if (!e.txid || seenEventTxids.has(e.txid)) return false;
     seenEventTxids.add(e.txid);
