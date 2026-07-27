@@ -274,9 +274,27 @@ export async function GET(req: NextRequest) {
     ...[...targetInfo.values()].map((t) => t.authorAccountId),
     ...comments.map((c) => c.author_account_id),
   ].filter(Boolean) as string[];
-  const handleMap = await displayHandlesByAccountId(bylineAccountIds, supabase);
-  // @handle when the account currently holds one, else the raw payer address,
-  // else the frozen snapshot — identical precedence to getFeed's identityFor.
+  const uniqueBylineIds = [...new Set(bylineAccountIds)];
+  // Live handle + the account's CURRENT primary address. The no-handle byline is
+  // the account's PRIMARY wallet address — never the raw payer (a Pocket
+  // payment's payer is the linked, non-primary pocket address) and never the
+  // frozen snapshot (which can be a handle the account has since sold).
+  const [handleMap, primaryByAccount] = await Promise.all([
+    displayHandlesByAccountId(uniqueBylineIds, supabase),
+    (async () => {
+      const map = new Map<string, string>();
+      if (uniqueBylineIds.length === 0) return map;
+      const { data } = await supabase
+        .from("account_addresses")
+        .select("account_id, address")
+        .in("account_id", uniqueBylineIds)
+        .eq("is_primary", true);
+      for (const r of (data ?? []) as Array<{ account_id: string; address: string }>) {
+        if (!map.has(r.account_id)) map.set(r.account_id, r.address);
+      }
+      return map;
+    })(),
+  ]);
   const liveIdentity = (
     accountId: string | null | undefined,
     payerAddress: string | null | undefined,
@@ -284,7 +302,7 @@ export async function GET(req: NextRequest) {
   ): string | null => {
     const entry = accountId ? handleMap[accountId] : null;
     if (entry?.handle) return `@${entry.handle}`;
-    return payerAddress || frozen || null;
+    return (accountId && primaryByAccount.get(accountId)) || frozen || payerAddress || null;
   };
 
   // ---- feed posts / replies / quotes (mint cards ride `handles` instead) ----
@@ -339,7 +357,11 @@ export async function GET(req: NextRequest) {
   const payerBare = [
     ...new Set(unlocks.map((u) => (u.payer_address ? bare(u.payer_address) : null)).filter(Boolean)),
   ] as string[];
-  const payerDisplay = new Map<string, string>();
+  // payer bare address -> the reader account's canonical byline: current @handle,
+  // else the account's PRIMARY wallet address — NOT the payer, since a Pocket
+  // unlock's payer is the linked, non-primary pocket address. Strays (no account)
+  // are absent and fall back to the payer address in the loop below.
+  const payerIdentity = new Map<string, string>();
   if (payerBare.length > 0) {
     const forms = payerBare.flatMap((b) => [b, `ecash:${b}`]);
     const { data: links } = await supabase
@@ -354,30 +376,42 @@ export async function GET(req: NextRequest) {
     );
     const accountIds = [...new Set(accountByAddr.values())];
     if (accountIds.length > 0) {
-      const { data: accounts } = await supabase
-        .from("accounts")
-        .select("id, display_handle")
-        .in("id", accountIds);
+      const [{ data: accounts }, { data: primaries }] = await Promise.all([
+        supabase.from("accounts").select("id, display_handle").in("id", accountIds),
+        supabase
+          .from("account_addresses")
+          .select("account_id, address")
+          .in("account_id", accountIds)
+          .eq("is_primary", true),
+      ]);
       const handleByAccount = new Map(
         ((accounts ?? []) as Array<{ id: string; display_handle: string | null }>).map((a) => [
           a.id,
           a.display_handle,
         ])
       );
+      const primaryByAccount = new Map<string, string>();
+      for (const r of (primaries ?? []) as Array<{ account_id: string; address: string }>) {
+        if (!primaryByAccount.has(r.account_id)) primaryByAccount.set(r.account_id, r.address);
+      }
       for (const [addr, accountId] of accountByAddr) {
         const dh = handleByAccount.get(accountId);
-        if (dh) payerDisplay.set(addr, `@${dh}`);
+        const identity = dh ? `@${dh}` : primaryByAccount.get(accountId) ?? null;
+        if (identity) payerIdentity.set(addr, identity);
       }
     }
   }
   for (const u of unlocks) {
     if (!u.posts?.slug) continue;
     const payer = u.payer_address ? bare(u.payer_address) : null;
+    // Account byline when resolvable, else the raw payer (a stray, never-logged-in
+    // wallet) — displayIdentity truncates addresses, keeps @handles as-is.
+    const identity = payer ? payerIdentity.get(payer) ?? `ecash:${payer}` : null;
     items.push({
       id: `un:${u.txid}`,
       kind: "unlock",
-      actor: payer ? payerDisplay.get(payer) ?? shortAddr(payer) : "a reader",
-      actorHref: profileHref(payer ? payerDisplay.get(payer) ?? payer : null),
+      actor: identity ? displayIdentity(identity, "a reader") : "a reader",
+      actorHref: profileHref(identity),
       target: u.posts.title ?? "an article",
       amountXec: u.posts.price_xec ?? null,
       at: u.unlocked_at,
