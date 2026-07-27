@@ -31,9 +31,30 @@
 --  and reserved_handles must return 0 rows / permission denied.
 -- =============================================================================
 
--- Confirmed anon-readable leaks:
+-- Confirmed anon-readable leaks. NOTE: `ENABLE ROW LEVEL SECURITY` alone did NOT
+-- close these — a re-probe still returned all rows to anon — because both tables
+-- carry a PERMISSIVE SELECT policy (Supabase's default "enable read for all",
+-- from the mint pipeline's table creation) that overrides deny-all. So we (1)
+-- drop every policy on them and (2) revoke the role grants outright, matching the
+-- grant-revoked lock that posts/authors/comments/unlocks already use (→ 401).
 ALTER TABLE public.handles          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reserved_handles ENABLE ROW LEVEL SECURITY;
+
+DO $$
+DECLARE p record;
+BEGIN
+  FOR p IN
+    SELECT policyname, tablename FROM pg_policies
+    WHERE schemaname = 'public' AND tablename IN ('handles', 'reserved_handles')
+  LOOP
+    EXECUTE format('DROP POLICY %I ON public.%I', p.policyname, p.tablename);
+  END LOOP;
+END $$;
+
+-- Grant-level lock (independent of RLS/policies; service_role is unaffected —
+-- it's a separate role with BYPASSRLS, which is what the app uses via adminDb).
+REVOKE ALL ON public.handles          FROM anon, authenticated;
+REVOKE ALL ON public.reserved_handles FROM anon, authenticated;
 
 -- Defensive: login-nonce + block-list tables were empty at probe time, so their
 -- RLS state couldn't be confirmed. auth_challenges holds login challenge nonces
