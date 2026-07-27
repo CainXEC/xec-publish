@@ -54,3 +54,10 @@ claim-codes.csv
 # and re-ship it. Un-ignore these when the redo is ready to land.
 components/feed/WordmarkIntro.js
 app/dev/wordmark/
+
+# Legacy-post import artifacts: the one-time data (legacy_posts*.json) for
+# import-legacy-posts.js. The import already ran (posts live in the DB), so these
+# 2MB blobs are historical. Untracked to de-bloat the repo but kept on disk; the
+# importer script stays tracked for reference. Re-add explicitly if ever needed.
+legacy_posts.json
+legacy_posts_test.json
