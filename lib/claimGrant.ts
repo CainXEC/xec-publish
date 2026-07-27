@@ -295,22 +295,26 @@ async function runMint(sk: string, grant: any, address: string): Promise<PollRes
   }
 }
 
-/** Bind the proven address to an account (upgrading a reader account if the wallet
- *  already existed), set the claimed handle as its active display identity, and —
- *  when known — link it to the legacy author so the profile resolves to their posts. */
+/** Bind the proven address to an account, set the claimed handle as its active
+ *  display identity, and — when known — link it to the legacy author so the
+ *  profile resolves to their posts.
+ *
+ *  Delegates to the bind_claim_account RPC (sql/bind_claim_account.sql), which
+ *  does the whole thing in ONE transaction: it resolves to a single surviving
+ *  account and, crucially, ABSORBS any empty shell account a legacy author may
+ *  have picked up by logging in / paying from this new wallet BEFORE claiming.
+ *  The old open-coded version pointed a second account at the legacy author_id,
+ *  which violated the accounts↔authors 1:1 unique index and threw *after* the
+ *  on-chain mint (see docs/supabase-audit-2026-07-27.md, "Lots"). */
 async function bindAuthorAccount(address: string, tokenId: string, handle: string, authorId: string | null): Promise<string> {
-  const now = new Date().toISOString();
-  const { data: link } = await supabase.from("account_addresses").select("account_id").eq("address", address).maybeSingle();
-  if (link?.account_id) {
-    const patch: any = { active_handle_token_id: tokenId, display_handle: handle, display_handle_checked_at: now, updated_at: now };
-    if (authorId) patch.author_id = authorId;
-    await supabase.from("accounts").update(patch).eq("id", link.account_id);
-    return link.account_id as string;
-  }
-  const insert: any = { active_handle_token_id: tokenId, display_handle: handle, display_handle_checked_at: now };
-  if (authorId) insert.author_id = authorId;
-  const { data: acct } = await supabase.from("accounts").insert(insert).select("id").single();
-  const accountId = acct!.id as string;
-  await supabase.from("account_addresses").insert({ account_id: accountId, address, is_primary: true, verified_at: now });
+  const { data, error } = await supabase.rpc("bind_claim_account", {
+    p_author_id: authorId,
+    p_new_address: address,
+    p_token_id: tokenId,
+    p_handle: handle,
+  });
+  if (error) throw new Error(error.message);
+  const accountId = (data as { account_id?: string } | null)?.account_id;
+  if (!accountId) throw new Error("bind_claim_account returned no account_id");
   return accountId;
 }

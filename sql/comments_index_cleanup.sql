@@ -1,0 +1,61 @@
+-- =============================================================================
+--  comments_index_cleanup.sql — resolve the two cold threading indexes flagged
+--  in docs/supabase-audit-2026-07-27.md (Priority 3).
+--
+--  WHY THEY'RE COLD (not a missing-index problem — the opposite):
+--  The comment thread is loaded by ONE flat query and threaded in JS, not SQL.
+--    app/api/comments/[postId]/route.js:38
+--      select ... from comments where post_id = $1 order by created_at asc
+--    components/ArticleComments.js  buildThreadOrder()  — DFS on parent_id in a Map
+--  So the only predicate that ever hits the DB is (post_id, created_at). That is
+--  served by comments_post_created_idx (sql/paid_comments.sql). Neither
+--  parent-column index is reachable by that query — there is no
+--  `where parent_id = ?` / `where parent_txid = ?` anywhere — which is why both
+--  report zero scans in 118 days. Confirm with the EXPLAIN block at the bottom.
+--
+--  THE TWO INDEXES:
+--    * comments_parent_txid_idx — NOT defined anywhere in this repo. It was
+--      created ad-hoc against the DB and predates nothing we track; it is pure
+--      redundancy on a column the loader never filters. DROP it.
+--    * comments_parent_id_idx — defined in sql/paid_comments.sql. Also unused by
+--      the current loader, BUT it is the index backing the self-FK
+--      (parent_id REFERENCES comments(id)) and documents the "a comment's replies
+--      are rows whose parent_id = its id" relationship. On a ~10 MB DB it costs
+--      almost nothing, and dropping a source-controlled index is a semantic
+--      change, not a cleanup. KEPT deliberately. (If you ever want strict
+--      minimalism, `drop index if exists comments_parent_id_idx;` is safe — the
+--      loader won't notice — but then also delete its definition from
+--      paid_comments.sql so source and DB don't drift again.)
+--
+--  Apply in the Supabase SQL editor. Safe to re-run.
+-- =============================================================================
+
+-- Drop the orphan index that has no source-of-record definition.
+drop index if exists public.comments_parent_txid_idx;
+
+-- comments_parent_id_idx is intentionally NOT dropped — see header.
+
+
+-- =============================================================================
+--  VERIFICATION — run this yourself in the Supabase SQL editor and paste the
+--  plan back if you want a second read. Replace :post_id with a real post that
+--  has a healthy number of comments (pick the busiest article).
+--
+--  Expected on this data volume: an index scan (or bitmap) on
+--  comments_post_created_idx, OR — because the table is tiny — a seq scan that
+--  the planner (correctly) judges cheaper. Either is fine; what matters is that
+--  NO plan references comments_parent_id_idx or comments_parent_txid_idx, which
+--  is the whole point of this file.
+-- =============================================================================
+-- explain (analyze, buffers, verbose)
+-- select id, txid, action, parent_id, parent_txid, payer_address,
+--        author_account_id, author_identity, content, created_at, deleted_at
+--   from public.comments
+--  where post_id = '<PASTE-A-REAL-POST-ID>'
+--  order by created_at asc;
+--
+-- -- And confirm the two indexes really are unused since the last stat reset:
+-- select indexrelname, idx_scan, idx_tup_read
+--   from pg_stat_user_indexes
+--  where relname = 'comments'
+--  order by idx_scan;

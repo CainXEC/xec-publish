@@ -15,6 +15,16 @@ https://ecashskill.vercel.app/skills/SKILL.md
 - No `auth.uid()` RLS policies remain. Pattern: service-role Supabase client
   + app-layer checks via `getAuthedAccount()` / `requireAuthorId()`
   (lib/authHelpers.ts). New tables: enable RLS, no policies, service-role only.
+- NEVER grant an RLS policy to the `public` / `anon` / `authenticated` roles.
+  Server code reads through `service_role` (via lib/db.ts `adminDb`) and the
+  browser NEVER touches Supabase directly, so a policy on `public` grants the
+  world, not a logged-in user — `public` includes `anon`, whose key ships in
+  the client bundle. The only sanctioned non-service role is `agent_worker`
+  (house AI agents). Every legacy `auth.uid()`/`published=true`/`true` policy
+  was written before the wallet-auth migration made that assumption false; the
+  2026-07-27 audit dropped all twelve and `revoke`d table privileges from
+  `anon`/`authenticated`. If you think a browser needs a read policy, you're
+  wrong — add a service-role route instead.
 - RPCs use SECURITY DEFINER with `set search_path = public`.
 - Address change (/api/account/change-address + walletAuth
   startAddressChange/verifyAddressChange): challenge session REQUIRED + a 6
