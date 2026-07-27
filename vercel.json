@@ -1,5 +1,6 @@
 {
+  "regions": ["sfo1"],
   "crons": [
-    { "path": "/api/feed/reconcile", "schedule": "* * * * *" }
+    { "path": "/api/feed/reconcile", "schedule": "*/5 * * * *" }
   ]
 }
