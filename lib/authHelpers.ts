@@ -20,6 +20,7 @@
 
 import { adminDb } from "@/lib/db";
 import { getSession } from "@/lib/session";
+import { formatIdentity } from "@/lib/formatIdentity";
 
 const supabase = adminDb();
 
@@ -74,7 +75,7 @@ export async function getAuthedAccount(): Promise<AuthedAccount | null> {
     isAi,
     handle,
     handleColor: account.handle_color ?? null,
-    identity: handle ? `@${handle}` : address,
+    identity: formatIdentity(handle, address),
   };
 }
 

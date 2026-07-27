@@ -7,6 +7,7 @@ import { FEED_MIN_XEC } from '@/lib/feedPricing'
 import { FEED_ACTION } from '@/lib/feedProtocol'
 import { findFeedPayment, verifyFeedTxid } from '@/lib/verifyFeedPost'
 import { resolveOrCreateAccount, primaryAddressForAccount } from '@/lib/walletAuth'
+import { formatIdentity } from '@/lib/formatIdentity'
 import { recordFeedNotification } from '@/lib/feedNotifications'
 import {
   verifySession,
@@ -24,11 +25,6 @@ function normalizeReaction(action) {
   if (action === 5 || action === 'like') return FEED_ACTION.LIKE
   if (action === 4 || action === 'repost') return FEED_ACTION.REPOST
   return null
-}
-
-function identityFor(address, handle) {
-  const h = typeof handle === 'string' ? handle.trim() : ''
-  return h ? `@${h}` : address
 }
 
 /**
@@ -128,7 +124,7 @@ export async function POST(request) {
   const resolved = await resolveOrCreateAccount(match.payerAddress)
   // Byline snapshots the account's primary, never a linked pocket address.
   const displayAddress = await primaryAddressForAccount(resolved.accountId, match.payerAddress)
-  const actorIdentity = identityFor(displayAddress, resolved.handle)
+  const actorIdentity = formatIdentity(resolved.handle, displayAddress)
 
   // The DB unique key is (action, target, payer_address) — per WALLET. An
   // account with a Pocket has two wallets, so also dedupe per ACCOUNT here:

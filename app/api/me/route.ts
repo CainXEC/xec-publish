@@ -9,6 +9,7 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/db";
 import { getSession } from "@/lib/session";
+import { formatIdentity } from "@/lib/formatIdentity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -83,7 +84,7 @@ export async function GET() {
     address: primaryAddress,
     handle: account.display_handle ?? null,
     handleColor: account.handle_color ?? null,
-    identity: account.display_handle ? `@${account.display_handle}` : primaryAddress,
+    identity: formatIdentity(account.display_handle, primaryAddress),
     unlockedPostIds,
     // 'challenge' (nonce-proven login) vs 'pay' (minted by a payment). The
     // Pocket wizard checks this before attempting register, which requires

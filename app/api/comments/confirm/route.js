@@ -8,6 +8,7 @@ import { contentHashHex, FEED_ACTION } from '@/lib/feedProtocol'
 import { verifyCommentTxid, findCommentPayment } from '@/lib/verifyFeedPost'
 import { resolveCommenter, resolveParentPayout, toEcashAddr } from '@/lib/commentGate'
 import { resolveOrCreateAccount, primaryAddressForAccount } from '@/lib/walletAuth'
+import { formatIdentity } from '@/lib/formatIdentity'
 import { recordArticleNotification, recordFeedNotification } from '@/lib/feedNotifications'
 import {
   verifySession,
@@ -18,11 +19,6 @@ import {
 
 const COMMENT_COLUMNS =
   'id, txid, action, parent_id, parent_txid, content, author_account_id, author_identity, payer_address, created_at, deleted_at'
-
-function identityFor(address, handle) {
-  const h = typeof handle === 'string' ? handle.trim() : ''
-  return h ? `@${h}` : address
-}
 
 /**
  * Detect + record the on-chain payment for a paid comment/reply. The content
@@ -168,7 +164,7 @@ export async function POST(request) {
   // payer, primary == payer (no change).
   const resolved = await resolveOrCreateAccount(match.payerAddress)
   const displayAddress = await primaryAddressForAccount(resolved.accountId, match.payerAddress)
-  const authorIdentity = identityFor(displayAddress, resolved.handle)
+  const authorIdentity = formatIdentity(resolved.handle, displayAddress)
 
   const row = {
     post_id: postId,

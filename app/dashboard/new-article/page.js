@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import NewPostForm from '@/components/dashboard/NewPostForm'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { getWriteSidebarData } from '@/lib/getWriteSidebarData'
+import { formatIdentity } from '@/lib/formatIdentity'
 
 export default async function NewPostPage() {
   const acct = await getAuthedAccount()
@@ -13,7 +14,7 @@ export default async function NewPostPage() {
     authorId: acct.authorId,
     accountId: acct.accountId,
   })
-  const identity = acct.handle ? `@${acct.handle}` : acct.address
+  const identity = formatIdentity(acct.handle, acct.address)
 
   return (
     <NewPostForm

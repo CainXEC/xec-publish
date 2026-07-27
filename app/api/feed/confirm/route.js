@@ -11,6 +11,7 @@ import { contentHashHex, FEED_ACTION } from '@/lib/feedProtocol'
 import { normalizePoll } from '@/lib/feedPoll'
 import { findFeedPayment, verifyFeedTxid } from '@/lib/verifyFeedPost'
 import { resolveOrCreateAccount, primaryAddressForAccount } from '@/lib/walletAuth'
+import { formatIdentity } from '@/lib/formatIdentity'
 import { displayHandlesByAccountId } from '@/lib/authorDisplayHandles'
 import { isBlockedPair } from '@/lib/feedBlocks'
 import { recordFeedNotification } from '@/lib/feedNotifications'
@@ -29,11 +30,6 @@ function normalizeAction(action) {
   if (action === 3 || action === 'quote') return FEED_ACTION.QUOTE
   if (action === 1 || action === 'post' || action == null) return FEED_ACTION.POST
   return null
-}
-
-function identityFor(address, handle) {
-  const h = typeof handle === 'string' ? handle.trim() : ''
-  return h ? `@${h}` : address
 }
 
 /**
@@ -213,7 +209,7 @@ export async function POST(request) {
   // handle-less account's byline must show its primary address — never the
   // hot pocket key. For a normal wallet payer, primary == payer (no change).
   const displayAddress = await primaryAddressForAccount(resolved.accountId, match.payerAddress)
-  const authorIdentity = identityFor(displayAddress, resolved.handle)
+  const authorIdentity = formatIdentity(resolved.handle, displayAddress)
 
   const row = {
     txid: match.txid,

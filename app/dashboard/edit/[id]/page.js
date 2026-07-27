@@ -4,6 +4,7 @@ import FeedTopbar from '@/components/feed/FeedTopbar'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
+import { formatIdentity } from '@/lib/formatIdentity'
 import { getWriteSidebarData } from '@/lib/getWriteSidebarData'
 
 // A neon shell matching the editor's pow-feed theme, for the not-found / error
@@ -68,7 +69,7 @@ export default async function EditPostPage({ params }) {
     authorId: acct.authorId,
     accountId: acct.accountId,
   })
-  const identity = acct.handle ? `@${acct.handle}` : acct.address
+  const identity = formatIdentity(acct.handle, acct.address)
 
   return (
     <NewPostForm

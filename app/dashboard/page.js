@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { adminDb } from '@/lib/db'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import { getAuthedAccount } from '@/lib/authHelpers'
+import { formatIdentity } from '@/lib/formatIdentity'
 import { getXecBalanceSats } from '@/lib/xecBalance'
 import { getAccountFeedPage } from '@/lib/getFeed'
 
@@ -201,7 +202,7 @@ export default async function DashboardPage() {
   // The welcome byline should reflect the LIVE identity (a bound handle if the
   // account holds one, else the raw wallet address) — never the legacy
   // authors.username, which may name a handle the wallet no longer/never held.
-  const identity = acct.handle ? `@${acct.handle}` : acct.address
+  const identity = formatIdentity(acct.handle, acct.address)
   const profileHref = `/@${encodeURIComponent(acct.handle ?? acct.address)}`
 
   return (
