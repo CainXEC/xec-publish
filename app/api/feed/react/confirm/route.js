@@ -9,12 +9,7 @@ import { findFeedPayment, verifyFeedTxid } from '@/lib/verifyFeedPost'
 import { resolveOrCreateAccount, primaryAddressForAccount } from '@/lib/walletAuth'
 import { formatIdentity } from '@/lib/formatIdentity'
 import { recordFeedNotification } from '@/lib/feedNotifications'
-import {
-  verifySession,
-  signSession,
-  SESSION_COOKIE,
-  SESSION_MAX_AGE_DAYS,
-} from '@/lib/session'
+import { mintPaySession } from '@/lib/paySession'
 
 const REACT_COST_XEC = FEED_MIN_XEC
 
@@ -201,29 +196,7 @@ export async function POST(request) {
   // session-harvest on any popular post. Recording that reaction is fine;
   // logging someone in from it is not.
   if (providedTxid) {
-    try {
-      const existing = verifySession(request.cookies.get(SESSION_COOKIE)?.value)
-      const keepStronger =
-        existing && existing.via === 'challenge' && existing.accountId === resolved.accountId
-      if (!keepStronger) {
-        response.cookies.set({
-          name: SESSION_COOKIE,
-          value: signSession({
-            accountId: resolved.accountId,
-            address: match.payerAddress,
-            iat: Date.now(),
-            via: 'pay',
-          }),
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          path: '/',
-          maxAge: SESSION_MAX_AGE_DAYS * 24 * 60 * 60,
-        })
-      }
-    } catch (e) {
-      console.error('[feed-react-confirm] session mint failed (reaction still ok)', e)
-    }
+    mintPaySession(request, response, resolved.accountId, match.payerAddress, 'feed-react-confirm')
   }
 
   return response

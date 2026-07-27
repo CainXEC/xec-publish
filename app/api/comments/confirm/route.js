@@ -10,12 +10,7 @@ import { resolveCommenter, resolveParentPayout, toEcashAddr } from '@/lib/commen
 import { resolveOrCreateAccount, primaryAddressForAccount } from '@/lib/walletAuth'
 import { formatIdentity } from '@/lib/formatIdentity'
 import { recordArticleNotification, recordFeedNotification } from '@/lib/feedNotifications'
-import {
-  verifySession,
-  signSession,
-  SESSION_COOKIE,
-  SESSION_MAX_AGE_DAYS,
-} from '@/lib/session'
+import { mintPaySession } from '@/lib/paySession'
 
 const COMMENT_COLUMNS =
   'id, txid, action, parent_id, parent_txid, content, author_account_id, author_identity, payer_address, created_at, deleted_at'
@@ -230,29 +225,7 @@ export async function POST(request) {
 
   // Pay doubles as login: mint a 'pay'-scope session for the payer (never
   // downgrade an existing challenge session). Best-effort.
-  try {
-    const existing = verifySession(request.cookies.get(SESSION_COOKIE)?.value)
-    const keepStronger =
-      existing && existing.via === 'challenge' && existing.accountId === resolved.accountId
-    if (!keepStronger) {
-      response.cookies.set({
-        name: SESSION_COOKIE,
-        value: signSession({
-          accountId: resolved.accountId,
-          address: match.payerAddress,
-          iat: Date.now(),
-          via: 'pay',
-        }),
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: SESSION_MAX_AGE_DAYS * 24 * 60 * 60,
-      })
-    }
-  } catch (e) {
-    console.error('[comment-confirm] session mint failed (comment still ok)', e)
-  }
+  mintPaySession(request, response, resolved.accountId, match.payerAddress, 'comment-confirm')
 
   return response
 }
