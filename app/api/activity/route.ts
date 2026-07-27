@@ -162,7 +162,7 @@ export async function GET(req: NextRequest) {
       : publishesQuery.eq("txid", "-");
   }
 
-  const [postsQ, eventsQ, unlocksQ, publishesQ, mintsQ, commentsQ] = await Promise.all([
+  const [postsQ, eventsQ, unlocksQ, publishesQ, mintsQ, commentsQ, ownRepostsQ] = await Promise.all([
     postsQuery,
     eventsQuery,
     unlocksQuery,
@@ -185,6 +185,21 @@ export async function GET(req: NextRequest) {
           .not("txid", "is", null)
           .order("created_at", { ascending: false })
           .limit(PER_SOURCE),
+    // Scoped only: the author's OWN reposts. The main events query returns
+    // reactions the author RECEIVED (payout_address = them); a repost is a
+    // content action like a reply/quote — which already appear as their
+    // feed_posts — so without this an author who reposts but isn't reposted
+    // shows none. Likes/tips they MADE stay out (value spent, shown on the
+    // payee's economy, not content). Merged + de-duped into `events` below.
+    scoped && scopedAccountId
+      ? supabase
+          .from("feed_events")
+          .select("txid, action, actor_account_id, actor_identity, payer_address, amount_sats, target_txid, created_at")
+          .eq("actor_account_id", scopedAccountId)
+          .eq("action", 4)
+          .order("created_at", { ascending: false })
+          .limit(PER_SOURCE)
+      : Promise.resolve({ data: [] as Array<never> }),
   ]);
 
   const items: ActivityItem[] = [];
@@ -208,8 +223,18 @@ export async function GET(req: NextRequest) {
     posts: { title: string | null; slug: string | null; legacy?: boolean | null } | null;
   };
   const posts = (postsQ.data ?? []) as PostRow[];
-  const events = (eventsQ.data ?? []) as EventRow[];
   const comments = (commentsQ.data ?? []) as unknown as CommentRow[];
+  // Reactions the author received + (scoped) their own reposts, de-duped by txid
+  // — the final items.sort() below orders the merged stream by time.
+  const seenEventTxids = new Set<string>();
+  const events = [
+    ...((eventsQ.data ?? []) as EventRow[]),
+    ...((ownRepostsQ.data ?? []) as EventRow[]),
+  ].filter((e) => {
+    if (!e.txid || seenEventTxids.has(e.txid)) return false;
+    seenEventTxids.add(e.txid);
+    return true;
+  });
 
   // ---- resolve the liked/reposted target posts: their CONTENT is what a
   //      like/repost line references ("liked '…the post…'"), with the author
