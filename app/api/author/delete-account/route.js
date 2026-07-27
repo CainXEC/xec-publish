@@ -24,12 +24,6 @@ export async function DELETE() {
   }
 
   const admin = adminDb()
-  if (!admin) {
-    return NextResponse.json(
-      { error: 'Server configuration error: missing SUPABASE_SERVICE_ROLE_KEY' },
-      { status: 500 },
-    )
-  }
 
   // Hard-delete the account and ALL of its data in one transaction, in FK-safe
   // order (see sql/delete_account.sql). This replaces the old sequential

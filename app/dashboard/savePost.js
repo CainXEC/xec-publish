@@ -31,12 +31,6 @@ export async function savePost(input = {}) {
   }
 
   const admin = adminDb()
-  if (!admin) {
-    return {
-      ok: false,
-      error: 'Server configuration error: missing Supabase admin credentials.',
-    }
-  }
 
   const result = await savePostCore(admin, acct.authorId, input)
   // storedBody is for the REST callers; the editor autosaves through this

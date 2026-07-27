@@ -21,15 +21,24 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 //  per-user session), and re-creating one per call was pure waste.
 // =============================================================================
 
-const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL ??
-  process.env.SUPABASE_URL)!
+const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL
+
+/** Fail loudly on a misconfigured deploy, with a message that names the missing
+ *  var — instead of the cryptic "supabaseKey is required" createClient throws.
+ *  A missing key is a broken deploy, never a runtime condition, so callers don't
+ *  each re-check: env validation lives here, at the single entry point. */
+function requireEnv(name: string, value: string | undefined): string {
+  if (!value) throw new Error(`lib/db: missing required env var ${name}`)
+  return value
+}
 
 let _admin: SupabaseClient | undefined
 /** Service-role client (RLS bypassed). Server-only. Memoized. */
 export function adminDb(): SupabaseClient {
   return (_admin ??= createClient(
-    SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    requireEnv('NEXT_PUBLIC_SUPABASE_URL', SUPABASE_URL),
+    requireEnv('SUPABASE_SERVICE_ROLE_KEY', process.env.SUPABASE_SERVICE_ROLE_KEY),
     { auth: { autoRefreshToken: false, persistSession: false } },
   ))
 }
@@ -38,8 +47,8 @@ let _anon: SupabaseClient | undefined
 /** Anon client (RLS enforced), for server-side anon reads. Memoized. */
 export function db(): SupabaseClient {
   return (_anon ??= createClient(
-    SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    requireEnv('NEXT_PUBLIC_SUPABASE_URL', SUPABASE_URL),
+    requireEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
     { auth: { persistSession: false } },
   ))
 }

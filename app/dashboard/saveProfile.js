@@ -22,12 +22,6 @@ export async function saveProfile(input = {}) {
   }
 
   const admin = adminDb()
-  if (!admin) {
-    return {
-      ok: false,
-      error: 'Server configuration error: missing Supabase admin credentials.',
-    }
-  }
 
   const bio = String(input.bio ?? '').trim()
 

@@ -27,12 +27,6 @@ export async function saveDisplayHandle(input = {}) {
   }
 
   const admin = adminDb()
-  if (!admin) {
-    return {
-      ok: false,
-      error: 'Server configuration error: missing Supabase admin credentials.',
-    }
-  }
 
   const now = new Date().toISOString()
   const rawTokenId = input.tokenId

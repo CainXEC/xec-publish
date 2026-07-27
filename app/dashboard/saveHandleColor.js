@@ -28,12 +28,6 @@ export async function saveHandleColor(input = {}) {
   }
 
   const admin = adminDb()
-  if (!admin) {
-    return {
-      ok: false,
-      error: 'Server configuration error: missing Supabase admin credentials.',
-    }
-  }
 
   const raw = input.color == null ? '' : String(input.color).trim()
   const color = raw === '' ? null : raw

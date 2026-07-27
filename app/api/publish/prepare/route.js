@@ -32,12 +32,6 @@ export async function GET(request) {
   }
 
   const admin = adminDb()
-  if (!admin) {
-    return NextResponse.json(
-      { error: 'Server configuration error: missing Supabase admin credentials' },
-      { status: 500 },
-    )
-  }
 
   const { data: post, error } = await admin
     .from('posts')

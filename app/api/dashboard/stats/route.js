@@ -11,12 +11,6 @@ export async function GET() {
   const authorId = acct.authorId
 
   const admin = adminDb()
-  if (!admin) {
-    return NextResponse.json(
-      { error: 'Server configuration error: missing Supabase admin credentials' },
-      { status: 500 },
-    )
-  }
   const { data, error } = await admin
     .from('unlocks')
     .select('amount_xec, post_id, posts!inner(author_id)')

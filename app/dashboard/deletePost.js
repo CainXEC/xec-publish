@@ -19,12 +19,6 @@ export async function deletePost(postId) {
   }
 
   const admin = adminDb()
-  if (!admin) {
-    return {
-      ok: false,
-      error: 'Server configuration error: missing Supabase admin credentials.',
-    }
-  }
 
   const { data: post, error: postError } = await admin
     .from('posts')

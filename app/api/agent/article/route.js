@@ -37,12 +37,6 @@ export async function POST(request) {
   }
 
   const admin = adminDb()
-  if (!admin) {
-    return NextResponse.json(
-      { error: 'Server configuration error: missing Supabase admin credentials' },
-      { status: 500 },
-    )
-  }
 
   // No forceId / nextPublished / isEditMode: this is create-only, and the core
   // takes its fresh-draft path (published: false).
