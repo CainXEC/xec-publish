@@ -101,6 +101,7 @@ export default function ActivityRail({
   const freshIds = useRef(new Set())
   const nudgeTimer = useRef(null)
   const followupTimer = useRef(null)
+  const lastRefreshAt = useRef(0)
 
   useEffect(() => {
     const onPresence = (e) => {
@@ -126,6 +127,7 @@ export default function ActivityRail({
   }, [minWidth])
 
   const refresh = useCallback(async () => {
+    lastRefreshAt.current = Date.now()
     try {
       const params = new URLSearchParams()
       if (scope?.authorId) params.set('authorId', scope.authorId)
@@ -163,7 +165,12 @@ export default function ActivityRail({
         nudgeTimer.current = setTimeout(() => void refresh(), NUDGE_DELAY_MS)
         followupTimer.current = setTimeout(() => void refresh(), NUDGE_FOLLOWUP_MS)
       },
-      () => void refresh(), // tab foregrounded / socket reconnected
+      () => {
+        // Debounced: a real return still refreshes at once, but rapid focus
+        // toggling collapses into one fetch.
+        if (Date.now() - lastRefreshAt.current < 15_000) return
+        void refresh()
+      },
     )
     return () => {
       clearInterval(interval)

@@ -95,7 +95,11 @@ export default function PresenceHeartbeat() {
     const iv = setInterval(() => void ping(), PING_MS)
     // A returning reader should be counted (and see a fresh number) promptly.
     const onVis = () => {
-      if (document.visibilityState === 'visible') void ping(true)
+      if (document.visibilityState !== 'visible') return
+      // Rapid focus toggling (alt-tabbing between windows) shouldn't fire a
+      // POST per switch — the beat and onRequest already cover the gap.
+      if (Date.now() - lastPingAt < 30_000) return
+      void ping(true)
     }
     document.addEventListener('visibilitychange', onVis)
 
