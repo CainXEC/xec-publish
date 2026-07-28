@@ -3,15 +3,14 @@ import { notFound } from 'next/navigation'
 import AuthorProfilePageClient from '@/components/AuthorProfilePageClient'
 import HandleCarousel from '@/components/HandleCarousel'
 import { resolveProfileByIdentifier } from '@/lib/resolveProfile'
-import { hydrateAuthorProfile } from '@/lib/loadAuthorProfile'
 import { heldHandlesForAddress } from '@/lib/heldHandles'
-import { getAccountFeedPage } from '@/lib/getFeed'
+import { getCachedAccountFeedPage } from '@/lib/getFeed'
+import { getCachedProfileStats } from '@/lib/profileCache'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { adminDb } from '@/lib/db'
 import { viewerBlocksAccount } from '@/lib/feedBlocks'
 import {
   accountIdForAddress,
-  followerCountForAccount,
   viewerFollowsAccount,
 } from '@/lib/profileSocial'
 
@@ -71,32 +70,29 @@ export default async function ProfilePage({ params }) {
   const viewerAddress = viewer?.address ?? ''
   const viewerIsAuthor = viewer?.authorId != null
 
-  // Article hydration needs only the resolved author — start it now and let it
-  // overlap the account-id lookup + social/feed batch below.
-  const articleDataPromise = resolved.author
-    ? hydrateAuthorProfile(resolved.author)
-    : Promise.resolve({ error: null, posts: [], totalUnlocks: 0, totalEarnings: 0 })
-
   // The ONLY genuine dependency in the chain: social + feed queries key on the
   // profile's account id.
   const profileAccountId = resolved.holderAddress
     ? await accountIdForAddress(resolved.holderAddress)
     : null
 
-  const [articleData, followerCount, initialFollowing, initialBlocked, feed] =
-    await Promise.all([
-      articleDataPromise,
-      followerCountForAccount(profileAccountId),
-      viewerFollowsAccount(viewerAccountId, profileAccountId),
-      profileAccountId
-        ? viewerBlocksAccount(adminDb(), viewerAccountId, profileAccountId)
-        : Promise.resolve(false),
-      profileAccountId
-        ? getAccountFeedPage({ accountId: profileAccountId, viewerAddress, viewerAccountId })
-        : Promise.resolve({ posts: [], nextCursor: null }),
-      // Replies are NOT fetched here: the Replies tab loads on demand via
-      // /api/feed/account-replies the first time the user switches to it.
-    ])
+  // Viewer-NEUTRAL data (articles + stats, and the account's own-posts feed) comes
+  // from the shared per-account cache; the per-viewer bits (your follow/block
+  // state, and the feed's own reaction overlay applied inside the cached call)
+  // layer on top. Replies are NOT fetched here — the Replies tab loads on demand
+  // via /api/feed/account-replies the first time the user switches to it.
+  const [stats, feed, initialFollowing, initialBlocked] = await Promise.all([
+    getCachedProfileStats({ accountId: profileAccountId, author: resolved.author }),
+    profileAccountId
+      ? getCachedAccountFeedPage({ accountId: profileAccountId, viewerAddress, viewerAccountId })
+      : Promise.resolve({ posts: [], nextCursor: null }),
+    viewerFollowsAccount(viewerAccountId, profileAccountId),
+    profileAccountId
+      ? viewerBlocksAccount(adminDb(), viewerAccountId, profileAccountId)
+      : Promise.resolve(false),
+  ])
+  const articleData = stats.articleData
+  const followerCount = stats.followerCount
 
   // Byline = the account's LIVE identity: "@handle" if held, else the raw address.
   const isAddressIdentity = !resolved.identity.startsWith('@')

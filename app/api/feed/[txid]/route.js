@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
-import { FEED_CACHE_TAG } from '@/lib/getFeed'
+import { FEED_CACHE_TAG, profileCacheTag } from '@/lib/getFeed'
 
 /**
  * Soft-delete a feed post/reply. Only the author (session account ==
@@ -53,8 +53,10 @@ export async function DELETE(_request, context) {
     return NextResponse.json({ error: updateError.message }, { status: 500 })
   }
 
-  // Drop the deleted post from the shared For You cache promptly.
+  // Drop the deleted post from the shared For You cache and from the author's
+  // profile own-posts cache promptly.
   revalidateTag(FEED_CACHE_TAG)
+  revalidateTag(profileCacheTag(post.author_account_id))
 
   return NextResponse.json({ ok: true, status: 'deleted' })
 }

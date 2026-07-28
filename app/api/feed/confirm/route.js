@@ -4,7 +4,7 @@ import { NextResponse, after } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { adminDb } from '@/lib/db'
-import { FEED_CACHE_TAG, getFeedPostForCard } from '@/lib/getFeed'
+import { FEED_CACHE_TAG, profileCacheTag, getFeedPostForCard } from '@/lib/getFeed'
 import { feedOpenGraphMetadata } from '@/lib/feedOgMetadata'
 import { priceFeedPost } from '@/lib/feedPricing'
 import { contentHashHex, FEED_ACTION } from '@/lib/feedProtocol'
@@ -269,6 +269,12 @@ export async function POST(request) {
   // shows within seconds instead of waiting out the revalidate window. Cheap:
   // feed writes are payment-gated, so this can't thrash the cache.
   revalidateTag(FEED_CACHE_TAG)
+  // A profile shows the account's own posts with their denormalized counts, so
+  // freshen the poster's profile — and, when this bumps a count on someone else's
+  // post (a reply's parent, a quote's target), theirs too.
+  revalidateTag(profileCacheTag(resolved.accountId))
+  if (parentAuthorAccountId) revalidateTag(profileCacheTag(parentAuthorAccountId))
+  if (quotedAuthorAccountId) revalidateTag(profileCacheTag(quotedAuthorAccountId))
 
   const display = await liveDisplayFields(supabase, inserted)
   const response = NextResponse.json({
