@@ -13,8 +13,8 @@
 
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { getPublishedPostBySlug } from '@/lib/getPublishedPostBySlug'
-import { preparePublicPostPageData } from '@/lib/preparePublicPostPageData'
+import { verifyPostReaderEntitlement } from '@/lib/verifyPostReaderEntitlement'
+import { getCachedPublicReaderPayload, fullReaderBodyHtml } from '@/lib/readerPayload'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -26,26 +26,28 @@ export async function GET(_req, { params }) {
     return NextResponse.json({ ok: false, error: 'bad slug' }, { status: 400 })
   }
 
-  // Current posts (legacy=false) live at /posts/<slug>; the imported legacy
-  // archive (legacy=true) lives at root /<slug>. The reader pane serves both —
-  // try current first, then fall back to the legacy archive — so a legacy story
-  // opens in-pane on the home page instead of navigating away.
-  let data = await getPublishedPostBySlug(slug)
-  let legacy = false
-  if (!data) {
-    data = await getPublishedPostBySlug(slug, true)
-    legacy = true
-  }
-  if (!data) {
+  // Viewer-NEUTRAL payload (metadata, author, counts, sanitized PUBLIC body),
+  // cached per slug — legacy fallback handled inside. Contains no locked content.
+  const cached = await getCachedPublicReaderPayload(slug)
+  if (!cached) {
     return NextResponse.json({ ok: false, error: 'Story not found' }, { status: 404 })
   }
 
+  const p = cached.post
+
+  // Per-viewer entitlement (never cached). Only an entitled viewer gets the full
+  // body, and that body is prepared FRESH here — the cache only ever holds the
+  // public preview, so locked content can't leak through the shared cache.
   const cookieStore = await cookies()
-  const p = await preparePublicPostPageData(data, cookieStore)
+  const entitled = await verifyPostReaderEntitlement(p.id, p.author_id, cookieStore)
+  const bodyHtml = entitled
+    ? (await fullReaderBodyHtml(p.id)) ?? cached.publicBodyHtml
+    : cached.publicBodyHtml
 
   // Byline fallback for wallet-native authors with no handle and no legacy
   // username: the shortened eCash address (mirrors the article page + rail).
-  const bareAddr = (p.initialAuthor?.xec_address ?? '')
+  const author = cached.author
+  const bareAddr = (author?.xec_address ?? '')
     .trim()
     .toLowerCase()
     .replace(/^ecash:/, '')
@@ -55,31 +57,31 @@ export async function GET(_req, { params }) {
     {
       ok: true,
       slug,
-      legacy,
-      postId: p.initialPost?.id ?? null,
-      authorId: p.initialPost?.author_id ?? null,
-      title: p.initialPost?.title ?? '',
-      bodyHtml: p.initialBodyHtml ?? '',
-      unlocked: Boolean(p.initialUnlocked),
-      hasPaywall: Boolean(p.hasPaywallMarker),
-      priceXec: p.initialPost?.price_xec ?? null,
-      readMinutes: p.initialPost?.reading_time_minutes ?? null,
-      publishedAt: p.initialPost?.published_at ?? p.initialPost?.created_at ?? null,
-      unlockCount: Number(p.initialUnlockCount) || 0,
-      commentCount: Number(p.initialCommentCount) || 0,
+      legacy: cached.legacy,
+      postId: p.id ?? null,
+      authorId: p.author_id ?? null,
+      title: p.title ?? '',
+      bodyHtml: bodyHtml ?? '',
+      unlocked: entitled,
+      hasPaywall: Boolean(cached.hasPaywall),
+      priceXec: p.price_xec ?? null,
+      readMinutes: p.reading_time_minutes ?? null,
+      publishedAt: p.published_at ?? p.created_at ?? null,
+      unlockCount: Number(cached.unlockCount) || 0,
+      commentCount: Number(cached.commentCount) || 0,
       author: {
-        handle: p.initialAuthor?.display_handle?.trim() || null,
-        username: p.initialAuthor?.username?.trim() || null,
+        handle: author?.display_handle?.trim() || null,
+        username: author?.username?.trim() || null,
         name:
-          p.initialAuthor?.display_handle?.trim() ||
-          p.initialAuthor?.username?.trim() ||
+          author?.display_handle?.trim() ||
+          author?.username?.trim() ||
           shortAddr,
-        color: p.initialAuthor?.handle_color ?? null,
+        color: author?.handle_color ?? null,
         // AI-operated author (authors.is_ai) — the pane byline wears [AI].
-        isAi: p.initialAuthor?.is_ai === true,
+        isAi: author?.is_ai === true,
         // Payout address for the in-pane unlock's BIP21 — public by nature
         // (it's in every unlock tx and on the author's profile).
-        xecAddress: p.initialAuthor?.xec_address?.trim() || null,
+        xecAddress: author?.xec_address?.trim() || null,
       },
     },
     { headers: { 'Cache-Control': 'no-store' } }

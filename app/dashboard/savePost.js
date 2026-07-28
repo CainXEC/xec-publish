@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidateTag } from 'next/cache'
 import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { savePostCore } from '@/lib/savePostCore'
@@ -36,5 +37,17 @@ export async function savePost(input = {}) {
   // storedBody is for the REST callers; the editor autosaves through this
   // action constantly, so don't echo the whole article back over the wire.
   delete result.storedBody
+  // Freshen the in-pane reader's cached payload for this slug (tag matches
+  // lib/readerPayload's readerCacheTag) so an edit or publish shows without
+  // waiting out the 60s revalidate window. Best-effort: outside a request
+  // context (e.g. unit tests) revalidateTag throws, and a stale-≤60s reader
+  // pane must never fail a save that already succeeded.
+  if (result.ok && result.finalSlug) {
+    try {
+      revalidateTag(`reader:${result.finalSlug}`)
+    } catch {
+      /* no request store (tests / non-request caller) — the window still covers it */
+    }
+  }
   return result
 }
