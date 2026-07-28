@@ -207,13 +207,6 @@ export default function PostPageClient({
     return window.location.href
   }, [])
 
-  const handleShareX = useCallback(() => {
-    const pageUrl = getCurrentPageUrl()
-    if (!pageUrl) return
-    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(post?.title ?? '')}&url=${encodeURIComponent(pageUrl)}`
-    window.open(url, '_blank', 'noopener,noreferrer')
-  }, [getCurrentPageUrl, post?.title])
-
   const handleSharePow = useCallback(() => {
     const pageUrl = getCurrentPageUrl()
     if (!pageUrl) return
@@ -831,9 +824,6 @@ export default function PostPageClient({
               <span className="sharebtn-pmark" aria-hidden="true">
                 P
               </span>
-            </button>
-            <button type="button" onClick={handleShareX} className="sharebtn">
-              𝕏
             </button>
             <button
               type="button"

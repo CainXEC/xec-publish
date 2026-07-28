@@ -6,7 +6,7 @@
 //  feed's center column, instead of navigating away: the feed stays mounted
 //  (state, tabs, scroll all preserved). The pane is pure client state — the
 //  "Open full page ↗" link is the story's shareable URL. Ways back to the
-//  feed: the "← The feed" bar, the PROOFOFWRITING banner, or Esc.
+//  feed: the "← Feed" bar, the PROOFOFWRITING banner, or Esc.
 //
 //  Content comes from /api/posts/reader/[slug], which runs the SAME
 //  server-side preparation as the article page (per-viewer entitlement,
@@ -39,7 +39,7 @@ const fmtDate = (iso) => {
   }
 }
 
-export default function HomeReader({ slug, onClose, backLabel = '← The feed' }) {
+export default function HomeReader({ slug, onClose, backLabel = '← Feed' }) {
   const [state, setState] = useState({ loading: true })
   // Translated view ({ translated: html, title }); null = original. The parent
   // keys this component by slug, so it remounts per story — tr resets naturally.
@@ -98,19 +98,13 @@ export default function HomeReader({ slug, onClose, backLabel = '← The feed' }
   // The pane never touches the address bar, so — like CopyLinkButton — the share
   // targets are built from the slug, not window.location (which is the feed's URL
   // here). Title comes from the loaded story. Mirrors the standalone article
-  // page's share handlers (PostPageClient handleShareX / handleSharePow). A legacy
+  // page's share handler (PostPageClient handleSharePow). A legacy
   // story's permalink is root /<slug>, not /posts/<slug>, so honor the flag the
   // reader route returns (falls back to /posts/<slug> until the body loads).
   const articlePath = d?.legacy
     ? `/${encodeURIComponent(slug)}`
     : `/posts/${encodeURIComponent(slug)}`
   const articleUrl = () => `${window.location.origin}${articlePath}`
-  const shareToX = () => {
-    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-      tr?.title ?? d?.title ?? '',
-    )}&url=${encodeURIComponent(articleUrl())}`
-    window.open(url, '_blank', 'noopener,noreferrer')
-  }
   const shareToFeed = () => {
     const text = `${tr?.title ?? d?.title ?? ''}\n\n${articleUrl()}`.trim()
     window.location.href = `/?share=${encodeURIComponent(text)}`
@@ -131,9 +125,6 @@ export default function HomeReader({ slug, onClose, backLabel = '← The feed' }
               />
               <button type="button" className="hr-open" onClick={shareToFeed}>
                 Share to feed
-              </button>
-              <button type="button" className="hr-open" onClick={shareToX}>
-                Post to 𝕏
               </button>
             </>
           ) : null}

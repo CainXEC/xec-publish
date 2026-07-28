@@ -470,7 +470,7 @@ export default function AuthorProfilePageClient({
       </aside>
       <main className="wrap" style={{ paddingTop: '28px' }}>
         {readerSlug ? (
-          <HomeReader slug={readerSlug} onClose={closeReader} backLabel="← The profile" />
+          <HomeReader slug={readerSlug} onClose={closeReader} backLabel="← Profile" />
         ) : null}
         <div style={readerSlug ? { display: 'none' } : undefined}>
         <header className="profhead">

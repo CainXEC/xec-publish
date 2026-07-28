@@ -51,7 +51,7 @@ export default function ThreadPane({ txid, onClose, onOpenThread }) {
   return (
     <div className="homereader">
       <div className="hr-bar">
-        <button type="button" className="hr-back" onClick={onClose}>← The feed</button>
+        <button type="button" className="hr-back" onClick={onClose}>← Feed</button>
         <CopyLinkButton path={`/feed/${txid}`} />
       </div>
 
