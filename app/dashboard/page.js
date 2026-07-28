@@ -5,7 +5,7 @@ import DashboardClient from '@/components/dashboard/DashboardClient'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { formatIdentity } from '@/lib/formatIdentity'
 import { getXecBalanceSats } from '@/lib/xecBalance'
-import { getAccountFeedPage } from '@/lib/getFeed'
+import { getCachedAccountFeedPage } from '@/lib/getFeed'
 
 /** Wallet balance, streamed OUTSIDE the critical path: it's a Chronik UTXO scan,
  *  so it renders behind Suspense and fills in when Chronik answers — the
@@ -30,49 +30,54 @@ export default async function DashboardPage() {
   // populate even for a reader account with no article/author row. Replies are
   // NOT fetched here: the Replies tab loads on demand via
   // /api/feed/account-replies the first time the user switches to it.
-  const feedTabsPromise = getAccountFeedPage({
+  const feedTabsPromise = getCachedAccountFeedPage({
     accountId: acct.accountId,
     viewerAddress: acct.address,
     viewerAccountId: acct.accountId,
   })
   const authorId = acct.authorId
-  const admin = adminDb()
-  const supabase = admin // all queries below run on the service-role client now
-  const [
-    { data: posts, error: postsError },
-    { data: author },
-    { data: unlockRows },
-  ] = authorId
-    ? await Promise.all([
-        supabase
-          .from('posts')
-          .select('*')
-          .eq('author_id', authorId)
-          .order('published', { ascending: true })
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('authors')
-          .select('username, bio, xec_address')
-          .eq('id', authorId)
-          .maybeSingle(),
-        admin
-          ? admin
-              .from('unlocks')
-              .select('amount_xec, post_id, posts!inner(author_id)')
-              .eq('posts.author_id', authorId)
-              .eq('posts.published', true)
-          : Promise.resolve({ data: null }),
-      ])
-    : [{ data: [], error: null }, { data: null }, { data: null }]
+  const supabase = adminDb() // all queries below run on the service-role client
+  // Wave 1: the author's posts/profile/unlock-totals AND the account's linked
+  // addresses run together — account_addresses only needs accountId, so it no
+  // longer waits behind the author queries. The posts list selects METADATA
+  // ONLY (never the full `body` / generated search_tsv — the dashboard list
+  // doesn't render them; the editor loads the body fresh from /dashboard/edit),
+  // which was the bulk of the payload for authors with long articles.
+  const [authorTriple, { data: addrRows }] = await Promise.all([
+    authorId
+      ? Promise.all([
+          supabase
+            .from('posts')
+            .select(
+              'id, title, slug, teaser, legacy, published, published_at, price_xec, reading_time_minutes, created_at, author_id, publish_paid',
+            )
+            .eq('author_id', authorId)
+            .order('published', { ascending: true })
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('authors')
+            .select('username, bio, xec_address')
+            .eq('id', authorId)
+            .maybeSingle(),
+          supabase
+            .from('unlocks')
+            .select('amount_xec, post_id, posts!inner(author_id)')
+            .eq('posts.author_id', authorId)
+            .eq('posts.published', true),
+        ])
+      : Promise.resolve([{ data: [], error: null }, { data: null }, { data: null }]),
+    supabase
+      .from('account_addresses')
+      .select('address')
+      .eq('account_id', acct.accountId),
+  ])
+  const [{ data: posts, error: postsError }, { data: author }, { data: unlockRows }] =
+    authorTriple
   const rows = unlockRows ?? []
 
   // ---- Library (articles this account has paid for), follower counts ----
   // Unlocks are keyed by payer_address; the account may have proven several
   // wallets, so match on all of them (both prefixed and bare forms).
-  const { data: addrRows } = await supabase
-    .from('account_addresses')
-    .select('address')
-    .eq('account_id', acct.accountId)
   const addressForms = [
     ...new Set(
       (addrRows ?? [])
