@@ -16,6 +16,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import TimeAgo from '@/components/feed/TimeAgo'
 
 const MOST_READ_N = 3
 const LATEST_N = 5
@@ -24,6 +25,9 @@ const fmtPrice = (p) => (p != null && p > 0 ? `${Number(p).toLocaleString()} XEC
 
 const storyAt = (p) => p.published_at ?? p.created_at
 
+// Same relative label as the feed, in this rail's "34m ago" phrasing. Fed to
+// <TimeAgo format=…> so the profile page (now cached, so its SSR clock lags the
+// client) doesn't throw a hydration mismatch on the timestamp.
 function timeAgo(iso) {
   const t = Date.parse(iso)
   if (!Number.isFinite(t)) return ''
@@ -53,7 +57,11 @@ function Meta({ story }) {
     <div className="np-meta">
       <span className="np-price">{fmtPrice(story.price_xec)}</span>
       {' · '}
-      {readers > 0 ? `${readers} reader${readers === 1 ? '' : 's'}` : timeAgo(storyAt(story))}
+      {readers > 0 ? (
+        `${readers} reader${readers === 1 ? '' : 's'}`
+      ) : (
+        <TimeAgo iso={storyAt(story)} format={timeAgo} />
+      )}
     </div>
   )
 }

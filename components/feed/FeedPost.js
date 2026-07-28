@@ -13,23 +13,9 @@ import PollCard from '@/components/feed/PollCard'
 import FeedBody from '@/components/feed/FeedBody'
 import PostCopyLink from '@/components/feed/PostCopyLink'
 import TranslateButton from '@/components/TranslateButton'
+import TimeAgo from '@/components/feed/TimeAgo'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
-
-function timeAgo(iso) {
-  if (!iso) return ''
-  const then = new Date(iso).getTime()
-  if (Number.isNaN(then)) return ''
-  const secs = Math.max(0, Math.floor((Date.now() - then) / 1000))
-  if (secs < 60) return `${secs}s`
-  const mins = Math.floor(secs / 60)
-  if (mins < 60) return `${mins}m`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h`
-  const days = Math.floor(hrs / 24)
-  if (days < 7) return `${days}d`
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-}
 
 function truncateAddress(addr) {
   const t = String(addr ?? '').trim()
@@ -418,9 +404,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
         <span aria-hidden className="dot">
           ·
         </span>
-        <Link href={`/feed/${post.txid}`} className="time">
-          {timeAgo(post.created_at)}
-        </Link>
+        <TimeAgo href={`/feed/${post.txid}`} className="time" iso={post.created_at} />
         <span className="postactions">
           {!post.deleted ? <PostCopyLink txid={post.txid} /> : null}
           {canManageAuthor ? (
@@ -614,7 +598,7 @@ export function MintDigestRow({ digest }) {
       <span aria-hidden className="dot">
         ·
       </span>
-      <span className="time">{timeAgo(digest?.created_at)}</span>
+      <TimeAgo className="time" iso={digest?.created_at} />
     </li>
   )
 }

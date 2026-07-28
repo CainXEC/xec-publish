@@ -17,6 +17,7 @@ import FeedBody from '@/components/feed/FeedBody'
 import MintCard from '@/components/feed/MintCard'
 import PollCard from '@/components/feed/PollCard'
 import TranslateButton from '@/components/TranslateButton'
+import TimeAgo from '@/components/feed/TimeAgo'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
 import { FEED_CSS } from '@/components/feed/feedTheme'
@@ -33,21 +34,6 @@ function truncateAddress(addr) {
   const t = String(addr ?? '').trim()
   if (t.length <= 16) return t
   return `${t.slice(0, 10)}…${t.slice(-4)}`
-}
-
-function timeAgo(iso) {
-  if (!iso) return ''
-  const then = new Date(iso).getTime()
-  if (Number.isNaN(then)) return ''
-  const secs = Math.max(0, Math.floor((Date.now() - then) / 1000))
-  if (secs < 60) return `${secs}s`
-  const mins = Math.floor(secs / 60)
-  if (mins < 60) return `${mins}m`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h`
-  const days = Math.floor(hrs / 24)
-  if (days < 7) return `${days}d`
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 function ThreadByline({ identity }) {
@@ -112,7 +98,7 @@ function AncestorNode({ post, top = false, onOpenThread = null }) {
           <span aria-hidden className="dot">
             ·
           </span>
-          <span className="time">{timeAgo(post.created_at)}</span>
+          <TimeAgo className="time" iso={post.created_at} />
         </div>
         <p ref={textRef} className={`ttext${expanded ? ' expanded' : ''}`}>
           {post.deleted ? (
