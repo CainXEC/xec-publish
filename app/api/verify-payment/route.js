@@ -1,11 +1,12 @@
 export const runtime = 'nodejs'
 
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { ChronikClient } from 'chronik-client'
 import { signCookieValue } from '@/lib/cookieSigner'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { adminDb } from '@/lib/db'
 import { verifyAndRecordUnlock } from '@/lib/verifyPaymentUnlock'
+import { recordArticleNotification } from '@/lib/feedNotifications'
 import { resolveOrCreateAccount } from '@/lib/walletAuth'
 import { splitPostBodyAtPaywall } from '@/lib/splitPostBodyAtPaywall'
 import { sanitizePostBodyHtml } from '@/lib/sanitizePostBodyHtml'
@@ -19,6 +20,62 @@ import { CHRONIK_URLS } from '@/lib/ecash/chronikEndpoints'
 
 const chronik = new ChronikClient(CHRONIK_URLS)
 const supabase = adminDb()
+
+/** Build the now-entitled full body inline so the client paints in the same tick
+ *  it flips to "unlocked" — no second round-trip to /api/posts/reader/[slug].
+ *  Best-effort: null on any failure and the client falls back to that refetch. */
+async function buildInlineBody(postId) {
+  try {
+    const { data: bodyRow } = await supabase
+      .from('posts')
+      .select('body')
+      .eq('id', postId)
+      .maybeSingle()
+    if (bodyRow?.body) {
+      const { bodyPublic, bodyLocked } = splitPostBodyAtPaywall(bodyRow.body, { postId })
+      const fullBody = bodyLocked != null ? `${bodyPublic}${bodyLocked}` : bodyPublic
+      return sanitizePostBodyHtml(fullBody)
+    }
+  } catch (bodyErr) {
+    console.error('[verify-payment] inline body build failed (client will refetch)', bodyErr)
+  }
+  return null
+}
+
+/** Pay doubles as login: mint a 'pay'-scope session cookie for the payer. Weaker
+ *  than the nonce-proven 'challenge' flow (the unlock txid is public), so payout /
+ *  author-mutation routes MUST require getChallengeSession(). Returns a cookie
+ *  descriptor, or null when there's nothing to set — no payer, an existing
+ *  stronger 'challenge' session for the same account, or a mint failure (never
+ *  fails the unlock). */
+async function mintPaySessionCookie(request, payerAddress) {
+  if (!payerAddress) return null
+  try {
+    const resolved = await resolveOrCreateAccount(payerAddress)
+    const existing = verifySession(request.cookies.get(SESSION_COOKIE)?.value)
+    const keepStronger =
+      existing && existing.via === 'challenge' && existing.accountId === resolved.accountId
+    if (keepStronger) return null
+    const sessionValue = signSession({
+      accountId: resolved.accountId,
+      address: payerAddress,
+      iat: Date.now(),
+      via: 'pay',
+    })
+    return {
+      name: SESSION_COOKIE,
+      value: sessionValue,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: SESSION_MAX_AGE_DAYS * 24 * 60 * 60,
+    }
+  } catch (mintErr) {
+    console.error('[verify-payment] session mint failed (unlock still ok)', mintErr)
+    return null
+  }
+}
 
 export async function POST(request) {
   const ip = getClientIp(request)
@@ -139,34 +196,15 @@ export async function POST(request) {
       )
     }
 
-    // Piggyback the now-entitled full body on the unlock response. Entitlement
-    // was just recorded (result.ok), so we build the full body directly with the
-    // same paywall-split + sanitize the reader route uses — identical bytes. This
-    // lets the client paint the story in the SAME tick it flips to "unlocked",
-    // killing the second round-trip to /api/posts/reader/[slug] (the visible
-    // "text pops in a beat late" glitch). Best-effort: on any failure we return
-    // a null body and the client falls back to the reader-route refetch.
-    let bodyHtml = null
-    try {
-      const { data: bodyRow } = await supabase
-        .from('posts')
-        .select('body')
-        .eq('id', postId)
-        .maybeSingle()
-      if (bodyRow?.body) {
-        const { bodyPublic, bodyLocked } = splitPostBodyAtPaywall(bodyRow.body, {
-          postId,
-        })
-        const fullBody =
-          bodyLocked != null ? `${bodyPublic}${bodyLocked}` : bodyPublic
-        bodyHtml = sanitizePostBodyHtml(fullBody)
-      }
-    } catch (bodyErr) {
-      console.error(
-        '[verify-payment] inline body build failed (client will refetch)',
-        bodyErr,
-      )
-    }
+    // The two remaining pieces are independent, so run them CONCURRENTLY — the
+    // reader's reveal waits on whichever is slower, not their sum:
+    //   1. the inline full body (so the client paints in the same tick it flips
+    //      to "unlocked", no second round-trip to /api/posts/reader/[slug]);
+    //   2. the 'pay'-scope session cookie (pay doubles as login).
+    const [bodyHtml, sessionCookie] = await Promise.all([
+      buildInlineBody(postId),
+      mintPaySessionCookie(request, result.payerAddress),
+    ])
 
     const response = NextResponse.json({ unlocked: true, bodyHtml })
     response.cookies.set({
@@ -177,50 +215,18 @@ export async function POST(request) {
       sameSite: 'lax',
       httpOnly: true,
     })
+    if (sessionCookie) response.cookies.set(sessionCookie)
 
-    // -----------------------------------------------------------------------
-    //  Pay doubles as login. Mint a session for the payer address on the SAME
-    //  response. This is a 'pay'-scope session — weaker than the nonce-proven
-    //  'challenge' flow (the unlock txid is public in the mempool), so payout /
-    //  author-mutation routes MUST require getChallengeSession(). Two guards:
-    //    - never fail the unlock if minting throws;
-    //    - never DOWNGRADE an existing challenge session for the same account
-    //      (e.g. an author who is already logged in and then buys a post).
-    //  The unlock cookie above is untouched.
-    // -----------------------------------------------------------------------
-    try {
-      if (result.payerAddress) {
-        const resolved = await resolveOrCreateAccount(result.payerAddress)
-        const existing = verifySession(
-          request.cookies.get(SESSION_COOKIE)?.value,
-        )
-        const keepStronger =
-          existing &&
-          existing.via === 'challenge' &&
-          existing.accountId === resolved.accountId
-
-        if (!keepStronger) {
-          const sessionValue = signSession({
-            accountId: resolved.accountId,
-            address: result.payerAddress,
-            iat: Date.now(),
-            via: 'pay',
-          })
-          response.cookies.set({
-            name: SESSION_COOKIE,
-            value: sessionValue,
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/',
-            maxAge: SESSION_MAX_AGE_DAYS * 24 * 60 * 60,
-          })
-        }
-      }
-    } catch (mintErr) {
-      console.error(
-        '[verify-payment] session mint failed (unlock still ok)',
-        mintErr,
+    // Notify the author AFTER the response is flushed — best-effort, off the
+    // reveal path (recordArticleNotification skips silently when the payer has no
+    // account or is the author themselves).
+    if (result.payerAddress) {
+      after(() =>
+        recordArticleNotification(supabase, {
+          postId,
+          type: 'unlock',
+          actorAddress: result.payerAddress,
+        }),
       )
     }
 
