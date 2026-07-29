@@ -84,7 +84,7 @@ export default function EngagementBar({
   const finalizeReacted = useCallback(() => {
     setPending(null)
     setIntent(null)
-    setPayViaPocket(false)
+    setInPagePay(false)
     setTxidInput('')
     setNotice('')
     if (typeof window !== 'undefined') {
@@ -259,7 +259,7 @@ export default function EngagementBar({
     if (pending) revertReaction(pending) // undo the optimistic flip
     setPending(null)
     setIntent(null)
-    setPayViaPocket(false)
+    setInPagePay(false)
     setTxidInput('')
     setNotice('')
   }, [pending, revertReaction])
