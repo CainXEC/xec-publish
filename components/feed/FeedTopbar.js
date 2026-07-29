@@ -6,6 +6,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import FeedNotifications from '@/components/feed/FeedNotifications'
 import PocketChip from '@/components/pocket/PocketChip'
 import ThemeToggle from '@/components/ThemeToggle'
+import AnimatedLogo from '@/components/AnimatedLogo'
 
 /**
  * The shared feed-theme header, used by every neon page (feed, thread, profile,
@@ -151,8 +152,8 @@ export default function FeedTopbar({
         <FeedNotifications signedIn={signedIn} onAgentPending={setAgentPending} />
       </div>
 
-      <Link href="/" className="wordmark" onClick={onWordmarkClick}>
-        proofofwriting
+      <Link href="/" className="wordmark" onClick={onWordmarkClick} aria-label="Proof of Writing — home">
+        <AnimatedLogo />
       </Link>
 
       <div className="toplinks">

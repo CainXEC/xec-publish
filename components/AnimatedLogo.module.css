@@ -1,98 +1,82 @@
 /* ------------------------------------------------------------------ *
- * AnimatedLogo
+ * AnimatedLogo — neon-sign wordmark. Ported 1:1 from the neon-sign demo.
  *
- * Single source of truth for color is --pow-neon. Everything else in
- * the dark theme is derived from it. See HANDOFF.md before changing
- * any hex value here.
- *
- * The lit state is the BASE style of .letter, not the endpoint of an
- * animation. Ignition runs with animation-fill-mode: backwards, so a
- * letter shows the dark 0% frame during its stagger delay and falls
- * back to its own CSS when the animation ends. This is what lets
- * .flick modulate opacity later without fighting the entrance.
+ * Lit is the BASE style of .letter, NOT the 100% ignite frame. Ignition runs
+ * with animation-fill-mode: backwards — the dark 0% frame shows during each
+ * letter's stagger delay, then it falls back to its own CSS. That's what lets
+ * .flick swap in later and touch only opacity.
  * ------------------------------------------------------------------ */
 
 .sign {
-  /* --pow-neon is the site's live-dot green (feedTheme.js --live), so the header
-   * reads as the same electrical system as the ● LIVE ON ECASH indicator. The
-   * tints below are re-derived from it: near-white for the lit core, dark green
-   * for the unlit tube, so the flicker doesn't shift hue as it fires. */
-  --pow-neon: #00c853;
-  --pow-neon-dim: #04250e;
-  --pow-neon-hot: #e8faef;
-  --pow-neon-mid: #d9f7e6;
-  --pow-neon-low: #bff1d4;
-  --pow-neon-ember: #06421b;
-  --pow-neon-glow: rgba(0, 200, 83, 0.55);
-  --pow-neon-bloom: rgba(0, 200, 83, 0.34);
-  --pow-neon-bloom-peak: rgba(0, 200, 83, 0.4);
+  /* The one value to change is --pow-neon; the tints are mixed from it. */
+  --pow-neon: #00ff9c;
+  --pow-neon-hot: #e8fff5;
+  --pow-neon-mid: #d9fff0;
+  --pow-neon-low: #bfffe4;
+  --pow-neon-dim: #053322;
+  --pow-neon-ember: #0a4a31;
+  --pow-glow: rgba(0, 255, 156, 0.55);
+  --pow-bloom: rgba(0, 255, 156, 0.34);
+  --pow-bloom-peak: rgba(0, 255, 156, 0.4);
 
   position: relative;
-  display: inline-block;
-  /* Inherit the site's wordmark face (JetBrains Mono via .pow-feed / .wordmark)
-   * rather than introduce a second display font. */
-  font-family: var(--pow-logo-font, inherit);
-  line-height: 1;
+  margin: 0;
+  /* Bebas Neue via next/font (AnimatedLogo.tsx) → --pow-logo-font. */
+  font-family: var(--pow-logo-font, 'Bebas Neue', Impact, 'Arial Narrow', sans-serif);
+  font-weight: 400;
+  /* Header-fit size (the demo's standalone banner uses clamp(30px,6.4vw,62px)).
+   * Floor kept low enough that the absolutely-centered wordmark clears the
+   * bell/theme items on a narrow phone. */
+  font-size: clamp(20px, 2.6vw, 30px);
   letter-spacing: 0.09em;
+  line-height: 1;
   white-space: nowrap;
+
+  /* Dark (the site's default theme): emitted light. */
   color: var(--pow-neon-hot);
+  filter: drop-shadow(0 0 22px var(--pow-bloom));
 }
 
+/* NO display:inline-block on .letter. Inline-block boxes size to glyph ink, not
+ * advance width, which makes a heavy condensed face (Bebas) overlap. Plain
+ * inline is correct — nothing is transformed; only opacity/color/text-shadow
+ * animate. */
+.letter {
+  color: var(--pow-neon-hot);
+  text-shadow: 0 0 6px var(--pow-neon), 0 0 20px var(--pow-glow);
+}
+
+/* .word stays inline-block so a flicker's opacity applies to the whole word
+ * section as one composited layer. */
 .word {
   display: inline-block;
 }
-
-.letter {
-  display: inline-block;
-  color: var(--pow-neon-hot);
-  text-shadow:
-    0 0 6px var(--pow-neon),
-    0 0 20px var(--pow-neon-glow);
+.spaced .word:not(:last-child) {
+  margin-right: 0.28em;
 }
 
-/* The wide ambient bloom lives here, on the parent, as one filter.
- * Putting it on each letter as a third and fourth text-shadow layer
- * costs ~14x more to paint for no visual gain.
- *
- * Because opacity on a child is composited before the parent's filter
- * runs, a word section fading out during .flick also dims its own
- * contribution to this bloom. Correct light falloff, no extra work. */
-.igniting,
-.sign {
-  filter: drop-shadow(0 0 22px var(--pow-neon-bloom));
-}
-
-.igniting {
+/* The ambient glow-breath hums only where there IS a glow — dark mode. On
+ * paper the sign is unlit tubing (filter: none), so humming a green drop-shadow
+ * there would bleed neon onto the manuscript. Matches the demo's dark-only hum. */
+:global(html.dark) .igniting {
   animation: pow-hum 7s ease-in-out infinite;
 }
-
 .igniting .letter {
   animation: pow-ignite 1.5s backwards;
 }
-
 .flick {
   animation: pow-tube-drop 0.5s steps(1, end);
 }
 
 /* ------------------------------------------------------------------ *
- * Light theme.
- *
- * Glow does not survive a paper background — it reads as blur or as
- * nothing. So the metaphor changes rather than the values: in light
- * mode the sign is unlit glass tubing lying on paper, and the
- * power-on becomes an ink-saturation flicker. Same rhythm, same
- * timings, different physics.
- *
- * VERIFY the selector below matches how the site actually switches
- * themes before shipping.
+ * Light (paper) theme. This site toggles a `.dark` class on <html>
+ * (app/layout.tsx), so light mode is html:not(.dark). Glow dies on paper, so
+ * the power-on becomes an ink-saturation fill instead — same rhythm, different
+ * physics.
  * ------------------------------------------------------------------ */
 
-/* This site switches themes by toggling a `.dark` class on <html>
- * (app/layout.tsx); light mode is html:not(.dark). --pow-ink is the paper
- * theme's accent green (feedTheme.js --accent #12703c), which clears WCAG AA
- * against the paper background (#f6f4ed). */
 :global(html:not(.dark)) .sign {
-  --pow-ink: #12703c;
+  --pow-ink: #0b6e43;
   --pow-ink-pale: #c9c5b6;
   --pow-ink-mid: #2f7a55;
   --pow-ink-soft: #5e8f76;
@@ -100,135 +84,63 @@
 
   color: var(--pow-ink);
   filter: none;
-  animation: none;
 }
-
 :global(html:not(.dark)) .letter {
   color: var(--pow-ink);
-  -webkit-text-stroke: 0.6px rgba(18, 112, 60, 0.35);
+  -webkit-text-stroke: 0.6px rgba(11, 110, 67, 0.35);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
 }
-
 :global(html:not(.dark)) .igniting .letter {
   animation: pow-fill-in 1.5s backwards;
 }
 
-/* ------------------------------------------------------------------ */
-
 @keyframes pow-ignite {
-  0%,
-  7% {
-    color: var(--pow-neon-dim);
-    text-shadow: none;
-  }
-  12% {
-    color: var(--pow-neon-low);
-    text-shadow: 0 0 5px var(--pow-neon), 0 0 14px var(--pow-neon);
-  }
-  16% {
-    color: var(--pow-neon-dim);
-    text-shadow: none;
-  }
-  26% {
-    color: var(--pow-neon-mid);
-    text-shadow: 0 0 6px var(--pow-neon), 0 0 18px var(--pow-neon);
-  }
-  32% {
-    color: var(--pow-neon-dim);
-    text-shadow: none;
-  }
-  44% {
-    color: var(--pow-neon-hot);
-    text-shadow: 0 0 8px var(--pow-neon), 0 0 26px var(--pow-neon);
-  }
-  50% {
-    color: var(--pow-neon-ember);
-    text-shadow: 0 0 2px var(--pow-neon);
-  }
-  66% {
-    color: var(--pow-neon-hot);
-    text-shadow: 0 0 7px var(--pow-neon), 0 0 24px var(--pow-neon-glow);
-  }
-  100% {
-    color: var(--pow-neon-hot);
-    text-shadow: 0 0 6px var(--pow-neon), 0 0 20px var(--pow-neon-glow);
-  }
+  0%, 7% { color: var(--pow-neon-dim); text-shadow: none; }
+  12% { color: var(--pow-neon-low); text-shadow: 0 0 5px var(--pow-neon), 0 0 14px var(--pow-neon); }
+  16% { color: var(--pow-neon-dim); text-shadow: none; }
+  26% { color: var(--pow-neon-mid); text-shadow: 0 0 6px var(--pow-neon), 0 0 18px var(--pow-neon); }
+  32% { color: var(--pow-neon-dim); text-shadow: none; }
+  44% { color: var(--pow-neon-hot); text-shadow: 0 0 8px var(--pow-neon), 0 0 26px var(--pow-neon); }
+  50% { color: var(--pow-neon-ember); text-shadow: 0 0 2px var(--pow-neon); }
+  66% { color: var(--pow-neon-hot); text-shadow: 0 0 7px var(--pow-neon), 0 0 24px var(--pow-glow); }
+  100% { color: var(--pow-neon-hot); text-shadow: 0 0 6px var(--pow-neon), 0 0 20px var(--pow-glow); }
 }
 
 @keyframes pow-fill-in {
-  0%,
-  9% {
-    color: var(--pow-ink-pale);
-    -webkit-text-stroke-color: rgba(18, 112, 60, 0.12);
-  }
-  15% {
-    color: var(--pow-ink-soft);
-  }
-  20% {
-    color: var(--pow-ink-pale);
-  }
-  34% {
-    color: var(--pow-ink-mid);
-  }
-  40% {
-    color: var(--pow-ink-pale);
-  }
-  58% {
-    color: var(--pow-ink);
-  }
-  64% {
-    color: var(--pow-ink-ghost);
-  }
-  100% {
-    color: var(--pow-ink);
-  }
+  0%, 9% { color: var(--pow-ink-pale); -webkit-text-stroke-color: rgba(11, 110, 67, 0.12); }
+  15% { color: var(--pow-ink-soft); }
+  20% { color: var(--pow-ink-pale); }
+  34% { color: var(--pow-ink-mid); }
+  40% { color: var(--pow-ink-pale); }
+  58% { color: var(--pow-ink); }
+  64% { color: var(--pow-ink-ghost); }
+  100% { color: var(--pow-ink); }
 }
 
-/* steps(1, end) is deliberate. Neon does not ease — the gas either
- * ionizes or it does not. Interpolated opacity reads as a CSS fade. */
+/* steps(1,end) is deliberate — gas either ionizes or it doesn't. Interpolated
+ * opacity reads as a CSS fade, not as neon. */
 @keyframes pow-tube-drop {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  14% {
-    opacity: 0.1;
-  }
-  30% {
-    opacity: 1;
-  }
-  44% {
-    opacity: 0.18;
-  }
-  58% {
-    opacity: 1;
-  }
-  72% {
-    opacity: 0.42;
-  }
-  86% {
-    opacity: 1;
-  }
+  0%, 100% { opacity: 1; }
+  14% { opacity: 0.1; }
+  30% { opacity: 1; }
+  44% { opacity: 0.18; }
+  58% { opacity: 1; }
+  72% { opacity: 0.42; }
+  86% { opacity: 1; }
 }
 
 @keyframes pow-hum {
-  0%,
-  100% {
-    filter: drop-shadow(0 0 22px var(--pow-neon-bloom));
-  }
-  50% {
-    filter: drop-shadow(0 0 26px var(--pow-neon-bloom-peak));
-  }
+  0%, 100% { filter: drop-shadow(0 0 22px var(--pow-bloom)); }
+  50% { filter: drop-shadow(0 0 26px var(--pow-bloom-peak)); }
 }
 
-/* Belt and braces. The component already refuses to animate under this
- * setting; this guarantees it even if the JS gate is bypassed. Because
- * lit is the base style, killing every animation leaves the sign
- * correctly rendered with no separate fallback to maintain. */
+/* Lit is the base style, so killing every animation leaves the sign correctly
+ * rendered. Rapid luminance flicker is a photosensitivity trigger and this runs
+ * on every page, so honor the preference hard (the JS gate also refuses). */
 @media (prefers-reduced-motion: reduce) {
   .sign,
-  .igniting,
   .letter,
+  .word,
   .igniting .letter,
   .flick {
     animation: none !important;
