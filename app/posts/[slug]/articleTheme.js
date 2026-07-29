@@ -159,7 +159,7 @@ export const ARTICLE_CSS = `
 .pow-article .commentlist{list-style:none;margin:24px 0 0;padding:0;display:flex;flex-direction:column;gap:12px;}
 .pow-article .commentitem{border:1px solid var(--line);background:var(--panel2);border-radius:12px;padding:14px 16px;}
 .pow-article .commenthead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
-.pow-article .commentaddr{cursor:pointer;word-break:break-all;font-size:13px;font-weight:600;color:var(--cyan);
+.pow-article .commentaddr{cursor:pointer;word-break:break-all;font-size:13px;font-weight:600;color:var(--hc,var(--cyan));
   text-decoration:none;transition:text-shadow .15s;}
 .pow-article .commentaddr--plain{cursor:default;}
 .pow-article a.commentaddr:hover{text-shadow:0 0 10px rgba(61,240,255,.4);}
@@ -239,7 +239,8 @@ html:not(.dark) .pow-article{
 html:not(.dark) .pow-article *{text-shadow:none;}
 /* Byline handle: the account's neon swatch (carried on --hc) is too bright on
    paper — darken it toward ink on the same hue, matching the feed. */
-html:not(.dark) .pow-article .bylink{color:color-mix(in oklab, var(--hc,var(--cyan)) 58%, #000);}
+html:not(.dark) .pow-article .bylink,
+html:not(.dark) .pow-article .commentaddr{color:color-mix(in oklab, var(--hc,var(--cyan)) 58%, #000);}
 html:not(.dark) .pow-article .prose blockquote{color:#3a3d33;}
 html:not(.dark) .pow-article .commentarea::placeholder{color:#a9a597;}
 /* Prose links: underlined ink-green, no glow (the underline does the work). */

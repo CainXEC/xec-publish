@@ -227,6 +227,7 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
             author_account_id: snap.accountId ?? null,
             author_identity: snap.identity ?? null,
             payer_address: snap.primaryAddress ?? null,
+            color: snap.handleColor ?? null,
             created_at: new Date().toISOString(),
             deleted: false,
             optimistic: true,
@@ -463,7 +464,9 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
     (comment) => {
       setComments((prev) => {
         if (comment.txid && prev.some((c) => c.txid === comment.txid)) {
-          return prev.map((c) => (c.txid === comment.txid ? { ...comment, deleted: false } : c))
+          // Merge (not replace): the confirm row corrects the byline/id but
+          // carries no `color`/`isAi`, so keep the optimistic ones through the swap.
+          return prev.map((c) => (c.txid === comment.txid ? { ...c, ...comment, deleted: false } : c))
         }
         return [...prev, { ...comment, deleted: false }]
       })
@@ -586,6 +589,13 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
             const canReply = canComment && !comment.deleted && !comment.optimistic
             // The byline links to the commenter's profile (handle or address).
             const profileTo = comment.deleted ? null : profileHref(byline)
+            // Carry the commenter's chosen handle color (--hc) so the byline
+            // matches the feed/profile. Only for handle bylines — a raw address
+            // byline gets no tint, exactly like the feed.
+            const bylineStyle =
+              !comment.deleted && comment.color && byline.startsWith('@')
+                ? { '--hc': comment.color }
+                : undefined
 
             return (
               <li key={comment.txid || comment.id} className="commentitem">
@@ -598,11 +608,11 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
                 <div className="commenthead">
                   <div>
                     {profileTo ? (
-                      <Link href={profileTo} className="commentaddr">
+                      <Link href={profileTo} className="commentaddr" style={bylineStyle}>
                         {truncateIdentity(byline)}
                       </Link>
                     ) : (
-                      <span className="commentaddr commentaddr--plain">
+                      <span className="commentaddr commentaddr--plain" style={bylineStyle}>
                         {truncateIdentity(byline)}
                       </span>
                     )}

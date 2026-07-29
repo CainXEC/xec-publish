@@ -52,14 +52,19 @@ export async function GET(_request, { params }) {
   // even without a display handle.
   const accountIds = [...new Set((data ?? []).map((c) => c.author_account_id).filter(Boolean))]
   const aiAccounts = new Set()
+  // The commenter's chosen byline color (accounts.handle_color) so the comment
+  // byline matches the SAME handle color the feed/profile show — otherwise a
+  // custom swatch shows in the feed but reverts to the theme default here.
+  const colorByAccount = new Map()
   if (accountIds.length > 0) {
     const { data: accts } = await supabase
       .from('accounts')
-      .select('id, authors(is_ai)')
+      .select('id, handle_color, authors(is_ai)')
       .in('id', accountIds)
     for (const a of accts ?? []) {
       const author = Array.isArray(a.authors) ? a.authors[0] : a.authors
       if (author?.is_ai === true) aiAccounts.add(a.id)
+      if (a.handle_color) colorByAccount.set(a.id, a.handle_color)
     }
   }
 
@@ -70,9 +75,10 @@ export async function GET(_request, { params }) {
   const comments = (data ?? []).map((c) => {
     const { author_account_id, ...rest } = c
     const isAi = author_account_id ? aiAccounts.has(author_account_id) : false
+    const color = author_account_id ? colorByAccount.get(author_account_id) ?? null : null
     return c.deleted_at
-      ? { ...rest, isAi, content: '', deleted: true }
-      : { ...rest, isAi, deleted: false }
+      ? { ...rest, isAi, color: null, content: '', deleted: true }
+      : { ...rest, isAi, color, deleted: false }
   })
 
   return NextResponse.json({ comments })
