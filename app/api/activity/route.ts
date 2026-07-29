@@ -54,6 +54,17 @@ const snippet = (s: unknown, n = 56) => {
   return t.length > n ? `${t.slice(0, n - 1)}…` : t;
 };
 
+// Merge rows from two queries (inbound + outbound of the same kind) by txid,
+// keeping first-seen order; txid-less rows are dropped (nothing to link/key on).
+function dedupeByTxid<T extends { txid: string | null }>(rows: T[]): T[] {
+  const seen = new Set<string>();
+  return rows.filter((r) => {
+    if (!r.txid || seen.has(r.txid)) return false;
+    seen.add(r.txid);
+    return true;
+  });
+}
+
 const bare = (address: string) => address.replace(/^ecash:/, "").toLowerCase();
 const shortAddr = (address: string) => {
   const b = bare(address);
@@ -111,6 +122,22 @@ export async function GET(req: NextRequest) {
     scopedAccountId = (links?.[0]?.account_id as string | undefined) ?? null;
   }
 
+  // All of this account's linked wallet addresses (primary + pocket + old ones
+  // after an address change). Outbound value — an unlock or mint the author PAID
+  // — can come from any of them (a Pocket payment's payer is a linked, non-primary
+  // address), so matching on the single passed address would miss those.
+  let authorAddressForms = addressForms;
+  if (scopedAccountId) {
+    const { data: addrs } = await supabase
+      .from("account_addresses")
+      .select("address")
+      .eq("account_id", scopedAccountId);
+    const bares = [
+      ...new Set(((addrs ?? []) as Array<{ address: string }>).map((a) => bare(a.address))),
+    ];
+    if (bares.length > 0) authorAddressForms = bares.flatMap((b) => [b, `ecash:${b}`]);
+  }
+
   let postsQuery = supabase
     .from("feed_posts")
     .select("txid, action, author_account_id, author_identity, payer_address, amount_sats, content, created_at, card_kind")
@@ -158,7 +185,63 @@ export async function GET(req: NextRequest) {
       : publishesQuery.eq("txid", "-");
   }
 
-  const [postsQ, eventsQ, unlocksQ, publishesQ, mintsQ, commentsQ, ownReactionsQ] = await Promise.all([
+  // Scoped-only symmetric sources. The base queries above capture value IN (their
+  // articles' unlocks, reactions paid to them) and their posts; these add the
+  // mirror image: value they SENT and their own article engagement.
+  //  - outbound unlocks: articles THEY unlocked (payer = one of their addresses)
+  //  - comments: on their articles (inbound) + ones they wrote (outbound)
+  //  - mints: handles they minted — the mint feed card is authored by the official
+  //    mint account, so attribution rides card_meta.minterAddress, not the author.
+  const outboundUnlocksQuery =
+    scoped && authorAddressForms.length > 0
+      ? supabase
+          .from("unlocks")
+          .select("txid, payer_address, unlocked_at, posts!inner(title, slug, price_xec, author_id, legacy)")
+          .in("payer_address", authorAddressForms)
+          .order("unlocked_at", { ascending: false })
+          .limit(PER_SOURCE)
+      : Promise.resolve({ data: [] as Array<never> });
+
+  // Comments never select `content` (paywalled) — the rail references the article.
+  const inboundCommentsQuery =
+    scoped && authorId
+      ? supabase
+          .from("comments")
+          .select("txid, author_account_id, author_identity, payer_address, amount_sats, created_at, posts!inner(title, slug, legacy, author_id)")
+          .is("deleted_at", null)
+          .not("txid", "is", null)
+          .eq("posts.author_id", authorId)
+          .order("created_at", { ascending: false })
+          .limit(PER_SOURCE)
+      : Promise.resolve({ data: [] as Array<never> });
+  const outboundCommentsQuery =
+    scoped && scopedAccountId
+      ? supabase
+          .from("comments")
+          .select("txid, author_account_id, author_identity, payer_address, amount_sats, created_at, posts!inner(title, slug, legacy)")
+          .is("deleted_at", null)
+          .not("txid", "is", null)
+          .eq("author_account_id", scopedAccountId)
+          .order("created_at", { ascending: false })
+          .limit(PER_SOURCE)
+      : Promise.resolve({ data: [] as Array<never> });
+
+  const scopedMintsQuery =
+    scoped && authorAddressForms.length > 0
+      ? supabase
+          .from("feed_posts")
+          .select("txid, card_meta, created_at")
+          .eq("card_kind", "handle_mint")
+          .is("deleted_at", null)
+          .in("card_meta->>minterAddress", authorAddressForms)
+          .order("created_at", { ascending: false })
+          .limit(PER_SOURCE)
+      : Promise.resolve({ data: [] as Array<never> });
+
+  const [
+    postsQ, eventsQ, unlocksQ, publishesQ, mintsQ, commentsQ, ownReactionsQ,
+    outUnlocksQ, inCommentsQ, outCommentsQ, scopedMintsQ,
+  ] = await Promise.all([
     postsQuery,
     eventsQuery,
     unlocksQuery,
@@ -199,6 +282,10 @@ export async function GET(req: NextRequest) {
           .order("created_at", { ascending: false })
           .limit(PER_SOURCE)
       : Promise.resolve({ data: [] as Array<never> }),
+    outboundUnlocksQuery,
+    inboundCommentsQuery,
+    outboundCommentsQuery,
+    scopedMintsQuery,
   ]);
 
   const items: ActivityItem[] = [];
@@ -222,7 +309,14 @@ export async function GET(req: NextRequest) {
     posts: { title: string | null; slug: string | null; legacy?: boolean | null } | null;
   };
   const posts = (postsQ.data ?? []) as PostRow[];
-  const comments = (commentsQ.data ?? []) as unknown as CommentRow[];
+  // Site-wide: the firehose comment query. Scoped: comments ON their articles
+  // (inbound) + comments they WROTE (outbound), merged and de-duped by txid.
+  const comments = scoped
+    ? dedupeByTxid([
+        ...((inCommentsQ.data ?? []) as unknown as CommentRow[]),
+        ...((outCommentsQ.data ?? []) as unknown as CommentRow[]),
+      ])
+    : ((commentsQ.data ?? []) as unknown as CommentRow[]);
   // Reactions the author received + (scoped) their own likes/tips/reposts,
   // de-duped by txid — the final items.sort() below orders the merged stream.
   const seenEventTxids = new Set<string>();
@@ -353,7 +447,12 @@ export async function GET(req: NextRequest) {
     txid: string; payer_address: string | null; unlocked_at: string;
     posts: { title: string | null; slug: string | null; price_xec: number | null; legacy?: boolean | null } | null;
   };
-  const unlocks = (unlocksQ.data ?? []) as unknown as UnlockRow[];
+  // Site-wide: recent unlocks. Scoped: unlocks OF their articles (revenue in) +
+  // unlocks THEY paid for on others' articles (outbound), merged + de-duped.
+  const unlocks = dedupeByTxid([
+    ...((unlocksQ.data ?? []) as unknown as UnlockRow[]),
+    ...((outUnlocksQ.data ?? []) as unknown as UnlockRow[]),
+  ]);
   const payerBare = [
     ...new Set(unlocks.map((u) => (u.payer_address ? bare(u.payer_address) : null)).filter(Boolean)),
   ] as string[];
@@ -477,6 +576,30 @@ export async function GET(req: NextRequest) {
       at: m.created_at,
       href: `/@${m.handle}`,
       txid: m.token_id,
+    });
+  }
+
+  // ---- scoped: the author's OWN handle mints. The mint feed card is authored by
+  //      the official mint account, so it's matched via card_meta.minterAddress
+  //      (set on both paid mints and free claims); render like the site-wide rows. ----
+  type ScopedMintRow = {
+    txid: string;
+    card_meta: { handle?: string; tier?: string; priceXec?: number; minterAddress?: string } | null;
+    created_at: string;
+  };
+  for (const m of (scopedMintsQ.data ?? []) as ScopedMintRow[]) {
+    const handle = m.card_meta?.handle;
+    if (!handle) continue;
+    items.push({
+      id: `mt:${m.txid}`,
+      kind: "mint",
+      actor: `@${handle}`,
+      actorHref: `/@${encodeURIComponent(handle)}`,
+      target: null,
+      amountXec: priceForHandle(handle).priceXec,
+      at: m.created_at,
+      href: `/@${handle}`,
+      txid: m.txid,
     });
   }
 
