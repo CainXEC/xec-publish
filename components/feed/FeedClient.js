@@ -324,6 +324,12 @@ export default function FeedClient({
           <ThreadPane txid={pane.txid} onClose={closeReader} onOpenThread={wideShell ? openThread : undefined} />
         ) : null}
         <div style={pane ? { display: 'none' } : undefined}>
+        {/* The front page, reflowed above the feed below 1280px (CSS-hidden at
+            wider widths where the left rail carries it). Its own matchMedia gate
+            means only one placement fetches at a time. */}
+        <div className="feed-topstories">
+          <ArticleRail variant="top" />
+        </div>
         <ComposeBox
           action="post"
           onPosted={prependPost}

@@ -198,19 +198,34 @@ function Entry({ story, now, onOpen }) {
   )
 }
 
-export default function ArticleRail({ minWidth = WIDE_RAIL_MIN, currentSlug = null, onOpenStory = null }) {
+export default function ArticleRail({
+  minWidth = WIDE_RAIL_MIN,
+  currentSlug = null,
+  onOpenStory = null,
+  // 'rail' = the wide-desktop LEFT column (≥ minWidth). 'top' = the compact,
+  // collapsible reflow that fills the gap BELOW the rail but ABOVE the mobile
+  // bottom bar — the 1100–1279 band where there's neither the left rail (≥1280)
+  // nor the bottom nav's "Paper" tab (<1100), so the front page would otherwise
+  // vanish. Below 1100 the Paper tab already carries it, so the reflow stops
+  // there rather than stacking on phones.
+  variant = 'rail',
+}) {
   const [data, setData] = useState(null)
-  // The front page only exists above the host page's breakpoint — don't
-  // fetch where it can't show.
+  // The front page only fetches where it can actually show — the rail above its
+  // breakpoint, the compact reflow in the gap band below it.
   const [active, setActive] = useState(false)
 
   useEffect(() => {
-    const mq = window.matchMedia(`(min-width: ${minWidth}px)`)
+    const query =
+      variant === 'top'
+        ? `(min-width: 1100px) and (max-width: ${minWidth - 1}px)`
+        : `(min-width: ${minWidth}px)`
+    const mq = window.matchMedia(query)
     const update = () => setActive(mq.matches)
     update()
     mq.addEventListener('change', update)
     return () => mq.removeEventListener('change', update)
-  }, [minWidth])
+  }, [minWidth, variant])
 
   // On an article page, mark the story being read wherever it appears.
   const isNow = (s) => Boolean(currentSlug) && s.slug === currentSlug
@@ -248,6 +263,55 @@ export default function ArticleRail({ minWidth = WIDE_RAIL_MIN, currentSlug = nu
   const lead = data?.lead ?? null
   const more = data?.more ?? []
   const mostRead = data?.mostRead ?? []
+
+  // Compact reflow (below the rail breakpoint): masthead + lead + the top few
+  // "most read" always visible, then the rest of the stories behind a native
+  // <details> expander. Stories navigate to their page (no in-pane intercept),
+  // which works at every width down to phones. Same data, same sub-components.
+  if (variant === 'top') {
+    const hasAny = lead || more.length > 0 || mostRead.length > 0
+    return (
+      <div className="npaper npaper-top">
+        <div className="np-mast">The front page</div>
+
+        {data === null ? (
+          <p className="np-empty">Setting the type…</p>
+        ) : !hasAny ? (
+          <p className="np-empty">The presses are warm and the front page is blank.</p>
+        ) : (
+          <>
+            {lead ? <Lead story={lead} now={isNow(lead)} onOpen={null} /> : null}
+
+            {mostRead.length > 0 ? (
+              <>
+                <div className="np-sec">Most read this week</div>
+                {mostRead.slice(0, 3).map((s, i) => (
+                  <MostReadEntry key={s.id} story={s} rank={i + 1} now={isNow(s)} onOpen={null} />
+                ))}
+              </>
+            ) : null}
+
+            {more.length > 0 ? (
+              <details className="np-more">
+                <summary className="np-sec np-more-sum">
+                  More stories <span className="np-more-n">({more.length})</span>
+                </summary>
+                <div className="np-more-body">
+                  {more.map((s) => (
+                    <Entry key={s.id} story={s} now={isNow(s)} onOpen={null} />
+                  ))}
+                </div>
+              </details>
+            ) : null}
+          </>
+        )}
+
+        <div className="np-foot">
+          Write your story. <Link href="/dashboard">Publish for 1,000 XEC</Link>.
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="npaper">

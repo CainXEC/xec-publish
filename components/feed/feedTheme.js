@@ -946,6 +946,29 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 /* first section header leads the widget — trim its top padding. */
 .pow-feed .np-sec.np-first{padding-top:4px;}
 
+/* ---- the front page, reflowed ABOVE the feed in the 1100–1279 gap band ----
+   The left rail (.feed-left) only appears at ≥WIDE_RAIL_MIN and the mobile
+   bottom bar's "Paper" tab only <1100, leaving a band where a narrow desktop
+   window sees no front page at all. This compact copy fills exactly that band
+   (hidden ≥WIDE_RAIL_MIN where the rail takes over, and <1100 where Paper
+   does). Its matchMedia gate matches, so only one placement fetches. */
+.pow-feed .feed-topstories{display:none;margin-bottom:16px;}
+@media (min-width:1100px) and (max-width:${WIDE_RAIL_MIN - 1}px){
+  .pow-feed .feed-topstories{display:block;}
+}
+.pow-feed .npaper-top{margin-top:0;}
+/* "More stories" expander: a section header that toggles the rest of the list.
+   Native <details> — no JS — with the disclosure marker replaced by a chevron. */
+.pow-feed .np-more{margin-top:2px;}
+.pow-feed .np-more-sum{display:flex;align-items:center;gap:6px;cursor:pointer;list-style:none;
+  padding-top:12px;user-select:none;}
+.pow-feed .np-more-sum::-webkit-details-marker{display:none;}
+.pow-feed .np-more-n{color:var(--dim);}
+.pow-feed .np-more-sum::after{content:'▾';margin-left:auto;font-size:11px;color:var(--dim);
+  transition:transform .15s;}
+.pow-feed .np-more[open] .np-more-sum::after{transform:rotate(180deg);}
+.pow-feed .np-more-sum:hover{color:var(--text);}
+
 /* shown only on mobile (the bottom-bar shell), hidden where the topbar
    hamburger still carries the same action */
 @media (min-width:1100px){.pow-feed .dash-mobile-only{display:none;}}
