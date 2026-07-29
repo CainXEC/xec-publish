@@ -25,9 +25,10 @@
   font-family: var(--pow-logo-font, 'Bebas Neue', Impact, 'Arial Narrow', sans-serif);
   font-weight: 400;
   /* Header-fit size (the demo's standalone banner uses clamp(30px,6.4vw,62px)).
-   * Floor kept low enough that the absolutely-centered wordmark clears the
-   * bell/theme items on a narrow phone. */
-  font-size: clamp(20px, 2.6vw, 30px);
+   * Floor is tuned so the sign's cap-height ~= the 30px icon-button height on a
+   * phone; it still clears the absolutely-centered wordmark past the bell/theme
+   * items at 375px. Desktop ceiling unchanged at 30px. */
+  font-size: clamp(25px, 2.8vw, 30px);
   letter-spacing: 0.09em;
   line-height: 1;
   white-space: nowrap;
