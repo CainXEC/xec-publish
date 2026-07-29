@@ -31,10 +31,14 @@ const SEQUENCE_GAP_MS = 760; // between word flickers
 const SETTLE_MS = 650; // hold after full ignition, before the sweep
 const BLIP_THROTTLE_MS = 3000;
 
-// Ignite once per browsing session, not on every SPA navigation that remounts
-// the header. Cleared naturally when the tab closes.
-const SESSION_KEY = 'pow-logo-ignited';
 const DEFAULT_WORDS: [string, string, string] = ['PROOF', 'OF', 'WRITING'];
+
+// Plays once per full page load. A MODULE-level flag (not sessionStorage): a
+// real refresh re-evaluates the module and replays the entrance, while in-app
+// (SPA) navigations that remount the header — FeedTopbar is rendered per-page,
+// not in a persistent layout — reuse the loaded module and skip it. forceAnimate
+// bypasses this (the dev bench, which replays on demand).
+let hasIgnitedThisLoad = false;
 
 const useIsomorphicLayoutEffect =
   typeof window !== 'undefined' ? useLayoutEffect : useEffect;
@@ -74,10 +78,6 @@ const AnimatedLogo = forwardRef<AnimatedLogoHandle, AnimatedLogoProps>(
     const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
     const lastBlip = useRef(0);
     const reducedMotion = useRef(false);
-    // Decide-once latch: StrictMode double-invokes effects in dev, and the
-    // session gate would otherwise consume its own flag on the first pass and
-    // read "already seen" on the second, cancelling the animation.
-    const shouldAnimate = useRef<boolean | null>(null);
 
     const clearTimers = useCallback(() => {
       timers.current.forEach(clearTimeout);
@@ -129,12 +129,11 @@ const AnimatedLogo = forwardRef<AnimatedLogoHandle, AnimatedLogoProps>(
       return () => mq.removeEventListener('change', sync);
     }, [clearTimers]);
 
-    // Re-strike on theme flip. Desktop gets this "for free": the theme-scoped
-    // letter animation swaps (pow-ignite <-> pow-fill-in) and the browser re-runs
-    // it. But mobile Safari/Chrome do NOT restart a *finished* animation when only
-    // its name changes, so once the initial ignition has settled a theme toggle
-    // does nothing there. Drive it explicitly for parity — power-on only (no word
-    // flicker sweep), matching what desktop does on its own.
+    // Re-strike on every theme flip. Desktop used to get this "for free" (the
+    // theme-scoped letter animation swaps pow-ignite <-> pow-fill-in and the
+    // browser re-runs it), but mobile Safari/Chrome don't restart a *finished*
+    // animation on a name change, and the once-per-load gate means the sign may
+    // not be mid-animation anyway. So drive it explicitly on every engine.
     useEffect(() => {
       const root = document.documentElement;
       let wasDark = root.classList.contains('dark');
@@ -143,39 +142,29 @@ const AnimatedLogo = forwardRef<AnimatedLogoHandle, AnimatedLogoProps>(
         if (isDark === wasDark) return; // some other class changed
         wasDark = isDark;
         if (reducedMotion.current) return;
-        // Remount the letters (their key carries `gen`) so the power-on animation
-        // runs from scratch — synchronous and reliable on every engine, unlike a
-        // reflow + requestAnimationFrame (rAF is paused in a backgrounded tab).
-        // The dark-only hum lives on the sign and starts/stops with the theme in
-        // CSS, so it needs no restart. Cancel any in-flight ignition sweep first.
         clearTimers();
+        // Ensure the sign is lit — on a page reached by SPA nav the initial
+        // ignition was gated off, so igniting is still false here — then remount
+        // the letters (their key carries `gen`) to replay the power-on from its
+        // dark 0% frame. A remount is synchronous and reliable on every engine,
+        // unlike reflow + requestAnimationFrame (rAF is paused in a hidden tab).
+        // The dark-only hum lives on the sign and starts/stops with the theme in
+        // CSS, so it needs no restart.
+        setIgniting(true);
         setGen((g) => g + 1);
       });
       obs.observe(root, { attributes: true, attributeFilter: ['class'] });
       return () => obs.disconnect();
     }, [clearTimers]);
 
-    // Ignition on mount — layout effect so the dark 0% frame is committed
-    // before first paint (no flash of lit text, then dark, then ignite).
+    // Ignition on mount — layout effect so the dark 0% frame is committed before
+    // first paint (no flash of lit text, then dark, then ignite). Gated to once
+    // per full page load (module flag): a refresh replays it, SPA-nav remounts
+    // don't. The dev bench passes forceAnimate to bypass the gate on every mount.
     useIsomorphicLayoutEffect(() => {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-      if (shouldAnimate.current === null) {
-        if (forceAnimate) {
-          shouldAnimate.current = true;
-        } else {
-          let seen = false;
-          try {
-            seen = sessionStorage.getItem(SESSION_KEY) === '1';
-            if (!seen) sessionStorage.setItem(SESSION_KEY, '1');
-          } catch {
-            seen = true; // storage blocked → skip, land on the lit base state
-          }
-          shouldAnimate.current = !seen;
-        }
-      }
-      if (!shouldAnimate.current) return;
-
+      if (!forceAnimate && hasIgnitedThisLoad) return;
+      hasIgnitedThisLoad = true;
       setIgniting(true);
       runSweep(IGNITE_MS + wordLetterCount * STAGGER_STEP_MS + SETTLE_MS);
       return clearTimers;
