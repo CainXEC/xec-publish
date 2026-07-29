@@ -19,16 +19,21 @@ function formatXec(amount) {
   return n.toFixed(8).replace(/\.?0+$/, '')
 }
 
+// Pinned locale + UTC timezone so the server and the client hydrate identical
+// text (an un-pinned toLocaleString disagrees across zones → React #418). The
+// zone label keeps the shown clock honest since it's rendered in UTC.
 function formatPublishedDate(iso) {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'UTC',
+    timeZoneName: 'short',
   })
 }
 

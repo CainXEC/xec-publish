@@ -27,11 +27,18 @@ function formatXec(amount) {
   return n.toFixed(8).replace(/\.?0+$/, '')
 }
 
+// Pinned locale + UTC timezone so the server and the client hydrate identical
+// text (an un-pinned toLocaleDateString disagrees across zones → React #418).
 function formatDate(iso) {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+  return d.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  })
 }
 
 function unlockCount(post) {

@@ -199,12 +199,15 @@ const cashtabTokenUrl = (tokenId: string) => `https://cashtab.com/#/token/${toke
 const fmtXec = (n: number) =>
   n.toLocaleString(undefined, { maximumFractionDigits: 2 }) + " XEC";
 
+// Pinned locale + UTC timezone so the server and the client hydrate identical
+// text (an un-pinned toLocaleDateString disagrees across zones → React #418).
 const fmtDate = (iso: string) => {
   try {
-    return new Date(iso).toLocaleDateString(undefined, {
+    return new Date(iso).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
+      timeZone: "UTC",
     });
   } catch {
     return "";

@@ -24,16 +24,24 @@ import {
 } from '@/lib/webAudioUnlock'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 
-function formatArticlePublishedDate(iso) {
+// Server and client must render the SAME text on first paint, or React throws
+// a hydration mismatch (#418): the server runs in UTC, the browser in the
+// visitor's local zone, so an un-pinned toLocaleString disagrees on the
+// hour/minute. We pin the timezone explicitly. `localZone=false` (the default,
+// used for SSR + the first client render) formats in UTC so both sides match;
+// after mount the byline re-renders with the reader's local zone.
+function formatArticlePublishedDate(iso, localZone = false) {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: localZone ? undefined : 'UTC',
+    timeZoneName: 'short',
   })
 }
 
@@ -100,6 +108,9 @@ export default function PostPageClient({
   const [me, setMe] = useState(null)
   const [isFollowingAuthor, setIsFollowingAuthor] = useState(false)
   const [followAuthorBusy, setFollowAuthorBusy] = useState(false)
+  // Gates the byline timestamp from its SSR-safe UTC render up to the reader's
+  // local timezone once we're on the client (see formatArticlePublishedDate).
+  const [mounted, setMounted] = useState(false)
   const shareCopyTimeoutRef = useRef(null)
 
   // Author / admin identity now comes from the wallet session (/api/me), not
@@ -110,6 +121,10 @@ export default function PostPageClient({
     me?.authorId && post?.author_id && me.authorId === post.author_id,
   )
   const isAdminSession = me?.isAdmin === true
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     setBodyHtml(initialBodyHtml ?? '')
@@ -810,7 +825,9 @@ export default function PostPageClient({
           </p>
           {articleDateIso ? (
             <p className="artdate">
-              <time dateTime={articleDateIso}>{formatArticlePublishedDate(articleDateIso)}</time>
+              <time dateTime={articleDateIso} suppressHydrationWarning>
+                {formatArticlePublishedDate(articleDateIso, mounted)}
+              </time>
             </p>
           ) : null}
           <div className="share">
