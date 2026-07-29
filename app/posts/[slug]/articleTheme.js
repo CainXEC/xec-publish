@@ -51,7 +51,9 @@ export const ARTICLE_CSS = `
   font-weight:600;line-height:1;padding:5px 12px;border-radius:999px;cursor:pointer;
   transition:background .15s,color .15s,box-shadow .15s;}
 .pow-article .followbtn:hover:not(:disabled){box-shadow:0 0 10px rgba(0,255,156,.4);}
-.pow-article .followbtn.on{background:var(--neon);color:#04120c;}
+/* Following: a bare accent check like the profile's ✓, not a filled pill. */
+.pow-article .followbtn.on{background:none;border-color:transparent;color:var(--neon);font-size:16px;padding:5px 6px;box-shadow:none;}
+.pow-article .followbtn.on:hover:not(:disabled){box-shadow:none;text-shadow:0 0 8px rgba(0,255,156,.55);}
 .pow-article .followbtn:disabled{opacity:.6;cursor:default;}
 .pow-article .artdate{margin:6px 0 0;font-size:13px;color:var(--dim);}
 .pow-article .artdate time{font-variant-numeric:tabular-nums;}
@@ -254,8 +256,8 @@ html:not(.dark) .pow-article .postcomment-btn:hover:not(:disabled){
 html:not(.dark) .pow-article .unlockbtn:disabled,
 html:not(.dark) .pow-article .postcomment-btn:disabled{
   background:transparent;color:var(--dim);border-color:var(--line);box-shadow:none;}
-/* Follow pill stays an outline until active, then fills accent. */
-html:not(.dark) .pow-article .followbtn.on{color:#fdfcf8;}
+/* Not-following is an outline pill; following is a bare accent check in both
+   themes (see .followbtn.on above), so no light-mode fill override is needed. */
 /* Elevation: recessed cards get a hairline + soft shadow, not a glow. */
 html:not(.dark) .pow-article .pollcard,
 html:not(.dark) .pow-article .commentitem,

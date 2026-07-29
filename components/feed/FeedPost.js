@@ -168,17 +168,9 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
     }
   }, [busyBlock, authorAccountId, authorLabel, onBlocked])
 
-  // Already following: a static check, no menu. Unfollowing is a profile action,
-  // so the feed just reflects the relationship rather than offering to change it.
-  if (following) {
-    return (
-      <span className="postmenu">
-        <span className="followmark" title="You follow this account" aria-label="Following">
-          ✓
-        </span>
-      </span>
-    )
-  }
+  // Already following: show nothing at all. The feed isn't where you manage a
+  // follow — no re-follow prompt, and unfollowing is a profile action.
+  if (following) return null
 
   // Not following: the + opens the follow / block menu.
   return (

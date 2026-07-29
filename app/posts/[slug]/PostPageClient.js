@@ -810,9 +810,7 @@ export default function PostPageClient({
                     {followAuthorBusy ? (
                       '…'
                     ) : isFollowingAuthor ? (
-                      <>
-                        <span aria-hidden>✓</span> Following
-                      </>
+                      <span aria-hidden>✓</span>
                     ) : (
                       <span aria-hidden>+</span>
                     )}
