@@ -64,6 +64,10 @@ const AnimatedLogo = forwardRef<AnimatedLogoHandle, AnimatedLogoProps>(
     // animation is opted into after mount. Never read sessionStorage/matchMedia
     // during render — that's what keeps hydration clean.
     const [igniting, setIgniting] = useState(false);
+    // Bumped on each theme flip to remount the letters (their `key` includes it),
+    // which restarts the power-on animation deterministically — see the theme
+    // observer below.
+    const [gen, setGen] = useState(0);
 
     const rootRef = useRef<HTMLSpanElement>(null);
     const wordRefs = useRef<(HTMLSpanElement | null)[]>([]);
@@ -123,6 +127,32 @@ const AnimatedLogo = forwardRef<AnimatedLogoHandle, AnimatedLogoProps>(
       sync();
       mq.addEventListener('change', sync);
       return () => mq.removeEventListener('change', sync);
+    }, [clearTimers]);
+
+    // Re-strike on theme flip. Desktop gets this "for free": the theme-scoped
+    // letter animation swaps (pow-ignite <-> pow-fill-in) and the browser re-runs
+    // it. But mobile Safari/Chrome do NOT restart a *finished* animation when only
+    // its name changes, so once the initial ignition has settled a theme toggle
+    // does nothing there. Drive it explicitly for parity — power-on only (no word
+    // flicker sweep), matching what desktop does on its own.
+    useEffect(() => {
+      const root = document.documentElement;
+      let wasDark = root.classList.contains('dark');
+      const obs = new MutationObserver(() => {
+        const isDark = root.classList.contains('dark');
+        if (isDark === wasDark) return; // some other class changed
+        wasDark = isDark;
+        if (reducedMotion.current) return;
+        // Remount the letters (their key carries `gen`) so the power-on animation
+        // runs from scratch — synchronous and reliable on every engine, unlike a
+        // reflow + requestAnimationFrame (rAF is paused in a backgrounded tab).
+        // The dark-only hum lives on the sign and starts/stops with the theme in
+        // CSS, so it needs no restart. Cancel any in-flight ignition sweep first.
+        clearTimers();
+        setGen((g) => g + 1);
+      });
+      obs.observe(root, { attributes: true, attributeFilter: ['class'] });
+      return () => obs.disconnect();
     }, [clearTimers]);
 
     // Ignition on mount — layout effect so the dark 0% frame is committed
@@ -205,7 +235,9 @@ const AnimatedLogo = forwardRef<AnimatedLogoHandle, AnimatedLogoProps>(
       >
         {words.map((word, w) => (
           <span
-            key={`${word}-${w}`}
+            // gen makes a theme flip remount the word (and its letters), which
+            // restarts the CSS power-on from its dark 0% frame.
+            key={`${word}-${w}-${gen}`}
             ref={(el) => {
               wordRefs.current[w] = el;
             }}
