@@ -162,13 +162,13 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
     <span className="postmenu" ref={rootRef}>
       <button
         type="button"
-        className="menubtn"
+        className={`menubtn${following ? ' on' : ''}`}
         onClick={() => setOpen((s) => !s)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Follow or block"
+        aria-label={following ? 'Following — manage or block' : 'Follow or block'}
       >
-        +
+        {following ? '✓' : '+'}
       </button>
       {open ? (
         <div className="menupop" role="menu">
