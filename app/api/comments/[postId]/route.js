@@ -52,20 +52,45 @@ export async function GET(_request, { params }) {
   // even without a display handle.
   const accountIds = [...new Set((data ?? []).map((c) => c.author_account_id).filter(Boolean))]
   const aiAccounts = new Set()
-  // The commenter's chosen byline color (accounts.handle_color) so the comment
-  // byline matches the SAME handle color the feed/profile show — otherwise a
-  // custom swatch shows in the feed but reverts to the theme default here.
+  // Live handle (accounts.display_handle), the chosen byline color
+  // (accounts.handle_color), and the account's CURRENT primary address — the
+  // three things a live byline needs, resolved per account.
+  const handleByAccount = new Map()
   const colorByAccount = new Map()
+  const primaryByAccount = new Map()
   if (accountIds.length > 0) {
-    const { data: accts } = await supabase
-      .from('accounts')
-      .select('id, handle_color, authors(is_ai)')
-      .in('id', accountIds)
+    const [{ data: accts }, { data: primaries }] = await Promise.all([
+      supabase
+        .from('accounts')
+        .select('id, display_handle, handle_color, authors(is_ai)')
+        .in('id', accountIds),
+      supabase
+        .from('account_addresses')
+        .select('account_id, address')
+        .in('account_id', accountIds)
+        .eq('is_primary', true),
+    ])
     for (const a of accts ?? []) {
       const author = Array.isArray(a.authors) ? a.authors[0] : a.authors
       if (author?.is_ai === true) aiAccounts.add(a.id)
+      if (a.display_handle) handleByAccount.set(a.id, a.display_handle)
       if (a.handle_color) colorByAccount.set(a.id, a.handle_color)
     }
+    for (const r of primaries ?? []) {
+      if (!primaryByAccount.has(r.account_id)) primaryByAccount.set(r.account_id, r.address)
+    }
+  }
+
+  // Byline resolves LIVE from the account's CURRENT handle, exactly like feed
+  // posts and article bylines (getFeed attachLiveIdentity): "@handle" if the
+  // account still holds one, else its current primary address. The frozen
+  // author_identity stays only as a last-resort fallback for legacy rows with
+  // no linked account — so a handle since sold/renamed stops showing here.
+  // Only a live handle byline carries the custom color (address bylines don't).
+  const liveByline = (accountId, frozen, payer) => {
+    const handle = accountId ? handleByAccount.get(accountId) : null
+    if (handle) return `@${handle}`
+    return (accountId && primaryByAccount.get(accountId)) || frozen || payer || null
   }
 
   // A deleted comment is kept as a tombstone (so replies under it keep their
@@ -75,10 +100,12 @@ export async function GET(_request, { params }) {
   const comments = (data ?? []).map((c) => {
     const { author_account_id, ...rest } = c
     const isAi = author_account_id ? aiAccounts.has(author_account_id) : false
-    const color = author_account_id ? colorByAccount.get(author_account_id) ?? null : null
+    const hasHandle = author_account_id ? handleByAccount.has(author_account_id) : false
+    const color = hasHandle ? colorByAccount.get(author_account_id) ?? null : null
+    const author_identity = liveByline(author_account_id, c.author_identity, c.payer_address)
     return c.deleted_at
       ? { ...rest, isAi, color: null, content: '', deleted: true }
-      : { ...rest, isAi, color, deleted: false }
+      : { ...rest, isAi, color, author_identity, deleted: false }
   })
 
   return NextResponse.json({ comments })
