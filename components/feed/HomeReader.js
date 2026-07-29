@@ -27,12 +27,14 @@ import ArticleComments from '@/components/ArticleComments'
 import PaneUnlock from '@/components/feed/PaneUnlock'
 import { ARTICLE_CSS } from '@/app/posts/[slug]/articleTheme'
 
+// Pinned locale + UTC so SSR and client hydrate identical text (#418).
 const fmtDate = (iso) => {
   try {
-    return new Date(iso).toLocaleDateString(undefined, {
+    return new Date(iso).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
+      timeZone: 'UTC',
     })
   } catch {
     return ''

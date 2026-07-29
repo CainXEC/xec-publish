@@ -32,7 +32,12 @@ function timeAgo(iso) {
   if (s < 86400) return `${Math.floor(s / 3600)}h ago`
   if (s < 7 * 86400) return `${Math.floor(s / 86400)}d ago`
   try {
-    return new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    // Pinned locale + UTC so SSR and client hydrate identical text (#418).
+    return new Date(t).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'UTC',
+    })
   } catch {
     return ''
   }
@@ -128,7 +133,11 @@ export default function AuthorFrontPage({ identity, stories = [], onOpenStory = 
     return Number.isFinite(t) && t < min ? t : min
   }, Infinity)
   const since = Number.isFinite(earliest) && earliest !== Infinity
-    ? new Date(earliest).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+    ? new Date(earliest).toLocaleDateString('en-US', {
+        month: 'short',
+        year: 'numeric',
+        timeZone: 'UTC',
+      })
     : null
 
   const mostRead = usable

@@ -28,7 +28,12 @@ function timeAgo(iso) {
   if (hrs < 24) return `${hrs}h`
   const days = Math.floor(hrs / 24)
   if (days < 7) return `${days}d`
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  // Pinned locale + UTC so SSR and client hydrate identical text (#418).
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  })
 }
 
 function truncateAddress(addr) {

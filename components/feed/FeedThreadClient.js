@@ -47,7 +47,12 @@ function timeAgo(iso) {
   if (hrs < 24) return `${hrs}h`
   const days = Math.floor(hrs / 24)
   if (days < 7) return `${days}d`
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  // Pinned locale + UTC so SSR and client hydrate identical text (#418).
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  })
 }
 
 function ThreadByline({ identity }) {
@@ -226,13 +231,17 @@ export default function FeedThreadClient({
     }
   }
 
+  // Pinned locale + UTC (with a zone label) so SSR and client hydrate
+  // identical text (#418).
   const createdAt = post?.created_at
-    ? new Date(post.created_at).toLocaleString(undefined, {
+    ? new Date(post.created_at).toLocaleString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
+        timeZone: 'UTC',
+        timeZoneName: 'short',
       })
     : ''
 
