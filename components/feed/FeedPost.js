@@ -85,6 +85,15 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
   const [open, setOpen] = useState(false)
   const [following, setFollowing] = useState(Boolean(initialFollowing))
   const [busyFollow, setBusyFollow] = useState(false)
+
+  // On the For You feed, followedByViewer arrives via a post-mount overlay (see
+  // FeedClient), so initialFollowing can flip true after this mounts. useState
+  // only seeds the first render — latch it on when it arrives so a person you
+  // already follow doesn't show a "+" (an unfollow sets false locally and won't
+  // be reverted: the prop doesn't change back to true on this dep).
+  useEffect(() => {
+    if (initialFollowing) setFollowing(true)
+  }, [initialFollowing])
   const [busyBlock, setBusyBlock] = useState(false)
   const rootRef = useRef(null)
 
@@ -148,13 +157,14 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
     <span className="postmenu" ref={rootRef}>
       <button
         type="button"
-        className="menubtn"
+        className={`menubtn${following ? ' following' : ''}`}
         onClick={() => setOpen((s) => !s)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Follow or block"
+        aria-label={following ? 'Following — manage' : 'Follow or block'}
+        title={following ? 'Following' : 'Follow or block'}
       >
-        +
+        {following ? '✓' : '+'}
       </button>
       {open ? (
         <div className="menupop" role="menu">

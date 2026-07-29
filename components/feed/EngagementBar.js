@@ -43,6 +43,19 @@ export default function EngagementBar({
   const [liked, setLiked] = useState(likedByViewer)
   const [reposted, setReposted] = useState(repostedByViewer)
 
+  // The For You feed is served viewer-neutral and personalized by a post-mount
+  // overlay (see FeedClient), so likedByViewer/repostedByViewer can flip true
+  // AFTER this mounts — but useState only seeds the first render. Latch the "on"
+  // state when the prop arrives, or a post you've already liked never shows red
+  // on that feed. Reactions are one-way in v1 (no un-like), so we only latch on,
+  // and we don't touch the counts — the cached count already includes your like.
+  useEffect(() => {
+    if (likedByViewer) setLiked(true)
+  }, [likedByViewer])
+  useEffect(() => {
+    if (repostedByViewer) setReposted(true)
+  }, [repostedByViewer])
+
   // Which reaction is mid-payment, if any: 'like' | 'repost' | null.
   const [pending, setPending] = useState(null)
   const [intent, setIntent] = useState(null)
