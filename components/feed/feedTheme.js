@@ -425,8 +425,11 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
   padding:0 6px;border-radius:6px;cursor:pointer;transition:color .15s,background .15s;}
 .pow-feed .menubtn:hover{color:var(--text);background:rgba(255,255,255,.05);}
 /* Already-following state: the trigger shows a check instead of a +, tinted so
-   it reads as "you follow them" rather than a follow prompt. */
+   it reads as "you follow them" rather than a follow prompt. On a profile the
+   check still opens the manage menu (.menubtn.on); on a feed post it's a static,
+   non-interactive marker (.followmark) — unfollow is a profile action. */
 .pow-feed .menubtn.on{color:var(--neon);}
+.pow-feed .followmark{color:var(--neon);font-size:19px;font-weight:600;line-height:1;padding:0 6px;cursor:default;}
 .pow-feed .menupop{position:absolute;top:100%;right:0;margin-top:4px;z-index:20;width:max-content;min-width:96px;
   background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px;
   box-shadow:0 8px 24px rgba(0,0,0,.5);}

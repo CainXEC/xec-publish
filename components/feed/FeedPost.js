@@ -111,6 +111,16 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
     return () => document.removeEventListener('mousedown', onDocClick)
   }, [open])
 
+  // The feed renders viewer-neutral posts from cache, then patches
+  // followedByViewer in via /api/feed/viewer-state AFTER mount — so seeding
+  // `following` from useState alone would freeze it at the mount-time value
+  // (usually false) and keep showing a +. Re-sync when the prop actually flips.
+  // Safe against optimistic toggles: the feed doesn't refetch viewer-state on a
+  // follow, so initialFollowing doesn't change under an in-flight toggle.
+  useEffect(() => {
+    setFollowing(Boolean(initialFollowing))
+  }, [initialFollowing])
+
   const toggleFollow = useCallback(async () => {
     if (busyFollow) return
     const next = !following
@@ -158,17 +168,30 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
     }
   }, [busyBlock, authorAccountId, authorLabel, onBlocked])
 
+  // Already following: a static check, no menu. Unfollowing is a profile action,
+  // so the feed just reflects the relationship rather than offering to change it.
+  if (following) {
+    return (
+      <span className="postmenu">
+        <span className="followmark" title="You follow this account" aria-label="Following">
+          ✓
+        </span>
+      </span>
+    )
+  }
+
+  // Not following: the + opens the follow / block menu.
   return (
     <span className="postmenu" ref={rootRef}>
       <button
         type="button"
-        className={`menubtn${following ? ' on' : ''}`}
+        className="menubtn"
         onClick={() => setOpen((s) => !s)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={following ? 'Following — manage or block' : 'Follow or block'}
+        aria-label="Follow or block"
       >
-        {following ? '✓' : '+'}
+        +
       </button>
       {open ? (
         <div className="menupop" role="menu">
@@ -179,7 +202,7 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
             onClick={toggleFollow}
             disabled={busyFollow}
           >
-            {busyFollow ? '…' : following ? 'Unfollow' : 'Follow'}
+            {busyFollow ? '…' : 'Follow'}
           </button>
           <button
             type="button"
