@@ -175,8 +175,12 @@ export async function GET(req: NextRequest) {
     scoped
       ? Promise.resolve({ data: [] as Array<never> })
       : supabase
+          // NB: comment `content` is NEVER selected here. Article comments are
+          // paywalled — visible only to readers who unlocked the article — so
+          // the public firehose references the ARTICLE (title), never the
+          // comment body. The rail says "commented on <Title>", not the text.
           .from("comments")
-          .select("txid, author_account_id, author_identity, payer_address, amount_sats, content, created_at, posts!inner(title, slug, legacy)")
+          .select("txid, author_account_id, author_identity, payer_address, amount_sats, created_at, posts!inner(title, slug, legacy)")
           .is("deleted_at", null)
           .not("txid", "is", null)
           .order("created_at", { ascending: false })
@@ -214,7 +218,7 @@ export async function GET(req: NextRequest) {
   type CommentRow = {
     txid: string; author_account_id: string | null; author_identity: string | null;
     payer_address: string | null; amount_sats: number | null;
-    content: string | null; created_at: string;
+    created_at: string;
     posts: { title: string | null; slug: string | null; legacy?: boolean | null } | null;
   };
   const posts = (postsQ.data ?? []) as PostRow[];
@@ -486,7 +490,8 @@ export async function GET(req: NextRequest) {
       kind: "comment",
       actor: displayIdentity(identity, "someone"),
       actorHref: profileHref(identity),
-      target: snippet(c.content),
+      // The article, not the (paywalled) comment text — see the query note.
+      target: cp.title ?? "an article",
       amountXec: c.amount_sats == null ? null : c.amount_sats / 100,
       at: c.created_at,
       href: `${articleHref(cp.slug, cp.legacy)}#comments`,

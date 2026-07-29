@@ -40,7 +40,7 @@ const VERB = {
   unlock: 'unlocked',
   publish: 'published',
   mint: 'minted',
-  comment: 'commented',
+  comment: 'commented on',
 }
 
 const fmtXec = (n) => `${Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 })} XEC`
@@ -63,12 +63,14 @@ function timeAgo(iso) {
 // Content snippets read as speech; titles and bylines read as names. Likes,
 // tips and reposts now reference the target POST's content, so they quote it
 // too — unless it fell back to a byline (@handle / short address) for a post
-// with no text, which reads as a name.
+// with no text, which reads as a name. Comments are NOT quoted: their target is
+// the article TITLE (the paywalled comment body never leaves the server), so it
+// reads "commented on <Title>", like unlock/publish.
 const looksLikeName = (s) => /^@/.test(s) || /^[a-z0-9]{8}…[a-z0-9]{4}$/.test(s)
 function targetNode(it) {
   if (!it.target) return null
   const quotedKind =
-    it.kind === 'post' || it.kind === 'reply' || it.kind === 'quote' || it.kind === 'comment' ||
+    it.kind === 'post' || it.kind === 'reply' || it.kind === 'quote' ||
     it.kind === 'like' || it.kind === 'tip' || it.kind === 'repost'
   if (quotedKind && !looksLikeName(it.target)) {
     return <span className="arow-target">“{it.target}”</span>
