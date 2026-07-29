@@ -67,6 +67,19 @@ export default function EngagementBar({
 
   const isLike = pending === 'like'
 
+  // The feed renders viewer-neutral posts from cache, then patches likedByViewer
+  // / repostedByViewer in via /api/feed/viewer-state AFTER mount. Seeding these
+  // from useState alone freezes them at the mount-time (usually false) value, so
+  // a post you already liked never shows its colored "on" state. Re-sync when the
+  // prop flips. Safe against the optimistic tap: these only ever go false→true
+  // (no un-like / un-repost in v1), so a sync can't undo one.
+  useEffect(() => {
+    setLiked(likedByViewer)
+  }, [likedByViewer])
+  useEffect(() => {
+    setReposted(repostedByViewer)
+  }, [repostedByViewer])
+
   // Optimistic flip: reflect the like/repost the instant you tap, so it feels
   // immediate. The payment runs in the background; startReaction blocks a second
   // tap, so this only ever applies once per reaction.
