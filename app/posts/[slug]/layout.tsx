@@ -17,11 +17,11 @@ export async function generateMetadata({
   if (!data) return {};
 
   const { post, author } = data;
-  // Match the page byline: prefer the account's live display handle
-  // (accounts.display_handle, already resolved in getPublishedPostBySlug),
-  // falling back to the legacy authors.username when none is bound.
-  const authorUsername =
-    author?.display_handle?.trim() || author?.username?.trim() || "";
+  // The card byline is the account's live handle only. The legacy
+  // authors.username is never surfaced (it would render as "@<old-name>" and
+  // read as a real handle); a handle-less author's card simply omits the byline
+  // rather than showing a stale imported name.
+  const authorUsername = author?.display_handle?.trim() || "";
 
   return articleOpenGraphMetadata({
     post,

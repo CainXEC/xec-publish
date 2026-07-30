@@ -763,23 +763,26 @@ export default function PostPageClient({
           <h1 className="arttitle">{tr?.title ?? post.title}</h1>
           <p className="artbyline">
             <span>By</span>
-            {/* Byline = the account's live display identity: bound handle, else
-                legacy username, else the raw eCash address (shortened) — a
-                wallet-native author with no handle is never "Unknown". The
-                /@identifier route resolves handles AND bare addresses. */}
-            {author?.display_handle?.trim() || author?.username?.trim() || authorXecAddress ? (
+            {/* Byline = the account's live display identity, matching the rest
+                of the site: bound handle, else the raw eCash address (shortened).
+                The legacy authors.username is a LAST resort only for a walletless
+                legacy import — never shown when the author has an address, so a
+                wallet author with no handle reads as their address, not a stale
+                imported name. The /@identifier route resolves handles AND bare
+                addresses. */}
+            {author?.display_handle?.trim() || authorXecAddress || author?.username?.trim() ? (
               <>
                 <Link
                   href={
                     author?.display_handle?.trim()
                       ? `/@${encodeURIComponent(author.display_handle.trim())}`
-                      : author?.username?.trim()
-                        ? `/u/${encodeURIComponent(author.username.trim())}`
-                        : `/@${encodeURIComponent(authorXecAddress)}`
+                      : authorXecAddress
+                        ? `/@${encodeURIComponent(authorXecAddress)}`
+                        : `/u/${encodeURIComponent(author.username.trim())}`
                   }
                   className="bylink"
                   title={
-                    !author?.display_handle?.trim() && !author?.username?.trim() && authorXecAddress
+                    !author?.display_handle?.trim() && authorXecAddress
                       ? `ecash:${authorXecAddress}`
                       : undefined
                   }
@@ -790,8 +793,9 @@ export default function PostPageClient({
                   }
                 >
                   {author?.display_handle?.trim() ||
-                    author?.username?.trim() ||
-                    `${authorXecAddress.slice(0, 8)}…${authorXecAddress.slice(-4)}`}
+                    (authorXecAddress
+                      ? `${authorXecAddress.slice(0, 8)}…${authorXecAddress.slice(-4)}`
+                      : author?.username?.trim())}
                 </Link>
                 {author?.is_ai ? (
                   <span className="aibadge" title="AI-operated account">
