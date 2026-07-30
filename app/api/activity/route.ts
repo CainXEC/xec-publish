@@ -34,7 +34,7 @@ export type ActivityItem = {
   kind:
     | "post" | "reply" | "quote"
     | "like" | "tip" | "repost"
-    | "unlock" | "publish" | "mint" | "comment";
+    | "unlock" | "publish" | "mint" | "comment" | "comment_like";
   /** Frozen display byline: "@handle" or a raw eCash address. */
   actor: string;
   /** Link to the actor's profile ("/@handle" or "/a/<address>"), or null for
@@ -238,9 +238,41 @@ export async function GET(req: NextRequest) {
           .limit(PER_SOURCE)
       : Promise.resolve({ data: [] as Array<never> });
 
+  // Paid LIKES on article comments (comment_events). Site-wide firehose; scoped =
+  // likes RECEIVED on the author's comments (inbound, payout_address) + likes they
+  // GAVE (outbound, actor). References the ARTICLE title, never the paywalled body.
+  const commentLikesSelect =
+    "txid, target_txid, actor_account_id, actor_identity, payer_address, amount_sats, created_at";
+  const commentLikesQuery = scoped
+    ? Promise.resolve({ data: [] as Array<never> })
+    : supabase
+        .from("comment_events")
+        .select(commentLikesSelect)
+        .order("created_at", { ascending: false })
+        .limit(PER_SOURCE);
+  const inboundCommentLikesQuery =
+    scoped && authorAddressForms.length > 0
+      ? supabase
+          .from("comment_events")
+          .select(commentLikesSelect)
+          .in("payout_address", authorAddressForms)
+          .order("created_at", { ascending: false })
+          .limit(PER_SOURCE)
+      : Promise.resolve({ data: [] as Array<never> });
+  const outboundCommentLikesQuery =
+    scoped && scopedAccountId
+      ? supabase
+          .from("comment_events")
+          .select(commentLikesSelect)
+          .eq("actor_account_id", scopedAccountId)
+          .order("created_at", { ascending: false })
+          .limit(PER_SOURCE)
+      : Promise.resolve({ data: [] as Array<never> });
+
   const [
     postsQ, eventsQ, unlocksQ, publishesQ, mintsQ, commentsQ, ownReactionsQ,
     outUnlocksQ, inCommentsQ, outCommentsQ, scopedMintsQ,
+    commentLikesQ, inCommentLikesQ, outCommentLikesQ,
   ] = await Promise.all([
     postsQuery,
     eventsQuery,
@@ -286,6 +318,9 @@ export async function GET(req: NextRequest) {
     inboundCommentsQuery,
     outboundCommentsQuery,
     scopedMintsQuery,
+    commentLikesQuery,
+    inboundCommentLikesQuery,
+    outboundCommentLikesQuery,
   ]);
 
   const items: ActivityItem[] = [];
@@ -317,6 +352,18 @@ export async function GET(req: NextRequest) {
         ...((outCommentsQ.data ?? []) as unknown as CommentRow[]),
       ])
     : ((commentsQ.data ?? []) as unknown as CommentRow[]);
+  // Comment likes: site-wide firehose, or (scoped) received + given, de-duped.
+  type CommentLikeRow = {
+    txid: string; target_txid: string; actor_account_id: string | null;
+    actor_identity: string | null; payer_address: string | null;
+    amount_sats: number | null; created_at: string;
+  };
+  const commentLikes = scoped
+    ? dedupeByTxid([
+        ...((inCommentLikesQ.data ?? []) as unknown as CommentLikeRow[]),
+        ...((outCommentLikesQ.data ?? []) as unknown as CommentLikeRow[]),
+      ])
+    : ((commentLikesQ.data ?? []) as unknown as CommentLikeRow[]);
   // Reactions the author received + (scoped) their own likes/tips/reposts,
   // de-duped by txid — the final items.sort() below orders the merged stream.
   const seenEventTxids = new Set<string>();
@@ -356,6 +403,26 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ---- resolve each liked COMMENT's txid to its ARTICLE (title + slug), so a
+  //      comment-like line reads "liked a comment on <Title>" and links to
+  //      #comments. The comment BODY is never touched — it's paywalled, exactly
+  //      like the `comments` source above references the article, not the text. ----
+  type CommentArticle = { title: string | null; slug: string | null; legacy?: boolean | null };
+  const clCommentTxids = [
+    ...new Set(commentLikes.map((e) => e.target_txid).filter(Boolean)),
+  ] as string[];
+  const clArticleByComment = new Map<string, CommentArticle>();
+  if (clCommentTxids.length > 0) {
+    const { data: cmts } = await supabase
+      .from("comments")
+      .select("txid, posts!inner(title, slug, legacy)")
+      .in("txid", clCommentTxids);
+    for (const c of (cmts ?? []) as Array<{ txid: string; posts: CommentArticle | CommentArticle[] | null }>) {
+      const cp = Array.isArray(c.posts) ? c.posts[0] : c.posts;
+      if (cp?.slug) clArticleByComment.set(c.txid, cp);
+    }
+  }
+
   // ---- bylines resolve LIVE from each poster's CURRENT account handle, exactly
   //      like the feed/profile/post-detail (lib/getFeed.js attachLiveIdentity,
   //      via the same displayHandlesByAccountId helper). The frozen
@@ -367,6 +434,7 @@ export async function GET(req: NextRequest) {
     ...events.map((e) => e.actor_account_id),
     ...[...targetInfo.values()].map((t) => t.authorAccountId),
     ...comments.map((c) => c.author_account_id),
+    ...commentLikes.map((e) => e.actor_account_id),
   ].filter(Boolean) as string[];
   const uniqueBylineIds = [...new Set(bylineAccountIds)];
   // Live handle + the account's CURRENT primary address. The no-handle byline is
@@ -619,6 +687,25 @@ export async function GET(req: NextRequest) {
       at: c.created_at,
       href: `${articleHref(cp.slug, cp.legacy)}#comments`,
       txid: c.txid,
+    });
+  }
+
+  // ---- paid LIKES on article comments — reference the article, link to #comments ----
+  for (const e of commentLikes) {
+    const art = clArticleByComment.get(e.target_txid);
+    if (!art?.slug) continue;
+    const identity = liveIdentity(e.actor_account_id, e.payer_address, e.actor_identity);
+    items.push({
+      id: `cl:${e.txid}`,
+      kind: "comment_like",
+      actor: displayIdentity(identity, "someone"),
+      actorHref: profileHref(identity),
+      // The article, never the paywalled comment body.
+      target: art.title ?? "an article",
+      amountXec: e.amount_sats == null ? null : e.amount_sats / 100,
+      at: e.created_at,
+      href: `${articleHref(art.slug, art.legacy)}#comments`,
+      txid: e.txid,
     });
   }
 
