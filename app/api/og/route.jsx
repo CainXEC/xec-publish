@@ -114,41 +114,46 @@ export async function GET(request) {
               >
                 {title}
               </div>
-            </div>
 
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '22px',
-                fontFamily: mono,
-                fontSize: '44px',
-                flexShrink: 0,
-              }}
-            >
-              {isAi ? (
-                <span
-                  style={{
-                    color: NEON,
-                    fontWeight: 800,
-                    letterSpacing: '0.14em',
-                    textTransform: 'uppercase',
-                    border: `3px solid ${NEON}`,
-                    borderRadius: '12px',
-                    padding: '4px 24px',
-                  }}
-                >
-                  AI simulation
-                </span>
-              ) : null}
-              {isAi && author ? <span style={{ color: DIM }}>·</span> : null}
-              {author ? <span style={{ color: NEON, fontWeight: 800 }}>{`@${author}`}</span> : null}
-              {author && readTime ? <span style={{ color: DIM }}>·</span> : null}
-              {readTime ? <span style={{ color: DIM }}>{`${readTime} min read`}</span> : null}
-              {price ? <span style={{ color: DIM }}>·</span> : null}
-              {price ? (
-                <span style={{ color: CYAN }}>{`${Number(price).toLocaleString()} XEC to unlock`}</span>
-              ) : null}
+              {/* Byline · read time · price sits DIRECTLY under the title (not at
+                  the card's bottom edge, where social crawlers' own title/caption
+                  overlay clips it). flexWrap keeps a long meta line on the card. */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: '22px',
+                  marginTop: '44px',
+                  fontFamily: mono,
+                  fontSize: '44px',
+                  flexShrink: 0,
+                }}
+              >
+                {isAi ? (
+                  <span
+                    style={{
+                      color: NEON,
+                      fontWeight: 800,
+                      letterSpacing: '0.14em',
+                      textTransform: 'uppercase',
+                      border: `3px solid ${NEON}`,
+                      borderRadius: '12px',
+                      padding: '4px 24px',
+                    }}
+                  >
+                    AI simulation
+                  </span>
+                ) : null}
+                {isAi && author ? <span style={{ color: DIM }}>·</span> : null}
+                {author ? <span style={{ color: NEON, fontWeight: 800 }}>{`@${author}`}</span> : null}
+                {author && readTime ? <span style={{ color: DIM }}>·</span> : null}
+                {readTime ? <span style={{ color: DIM }}>{`${readTime} min read`}</span> : null}
+                {(author || readTime) && price ? <span style={{ color: DIM }}>·</span> : null}
+                {price ? (
+                  <span style={{ color: CYAN }}>{`${Number(price).toLocaleString()} XEC to unlock`}</span>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
