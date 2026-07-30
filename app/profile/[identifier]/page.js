@@ -14,6 +14,12 @@ import { viewerFollowsAccount } from '@/lib/profileSocial'
 // Reached via the next.config rewrite:  /@<identifier>  ->  /profile/<identifier>
 // <identifier> is either a handle ("simon") or a bare eCash address ("qq703j…").
 
+// Clicking a handle card opens that NFT's page in Cashtab (same deep-link the
+// marketplace uses to buy), where the holder lists it for sale — turning "go to
+// Cashtab and find it yourself" into one click. Listing must be signed by the
+// wallet that holds the NFT, which lives in Cashtab, so the handoff happens there.
+const CASHTAB_TOKEN_BASE = 'https://cashtab.com/#/token/'
+
 export async function generateMetadata({ params }) {
   const { identifier: raw } = await params
   const identifier = typeof raw === 'string' ? decodeURIComponent(raw.trim()) : ''
@@ -42,7 +48,7 @@ async function ProfileHandleCards({ holderAddress, urlCard }) {
   if (urlCard && !handleCards.some((h) => h.handle === urlCard.handle)) {
     handleCards.unshift(urlCard)
   }
-  return <HandleCarousel handles={handleCards} title="Handles" />
+  return <HandleCarousel handles={handleCards} title="Handles" cardHrefBase={CASHTAB_TOKEN_BASE} />
 }
 
 export default async function ProfilePage({ params }) {
@@ -114,7 +120,13 @@ export default async function ProfilePage({ params }) {
       holderAddress={resolved.holderAddress}
       handleCardsSlot={
         <Suspense
-          fallback={<HandleCarousel handles={urlCard ? [urlCard] : []} title="Handles" />}
+          fallback={
+            <HandleCarousel
+              handles={urlCard ? [urlCard] : []}
+              title="Handles"
+              cardHrefBase={CASHTAB_TOKEN_BASE}
+            />
+          }
         >
           <ProfileHandleCards holderAddress={resolved.holderAddress} urlCard={urlCard} />
         </Suspense>

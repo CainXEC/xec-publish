@@ -653,6 +653,11 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .dashhandle:disabled{cursor:default;opacity:.7;}
 .pow-feed .dashhandle.static{cursor:default;}
 .pow-feed .dashhandle.static:hover{border-color:var(--line);box-shadow:none;}
+/* A static card that links out (to its Cashtab token page to list/buy) is
+   clickable — restore the pointer, and give the text-only fallback a hover
+   glow. Image cards keep their existing .hasimg img glow. */
+.pow-feed .dashhandle.static.link{cursor:pointer;text-decoration:none;}
+.pow-feed .dashhandle.static.link:not(.hasimg):hover{border-color:var(--cyan);box-shadow:0 0 12px rgba(61,240,255,.18);}
 .pow-feed .dashhandle.active{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.28);}
 .pow-feed .dashhandle-img{width:104px;height:104px;max-width:none;border-radius:12px;object-fit:cover;background:var(--panel);border:1px solid var(--line);
   transition:border-color .15s,box-shadow .15s;}

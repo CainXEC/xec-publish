@@ -44,6 +44,13 @@ export default function HandleCarousel({
   includeAddress = false, // show an "Address" option (display-your-address picker)
   address = null, // the wallet address, shown in full on hover of the Address card
   buyHandleHref = null, // when set, append a "Buy handle" card linking out (e.g. marketplace)
+  // Read-only cards only: a URL base that a token id is appended to. When set,
+  // each card becomes a link (new tab) to that handle's NFT page — e.g. Cashtab's
+  // token page ("https://cashtab.com/#/token/"), where the holder lists it for
+  // sale (and a visitor can buy it). A plain string, not a function, so it can
+  // cross the server→client boundary. Ignored in the interactive picker, whose
+  // click already means "choose display handle".
+  cardHrefBase = null,
   busy = false,
   error = null,
 }) {
@@ -145,16 +152,33 @@ export default function HandleCarousel({
             >
               <HandleCardBody handle={h.handle} imageUrl={h.imageUrl} />
             </button>
-          ) : (
-            <div
-              key={h.tokenId ?? h.handle}
-              className={`dashhandle static${h.imageUrl ? ' hasimg' : ''}`}
-              tabIndex={0}
-              {...cardProps(label, h.imageUrl)}
-            >
-              <HandleCardBody handle={h.handle} imageUrl={h.imageUrl} />
-            </div>
-          )
+          ) : (() => {
+            const href = cardHrefBase && h.tokenId ? `${cardHrefBase}${h.tokenId}` : null
+            return href ? (
+              // Mirrors the "Buy" card below: an anchor styled as a card. Opens
+              // the handle's Cashtab token page in a new tab (list / buy there),
+              // so the profile stays put behind it.
+              <a
+                key={h.tokenId ?? h.handle}
+                href={href}
+                target="_blank"
+                rel="noreferrer noopener"
+                className={`dashhandle static link${h.imageUrl ? ' hasimg' : ''}`}
+                {...cardProps(label, h.imageUrl)}
+              >
+                <HandleCardBody handle={h.handle} imageUrl={h.imageUrl} />
+              </a>
+            ) : (
+              <div
+                key={h.tokenId ?? h.handle}
+                className={`dashhandle static${h.imageUrl ? ' hasimg' : ''}`}
+                tabIndex={0}
+                {...cardProps(label, h.imageUrl)}
+              >
+                <HandleCardBody handle={h.handle} imageUrl={h.imageUrl} />
+              </div>
+            )
+          })()
         })}
 
         {overflow > 0 ? (
