@@ -735,6 +735,49 @@ export default function PostPageClient({
   const canViewFullPost = unlocked || isAuthorSession
   const showPaywall = !canViewFullPost && !unlockCheckPending
 
+  // The paywall card — mirrors the in-pane reader's PaneUnlock look (.hr-*): a
+  // bordered card with "The rest is for readers.", an inline green Unlock button,
+  // and the 94/6 note. Same markup for both paywall placements below (preview vs
+  // no-marker); the article page keeps its own payment loop (handlePayToUnlock).
+  const payInFlight = payBusy || (pollingActive && paymentInitiated)
+  const paywallCard = (
+    <div className="hr-paywall">
+      <p className="hr-lockline">The rest is for readers.</p>
+      {!bip21Url ? (
+        <p className="hr-note">Payment details are not configured for this post yet.</p>
+      ) : payInFlight ? (
+        <>
+          <p className="hr-watching">
+            {paymentFinalizing
+              ? 'Payment seen — finalizing on eCash…'
+              : payBusy && !pollingActive
+                ? 'Opening your wallet…'
+                : 'Waiting for your payment…'}
+          </p>
+          <p className="hr-note">
+            {paymentFinalizing
+              ? 'Almost there — confirming Avalanche finality.'
+              : 'Approve the payment — the story opens right here in a few seconds.'}
+          </p>
+        </>
+      ) : (
+        <>
+          <button
+            type="button"
+            className="hr-unlock"
+            disabled={payBusy}
+            onClick={handlePayToUnlock}
+          >
+            Unlock · {unlockPriceLabel} XEC
+          </button>
+          <p className="hr-note">
+            94% to the writer · 6% to the platform. The story opens right here.
+          </p>
+        </>
+      )}
+    </div>
+  )
+
   return (
     <div className="pow-article">
       <style>{ARTICLE_CSS}</style>
@@ -900,46 +943,7 @@ export default function PostPageClient({
                 dangerouslySetInnerHTML={{ __html: tr?.translated ?? bodyHtml }}
               />
 
-              <div className="paywrap">
-                {bip21Url ? (
-                  <>
-                    <button
-                      type="button"
-                      disabled={payBusy}
-                      onClick={handlePayToUnlock}
-                      className="unlockbtn"
-                    >
-                      {payBusy
-                        ? 'Opening wallet…'
-                        : `Pay ${unlockPriceLabel} XEC to unlock`}
-                    </button>
-                    <p className="unlocknote">
-                      (6% of all unlock payments go to support the platform)
-                    </p>
-                    {pollingActive && paymentInitiated ? (
-                      <div className="pollcard">
-                        <div className="pollrow">
-                          <span aria-hidden className="spinner" />
-                          <p className="pollmsg">
-                            {paymentFinalizing
-                              ? 'Payment seen — finalizing…'
-                              : 'Waiting for payment…'}
-                          </p>
-                        </div>
-                        <p className="pollsub">
-                          {paymentFinalizing
-                            ? 'Almost there — confirming Avalanche finality'
-                            : 'This usually takes a few seconds'}
-                        </p>
-                      </div>
-                    ) : null}
-                  </>
-                ) : (
-                  <p className="paymissing">
-                    Payment details are not configured for this post yet.
-                  </p>
-                )}
-              </div>
+              {paywallCard}
             </section>
           ) : null}
 
@@ -970,46 +974,7 @@ export default function PostPageClient({
                   dangerouslySetInnerHTML={{ __html: tr?.translated ?? bodyHtml }}
                 />
               ) : null}
-              <div className="paywrap">
-                {bip21Url ? (
-                  <>
-                    <button
-                      type="button"
-                      disabled={payBusy}
-                      onClick={handlePayToUnlock}
-                      className="unlockbtn"
-                    >
-                      {payBusy
-                        ? 'Opening wallet…'
-                        : `Pay ${unlockPriceLabel} XEC to unlock`}
-                    </button>
-                    <p className="unlocknote">
-                      (6% of all unlock payments go to support the platform)
-                    </p>
-                    {pollingActive && paymentInitiated ? (
-                      <div className="pollcard">
-                        <div className="pollrow">
-                          <span aria-hidden className="spinner" />
-                          <p className="pollmsg">
-                            {paymentFinalizing
-                              ? 'Payment seen — finalizing…'
-                              : 'Waiting for payment…'}
-                          </p>
-                        </div>
-                        <p className="pollsub">
-                          {paymentFinalizing
-                            ? 'Almost there — confirming Avalanche finality'
-                            : 'This usually takes a few seconds'}
-                        </p>
-                      </div>
-                    ) : null}
-                  </>
-                ) : (
-                  <p className="paymissing">
-                    Payment details are not configured for this post yet.
-                  </p>
-                )}
-              </div>
+              {paywallCard}
             </section>
           ) : null}
         </article>

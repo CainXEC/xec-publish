@@ -134,6 +134,23 @@ export const ARTICLE_CSS = `
 .pow-article .pollmsg{margin:0;font-size:13px;font-weight:600;color:var(--text);}
 .pow-article .pollsub{margin:6px 0 0;font-size:12px;color:var(--dim);}
 .pow-article .paymissing{margin:16px 0 0;font-size:14px;color:var(--dim);}
+/* Paywall card — mirrors the in-pane reader's PaneUnlock (.hr-* in feedTheme)
+   so the article page and the feed pane read identically: a bordered card, a
+   "The rest is for readers." lockline, an inline Unlock button, and the 94/6
+   note. Ported into this scope (the .hr-* CSS is .pow-feed-scoped there). */
+.pow-article .hr-paywall{border:1px solid var(--line);border-radius:12px;padding:20px 16px;margin:26px 0 6px;text-align:center;}
+.pow-article .hr-lockline{font-size:12.5px;color:var(--dim);margin:0 0 12px;}
+.pow-article .hr-unlock{display:inline-block;border:1px solid var(--neon);color:var(--neon);border-radius:9px;
+  padding:11px 24px;font-size:13px;font-weight:700;letter-spacing:.05em;background:transparent;font-family:inherit;
+  cursor:pointer;transition:background .15s,color .15s,box-shadow .15s;}
+.pow-article .hr-unlock:hover:not(:disabled){background:var(--neon);color:#04120c;box-shadow:0 0 22px rgba(0,255,156,.4);}
+.pow-article .hr-unlock:disabled{opacity:.6;cursor:default;}
+.pow-article .hr-note{font-size:10.5px;color:var(--dim);margin:11px 0 0;line-height:1.5;}
+.pow-article .hr-watching{font-size:13px;color:var(--cyan);margin:2px 0 0;}
+/* Paper mode: filled ink-green button + paper text, same as .unlockbtn above. */
+html:not(.dark) .pow-article .hr-unlock{background:var(--neon);color:#fdfcf8;border-color:var(--neon);box-shadow:var(--paper-shadow);}
+html:not(.dark) .pow-article .hr-unlock:hover:not(:disabled){background:var(--accent-hover);color:#fdfcf8;box-shadow:var(--paper-shadow);}
+html:not(.dark) .pow-article .hr-unlock:disabled{background:transparent;color:var(--dim);border-color:var(--line);box-shadow:none;}
 
 /* ---- comments ---- */
 .pow-article .comments{margin:40px 0 0;border-top:1px solid var(--line);padding-top:32px;}
