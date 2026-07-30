@@ -915,14 +915,15 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
    preview. The whole thing opens the story (no buttons); unlock lives inside. */
 .pow-feed .np-lead{padding:13px 0 15px;border-bottom:1px solid var(--line);}
 .pow-feed .np-lead-hl{display:block;}
-/* Hero as rank #1 of the most-read list: a neon number (matching the ranked rows
-   below, sized up to the hero headline) beside the big serif headline. */
+/* Hero as rank #1 of the most-read list: a neon number, the big serif headline
+   taking the middle, and its 7-day read count at the right — the same
+   [rank] headline [reads] layout as the ranked rows below, sized up. */
 .pow-feed .np-lead-hrow{display:flex;align-items:baseline;gap:12px;}
 .pow-feed .np-lead-n{flex:none;font-size:20px;font-weight:800;line-height:1.2;
   color:var(--neon);font-variant-numeric:tabular-nums;}
-.pow-feed .np-lead-h{display:block;font-size:20px;line-height:1.2;color:var(--text);font-weight:700;}
+.pow-feed .np-lead-h{flex:1;min-width:0;font-size:20px;line-height:1.2;color:var(--text);font-weight:700;}
+.pow-feed .np-lead-c{flex:none;font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap;}
 .pow-feed .np-lead-hl:hover .np-lead-h{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
-.pow-feed .np-lead-meta{font-size:11px;color:var(--dim);line-height:1.5;margin-top:6px;}
 .pow-feed .np-lead-teaser-link{display:block;margin-top:9px;}
 .pow-feed .np-lead-teaser{font-size:12.5px;line-height:1.6;color:var(--dim);margin:0;
   display:-webkit-box;-webkit-line-clamp:7;-webkit-box-orient:vertical;overflow:hidden;}

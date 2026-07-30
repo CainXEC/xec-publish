@@ -87,19 +87,15 @@ function FrontPageClock() {
   )
 }
 
-// Meta content: byline · price · 🔓 unlocks · 💬 comments. Unlocks are verified
-// on-chain reads (circulation, not views); comments exclude deleted. Shared by
-// the lead hero and the More-stories rows (each wraps it in its own class).
+// Meta content for the More-stories rows: just byline · price. Unlock and comment
+// counts were removed here to declutter — reads live in the "Most read this week"
+// section above, where the count is the whole point.
 function MetaInner({ story }) {
   return (
     <>
       {story.author}
       {' · '}
       <span className="np-price">{fmtPrice(story.priceXec)}</span>
-      {' · '}
-      <span className="np-stat" title="unlocks">🔓 {Number(story.readers).toLocaleString()}</span>
-      {' · '}
-      <span className="np-stat" title="comments">💬 {Number(story.comments).toLocaleString()}</span>
     </>
   )
 }
@@ -112,17 +108,18 @@ function Meta({ story }) {
   )
 }
 
-// The lead: a full newspaper hero — big serif headline, a meta line
-// (byline · price · readers) directly beneath it, then a generous teaser.
-// The headline AND the teaser open the story (in the center pane on the home
-// page, else its own page); there are no buttons — the unlock flow lives in the
-// story itself, so a reader opens it and scrolls down to unlock.
+// The lead: the #1 most-read as a hero — rank · big serif headline · its 7-day
+// read count to the RIGHT (matching the ranked rows below), then a preview. The
+// headline AND the teaser open the story (center pane on the home page, else its
+// own page); no buttons — the unlock flow lives in the story itself. (A fallback
+// hero, rendered with no rank on a zero-unlock week, shows no read count.)
 function Lead({ story, rank = null, now, onOpen }) {
   // Home-page clicks open in the center pane (the reader route resolves legacy
   // and current posts alike); href stays the story's real permalink — legacy at
   // /<slug>, current at /posts/<slug> — so cmd-click and no-JS still navigate right.
   const href = articleRouteFor(story.slug, story.legacy)
   const open = onOpen ? (e) => onOpen(e, story.slug) : undefined
+  const reads = Number(story.readers7d) || 0
   return (
     <div className={`np-lead${now ? ' now' : ''}`}>
       <Link
@@ -137,11 +134,13 @@ function Lead({ story, rank = null, now, onOpen }) {
             {isFresh(story.at) ? <span className="np-dot" aria-hidden /> : null}
             {story.title}
           </span>
+          {rank != null ? (
+            <span className="np-lead-c" title="unlocks in the last 7 days">
+              {reads.toLocaleString()} {reads === 1 ? 'read' : 'reads'}
+            </span>
+          ) : null}
         </span>
       </Link>
-      <div className="np-lead-meta">
-        <MetaInner story={story} />
-      </div>
       {story.teaser ? (
         <Link
           className="np-lead-teaser-link"
@@ -313,7 +312,7 @@ export default function ArticleRail({
         )}
 
         <div className="np-foot">
-          Write your story. <Link href="/dashboard">Publish for 1,000 XEC</Link>.
+          <Link href="/dashboard">Write and Publish for 1,000 XEC</Link>
         </div>
       </div>
     )
@@ -363,7 +362,7 @@ export default function ArticleRail({
       )}
 
       <div className="np-foot">
-        Write your story. <Link href="/dashboard">Publish for 1,000 XEC</Link>.
+        <Link href="/dashboard">Write and Publish for 1,000 XEC</Link>
       </div>
     </div>
   )
