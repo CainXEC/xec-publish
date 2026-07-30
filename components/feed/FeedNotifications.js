@@ -275,6 +275,12 @@ export default function FeedNotifications({ signedIn = false, onAgentPending }) 
                     <Link
                       href={href}
                       className={`notifitem${n.read ? '' : ' unread'}`}
+                      // The target thread/article is force-dynamic, so the default
+                      // prefetch only warms the loading.js shell (instant skeleton).
+                      // Upgrade to a FULL data prefetch on hover so the click lands
+                      // on rendered content, not a skeleton — the row the reader is
+                      // about to click is ready by the time they click it.
+                      unstable_dynamicOnHover
                       onClick={() => setOpen(false)}
                     >
                       <span className="notifmsg">
