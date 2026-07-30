@@ -115,12 +115,12 @@ export default function PostPageClient({
 
   // Author / admin identity now comes from the wallet session (/api/me), not
   // Supabase. Derived each render so it tracks the session automatically once
-  // /api/me resolves. canViewFullPost keys off these, so author/admin bypass
-  // the paywall on their own posts with no separate auto-unlock needed.
+  // /api/me resolves. canViewFullPost keys off this, so an author bypasses the
+  // paywall on their OWN post with no separate auto-unlock needed. Admins are
+  // NOT exempt — they pay to unlock like every other reader.
   const isAuthorSession = Boolean(
     me?.authorId && post?.author_id && me.authorId === post.author_id,
   )
-  const isAdminSession = me?.isAdmin === true
 
   useEffect(() => {
     setMounted(true)
@@ -732,7 +732,7 @@ export default function PostPageClient({
 
   const articleDateIso = post.published_at ?? post.created_at
   const previewReadTimeLabel = formatReadingTimeLabel(post.reading_time_minutes)
-  const canViewFullPost = unlocked || isAuthorSession || isAdminSession
+  const canViewFullPost = unlocked || isAuthorSession
   const showPaywall = !canViewFullPost && !unlockCheckPending
 
   return (
