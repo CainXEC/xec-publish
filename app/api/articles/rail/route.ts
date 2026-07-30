@@ -1,14 +1,15 @@
 // =============================================================================
 //  app/api/articles/rail/route.ts — the desktop left rail's "front page".
 //
-//  One payload for the newspaper rail: a LEAD story, a MORE STORIES list, and
-//  MOST READ THIS WEEK — plus dateline stats. Ranking is deliberately LEGIBLE
-//  (the anti-black-box to the feed's engagement ranker):
-//    lead     = (1 + all-time readers) · exp(−age_days / 3) · sublinear price nudge
-//    more     = pure chronology (newest first)
+//  One payload for the newspaper rail: MOST READ THIS WEEK (the headline section,
+//  whose #1 is the hero lead) and a MORE STORIES list — plus dateline stats.
+//  Ranking is deliberately LEGIBLE (the anti-black-box to the feed's ranker):
 //    mostRead = ranked by RECENT (7-day) unlock volume — this is how an OLD or
-//               legacy article being unlocked a lot right now resurfaces on the
-//               front page, independent of its age.
+//               legacy article being unlocked a lot right now leads the front
+//               page, independent of its age. mostRead[0] is the hero.
+//    lead     = fallback hero ONLY when nothing was unlocked this week:
+//               (1 + all-time readers) · exp(−age_days / 3) · sublinear price nudge
+//    more     = pure chronology (newest first), minus everything shown above
 //  Reader counts come from the get_unlock_counts RPC, so "readers" here always
 //  means verified on-chain unlocks, never views. That RPC — and its sibling
 //  get_recent_hot_posts, which pulls hot legacy posts into the candidate pool so
@@ -34,11 +35,12 @@ const CANDIDATES = 40;
 // column), so "More stories" can run long without shifting the page — 12 gives a
 // fuller front page while staying curated.
 const MORE_N = 12;
-// "Most Read this week": how many recently-hot articles the section lists, and how
-// many hot posts to pull into the candidate pool so an OLD/legacy article being
-// unlocked a lot right now can resurface — the recency-only pools below would never
-// include it. See sql/rpc_get_recent_hot_posts.sql.
-const MOST_READ_N = 6;
+// "Most read this week" is the front page's headline section: the #1 story is the
+// hero (numbered 1), then ranks 2..N below it — so MOST_READ_N counts the hero.
+// HOT_CANDIDATES is how many hot posts to pull into the candidate pool so an
+// OLD/legacy article being unlocked a lot right now can resurface — the
+// recency-only pools below would never include it. See sql/rpc_get_recent_hot_posts.sql.
+const MOST_READ_N = 7;
 const HOT_CANDIDATES = 24;
 
 type RailStory = {
@@ -197,22 +199,28 @@ export async function GET() {
   const score = (s: RailStory) =>
     (1 + s.readers) * freshness(s.at) * priceFactor(s.priceXec);
 
-  const lead = stories.length > 0
-    ? [...stories].sort((a, b) => score(b) - score(a))[0]
-    : null;
-
-  // "Most Read this week": ranked purely by recent (7-day) unlock volume, so an
-  // OLD or legacy piece being unlocked a lot right now resurfaces here regardless
-  // of age. readers7d comes from get_unlock_counts, so house/AI unlocks are
-  // already excluded. Drop the lead (no hero dupe) and anything with zero recent
-  // unlocks (nothing to be "most read" about). Ties break toward the newer piece.
+  // "Most read this week" is the front page's headline section, ranked purely by
+  // recent (7-day) unlock volume — so an OLD or legacy piece unlocked a lot right
+  // now resurfaces here regardless of age. readers7d comes from get_unlock_counts,
+  // so house/AI unlocks are already excluded. The #1 entry is the HERO the client
+  // renders as the big lead (numbered 1); the rest rank 2..N below it. Drop
+  // anything with zero recent unlocks (nothing to be "most read" about); ties
+  // break toward the newer piece.
   const mostRead = stories
-    .filter((s) => s.id !== lead?.id && s.readers7d > 0)
+    .filter((s) => s.readers7d > 0)
     .sort((a, b) => b.readers7d - a.readers7d || (a.at < b.at ? 1 : -1))
     .slice(0, MOST_READ_N);
 
-  // "More stories": newest-first, but skip the lead AND anything already shown in
-  // "Most read this week" directly above — a repeat there reads as a bug.
+  // Fallback hero for a quiet week: with NOTHING unlocked in the last 7 days there
+  // is no "most read", so fall back to the legible breadth × freshness × price
+  // pick — the page still leads with a story instead of a blank hero. The client
+  // shows this one unlabelled (no "most read" header, no rank number).
+  const lead = mostRead.length === 0 && stories.length > 0
+    ? [...stories].sort((a, b) => score(b) - score(a))[0]
+    : null;
+
+  // "More stories": newest-first, skipping everything already shown above — the
+  // most-read section and/or the fallback hero. A repeat there reads as a bug.
   const shownIds = new Set(
     [lead?.id, ...mostRead.map((s) => s.id)].filter(Boolean),
   );

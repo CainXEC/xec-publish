@@ -2,13 +2,13 @@
 // =============================================================================
 //  ArticleRail.js — the desktop LEFT rail: the site's front page.
 //
-//  An editor-less newspaper whose editor is the chain: a LEAD story chosen by
-//  breadth × freshness × a sublinear price nudge (readers dominate; a pricier
-//  piece only edges an equally-read cheaper one), then MORE STORIES in pure
-//  chronology, then MOST READ THIS WEEK — a ranked list by recent (7-day) unlock
-//  volume, where an old or even legacy article being unlocked a lot right now
-//  resurfaces regardless of age. The feed is social time; this rail is editorial
-//  time.
+//  An editor-less newspaper whose editor is the chain: MOST READ THIS WEEK leads,
+//  ranked by recent (7-day) unlock volume — the #1 story is the hero (numbered 1),
+//  ranks 2..7 below it — so an old or even legacy article being unlocked a lot
+//  right now leads the front page regardless of age. Then MORE STORIES in pure
+//  chronology. (A week with zero unlocks falls back to a single breadth × freshness
+//  hero so the page is never blank.) The feed is social time; this rail is
+//  editorial time.
 //
 //  Newspaper-ness comes from STRUCTURE (masthead between double rules, a
 //  dateline folio, a hero lead, hairline-separated entries below), not from
@@ -117,7 +117,7 @@ function Meta({ story }) {
 // The headline AND the teaser open the story (in the center pane on the home
 // page, else its own page); there are no buttons — the unlock flow lives in the
 // story itself, so a reader opens it and scrolls down to unlock.
-function Lead({ story, now, onOpen }) {
+function Lead({ story, rank = null, now, onOpen }) {
   // Home-page clicks open in the center pane (the reader route resolves legacy
   // and current posts alike); href stays the story's real permalink — legacy at
   // /<slug>, current at /posts/<slug> — so cmd-click and no-JS still navigate right.
@@ -131,9 +131,12 @@ function Lead({ story, now, onOpen }) {
         onClick={open}
         data-no-navprogress={open ? '' : undefined}
       >
-        <span className="np-serif np-lead-h">
-          {isFresh(story.at) ? <span className="np-dot" aria-hidden /> : null}
-          {story.title}
+        <span className="np-lead-hrow">
+          {rank != null ? <span className="np-lead-n">{rank}</span> : null}
+          <span className="np-serif np-lead-h">
+            {isFresh(story.at) ? <span className="np-dot" aria-hidden /> : null}
+            {story.title}
+          </span>
         </span>
       </Link>
       <div className="np-lead-meta">
@@ -280,15 +283,18 @@ export default function ArticleRail({
           <p className="np-empty">The presses are warm and the front page is blank.</p>
         ) : (
           <>
-            {lead ? <Lead story={lead} now={isNow(lead)} onOpen={null} /> : null}
-
+            {/* Compact: the #1 most-read leads (numbered 1), a few ranked below,
+                the rest in the More-stories expander. Fallback hero unlabelled. */}
             {mostRead.length > 0 ? (
               <>
                 <div className="np-sec">Most read this week</div>
-                {mostRead.slice(0, 3).map((s, i) => (
-                  <MostReadEntry key={s.id} story={s} rank={i + 1} now={isNow(s)} onOpen={null} />
+                <Lead story={mostRead[0]} rank={1} now={isNow(mostRead[0])} onOpen={null} />
+                {mostRead.slice(1, 4).map((s, i) => (
+                  <MostReadEntry key={s.id} story={s} rank={i + 2} now={isNow(s)} onOpen={null} />
                 ))}
               </>
+            ) : lead ? (
+              <Lead story={lead} now={isNow(lead)} onOpen={null} />
             ) : null}
 
             {more.length > 0 ? (
@@ -320,30 +326,29 @@ export default function ArticleRail({
 
       {data === null ? (
         <p className="np-empty">Setting the type…</p>
-      ) : !lead && more.length === 0 ? (
+      ) : !lead && mostRead.length === 0 && more.length === 0 ? (
         <p className="np-empty">The presses are warm and the front page is blank.</p>
       ) : (
         <>
-          {lead ? (
-            <>
-              <div className="np-sec">Lead story</div>
-              <Lead story={lead} now={isNow(lead)} onOpen={interceptOpen} />
-            </>
-          ) : null}
-
+          {/* The headline section: the week's #1 most-read leads as the hero
+              (numbered 1), then ranks 2..N below it. On a week with no unlocks
+              at all, `lead` is the unlabelled fallback hero (no number). */}
           {mostRead.length > 0 ? (
             <>
               <div className="np-sec">Most read this week</div>
-              {mostRead.map((s, i) => (
+              <Lead story={mostRead[0]} rank={1} now={isNow(mostRead[0])} onOpen={interceptOpen} />
+              {mostRead.slice(1).map((s, i) => (
                 <MostReadEntry
                   key={s.id}
                   story={s}
-                  rank={i + 1}
+                  rank={i + 2}
                   now={isNow(s)}
                   onOpen={interceptOpen}
                 />
               ))}
             </>
+          ) : lead ? (
+            <Lead story={lead} now={isNow(lead)} onOpen={interceptOpen} />
           ) : null}
 
           {more.length > 0 ? (
