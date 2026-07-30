@@ -404,7 +404,10 @@ export default function FeedClient({
       </main>
 
       <aside className="feed-rail" aria-label="Live on-chain activity">
-        <ActivityRail onOpenThread={wideShell ? openThread : undefined} />
+        <ActivityRail
+          onOpenThread={wideShell ? openThread : undefined}
+          onOpenArticle={wideShell ? openStory : undefined}
+        />
       </aside>
       </div>
     </div>

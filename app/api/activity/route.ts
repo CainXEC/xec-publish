@@ -45,6 +45,11 @@ export type ActivityItem = {
   amountXec: number | null;
   at: string;
   href: string;
+  /** For article rows (unlock/publish/comment/comment_like): the post slug, so a
+   *  host with a reading pane (the home feed) can open it in place instead of
+   *  navigating. Absent on feed-thread, mint and profile rows. Legacy vs current
+   *  is resolved by slug alone in the reader route, so no legacy flag is needed. */
+  slug?: string | null;
   txid: string | null;
 };
 
@@ -583,6 +588,7 @@ export async function GET(req: NextRequest) {
       amountXec: u.posts.price_xec ?? null,
       at: u.unlocked_at,
       href: articleHref(u.posts.slug, u.posts.legacy),
+      slug: u.posts.slug,
       txid: u.txid,
     });
   }
@@ -627,6 +633,7 @@ export async function GET(req: NextRequest) {
       amountXec: p.amount_sats == null ? null : p.amount_sats / 100,
       at: p.paid_at,
       href: articleHref(p.posts.slug, p.posts.legacy),
+      slug: p.posts.slug,
       txid: p.txid,
     });
   }
@@ -686,6 +693,7 @@ export async function GET(req: NextRequest) {
       amountXec: c.amount_sats == null ? null : c.amount_sats / 100,
       at: c.created_at,
       href: `${articleHref(cp.slug, cp.legacy)}#comments`,
+      slug: cp.slug,
       txid: c.txid,
     });
   }
@@ -705,6 +713,7 @@ export async function GET(req: NextRequest) {
       amountXec: e.amount_sats == null ? null : e.amount_sats / 100,
       at: e.created_at,
       href: `${articleHref(art.slug, art.legacy)}#comments`,
+      slug: art.slug,
       txid: e.txid,
     });
   }

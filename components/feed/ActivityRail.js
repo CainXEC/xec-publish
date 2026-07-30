@@ -91,6 +91,10 @@ export default function ActivityRail({
   // Host pages with a center reading pane (the home feed): thread rows open
   // in place instead of navigating. Modifier clicks still open the page.
   onOpenThread = null,
+  // Same idea for ARTICLE rows (unlock/publish/comment/comment_like): open the
+  // story in the reading pane instead of navigating to its page. Only passed
+  // where a pane exists; elsewhere article rows navigate as before.
+  onOpenArticle = null,
 }) {
   const [items, setItems] = useState(null)
   // Live "on the site right now" count, broadcast by the site-wide
@@ -203,8 +207,22 @@ export default function ActivityRail({
       ) : (
         <ul className="arail-list">
           {items.map((it) => {
+            // Rows open in the reading pane where the host provides one: feed
+            // threads via onOpenThread, articles via onOpenArticle. A row is one
+            // or the other, never both. Modifier / middle clicks fall through to
+            // the real href (new tab, etc.); everything else opens in place.
             const threadTxid =
               onOpenThread && it.href?.startsWith('/feed/') ? it.href.slice('/feed/'.length) : null
+            const articleSlug = onOpenArticle && it.slug ? it.slug : null
+            const openInPane =
+              threadTxid || articleSlug
+                ? (e) => {
+                    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1) return
+                    e.preventDefault()
+                    if (threadTxid) onOpenThread(threadTxid)
+                    else onOpenArticle(articleSlug)
+                  }
+                : undefined
             return (
             <li key={it.id} className={`arow${freshIds.current.has(it.id) ? ' fresh' : ''}`}>
               <div className="arow-main">
@@ -218,16 +236,8 @@ export default function ActivityRail({
                 <Link
                   href={it.href}
                   className="arow-say"
-                  onClick={
-                    threadTxid
-                      ? (e) => {
-                          if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1) return
-                          e.preventDefault()
-                          onOpenThread(threadTxid)
-                        }
-                      : undefined
-                  }
-                  data-no-navprogress={threadTxid ? true : undefined}
+                  onClick={openInPane}
+                  data-no-navprogress={openInPane ? true : undefined}
                 >
                   {VERB[it.kind] ?? it.kind} {targetNode(it)}
                 </Link>
