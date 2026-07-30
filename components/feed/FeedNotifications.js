@@ -39,6 +39,7 @@ const VERB = {
   follow: 'followed you',
   unlock: 'unlocked your article',
   comment: 'commented on your article',
+  comment_like: 'liked your comment',
 }
 
 // An offer names the handle it courts and, when the bidder named a price,
@@ -59,6 +60,15 @@ function notifText(n) {
     return xec != null && xec > 0
       ? `${VERB.like} · ${xec.toLocaleString()} XEC`
       : VERB.like
+  }
+  // A comment like is a tip too — append the amount, and name the article when
+  // we resolved its title. Never references the (paywalled) comment body.
+  if (n.type === 'comment_like') {
+    const xec = n.amount_sats != null ? Number(n.amount_sats) / 100 : null
+    const base = n.articleTitle
+      ? `liked your comment on “${n.articleTitle}”`
+      : VERB.comment_like
+    return xec != null && xec > 0 ? `${base} · ${xec.toLocaleString()} XEC` : base
   }
   // Unlock/comment name the article when we resolved its title, else fall back
   // to the generic verb ("unlocked your article").
@@ -84,6 +94,10 @@ function targetHref(n) {
     return n.handle
       ? `/marketplace?view=all&q=${encodeURIComponent(n.handle)}`
       : '/marketplace?view=all'
+  }
+  // A comment like links to the article's comment thread.
+  if (n.type === 'comment_like') {
+    return n.articleHref ? `${n.articleHref}#comments` : '#'
   }
   // Unlock/comment link straight to the article (resolved server-side).
   if (n.type === 'unlock' || n.type === 'comment') {

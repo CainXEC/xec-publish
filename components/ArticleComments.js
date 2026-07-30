@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
 import { tokenizeUrls } from '@/lib/contentLinks'
 import TranslateButton from '@/components/TranslateButton'
+import CommentLike from '@/components/feed/CommentLike'
 import EmojiPicker from '@/components/EmojiPicker'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 // Pocket-aware gateway: identical contract to the cashtabPay trio. Pocket
@@ -648,6 +649,13 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
 
                 {!comment.deleted ? (
                   <div className="commentactions">
+                    {comment.txid && !comment.optimistic ? (
+                      <CommentLike
+                        targetTxid={comment.txid}
+                        likeCount={comment.likeCount ?? 0}
+                        likedByViewer={Boolean(comment.likedByViewer)}
+                      />
+                    ) : null}
                     {canReply && replyingTo !== comment.id ? (
                       <button
                         type="button"

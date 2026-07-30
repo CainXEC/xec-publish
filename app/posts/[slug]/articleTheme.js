@@ -197,6 +197,43 @@ export const ARTICLE_CSS = `
 .pow-article .commentreplybtn{background:none;border:none;color:var(--dim);font:inherit;font-size:13px;cursor:pointer;
   padding:2px 0;transition:color .15s;}
 .pow-article .commentreplybtn:hover{color:var(--cyan);}
+/* Comment like — the same paid, tippable reaction as a feed-post like (94/6 to
+   the commenter). Heart + count in the actions row; a tip popover on tap. */
+.pow-article .clike{position:relative;display:inline-flex;align-items:center;}
+.pow-article .clikebtn{background:none;border:none;color:var(--dim);font:inherit;font-size:13px;cursor:pointer;
+  padding:2px 0;display:inline-flex;align-items:center;gap:3px;transition:color .15s;}
+.pow-article .clikebtn:hover{color:var(--cyan);}
+.pow-article .clikebtn.on{color:var(--neon);}
+.pow-article .clikebtn:disabled{opacity:.6;cursor:default;}
+.pow-article .clikeico{font-size:15px;line-height:1;}
+.pow-article .cliketip{position:absolute;bottom:calc(100% + 8px);left:0;z-index:30;width:232px;
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,.45);}
+.pow-article .cliketip-title{margin:0 0 8px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);}
+.pow-article .cliketip-presets{display:flex;flex-wrap:wrap;gap:6px;}
+.pow-article .cliketip-preset{flex:1 1 auto;background:transparent;border:1px solid var(--line);color:var(--cyan);
+  font:inherit;font-size:12px;padding:5px 6px;border-radius:8px;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+.pow-article .cliketip-preset:hover{border-color:var(--cyan);box-shadow:0 0 12px rgba(61,240,255,.2);}
+.pow-article .cliketip-row{display:flex;align-items:center;gap:6px;margin-top:8px;}
+.pow-article .cliketip-input{flex:1 1 auto;min-width:0;background:var(--panel2);border:1px solid var(--line);
+  color:var(--text);font:inherit;font-size:13px;padding:6px 8px;border-radius:8px;}
+.pow-article .cliketip-unit{font-size:11px;color:var(--dim);}
+.pow-article .cliketip-go{background:none;border:1px solid var(--neon);color:var(--neon);font:inherit;font-size:12px;
+  padding:6px 10px;border-radius:8px;cursor:pointer;transition:box-shadow .15s;}
+.pow-article .cliketip-go:hover{box-shadow:0 0 12px rgba(0,255,156,.25);}
+.pow-article .clikepay{position:absolute;top:calc(100% + 8px);left:0;z-index:30;width:260px;
+  border:1px solid var(--line);background:var(--panel2);border-radius:12px;padding:12px;font-size:13px;color:var(--dim);}
+.pow-article .clikepay strong{color:var(--text);}
+.pow-article .clikepay a{color:var(--cyan);}
+.pow-article .clikepay-manual summary{cursor:pointer;color:var(--cyan);font-size:12px;margin-top:6px;}
+.pow-article .clikepay-row{display:flex;gap:6px;margin-top:8px;}
+.pow-article .clikepay-row input{flex:1 1 auto;min-width:0;background:var(--panel);border:1px solid var(--line);
+  color:var(--text);font:inherit;font-size:12px;padding:6px 8px;border-radius:8px;}
+.pow-article .clikepay-row button{background:none;border:1px solid var(--cyan);color:var(--cyan);font:inherit;
+  font-size:12px;padding:6px 10px;border-radius:8px;cursor:pointer;}
+.pow-article .clike-cancel{background:none;border:none;color:var(--dim);font:inherit;font-size:12px;cursor:pointer;
+  margin-top:8px;text-decoration:underline;}
+.pow-article .clike-notice{margin:8px 0 0;font-size:12px;color:var(--no);}
 .pow-article .comment-replyingto{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);margin:0 0 8px;}
 .pow-article .comment-replyarrow{color:var(--dim);}
 .pow-article .comment-replyingto-who{color:var(--cyan);font-weight:600;}

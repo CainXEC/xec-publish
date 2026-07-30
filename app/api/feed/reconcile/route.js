@@ -78,12 +78,20 @@ async function reconcileTable(supabase, table, now, { requireTxid = false } = {}
 async function runSweep() {
   const supabase = adminDb()
   const now = Date.now()
-  const [posts, events, comments] = await Promise.all([
+  const [posts, events, comments, commentEvents] = await Promise.all([
     reconcileTable(supabase, 'feed_posts', now),
     reconcileTable(supabase, 'feed_events', now),
     reconcileTable(supabase, 'comments', now, { requireTxid: true }),
+    // Comment likes are born 0-conf like feed reactions; sweep them the same way.
+    // Isolated: comment_events ships behind a migration, so until it's applied a
+    // missing-table error here must NOT abort the other three tables' finality
+    // reconcile. Degrade to zeros and log instead.
+    reconcileTable(supabase, 'comment_events', now).catch((e) => {
+      console.error('[feed-reconcile] comment_events skipped', e.message)
+      return { checked: 0, promoted: 0, deleted: 0, skipped: e.message }
+    }),
   ])
-  return { posts, events, comments }
+  return { posts, events, comments, commentEvents }
 }
 
 /**

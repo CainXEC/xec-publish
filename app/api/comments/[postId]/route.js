@@ -93,6 +93,36 @@ export async function GET(_request, { params }) {
     return (accountId && primaryByAccount.get(accountId)) || frozen || payer || null
   }
 
+  // Paid like counts + whether the viewer already liked, per on-chain comment.
+  // Likes live in comment_events (target_txid = the comment's txid); counts are
+  // computed live from the rows. likedByViewer keys on the viewer's ACCOUNT (the
+  // confirm route dedups per account), with the primary address as a fallback.
+  const likeCountByTxid = new Map()
+  const likedTxids = new Set()
+  const commentTxids = [...new Set((data ?? []).map((c) => c.txid).filter(Boolean))]
+  if (commentTxids.length > 0) {
+    const [{ data: likeRows }, viewer] = await Promise.all([
+      supabase
+        .from('comment_events')
+        .select('target_txid, actor_account_id, payer_address')
+        .eq('action', 5)
+        .in('target_txid', commentTxids),
+      getAuthedAccount(),
+    ])
+    for (const r of likeRows ?? []) {
+      likeCountByTxid.set(r.target_txid, (likeCountByTxid.get(r.target_txid) ?? 0) + 1)
+    }
+    if (viewer) {
+      const addrForms = new Set(addressForms(viewer.address))
+      for (const r of likeRows ?? []) {
+        const mine =
+          (viewer.accountId && r.actor_account_id === viewer.accountId) ||
+          (r.payer_address && addrForms.has(r.payer_address))
+        if (mine) likedTxids.add(r.target_txid)
+      }
+    }
+  }
+
   // A deleted comment is kept as a tombstone (so replies under it keep their
   // context) but its content is never sent to the client. Legacy free comments
   // (txid IS NULL) come through unchanged. The account id resolves isAi, then is
@@ -103,9 +133,11 @@ export async function GET(_request, { params }) {
     const hasHandle = author_account_id ? handleByAccount.has(author_account_id) : false
     const color = hasHandle ? colorByAccount.get(author_account_id) ?? null : null
     const author_identity = liveByline(author_account_id, c.author_identity, c.payer_address)
+    const likeCount = c.txid ? likeCountByTxid.get(c.txid) ?? 0 : 0
+    const likedByViewer = c.txid ? likedTxids.has(c.txid) : false
     return c.deleted_at
-      ? { ...rest, isAi, color: null, content: '', deleted: true }
-      : { ...rest, isAi, color, author_identity, deleted: false }
+      ? { ...rest, isAi, color: null, likeCount: 0, likedByViewer: false, content: '', deleted: true }
+      : { ...rest, isAi, color, author_identity, likeCount, likedByViewer, deleted: false }
   })
 
   return NextResponse.json({ comments })
