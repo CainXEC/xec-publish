@@ -9,10 +9,7 @@ import { getCachedProfileStats } from '@/lib/profileCache'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { adminDb } from '@/lib/db'
 import { viewerBlocksAccount } from '@/lib/feedBlocks'
-import {
-  accountIdForAddress,
-  viewerFollowsAccount,
-} from '@/lib/profileSocial'
+import { viewerFollowsAccount } from '@/lib/profileSocial'
 
 // Reached via the next.config rewrite:  /@<identifier>  ->  /profile/<identifier>
 // <identifier> is either a handle ("simon") or a bare eCash address ("qq703j…").
@@ -70,11 +67,11 @@ export default async function ProfilePage({ params }) {
   const viewerAddress = viewer?.address ?? ''
   const viewerIsAuthor = viewer?.authorId != null
 
-  // The ONLY genuine dependency in the chain: social + feed queries key on the
-  // profile's account id.
-  const profileAccountId = resolved.holderAddress
-    ? await accountIdForAddress(resolved.holderAddress)
-    : null
+  // Social + feed queries key on the profile's account id. The resolver already
+  // found it while resolving the handle/address (every account path looks it
+  // up), so we read it straight off `resolved` instead of paying another
+  // sequential account_addresses round trip here.
+  const profileAccountId = resolved.accountId
 
   // Viewer-NEUTRAL data (articles + stats, and the account's own-posts feed) comes
   // from the shared per-account cache; the per-viewer bits (your follow/block

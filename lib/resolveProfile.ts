@@ -31,6 +31,7 @@
 // =============================================================================
 
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { after } from "next/server";
 import { adminDb } from "@/lib/db";
 import { skeleton, displayHandle } from "@/lib/handleSkeleton";
@@ -75,6 +76,12 @@ export type ResolvedProfile = {
   /** Current on-chain holder (handle path) or the address itself (address path).
    *  Shown on handle-only profiles that have no author record. */
   holderAddress: string | null;
+  /** The proofofwriting account id for this profile, when one exists — the same
+   *  value the page would otherwise re-derive from holderAddress via
+   *  accountIdForAddress. Resolved here for free (every account path already
+   *  looked it up), so the page can skip that extra sequential DB round trip.
+   *  Null for a handle-only mint / legacy author with no account. */
+  accountId: string | null;
   /** Public URL of the handle's NFT card, when known (handle path). */
   cardImageUrl: string | null;
 };
@@ -223,6 +230,23 @@ export async function currentTokenHolder(tokenId: string): Promise<string | null
   }
 }
 
+// Slow-path DISPLAY cache. For a handle NOBODY currently displays (a fresh mint
+// with no bound account), resolving the byline blocks on a ~1.5s Chronik holder
+// lookup — and repeats it for every visitor. That holder rarely changes and here
+// only drives what name to show, so cache it briefly in the Next Data Cache,
+// keyed by token id. Authoritative move-detection (reverifyHandleBinding /
+// freshDisplayHandle) keeps calling currentTokenHolder UNcached, so a handle
+// that changes wallets is still caught where correctness matters; the only thing
+// that can lag by up to this window is a handle-only profile's display byline —
+// the same 5-minute staleness the account paths already accept via HOLDER_TTL_MS.
+const HOLDER_DISPLAY_CACHE_S = 300;
+const cachedTokenHolderForDisplay = (tokenId: string): Promise<string | null> =>
+  unstable_cache(
+    () => currentTokenHolder(tokenId),
+    ["token-holder-display", tokenId],
+    { revalidate: HOLDER_DISPLAY_CACHE_S },
+  )();
+
 /** Lazily re-verify that `account` still holds its display handle's token.
  *  Updates the cache when stale. Never throws; returns the handle to display. */
 async function freshDisplayHandle(account: {
@@ -345,13 +369,17 @@ async function resolveHandle(handleRaw: string): Promise<ResolvedProfile | null>
     .maybeSingle();
 
   if (bound?.id) {
-    // The bound account's primary wallet is the holder we attribute to.
-    const { data: primary } = await supabase
-      .from("account_addresses")
-      .select("address")
-      .eq("account_id", bound.id)
-      .eq("is_primary", true)
-      .maybeSingle();
+    // The bound account's primary wallet and its author record are independent
+    // lookups off the same account, so fetch them together rather than in series.
+    const [{ data: primary }, author] = await Promise.all([
+      supabase
+        .from("account_addresses")
+        .select("address")
+        .eq("account_id", bound.id)
+        .eq("is_primary", true)
+        .maybeSingle(),
+      bound.author_id ? authorById(bound.author_id) : Promise.resolve(null),
+    ]);
 
     const lastChecked = bound.display_handle_checked_at
       ? Date.parse(bound.display_handle_checked_at)
@@ -362,7 +390,6 @@ async function resolveHandle(handleRaw: string): Promise<ResolvedProfile | null>
       after(() => reverifyHandleBinding(bound.id, h.token_id, primary?.address ?? null));
     }
 
-    const author = bound.author_id ? await authorById(bound.author_id) : null;
     return {
       kind: "handle",
       author,
@@ -371,14 +398,17 @@ async function resolveHandle(handleRaw: string): Promise<ResolvedProfile | null>
       identity: `@${h.handle}`,
       tokenId: h.token_id,
       holderAddress: primary?.address ? normalizeAddress(primary.address) : null,
+      accountId: bound.id,
       cardImageUrl: (h as { image_url?: string | null }).image_url ?? null,
     };
   }
 
   // SLOW PATH: no account currently DISPLAYS this handle (its token is not any
   // account's active_handle_token_id). The on-chain holder is the source of
-  // truth. Only here does the request block on Chronik.
-  const holder = await currentTokenHolder(h.token_id); // "ecash:q…" | null (Chronik down)
+  // truth. Only here does the request touch Chronik — cached briefly (see
+  // cachedTokenHolderForDisplay) so a handle-only profile isn't a ~1.5s block
+  // on every visit.
+  const holder = await cachedTokenHolderForDisplay(h.token_id); // "ecash:q…" | null (Chronik down)
 
   // If the holder has an account, the profile is that PERSON — show their live
   // display identity (their active handle, or their address), NOT this URL
@@ -403,9 +433,12 @@ async function resolveHandle(handleRaw: string): Promise<ResolvedProfile | null>
         .maybeSingle();
       if (account) {
         // The holder's CURRENT display handle (lazily re-verified on-chain), or
-        // null if they don't present a handle -> fall back to their address.
-        const liveDisplay = await freshDisplayHandle(account as any);
-        const author = account.author_id ? await authorById(account.author_id) : null;
+        // null if they don't present a handle -> fall back to their address. The
+        // display-handle check and the author fetch are independent -> parallel.
+        const [liveDisplay, author] = await Promise.all([
+          freshDisplayHandle(account as any),
+          account.author_id ? authorById(account.author_id) : Promise.resolve(null),
+        ]);
         return {
           kind: "handle",
           author,
@@ -414,6 +447,7 @@ async function resolveHandle(handleRaw: string): Promise<ResolvedProfile | null>
           identity: liveDisplay ? `@${liveDisplay}` : bare,
           tokenId: h.token_id,
           holderAddress: bare,
+          accountId,
           cardImageUrl: (h as { image_url?: string | null }).image_url ?? null,
         };
       }
@@ -421,9 +455,12 @@ async function resolveHandle(handleRaw: string): Promise<ResolvedProfile | null>
   }
 
   // No account for the holder (a fresh paid mint that never logged in), or
-  // Chronik is down: a handle-only profile whose byline IS the URL handle.
-  const author = holder ? await authorForAddress(holder) : null;
-  const handleColor = holder ? await accountColorForAddress(holder) : null;
+  // Chronik is down: a handle-only profile whose byline IS the URL handle. The
+  // author and handle-color lookups are independent -> run them together.
+  const [author, handleColor] = await Promise.all([
+    holder ? authorForAddress(holder) : Promise.resolve(null),
+    holder ? accountColorForAddress(holder) : Promise.resolve(null),
+  ]);
   return {
     kind: "handle",
     author,
@@ -432,6 +469,8 @@ async function resolveHandle(handleRaw: string): Promise<ResolvedProfile | null>
     identity: `@${h.handle}`,
     tokenId: h.token_id,
     holderAddress: bare,
+    // A holder with no proofofwriting account (a fresh mint), or Chronik down.
+    accountId: null,
     cardImageUrl: (h as { image_url?: string | null }).image_url ?? null,
   };
 }
@@ -459,9 +498,12 @@ async function resolveAddress(addressRaw: string): Promise<ResolvedProfile | nul
       .maybeSingle();
 
     if (account?.author_id) {
-      const author = await authorById(account.author_id);
+      // Author fetch and on-chain display-handle re-verify are independent.
+      const [author, displayHandle] = await Promise.all([
+        authorById(account.author_id),
+        freshDisplayHandle(account as any),
+      ]);
       if (author) {
-        const displayHandle = await freshDisplayHandle(account as any);
         return {
           kind: "address",
           author,
@@ -471,6 +513,7 @@ async function resolveAddress(addressRaw: string): Promise<ResolvedProfile | nul
           identity: displayHandle ? `@${displayHandle}` : address,
           tokenId: account.active_handle_token_id ?? null,
           holderAddress: address,
+          accountId: account.id,
           cardImageUrl: null,
         };
       }
@@ -494,6 +537,8 @@ async function resolveAddress(addressRaw: string): Promise<ResolvedProfile | nul
       identity: address,
       tokenId: null,
       holderAddress: address,
+      // Legacy author matched by xec_address with no account row.
+      accountId: null,
       cardImageUrl: null,
     };
   }
