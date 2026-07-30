@@ -609,27 +609,40 @@ export function MintDigestRow({ digest }) {
   const others = Math.max(0, Number(digest?.others) || 0)
   const total = named.length + others
   if (total === 0) return null
-  const verb = total === 1 ? 'minted a handle' : 'minted handles'
 
+  // Every mint is minted BY the platform's official account, so the digest is
+  // attributed to @proofofwriting (clickable → its profile). The minted handles
+  // remain their own links. Reads "@proofofwriting minted @a, @b and N others".
   return (
     <li className="post mintdigest">
       <span aria-hidden className="mintdigest-icon">🖊️</span>
       <span className="mintdigest-text">
-        {named.map((h, i) => (
-          <Fragment key={h.txid ?? h.handle}>
-            {i > 0 ? (others === 0 && i === named.length - 1 ? ' and ' : ', ') : ''}
-            <Link href={`/@${h.handle}`} className="mention">
-              @{h.handle}
-            </Link>
-          </Fragment>
-        ))}
-        {others > 0 ? (
+        <Link href="/@proofofwriting" className="mintdigest-actor">
+          @proofofwriting
+        </Link>{' '}
+        minted{' '}
+        {named.length > 0 ? (
+          <>
+            {named.map((h, i) => (
+              <Fragment key={h.txid ?? h.handle}>
+                {i > 0 ? (others === 0 && i === named.length - 1 ? ' and ' : ', ') : ''}
+                <Link href={`/@${h.handle}`} className="mention">
+                  @{h.handle}
+                </Link>
+              </Fragment>
+            ))}
+            {others > 0 ? (
+              <span className="mintdigest-more">
+                {' and '}
+                {others.toLocaleString('en-US')} other{others === 1 ? '' : 's'}
+              </span>
+            ) : null}
+          </>
+        ) : (
           <span className="mintdigest-more">
-            {named.length > 0 ? ' and ' : ''}
-            {others.toLocaleString('en-US')} other{others === 1 ? '' : 's'}
+            {others.toLocaleString('en-US')} handle{others === 1 ? '' : 's'}
           </span>
-        ) : null}{' '}
-        {verb}
+        )}
       </span>
       <span aria-hidden className="dot">
         ·

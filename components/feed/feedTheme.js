@@ -464,6 +464,10 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .mintdigest-text{min-width:0;}
 .pow-feed .mintdigest-more{color:var(--dim);font-weight:600;text-decoration:none;transition:color .15s;}
 .pow-feed a.mintdigest-more:hover{color:var(--cyan);}
+/* The minter byline — @proofofwriting, the account every mint comes from. */
+.pow-feed .mintdigest-actor{font-weight:700;color:var(--hc,var(--neon));text-decoration:none;
+  text-shadow:0 0 8px rgba(0,255,156,.35);transition:text-shadow .15s;}
+.pow-feed .mintdigest-actor:hover{text-shadow:0 0 12px rgba(0,255,156,.55);}
 /* Mint-card art inside a quote embed (the buyer's "that's me!" post). */
 .pow-feed .qmint-img{display:block;max-width:240px;width:100%;height:auto;margin-top:8px;
   border:1px solid var(--line);border-radius:10px;background:#171513;}
