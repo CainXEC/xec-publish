@@ -392,6 +392,7 @@ function OfferPanel({
 function Card({
   item,
   signedIn,
+  held,
   offerCount,
   offerOpen,
   onToggleOffer,
@@ -399,6 +400,8 @@ function Card({
 }: {
   item: CardItem;
   signedIn: boolean;
+  /** The signed-in viewer holds this NFT in their wallet (so they can list it). */
+  held: boolean;
   offerCount: number;
   offerOpen: boolean;
   onToggleOffer: () => void;
@@ -475,6 +478,8 @@ function Card({
         <div className="mkhandle">{item.handle}</div>
         {item.priceXec != null ? (
           <div className="mkprice">{fmtXec(item.priceXec)}</div>
+        ) : held ? (
+          <div className="mknoprice mkyours">not listed · yours</div>
         ) : (
           <div className="mknoprice">not listed</div>
         )}
@@ -485,10 +490,12 @@ function Card({
 
   // The art + meta are one click surface; actions live OUTSIDE the link so a
   // button never nests inside an anchor. Listed cards go to Cashtab (where the
-  // on-chain offer is accepted); unlisted cards go to the handle's profile.
+  // on-chain offer is accepted); a card the viewer HOLDS goes to Cashtab too, to
+  // list it for sale; every other unlisted card goes to the handle's profile.
+  const toCashtab = listed || held;
   return (
     <div className="mkcard">
-      {listed ? (
+      {toCashtab ? (
         <a
           className="mklink"
           href={cashtabTokenUrl(item.tokenId)}
@@ -508,6 +515,10 @@ function Card({
           <a className="mkact" href={cashtabTokenUrl(item.tokenId)} target="_blank" rel="noreferrer">
             Buy on Cashtab →
           </a>
+        ) : held ? (
+          <a className="mkact" href={cashtabTokenUrl(item.tokenId)} target="_blank" rel="noreferrer">
+            List on Cashtab →
+          </a>
         ) : (
           <>
             <Link className="mkact" href={`/@${item.handle}`}>Profile →</Link>
@@ -517,7 +528,7 @@ function Card({
           </>
         )}
       </div>
-      {offerOpen && !listed ? (
+      {offerOpen && !listed && !held ? (
         <OfferPanel
           tokenId={item.tokenId}
           handle={item.handle}
@@ -579,6 +590,32 @@ export default function MarketplaceClient({
     for (const l of listings ?? []) m.set(l.tokenId, l.priceXec);
     return m;
   }, [listings]);
+
+  // ---- what the signed-in viewer holds — so their own cards link to Cashtab
+  //      to LIST, instead of to the profile / "make offer". One session-gated
+  //      call; logged-out visitors never hit it (and hold nothing). ----
+  const [heldTokenIds, setHeldTokenIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!signedIn) {
+      setHeldTokenIds(new Set());
+      return;
+    }
+    let alive = true;
+    fetch("/api/account/handles")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (!alive || !j?.authenticated) return;
+        setHeldTokenIds(
+          new Set((j.handles ?? []).map((h: { tokenId: string }) => h.tokenId)),
+        );
+      })
+      .catch(() => {
+        /* best-effort: cards just fall back to the profile/offer action */
+      });
+    return () => {
+      alive = false;
+    };
+  }, [signedIn]);
 
   // ---- minted collection — server-paginated, refetched when filters move ----
   const [minted, setMinted] = useState<MintedRow[] | null>(null);
@@ -752,6 +789,7 @@ export default function MarketplaceClient({
                 key={it.tokenId}
                 item={it}
                 signedIn={signedIn}
+                held={heldTokenIds.has(it.tokenId)}
                 offerCount={offerCounts[it.tokenId] ?? 0}
                 offerOpen={openOffer === it.tokenId}
                 onToggleOffer={() =>
@@ -818,6 +856,7 @@ const CSS = `
 .pow-market .mkhandle{font-size:16px;font-weight:700;color:var(--text);word-break:break-all;}
 .pow-market .mkprice{font-size:15px;font-weight:700;color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.35);}
 .pow-market .mknoprice{font-size:13px;font-weight:700;color:var(--dim);letter-spacing:.04em;}
+.pow-market .mkyours{color:var(--cyan);}
 .pow-market .mkminted{font-size:11.5px;color:var(--dim);}
 
 /* Action strip: link zones and buttons live OUTSIDE the card's main anchor. */
