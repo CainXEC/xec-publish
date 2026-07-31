@@ -47,7 +47,8 @@ import {
 } from '@/lib/ecash/cashtabPay'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 
-const FUND_PRESETS = [1000, 5000, 10000, 20000]
+// Fixed quick-adds; the "top up to the cap" button is rendered separately below.
+const FUND_PRESETS = [1000, 5000, 10000]
 
 export default function PocketPanel() {
   const pocket = usePocket()
@@ -690,6 +691,27 @@ function TopUp() {
             </button>
           )
         })}
+        {/* One-tap fill to the soft cap: top up by (cap − balance), FLOORED to
+            whole XEC. Whole XEC is required — a fractional top-up trips the
+            Android Cashtab BIP21 decimal bug (reference_bip21_decimal_android) —
+            so it lands as close to the cap as a whole number allows. */}
+        {(() => {
+          const toCap = Math.max(0, Math.floor(POCKET_SOFT_CAP_XEC - balanceXec))
+          return (
+            <button
+              className="cta preset"
+              onClick={() => startFund(toCap)}
+              disabled={toCap <= 0}
+              title={
+                toCap <= 0
+                  ? 'Your pocket is already full.'
+                  : `Top up to ${POCKET_SOFT_CAP_XEC / 1000}K XEC`
+              }
+            >
+              Top up to {POCKET_SOFT_CAP_XEC / 1000}K
+            </button>
+          )
+        })()}
       </div>
       {balanceXec >= POCKET_SOFT_CAP_XEC && (
         <p className="warn">
