@@ -24,6 +24,7 @@ const FEED_PLACEHOLDERS = [
   'What’s worth writing?',
   'Pay it forward…',
   'Your words don’t go on-chain, but their proof does…',
+  'Payments for likes, unlocks, replies, and reposts go 94% to the original poster…',
 ]
 
 /**
