@@ -47,7 +47,7 @@ import {
 } from '@/lib/ecash/cashtabPay'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 
-const FUND_PRESETS = [1000, 5000, 10000, 25000]
+const FUND_PRESETS = [1000, 5000, 10000, 20000]
 
 export default function PocketPanel() {
   const pocket = usePocket()
