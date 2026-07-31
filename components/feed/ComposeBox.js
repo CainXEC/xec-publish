@@ -22,9 +22,8 @@ const FEED_PLACEHOLDERS = [
   'Say something worth paying for…',
   'Prove it in writing…',
   'What’s worth writing?',
-  'Put it on the record…',
-  'Say something true…',
-  'Worth putting on-chain?',
+  'Pay it forward…',
+  'Your words don’t go on-chain, but their proof does…',
 ]
 
 /**
