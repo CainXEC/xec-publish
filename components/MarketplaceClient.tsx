@@ -197,7 +197,15 @@ export function MarketFilters({
 const cashtabTokenUrl = (tokenId: string) => `https://cashtab.com/#/token/${tokenId}`;
 
 const fmtXec = (n: number) =>
-  n.toLocaleString(undefined, { maximumFractionDigits: 2 }) + " XEC";
+  n.toLocaleString(
+    undefined,
+    // Whole XEC — drop the noise decimals — and go compact for very large prices
+    // ("1.2B XEC") so a 13-digit listing doesn't overflow a card and wrap "XEC"
+    // onto a second line. Normal prices under a million stay exact.
+    Math.abs(n) >= 1_000_000
+      ? { notation: "compact", maximumFractionDigits: 1 }
+      : { maximumFractionDigits: 0 },
+  ) + " XEC";
 
 // Pinned locale + UTC timezone so the server and the client hydrate identical
 // text (an un-pinned toLocaleDateString disagrees across zones → React #418).
@@ -859,7 +867,7 @@ const CSS = `
    are wide enough to restore 16px (see the min-width:1100px block). nowrap instead
    of break-all guarantees a single line. */
 .pow-market .mkhandle{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;}
-.pow-market .mkprice{font-size:15px;font-weight:700;color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.35);}
+.pow-market .mkprice{font-size:15px;font-weight:700;color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.35);white-space:nowrap;}
 .pow-market .mknoprice{font-size:13px;font-weight:700;color:var(--dim);letter-spacing:.04em;}
 .pow-market .mkyours{color:var(--cyan);}
 .pow-market .mkminted{font-size:11.5px;color:var(--dim);}
