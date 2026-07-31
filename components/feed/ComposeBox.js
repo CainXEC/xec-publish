@@ -13,6 +13,20 @@ import { getPocketSnapshot } from '@/lib/pocket/store'
 import { FEED_ACTION } from '@/lib/feedProtocol'
 import { confirmFeedPostInBackground } from '@/lib/feed/confirmFeedPost'
 
+// Top-of-feed placeholders: posting here costs real XEC, so the prompts lean
+// into "make it worth it" and the proof-of-writing name instead of a generic
+// "what's happening?". One is picked at random per mount (see below) for a
+// living-terminal feel. Reply/quote/poll composers keep their own contextual
+// placeholders — this set is only the main composer's fallback.
+const FEED_PLACEHOLDERS = [
+  'Say something worth paying for…',
+  'Prove it in writing…',
+  'What’s worth writing?',
+  'Put it on the record…',
+  'Say something true…',
+  'Worth putting on-chain?',
+]
+
 /**
  * Compose + pay flow for a feed post, reply, or quote. Shared by the top-of-feed
  * composer (action="post"), inline reply composers (action="reply"), and the
@@ -41,6 +55,13 @@ export default function ComposeBox({
   allowOptimistic = false,
 }) {
   const [content, setContent] = useState(initialContent)
+  // Rotating main-composer placeholder. Seed with a STABLE default so SSR and the
+  // first client render agree (no hydration mismatch), then pick a random line on
+  // mount. Placeholders only show on an empty field, so the swap is invisible.
+  const [feedPlaceholder, setFeedPlaceholder] = useState(FEED_PLACEHOLDERS[0])
+  useEffect(() => {
+    setFeedPlaceholder(FEED_PLACEHOLDERS[Math.floor(Math.random() * FEED_PLACEHOLDERS.length)])
+  }, [])
   const [phase, setPhase] = useState('compose') // 'compose' | 'paying'
   const [intent, setIntent] = useState(null)
   // True while a POCKET payment carries this compose: the paying screen is a
@@ -437,7 +458,7 @@ export default function ComposeBox({
               ? 'Add a comment…'
               : pollActive
                 ? 'Ask a question…'
-                : "What's happening?")
+                : feedPlaceholder)
         }
       />
       {isQuote ? <QuotedEmbed post={quotedPost} interactive={false} /> : null}
