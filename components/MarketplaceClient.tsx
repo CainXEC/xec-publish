@@ -853,7 +853,12 @@ const CSS = `
 .pow-market .mkart{aspect-ratio:1/1;background:#0a0f0e;position:relative;overflow:hidden;}
 .pow-market .mkart img{display:block;width:100%;height:100%;}
 .pow-market .mkmeta{padding:14px 16px;display:flex;flex-direction:column;gap:4px;}
-.pow-market .mkhandle{font-size:16px;font-weight:700;color:var(--text);word-break:break-all;}
+/* Keep a full 15-char handle on ONE line so it never wraps the last letter onto
+   a new row and grows the card. On the narrow grid (150px floor below 1100px) a
+   15-char handle only fits at ~13px (measured, JetBrains Mono 700); desktop cards
+   are wide enough to restore 16px (see the min-width:1100px block). nowrap instead
+   of break-all guarantees a single line. */
+.pow-market .mkhandle{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;}
 .pow-market .mkprice{font-size:15px;font-weight:700;color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.35);}
 .pow-market .mknoprice{font-size:13px;font-weight:700;color:var(--dim);letter-spacing:.04em;}
 .pow-market .mkyours{color:var(--cyan);}
@@ -909,6 +914,8 @@ const CSS = `
   .pow-market .mkfilters-inline{display:none;}
   .pow-market .mkgrid{gap:18px;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));}
   .pow-market .mkhead{margin-bottom:30px;}
+  /* Wide (205px) cards fit a 15-char handle at the full size again. */
+  .pow-market .mkhandle{font-size:16px;}
 }
 @media (prefers-reduced-motion:reduce){.pow-market *{transition:none!important;}}
 @media (max-width:520px){.pow-market .title{font-size:30px;}.pow-market .mkgrid{gap:12px;}}
