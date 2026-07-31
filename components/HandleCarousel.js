@@ -15,6 +15,13 @@ import { HandleCardPreview } from '@/components/HandleCardImage'
 const SEARCH_THRESHOLD = 8
 const MAX_RENDER = 100
 
+// Touch (mobile) behavior for the linked cards: a short TAP reveals the big card
+// (the desktop-hover equivalent), a press-and-HOLD opens the handle's Cashtab
+// page. Desktop mouse is unchanged (hover preview + click to open). Thresholds
+// distinguish a tap from a hold from a scroll.
+const LONG_PRESS_MS = 450
+const MOVE_CANCEL_PX = 12
+
 function HandleCardBody({ handle, imageUrl }) {
   // With a rendered card, show ONLY the card image — the handle is printed on the
   // card itself, and the full "@handle" still appears in the hover tooltip. A
@@ -60,6 +67,12 @@ export default function HandleCarousel({
   const [tip, setTip] = useState(null) // { text, imageUrl, cx, top, bottom } | null
   const interactive = typeof onChoose === 'function'
 
+  // Per-press state for the tap-vs-hold-vs-scroll gesture on linked cards (below).
+  const pressTimer = useRef(null)
+  const longPressedRef = useRef(false)
+  const touchStartRef = useRef(null)
+  const suppressClickRef = useRef(false)
+
   // A card with art shows the enlarged card + name on hover (shared
   // HandleCardPreview); the Address/Buy options have no art, so they keep the
   // plain text chip.
@@ -95,6 +108,17 @@ export default function HandleCarousel({
     return () => el.removeEventListener('wheel', onWheel)
   }, [])
 
+  // While a tap-opened preview is showing, the next touch outside any card
+  // dismisses it (mouse users just move away; this is the touch equivalent).
+  useEffect(() => {
+    if (!tip) return undefined
+    const onDocTouch = (e) => {
+      if (!e.target?.closest?.('.dashhandle')) hideTip()
+    }
+    document.addEventListener('touchstart', onDocTouch, { passive: true })
+    return () => document.removeEventListener('touchstart', onDocTouch)
+  }, [tip, hideTip])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return handles
@@ -113,6 +137,50 @@ export default function HandleCarousel({
     onMouseLeave: hideTip,
     onFocus: (e) => showTip(e, label, imageUrl),
     onBlur: hideTip,
+  })
+
+  // Touch handlers for the linked (read-only) cards only. A short tap shows the
+  // big card and suppresses the anchor's navigation; a press-and-hold opens the
+  // Cashtab link; a drag is treated as a scroll and does neither. Mouse never
+  // fires these, so desktop keeps hover-preview + click-to-open unchanged.
+  const linkTouchProps = (href, label, imageUrl) => ({
+    onTouchStart: (e) => {
+      longPressedRef.current = false
+      const t = e.touches[0]
+      touchStartRef.current = t ? { x: t.clientX, y: t.clientY } : null
+      clearTimeout(pressTimer.current)
+      pressTimer.current = setTimeout(() => {
+        longPressedRef.current = true
+        hideTip()
+        if (navigator.vibrate) {
+          try { navigator.vibrate(8) } catch { /* no haptics */ }
+        }
+        window.location.assign(href) // same-tab is reliable from a timer (no popup block)
+      }, LONG_PRESS_MS)
+    },
+    onTouchMove: (e) => {
+      const s = touchStartRef.current
+      const t = e.touches[0]
+      if (!s || !t) return
+      if (Math.abs(t.clientX - s.x) > MOVE_CANCEL_PX || Math.abs(t.clientY - s.y) > MOVE_CANCEL_PX) {
+        clearTimeout(pressTimer.current) // it's a scroll — cancel the hold
+        touchStartRef.current = null
+      }
+    },
+    onTouchEnd: (e) => {
+      clearTimeout(pressTimer.current)
+      if (longPressedRef.current || !touchStartRef.current) return // hold (navigated) or scroll
+      touchStartRef.current = null
+      suppressClickRef.current = true // stop the anchor navigating on this tap
+      window.setTimeout(() => { suppressClickRef.current = false }, 500)
+      showTip(e, label, imageUrl) // reveal the big card, like desktop hover
+    },
+    onClick: (e) => {
+      if (suppressClickRef.current) e.preventDefault()
+    },
+    onContextMenu: (e) => {
+      if (touchStartRef.current) e.preventDefault() // no native long-press menu (touch only)
+    },
   })
 
   return (
@@ -164,7 +232,9 @@ export default function HandleCarousel({
                 target="_blank"
                 rel="noreferrer noopener"
                 className={`dashhandle static link${h.imageUrl ? ' hasimg' : ''}`}
+                style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
                 {...cardProps(label, h.imageUrl)}
+                {...linkTouchProps(href, label, h.imageUrl)}
               >
                 <HandleCardBody handle={h.handle} imageUrl={h.imageUrl} />
               </a>
