@@ -17,6 +17,7 @@ import FeedBody from '@/components/feed/FeedBody'
 import MintCard from '@/components/feed/MintCard'
 import PollCard from '@/components/feed/PollCard'
 import TranslateButton from '@/components/TranslateButton'
+import { getTranslation } from '@/lib/translateStore'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
 import { FEED_CSS } from '@/components/feed/feedTheme'
@@ -83,6 +84,15 @@ function AncestorNode({ post, top = false, onOpenThread = null }) {
   const [expanded, setExpanded] = useState(false)
   const [clamped, setClamped] = useState(false)
 
+  // Keep a translated parent translated: if the viewer has translated this post,
+  // show that translation here too. Ancestors used to always render the original,
+  // so opening a reply reverted a translated parent to its source language. Same
+  // in-memory store the focused post and feed rows use, re-applied on mount.
+  const [tr, setTr] = useState(null)
+  useEffect(() => {
+    setTr(getTranslation('feed', post.txid)?.translated ?? null)
+  }, [post.txid])
+
   // The body is capped at 6 lines by CSS (.ttext). Detect when that cap is
   // actually hiding text so "Show more" only appears on a genuinely long parent
   // — letting you expand it in place instead of having to open its thread.
@@ -90,7 +100,7 @@ function AncestorNode({ post, top = false, onOpenThread = null }) {
     const el = textRef.current
     if (!el || expanded) return
     setClamped(el.scrollHeight > el.clientHeight + 1)
-  }, [expanded, post.content])
+  }, [expanded, post.content, tr])
 
   const go = (e) => {
     if (e.target.closest('a, button')) return
@@ -123,7 +133,7 @@ function AncestorNode({ post, top = false, onOpenThread = null }) {
           {post.deleted ? (
             <span className="tombstone">This post was deleted.</span>
           ) : (
-            <FeedBody text={displayTextFor(post.content)} />
+            <FeedBody text={tr ?? displayTextFor(post.content)} />
           )}
         </p>
         {!post.deleted && (clamped || expanded) ? (
