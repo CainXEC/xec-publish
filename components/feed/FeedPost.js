@@ -313,7 +313,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   // Pin / unpin this post to the top of YOUR profile (one pin per account). The
   // server enforces ownership; a refresh re-fetches the profile with the new
   // order. `post.isPinned` is set only on the profile's pinned row, so it reads
-  // "Unpin" there and "Pin to profile" on every other own post.
+  // "Unpin" there and "Pin" on every other own post.
   const [pinBusy, setPinBusy] = useState(false)
   const handlePin = async () => {
     if (pinBusy) return
@@ -570,7 +570,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
         ) : null}
         {isOwn ? (
           <button type="button" onClick={handlePin} disabled={pinBusy} className="pinbtn">
-            {pinBusy ? '…' : post.isPinned ? 'Unpin' : 'Pin to profile'}
+            {pinBusy ? '…' : post.isPinned ? 'Unpin' : 'Pin'}
           </button>
         ) : null}
         {isOwn ? (
