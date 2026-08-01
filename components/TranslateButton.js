@@ -10,7 +10,14 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { TRANSLATE_LANGS, normalizeLang } from '@/lib/translateLangs'
-import { getTranslation, setTranslation, clearTranslation } from '@/lib/translateStore'
+import {
+  getTranslation,
+  setTranslation,
+  clearTranslation,
+  getArticleIntent,
+  setArticleIntent,
+  clearArticleIntent,
+} from '@/lib/translateStore'
 
 const LS_KEY = 'pow_translate_lang'
 
@@ -34,34 +41,16 @@ export default function TranslateButton({
     onTranslatedRef.current = onTranslated
   }, [onTranslated])
 
-  // A translation follows its post: if the viewer already translated THIS item
-  // (in the feed, before navigating into its thread, etc.), re-apply it on mount
-  // instead of resetting to the original. The stored payload is the full
-  // /api/translate data, so the parent's onTranslated handles it identically to a
-  // fresh translation. Runs when (kind, id) changes — e.g. a recycled row.
-  useEffect(() => {
-    const cached = getTranslation(kind, id)
-    if (cached) {
-      setActive(true)
-      onTranslatedRef.current?.(cached)
-    } else {
-      setActive(false)
-    }
-  }, [kind, id])
+  const isArticle = kind === 'article'
 
-  useEffect(() => {
-    if (!open) return
-    const onDoc = (e) => {
-      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onDoc)
-    return () => document.removeEventListener('mousedown', onDoc)
-  }, [open])
-
-  const run = async (lang) => {
-    setOpen(false)
+  // The one place that talks to /api/translate. `silent` is for the durable
+  // rehydrate (below): a failed re-fetch just drops back to the original quietly
+  // rather than showing an error, and the durable intent stays so the next load
+  // retries. Re-fetching is cheap — the server serves it from the shared Redis
+  // cache, so re-applying a translation never re-spends API credits.
+  const translateTo = async (lang, { silent = false } = {}) => {
     setBusy(true)
-    setError('')
+    if (!silent) setError('')
     try {
       localStorage.setItem(LS_KEY, lang)
     } catch {
@@ -75,27 +64,80 @@ export default function TranslateButton({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) {
-        setError(
-          res.status === 429
-            ? 'Too many requests — slow down.'
-            : 'Translation unavailable.',
-        )
+        if (silent) setActive(false)
+        else
+          setError(
+            res.status === 429
+              ? 'Too many requests — slow down.'
+              : 'Translation unavailable.',
+          )
         return
       }
       setActive(true)
-      setTranslation(kind, id, data) // so it survives navigation / re-render
-      onTranslated?.(data) // { translated, title?, lang }
+      setTranslation(kind, id, data) // survives in-app navigation / re-render
+      // Articles also persist durably (localStorage) so they stay translated
+      // for you across reloads and future visits, and the front-page rail can
+      // show the translated title.
+      if (isArticle) setArticleIntent(id, { lang: data.lang || lang, title: data.title })
+      onTranslatedRef.current?.(data) // { translated, title?, lang }
     } catch {
-      setError('Network hiccup — try again.')
+      if (silent) setActive(false)
+      else setError('Network hiccup — try again.')
     } finally {
       setBusy(false)
     }
+  }
+
+  // translateTo is re-created each render; ref it so the mount effect can
+  // rehydrate without re-running whenever the parent re-renders.
+  const translateToRef = useRef(translateTo)
+  useEffect(() => {
+    translateToRef.current = translateTo
+  })
+
+  // A translation follows its content: re-apply it on mount instead of resetting
+  // to the original. First the in-memory payload (feed post → its thread, etc.);
+  // then, for ARTICLES, the durable choice — re-fetch that language (from the
+  // Redis cache, no new API spend) so an article you translated stays translated
+  // across reloads and return visits. Runs when (kind, id) changes.
+  useEffect(() => {
+    const cached = getTranslation(kind, id)
+    if (cached) {
+      setActive(true)
+      onTranslatedRef.current?.(cached)
+      return
+    }
+    if (isArticle) {
+      const intent = getArticleIntent(id)
+      if (intent?.lang) {
+        setActive(true) // optimistic ↩; corrected to original if the re-fetch fails
+        void translateToRef.current?.(intent.lang, { silent: true })
+        return
+      }
+    }
+    setActive(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind, id])
+
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e) => {
+      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [open])
+
+  const run = (lang) => {
+    setOpen(false)
+    void translateTo(lang)
   }
 
   const showOriginal = () => {
     setActive(false)
     setError('')
     clearTranslation(kind, id) // viewer chose the original — don't re-apply later
+    if (isArticle) clearArticleIntent(id) // and forget the durable choice
     onShowOriginal?.()
   }
 

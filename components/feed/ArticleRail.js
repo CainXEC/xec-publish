@@ -26,6 +26,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { WIDE_RAIL_MIN } from '@/components/feed/feedTheme'
 import { articleRouteFor } from '@/lib/searchResults'
+import { getAllArticleIntents, ARTICLE_INTENTS_EVENT } from '@/lib/translateStore'
 
 const REFRESH_MS = 5 * 60_000 // publishes are rare; the ticker announces them live
 
@@ -256,9 +257,29 @@ export default function ArticleRail({
     }
   }, [active])
 
-  const lead = data?.lead ?? null
-  const more = data?.more ?? []
-  const mostRead = data?.mostRead ?? []
+  // An article you've translated stays translated for you here too: show its
+  // stored translated title in the rail (front page and article-page rail
+  // alike). Read on mount and kept live — translating/reverting on the article
+  // page fires ARTICLE_INTENTS_EVENT (same tab); other tabs ride `storage`.
+  const [titleOverrides, setTitleOverrides] = useState({})
+  useEffect(() => {
+    const sync = () => setTitleOverrides(getAllArticleIntents())
+    sync()
+    window.addEventListener(ARTICLE_INTENTS_EVENT, sync)
+    window.addEventListener('storage', sync)
+    return () => {
+      window.removeEventListener(ARTICLE_INTENTS_EVENT, sync)
+      window.removeEventListener('storage', sync)
+    }
+  }, [])
+  const withTitle = (s) => {
+    const t = s && titleOverrides[s.slug]?.title
+    return t ? { ...s, title: t } : s
+  }
+
+  const lead = withTitle(data?.lead ?? null)
+  const more = (data?.more ?? []).map(withTitle)
+  const mostRead = (data?.mostRead ?? []).map(withTitle)
 
   // Compact reflow (below the rail breakpoint): masthead + lead + the top few
   // "most read" always visible, then the rest of the stories behind a native
