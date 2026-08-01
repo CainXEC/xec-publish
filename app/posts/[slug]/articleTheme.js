@@ -87,7 +87,11 @@ export const ARTICLE_CSS = `
 
 /* ---- prose body: kept high-contrast + readable ---- */
 .pow-article .prose{margin:18px 0 0;font-size:16.5px;line-height:1.75;color:var(--ink);
-  font-family:ui-serif,Georgia,'Times New Roman',serif;word-break:break-word;}
+  font-family:ui-serif,Georgia,'Times New Roman',serif;word-break:break-word;
+  /* Tailwind Typography's base .prose caps width at 65ch (~660px); without this
+     override the body text stops short of the 760px column while the comment
+     boxes fill it. Let the prose span the full column so both edges line up. */
+  max-width:none;}
 .pow-article .prose > :first-child{margin-top:0;}
 .pow-article .prose p{margin:0 0 1.1em;}
 /* Book-style justified body text: the running text fills the column to BOTH
