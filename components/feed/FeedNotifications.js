@@ -145,17 +145,38 @@ export default function FeedNotifications({ signedIn = false, onAgentPending }) 
   }, [open])
 
   // Load (or reload) the first page: newest notifications + unread count.
-  const refresh = useCallback(async () => {
+  // onOpen = the dropdown-opening refresh. While the dropdown is open the badge
+  // is pinned at 0 (the reader is looking at the list), so the open-path never
+  // writes `unread` — and mark-read is POSTed only AFTER this GET returns.
+  // Firing both together let the GET's stale count land after the optimistic
+  // clear and resurrect the badge (the "click twice to clear it" bug).
+  const refresh = useCallback(async ({ onOpen = false } = {}) => {
     try {
       const res = await fetch('/api/feed/notifications', { cache: 'no-store' })
       if (!res.ok) return
       const data = await res.json()
-      setItems(Array.isArray(data.notifications) ? data.notifications : [])
-      setUnread(Number(data.unreadCount) || 0)
-      setCursor(data.nextCursor ?? null)
       const pending = typeof data.agentPending === 'number' ? data.agentPending : null
       setAgentPending(pending)
       onAgentPendingRef.current?.(pending)
+      // A poll response that lands after the dropdown opened must not apply:
+      // the open dropdown owns the badge (0) and the list ("Load more" pages).
+      if (!onOpen && openRef.current) return
+      setItems(Array.isArray(data.notifications) ? data.notifications : [])
+      setCursor(data.nextCursor ?? null)
+      if (onOpen) {
+        if ((Number(data.unreadCount) || 0) > 0) {
+          fetch('/api/feed/notifications/mark-read', { method: 'POST' })
+            // If the dropdown already closed again (quick open/close), a poll
+            // may have re-read the pre-commit count — re-sync now that the
+            // mark-read has landed.
+            .then(() => {
+              if (!openRef.current) void refresh()
+            })
+            .catch(() => {})
+        }
+      } else {
+        setUnread(Number(data.unreadCount) || 0)
+      }
     } catch {
       /* best-effort; the bell just won't update this cycle */
     }
@@ -220,15 +241,12 @@ export default function FeedNotifications({ signedIn = false, onAgentPending }) 
     setOpen((wasOpen) => {
       const next = !wasOpen
       if (next) {
-        void refresh() // freshen the list as it opens
-        if (unread > 0) {
-          setUnread(0) // optimistic — clear the badge immediately
-          fetch('/api/feed/notifications/mark-read', { method: 'POST' }).catch(() => {})
-        }
+        setUnread(0) // the reader is about to see them — badge clears now
+        void refresh({ onOpen: true }) // freshen the list, THEN mark read
       }
       return next
     })
-  }, [refresh, unread])
+  }, [refresh])
 
   if (!signedIn) return null
 
