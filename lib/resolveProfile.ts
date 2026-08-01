@@ -42,8 +42,11 @@ import { chronikBudget } from "@/lib/ecash/chronikBudget";
 
 // Display-path budget: a hung Chronik endpoint must not hold a profile page
 // hostage — past this deadline the caller falls back to the cached binding,
-// exactly as it already does when Chronik errors outright.
-const HOLDER_BUDGET_MS = 1500;
+// exactly as it already does when Chronik errors outright. A HEALTHY
+// tokenId().utxos() answer measures ~1.3s, and chronik-client fails over
+// across 4 endpoints sequentially — 1500ms left no headroom and turned slow
+// answers into "empty profile" misses, so the deadline sits at 3s.
+const HOLDER_BUDGET_MS = 3000;
 
 let _chronik: ChronikClient | null = null;
 const chronik = () => (_chronik ??= new ChronikClient(CHRONIK_URLS));
@@ -222,7 +225,7 @@ export async function currentTokenHolder(tokenId: string): Promise<string | null
       const script = u?.script ?? u?.outputScript;
       if (!script) continue;
       const addr = scriptToAddress(script);
-      if (addr) return addr; // bare "ecash:..." form
+      if (addr) return addr; // PREFIXED "ecash:..." form (encodeCashAddress output)
     }
     return null;
   } catch {
@@ -240,12 +243,26 @@ export async function currentTokenHolder(tokenId: string): Promise<string | null
 // that can lag by up to this window is a handle-only profile's display byline —
 // the same 5-minute staleness the account paths already accept via HOLDER_TTL_MS.
 const HOLDER_DISPLAY_CACHE_S = 300;
-const cachedTokenHolderForDisplay = (tokenId: string): Promise<string | null> =>
-  unstable_cache(
-    () => currentTokenHolder(tokenId),
-    ["token-holder-display", tokenId],
-    { revalidate: HOLDER_DISPLAY_CACHE_S },
-  )();
+const cachedTokenHolderForDisplay = async (tokenId: string): Promise<string | null> => {
+  try {
+    return await unstable_cache(
+      async () => {
+        const holder = await currentTokenHolder(tokenId);
+        // A miss here is an OUTAGE (budget elapsed / Chronik down), not an
+        // answer — and unstable_cache stores whatever resolves. Caching the
+        // null served an EMPTY handle-only profile for 5 straight minutes for
+        // a handle whose holder was fine. Throw instead: errors are not
+        // cached, so the next visit retries on-chain.
+        if (!holder) throw new Error("holder-unavailable");
+        return holder;
+      },
+      ["token-holder-display", tokenId],
+      { revalidate: HOLDER_DISPLAY_CACHE_S },
+    )();
+  } catch {
+    return null;
+  }
+};
 
 /** Lazily re-verify that `account` still holds its display handle's token.
  *  Updates the cache when stale. Never throws; returns the handle to display. */
@@ -279,7 +296,13 @@ async function freshDisplayHandle(account: {
     return account.display_handle;
   }
 
-  const stillHeld = holder === primary.address;
+  // Compare in normalized (bare) form: currentTokenHolder returns the PREFIXED
+  // encoding while account_addresses rows can store either form — a raw string
+  // mismatch here would wrongly UNBIND a handle the account still holds.
+  const holderBare = normalizeAddress(holder);
+  const primaryBare = normalizeAddress(primary.address);
+  if (!holderBare || !primaryBare) return account.display_handle; // can't compare -> keep cache
+  const stillHeld = holderBare === primaryBare;
   const now = new Date().toISOString();
 
   if (stillHeld) {
@@ -315,9 +338,15 @@ async function reverifyHandleBinding(
     const holder = await currentTokenHolder(tokenId);
     if (!holder || !primaryAddress) return; // couldn't verify -> keep cache, don't churn
 
+    // Same normalized comparison as freshDisplayHandle — a format mismatch
+    // must read as "couldn't verify", never as "the handle moved wallets".
+    const holderBare = normalizeAddress(holder);
+    const primaryBare = normalizeAddress(primaryAddress);
+    if (!holderBare || !primaryBare) return;
+
     const supabase = adminDb();
     const now = new Date().toISOString();
-    if (holder === primaryAddress) {
+    if (holderBare === primaryBare) {
       await supabase
         .from("accounts")
         .update({ display_handle_checked_at: now })
