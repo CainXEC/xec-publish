@@ -390,6 +390,10 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 /* "Reposted by @X" context line above a resurfaced repost (Following timeline) */
 .pow-feed .repostedby{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);
   margin:0 0 6px;}
+/* "📌 Pinned" eyebrow above a pinned post on a profile (reads like "Reposted by"). */
+.pow-feed .pinnedtag{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;
+  color:var(--dim);margin:0 0 6px;letter-spacing:.02em;}
+.pow-feed .pinnedtag span{font-size:11px;line-height:1;}
 .pow-feed .reposticon{font-size:11px;line-height:1;}
 .pow-feed .repostedby-who{color:var(--hc,var(--dim));font-weight:600;transition:color .15s;}
 .pow-feed a.repostedby-who:hover{color:var(--cyan);}
@@ -482,6 +486,10 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
   transition:color .15s;}
 .pow-feed .delbtn:hover{color:var(--no);}
 .pow-feed .delbtn:disabled{opacity:.5;cursor:default;}
+.pow-feed .pinbtn{background:none;border:none;color:var(--dim);font:inherit;font-size:13px;cursor:pointer;padding:2px 0;
+  transition:color .15s;}
+.pow-feed .pinbtn:hover{color:var(--cyan);}
+.pow-feed .pinbtn:disabled{opacity:.5;cursor:default;}
 .pow-feed .inlinereply,.pow-feed .inlinequote{margin-top:12px;flex-basis:100%;}
 /* replies just posted, nested inline under their parent post on the feed */
 .pow-feed .postreplies{list-style:none;margin:12px 0 0 6px;padding:0 0 0 14px;border-left:2px solid var(--line);}

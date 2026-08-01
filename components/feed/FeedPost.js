@@ -310,6 +310,30 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
     }
   }
 
+  // Pin / unpin this post to the top of YOUR profile (one pin per account). The
+  // server enforces ownership; a refresh re-fetches the profile with the new
+  // order. `post.isPinned` is set only on the profile's pinned row, so it reads
+  // "Unpin" there and "Pin to profile" on every other own post.
+  const [pinBusy, setPinBusy] = useState(false)
+  const handlePin = async () => {
+    if (pinBusy) return
+    setPinBusy(true)
+    try {
+      const res = await fetch('/api/feed/pin', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(post.isPinned ? { pinned: false } : { txid: post.txid, pinned: true }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to update pin')
+      router.refresh()
+    } catch (e) {
+      window.alert(e?.message || 'Could not update pin')
+    } finally {
+      setPinBusy(false)
+    }
+  }
+
   // Clicking anywhere on the post opens its thread, except on nested
   // interactive elements (the byline/timestamp links, the reply button, or the
   // inline reply composer).
@@ -382,6 +406,9 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
 
   return (
     <li className={`post${compactMint ? ' mintline' : ''}`} onClick={openThread} style={{ cursor: 'pointer' }}>
+      {post.isPinned ? (
+        <div className="pinnedtag"><span aria-hidden>📌</span> Pinned</div>
+      ) : null}
       {repostedBy ? (
         <div className="repostedby">
           <span aria-hidden className="reposticon">🔁</span> Reposted by{' '}
@@ -540,6 +567,11 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
             onTranslated={(d) => setTranslated(d.translated)}
             onShowOriginal={() => setTranslated(null)}
           />
+        ) : null}
+        {isOwn ? (
+          <button type="button" onClick={handlePin} disabled={pinBusy} className="pinbtn">
+            {pinBusy ? '…' : post.isPinned ? 'Unpin' : 'Pin to profile'}
+          </button>
         ) : null}
         {isOwn ? (
           <button type="button" onClick={handleDelete} disabled={deleting} className="delbtn">
