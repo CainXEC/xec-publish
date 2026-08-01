@@ -37,13 +37,14 @@ export default async function DashboardPage() {
   })
   const authorId = acct.authorId
   const supabase = adminDb() // all queries below run on the service-role client
-  // Wave 1: the author's posts/profile/unlock-totals AND the account's linked
-  // addresses run together — account_addresses only needs accountId, so it no
-  // longer waits behind the author queries. The posts list selects METADATA
+  // Wave 1: the author's posts/profile/unlock-count, the account's linked
+  // addresses, AND both follow lists run together — none of them depends on
+  // another, they all key off acct alone. The posts list selects METADATA
   // ONLY (never the full `body` / generated search_tsv — the dashboard list
   // doesn't render them; the editor loads the body fresh from /dashboard/edit),
-  // which was the bulk of the payload for authors with long articles.
-  const [authorTriple, { data: addrRows }] = await Promise.all([
+  // and the unlock total is a HEAD count (the page only shows the number,
+  // fetching every row just to .length it was pure payload).
+  const [authorTriple, { data: addrRows }, followersQ, followingQ] = await Promise.all([
     authorId
       ? Promise.all([
           supabase
@@ -61,43 +62,15 @@ export default async function DashboardPage() {
             .maybeSingle(),
           supabase
             .from('unlocks')
-            .select('amount_xec, post_id, posts!inner(author_id)')
+            .select('post_id, posts!inner(author_id)', { count: 'exact', head: true })
             .eq('posts.author_id', authorId)
             .eq('posts.published', true),
         ])
-      : Promise.resolve([{ data: [], error: null }, { data: null }, { data: null }]),
+      : Promise.resolve([{ data: [], error: null }, { data: null }, { count: 0 }]),
     supabase
       .from('account_addresses')
       .select('address')
       .eq('account_id', acct.accountId),
-  ])
-  const [{ data: posts, error: postsError }, { data: author }, { data: unlockRows }] =
-    authorTriple
-  const rows = unlockRows ?? []
-
-  // ---- Library (articles this account has paid for), follower counts ----
-  // Unlocks are keyed by payer_address; the account may have proven several
-  // wallets, so match on all of them (both prefixed and bare forms).
-  const addressForms = [
-    ...new Set(
-      (addrRows ?? [])
-        .map((r) => String(r.address ?? '').replace(/^ecash:/, '').toLowerCase())
-        .filter(Boolean)
-        .flatMap((bare) => [bare, `ecash:${bare}`]),
-    ),
-  ]
-
-  const [libraryQ, followersQ, followingQ] = await Promise.all([
-    addressForms.length > 0
-      ? supabase
-          .from('unlocks')
-          .select(
-            'txid, amount_xec, unlocked_at, posts(id, title, slug, legacy, price_xec, reading_time_minutes, author_id)',
-          )
-          .in('payer_address', addressForms)
-          .order('unlocked_at', { ascending: false })
-          .limit(200)
-      : Promise.resolve({ data: [] }),
     supabase
       .from('feed_follows')
       .select('follower_account_id, created_at')
@@ -111,26 +84,59 @@ export default async function DashboardPage() {
       .order('created_at', { ascending: false })
       .limit(500),
   ])
+  const [{ data: posts, error: postsError }, { data: author }, { count: unlockCount }] =
+    authorTriple
+
+  // ---- Library (articles this account has paid for), follower counts ----
+  // Unlocks are keyed by payer_address; the account may have proven several
+  // wallets, so match on all of them (both prefixed and bare forms).
+  const addressForms = [
+    ...new Set(
+      (addrRows ?? [])
+        .map((r) => String(r.address ?? '').replace(/^ecash:/, '').toLowerCase())
+        .filter(Boolean)
+        .flatMap((bare) => [bare, `ecash:${bare}`]),
+    ),
+  ]
+
+  // Wave 2: the library scan and the follow-identity lookups run together —
+  // identities only need the wave-1 follow lists, the library only needs the
+  // wave-1 addresses. (They used to run as two extra sequential waves.)
+  const followerIds = (followersQ.data ?? []).map((r) => r.follower_account_id)
+  const followingIds = (followingQ.data ?? []).map((r) => r.followee_account_id)
+  const followAccountIds = [...new Set([...followerIds, ...followingIds])]
+
+  const [libraryQ, [{ data: followAccounts }, { data: followAddrs }]] = await Promise.all([
+    addressForms.length > 0
+      ? supabase
+          .from('unlocks')
+          .select(
+            'txid, amount_xec, unlocked_at, posts(id, title, slug, legacy, price_xec, reading_time_minutes, author_id)',
+          )
+          .in('payer_address', addressForms)
+          .order('unlocked_at', { ascending: false })
+          .limit(200)
+      : Promise.resolve({ data: [] }),
+    followAccountIds.length > 0
+      ? Promise.all([
+          supabase
+            .from('accounts')
+            .select('id, display_handle, handle_color')
+            .in('id', followAccountIds),
+          supabase
+            .from('account_addresses')
+            .select('account_id, address')
+            .in('account_id', followAccountIds)
+            .eq('is_primary', true),
+        ])
+      : Promise.resolve([{ data: [] }, { data: [] }]),
+  ])
 
   // Resolve each followed/following account to its display identity: the
   // handle it presents (with its chosen color) or its primary address —
   // both link to the /@<identifier> profile, which resolves either form.
-  const followerIds = (followersQ.data ?? []).map((r) => r.follower_account_id)
-  const followingIds = (followingQ.data ?? []).map((r) => r.followee_account_id)
-  const followAccountIds = [...new Set([...followerIds, ...followingIds])]
   const accountCard = new Map()
-  if (followAccountIds.length > 0) {
-    const [{ data: followAccounts }, { data: followAddrs }] = await Promise.all([
-      supabase
-        .from('accounts')
-        .select('id, display_handle, handle_color')
-        .in('id', followAccountIds),
-      supabase
-        .from('account_addresses')
-        .select('account_id, address')
-        .in('account_id', followAccountIds)
-        .eq('is_primary', true),
-    ])
+  {
     const primaryByAccount = new Map(
       (followAddrs ?? []).map((a) => [a.account_id, String(a.address ?? '')]),
     )
@@ -219,7 +225,7 @@ export default async function DashboardPage() {
       xecAddress={author?.xec_address ?? ''}
       initialPosts={posts ?? []}
       loadError={postsError?.message ?? null}
-      initialTotalUnlocks={rows.length}
+      initialTotalUnlocks={unlockCount ?? 0}
       walletBalanceSlot={
         <Suspense fallback={<span>…</span>}>
           <WalletBalanceValue address={acct.address} />

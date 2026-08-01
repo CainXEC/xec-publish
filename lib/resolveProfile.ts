@@ -134,6 +134,45 @@ async function authorById(id: string): Promise<Author | null> {
   return (data as Author) ?? null;
 }
 
+/** A PostgREST to-one embed arrives as an object or a 1-element array depending
+ *  on how the relationship was detected — accept both. */
+function embedOne<T>(v: T | T[] | null | undefined): T | null {
+  return Array.isArray(v) ? ((v[0] as T) ?? null) : ((v as T) ?? null);
+}
+
+/** The primary address out of an embedded account_addresses list, if present. */
+function embeddedPrimaryAddress(v: unknown): string | null {
+  const rows = Array.isArray(v)
+    ? (v as { address?: unknown; is_primary?: unknown }[])
+    : [];
+  const primary = rows.find((r) => r?.is_primary === true);
+  return typeof primary?.address === "string" ? primary.address : null;
+}
+
+// Every account fetch below embeds the same two relations so resolution stays
+// a single round trip: the linked addresses (for the primary wallet) and the
+// author row (for the posts/bio). supabase-js can't type-infer a non-literal
+// select string, so results are cast to AccountEmbedRow at the data boundary.
+const ACCOUNT_EMBED_COLUMNS =
+  "id, author_id, display_handle, handle_color, active_handle_token_id, display_handle_checked_at, " +
+  "account_addresses(address, is_primary), authors(id, username, bio, xec_address, is_ai)";
+
+type AccountEmbedRow = {
+  id: string;
+  author_id: string | null;
+  display_handle: string | null;
+  handle_color: string | null;
+  active_handle_token_id: string | null;
+  display_handle_checked_at: string | null;
+  account_addresses: { address: string; is_primary: boolean }[] | null;
+  authors: Author | Author[] | null;
+};
+
+type AccountEmbedLink = {
+  account_id: string;
+  accounts: AccountEmbedRow | AccountEmbedRow[] | null;
+};
+
 /** The author to attribute to a wallet address: a linked account's author, or a
  *  legacy author whose xec_address is this wallet. Null if neither — a wallet can
  *  hold a handle without ever having written a post or created an account. */
@@ -264,61 +303,32 @@ const cachedTokenHolderForDisplay = async (tokenId: string): Promise<string | nu
   }
 };
 
-/** Lazily re-verify that `account` still holds its display handle's token.
- *  Updates the cache when stale. Never throws; returns the handle to display. */
-async function freshDisplayHandle(account: {
-  id: string;
-  display_handle: string | null;
-  active_handle_token_id: string | null;
-  display_handle_checked_at: string | null;
-}): Promise<string | null> {
-  if (!account.active_handle_token_id) return null;
+/** The handle to display for `account`, WITHOUT ever blocking the response:
+ *  serve the cached display_handle now, and when the last on-chain check is
+ *  older than HOLDER_TTL_MS schedule the same re-verification the fast path
+ *  uses via after(). The byline can lag a handle sale by at most the TTL —
+ *  the exact staleness the fast path already accepts. (Replaces the old
+ *  freshDisplayHandle, which held profile/address resolution hostage to a
+ *  live Chronik lookup whenever the cache was stale.) */
+function displayHandleWithReverify(
+  account: {
+    id: string;
+    display_handle: string | null;
+    active_handle_token_id: string | null;
+    display_handle_checked_at: string | null;
+  },
+  primaryAddress: string | null,
+): string | null {
+  const tokenId = account.active_handle_token_id;
+  if (!tokenId) return null;
 
   const lastChecked = account.display_handle_checked_at
     ? Date.parse(account.display_handle_checked_at)
     : 0;
-  const fresh = Date.now() - lastChecked < HOLDER_TTL_MS;
-  if (fresh) return account.display_handle;
-
-  const supabase = adminDb();
-
-  // Who does this account claim as its primary wallet?
-  const { data: primary } = await supabase
-    .from("account_addresses")
-    .select("address")
-    .eq("account_id", account.id)
-    .eq("is_primary", true)
-    .maybeSingle();
-
-  const holder = await currentTokenHolder(account.active_handle_token_id);
-  if (!holder || !primary?.address) {
-    // couldn't verify -> serve cache, don't churn the timestamp
-    return account.display_handle;
+  if (Date.now() - lastChecked >= HOLDER_TTL_MS) {
+    after(() => reverifyHandleBinding(account.id, tokenId, primaryAddress));
   }
-
-  // Compare in normalized (bare) form: currentTokenHolder returns the PREFIXED
-  // encoding while account_addresses rows can store either form — a raw string
-  // mismatch here would wrongly UNBIND a handle the account still holds.
-  const holderBare = normalizeAddress(holder);
-  const primaryBare = normalizeAddress(primary.address);
-  if (!holderBare || !primaryBare) return account.display_handle; // can't compare -> keep cache
-  const stillHeld = holderBare === primaryBare;
-  const now = new Date().toISOString();
-
-  if (stillHeld) {
-    await supabase
-      .from("accounts")
-      .update({ display_handle_checked_at: now })
-      .eq("id", account.id);
-    return account.display_handle;
-  }
-
-  // handle has moved wallets -> this account no longer displays it
-  await supabase
-    .from("accounts")
-    .update({ active_handle_token_id: null, display_handle: null, display_handle_checked_at: now })
-    .eq("id", account.id);
-  return null;
+  return account.display_handle;
 }
 
 // ---------------------------------------------------------------------------
@@ -389,26 +399,19 @@ async function resolveHandle(handleRaw: string): Promise<ResolvedProfile | null>
 
   // FAST PATH: the account currently bound to this token (set at login / mint).
   // Serving it accepts the same 5-minute staleness the address path already
-  // accepts via freshDisplayHandle — the on-chain holder remains the source of
-  // truth, we just verify it out-of-band instead of on every request.
-  const { data: bound } = await supabase
+  // accepts — the on-chain holder remains the source of truth, we just verify
+  // it out-of-band instead of on every request. ONE round trip: the account
+  // arrives with its addresses and author row embedded.
+  const { data: boundRaw } = await supabase
     .from("accounts")
-    .select("id, author_id, handle_color, display_handle_checked_at")
+    .select(ACCOUNT_EMBED_COLUMNS)
     .eq("active_handle_token_id", h.token_id)
     .maybeSingle();
+  const bound = (boundRaw ?? null) as AccountEmbedRow | null;
 
   if (bound?.id) {
-    // The bound account's primary wallet and its author record are independent
-    // lookups off the same account, so fetch them together rather than in series.
-    const [{ data: primary }, author] = await Promise.all([
-      supabase
-        .from("account_addresses")
-        .select("address")
-        .eq("account_id", bound.id)
-        .eq("is_primary", true)
-        .maybeSingle(),
-      bound.author_id ? authorById(bound.author_id) : Promise.resolve(null),
-    ]);
+    const primaryAddress = embeddedPrimaryAddress(bound.account_addresses);
+    const author = embedOne(bound.authors);
 
     const lastChecked = bound.display_handle_checked_at
       ? Date.parse(bound.display_handle_checked_at)
@@ -416,17 +419,17 @@ async function resolveHandle(handleRaw: string): Promise<ResolvedProfile | null>
     const fresh = Date.now() - lastChecked < HOLDER_TTL_MS;
     if (!fresh) {
       // Serve the cached binding NOW; re-verify on-chain after the response.
-      after(() => reverifyHandleBinding(bound.id, h.token_id, primary?.address ?? null));
+      after(() => reverifyHandleBinding(bound.id, h.token_id, primaryAddress));
     }
 
     return {
       kind: "handle",
       author,
       displayHandle: h.handle,
-      handleColor: (bound as { handle_color?: string | null }).handle_color ?? null,
+      handleColor: bound.handle_color ?? null,
       identity: `@${h.handle}`,
       tokenId: h.token_id,
-      holderAddress: primary?.address ? normalizeAddress(primary.address) : null,
+      holderAddress: primaryAddress ? normalizeAddress(primaryAddress) : null,
       accountId: bound.id,
       cardImageUrl: (h as { image_url?: string | null }).image_url ?? null,
     };
@@ -448,38 +451,35 @@ async function resolveHandle(handleRaw: string): Promise<ResolvedProfile | null>
   // locked "byline = account's live display identity" rule.
   const bare = holder ? normalizeAddress(holder) : null;
   if (bare) {
+    // ONE round trip: the address link with the whole account (addresses +
+    // author) embedded behind it.
     const { data: links } = await supabase
       .from("account_addresses")
-      .select("account_id")
+      .select(`account_id, accounts(${ACCOUNT_EMBED_COLUMNS})`)
       .in("address", addressForms(bare))
       .limit(1);
-    const accountId = links?.[0]?.account_id as string | undefined;
-    if (accountId) {
-      const { data: account } = await supabase
-        .from("accounts")
-        .select("id, author_id, display_handle, handle_color, active_handle_token_id, display_handle_checked_at")
-        .eq("id", accountId)
-        .maybeSingle();
-      if (account) {
-        // The holder's CURRENT display handle (lazily re-verified on-chain), or
-        // null if they don't present a handle -> fall back to their address. The
-        // display-handle check and the author fetch are independent -> parallel.
-        const [liveDisplay, author] = await Promise.all([
-          freshDisplayHandle(account as any),
-          account.author_id ? authorById(account.author_id) : Promise.resolve(null),
-        ]);
-        return {
-          kind: "handle",
-          author,
-          displayHandle: h.handle, // the clicked handle's card = instant carousel fallback
-          handleColor: (account as { handle_color?: string | null }).handle_color ?? null,
-          identity: liveDisplay ? `@${liveDisplay}` : bare,
-          tokenId: h.token_id,
-          holderAddress: bare,
-          accountId,
-          cardImageUrl: (h as { image_url?: string | null }).image_url ?? null,
-        };
-      }
+    const linkRows = (links ?? []) as unknown as AccountEmbedLink[];
+    const account = embedOne(linkRows[0]?.accounts);
+    if (account?.id) {
+      // The holder's CURRENT display handle (cached; re-verified on-chain
+      // after the response), or null if they don't present a handle -> fall
+      // back to their address.
+      const liveDisplay = displayHandleWithReverify(
+        account,
+        embeddedPrimaryAddress(account.account_addresses),
+      );
+      const author = embedOne(account.authors);
+      return {
+        kind: "handle",
+        author,
+        displayHandle: h.handle, // the clicked handle's card = instant carousel fallback
+        handleColor: account.handle_color ?? null,
+        identity: liveDisplay ? `@${liveDisplay}` : bare,
+        tokenId: h.token_id,
+        holderAddress: bare,
+        accountId: account.id,
+        cardImageUrl: (h as { image_url?: string | null }).image_url ?? null,
+      };
     }
   }
 
@@ -511,41 +511,35 @@ async function resolveAddress(addressRaw: string): Promise<ResolvedProfile | nul
   const supabase = adminDb();
   const forms = addressForms(address);
 
-  // 1) via account_addresses -> account -> author
+  // 1) via account_addresses -> account -> author, ONE round trip (the account
+  //    arrives embedded with its addresses and author row).
   const { data: links } = await supabase
     .from("account_addresses")
-    .select("account_id")
+    .select(`account_id, accounts(${ACCOUNT_EMBED_COLUMNS})`)
     .in("address", forms)
     .limit(1);
-  const link = links?.[0];
+  const linkRows = (links ?? []) as unknown as AccountEmbedLink[];
+  const account = embedOne(linkRows[0]?.accounts);
 
-  if (link?.account_id) {
-    const { data: account } = await supabase
-      .from("accounts")
-      .select("id, author_id, display_handle, handle_color, active_handle_token_id, display_handle_checked_at")
-      .eq("id", link.account_id)
-      .maybeSingle();
-
-    if (account?.author_id) {
-      // Author fetch and on-chain display-handle re-verify are independent.
-      const [author, displayHandle] = await Promise.all([
-        authorById(account.author_id),
-        freshDisplayHandle(account as any),
-      ]);
-      if (author) {
-        return {
-          kind: "address",
-          author,
-          displayHandle,
-          handleColor:
-            (account as { handle_color?: string | null }).handle_color ?? null,
-          identity: displayHandle ? `@${displayHandle}` : address,
-          tokenId: account.active_handle_token_id ?? null,
-          holderAddress: address,
-          accountId: account.id,
-          cardImageUrl: null,
-        };
-      }
+  if (account?.author_id) {
+    const author = embedOne(account.authors);
+    // Cached display handle; on-chain re-verify happens after the response.
+    const displayHandle = displayHandleWithReverify(
+      account,
+      embeddedPrimaryAddress(account.account_addresses),
+    );
+    if (author) {
+      return {
+        kind: "address",
+        author,
+        displayHandle,
+        handleColor: account.handle_color ?? null,
+        identity: displayHandle ? `@${displayHandle}` : address,
+        tokenId: account.active_handle_token_id ?? null,
+        holderAddress: address,
+        accountId: account.id,
+        cardImageUrl: null,
+      };
     }
   }
 
