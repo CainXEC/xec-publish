@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { TRANSLATE_LANGS, normalizeLang } from '@/lib/translateLangs'
+import { getTranslation, setTranslation, clearTranslation } from '@/lib/translateStore'
 
 const LS_KEY = 'pow_translate_lang'
 
@@ -25,6 +26,28 @@ export default function TranslateButton({
   const [active, setActive] = useState(false)
   const [error, setError] = useState('')
   const rootRef = useRef(null)
+
+  // onTranslated is an inline arrow that changes identity each render; ref it so
+  // the re-apply effect below can depend only on (kind, id).
+  const onTranslatedRef = useRef(onTranslated)
+  useEffect(() => {
+    onTranslatedRef.current = onTranslated
+  }, [onTranslated])
+
+  // A translation follows its post: if the viewer already translated THIS item
+  // (in the feed, before navigating into its thread, etc.), re-apply it on mount
+  // instead of resetting to the original. The stored payload is the full
+  // /api/translate data, so the parent's onTranslated handles it identically to a
+  // fresh translation. Runs when (kind, id) changes — e.g. a recycled row.
+  useEffect(() => {
+    const cached = getTranslation(kind, id)
+    if (cached) {
+      setActive(true)
+      onTranslatedRef.current?.(cached)
+    } else {
+      setActive(false)
+    }
+  }, [kind, id])
 
   useEffect(() => {
     if (!open) return
@@ -60,6 +83,7 @@ export default function TranslateButton({
         return
       }
       setActive(true)
+      setTranslation(kind, id, data) // so it survives navigation / re-render
       onTranslated?.(data) // { translated, title?, lang }
     } catch {
       setError('Network hiccup — try again.')
@@ -71,6 +95,7 @@ export default function TranslateButton({
   const showOriginal = () => {
     setActive(false)
     setError('')
+    clearTranslation(kind, id) // viewer chose the original — don't re-apply later
     onShowOriginal?.()
   }
 
