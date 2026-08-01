@@ -64,6 +64,7 @@ export async function GET(_req, { params }) {
       bodyHtml: bodyHtml ?? '',
       unlocked: entitled,
       hasPaywall: Boolean(cached.hasPaywall),
+      hasLockedContent: Boolean(cached.hasLockedContent),
       priceXec: p.price_xec ?? null,
       readMinutes: p.reading_time_minutes ?? null,
       publishedAt: p.published_at ?? p.created_at ?? null,

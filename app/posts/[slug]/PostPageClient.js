@@ -56,6 +56,10 @@ export default function PostPageClient({
   initialBodyHtml,
   initialUnlocked = false,
   hasPaywallMarker = false,
+  // Default true: absent → treat as a normal paywall (reveals hidden writing),
+  // so the "unlock only grants comments" copy shows only when we KNOW nothing
+  // is locked.
+  hasLockedContent = true,
   initialAuthor,
   initialAuthorAccountId = null,
   initialUnlockCount,
@@ -740,9 +744,16 @@ export default function PostPageClient({
   // and the 94/6 note. Same markup for both paywall placements below (preview vs
   // no-marker); the article page keeps its own payment loop (handlePayToUnlock).
   const payInFlight = payBusy || (pollingActive && paymentInitiated)
+  // When the author locked nothing, unlocking only grants commenting — say so
+  // plainly instead of promising "the rest of the story".
+  const commentsOnlyUnlock = !hasLockedContent
   const paywallCard = (
     <div className="hr-paywall">
-      <p className="hr-lockline">The rest is for readers.</p>
+      <p className="hr-lockline">
+        {commentsOnlyUnlock
+          ? "You've read the whole post — nothing's locked."
+          : 'The rest is for readers.'}
+      </p>
       {!bip21Url ? (
         <p className="hr-note">Payment details are not configured for this post yet.</p>
       ) : payInFlight ? (
@@ -768,10 +779,12 @@ export default function PostPageClient({
             disabled={payBusy}
             onClick={handlePayToUnlock}
           >
-            Unlock · {unlockPriceLabel} XEC
+            {commentsOnlyUnlock ? 'Unlock comments' : 'Unlock'} · {unlockPriceLabel} XEC
           </button>
           <p className="hr-note">
-            94% to the writer · 6% to the platform. The story opens right here.
+            {commentsOnlyUnlock
+              ? 'Unlock to join the discussion. 94% to the writer · 6% to the platform.'
+              : '94% to the writer · 6% to the platform. The story opens right here.'}
           </p>
         </>
       )}
@@ -932,12 +945,16 @@ export default function PostPageClient({
 
           {showPaywall && hasPaywallMarker ? (
             <section className="section">
-              <h2 className="preview-head">
-                Preview
-                {previewReadTimeLabel ? (
-                  <span className="preview-time"> ({previewReadTimeLabel})</span>
-                ) : null}
-              </h2>
+              {/* Only a genuine preview when writing is actually locked; if the
+                  author locked nothing, this IS the whole post — no "Preview". */}
+              {hasLockedContent ? (
+                <h2 className="preview-head">
+                  Preview
+                  {previewReadTimeLabel ? (
+                    <span className="preview-time"> ({previewReadTimeLabel})</span>
+                  ) : null}
+                </h2>
+              ) : null}
               <div
                 className="prose"
                 dangerouslySetInnerHTML={{ __html: tr?.translated ?? bodyHtml }}

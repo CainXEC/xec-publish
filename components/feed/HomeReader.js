@@ -217,6 +217,9 @@ export default function HomeReader({ slug, onClose, backLabel = '← Feed' }) {
               priceXec={d.priceXec}
               authorAddress={d.author?.xecAddress}
               slug={slug}
+              // Marker present but nothing behind it → unlocking only grants
+              // commenting; PaneUnlock says so instead of promising the rest.
+              commentsOnly={!d.hasLockedContent}
               onUnlocked={(bodyHtml) => {
                 // Optimistic paint: verify-payment handed back the full body, so
                 // swap it in now — the paywall melts and the story opens in the

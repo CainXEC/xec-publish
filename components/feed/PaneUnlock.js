@@ -27,7 +27,7 @@ import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPayme
 import { payDirect } from '@/lib/pocket/payGateway'
 import { triggerPaymentSuccessEffect } from '@/lib/paymentSuccessEffect'
 
-export default function PaneUnlock({ postId, priceXec, authorAddress, slug, onUnlocked }) {
+export default function PaneUnlock({ postId, priceXec, authorAddress, slug, onUnlocked, commentsOnly = false }) {
   const [phase, setPhase] = useState('idle') // idle | watching | finalizing
   const [notice, setNotice] = useState('')
   const pollRef = useRef(null)
@@ -201,24 +201,34 @@ export default function PaneUnlock({ postId, priceXec, authorAddress, slug, onUn
 
   // No payout address on file (rare legacy case) — the story's own page
   // still handles it.
+  const lockline = commentsOnly
+    ? "You've read the whole post — nothing's locked."
+    : 'The rest is for readers.'
+
   if (!cashtabUrl || !postId) {
     return (
       <div className="hr-paywall">
-        <p className="hr-lockline">The rest is for readers.</p>
-        <Link className="hr-unlock" href={`/posts/${slug}`}>Unlock · {priceLabel}</Link>
+        <p className="hr-lockline">{lockline}</p>
+        <Link className="hr-unlock" href={`/posts/${slug}`}>
+          {commentsOnly ? 'Unlock comments' : 'Unlock'} · {priceLabel}
+        </Link>
       </div>
     )
   }
 
   return (
     <div className="hr-paywall">
-      <p className="hr-lockline">The rest is for readers.</p>
+      <p className="hr-lockline">{lockline}</p>
       {phase === 'idle' ? (
         <>
           <button type="button" className="hr-unlock" onClick={() => void start()}>
-            Unlock · {priceLabel}
+            {commentsOnly ? 'Unlock comments' : 'Unlock'} · {priceLabel}
           </button>
-          <p className="hr-note">94% to the writer · 6% to the platform. The story opens right here.</p>
+          <p className="hr-note">
+            {commentsOnly
+              ? 'Unlock to join the discussion. 94% to the writer · 6% to the platform.'
+              : '94% to the writer · 6% to the platform. The story opens right here.'}
+          </p>
         </>
       ) : (
         <>
