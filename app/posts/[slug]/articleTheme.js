@@ -90,6 +90,12 @@ export const ARTICLE_CSS = `
   font-family:ui-serif,Georgia,'Times New Roman',serif;word-break:break-word;}
 .pow-article .prose > :first-child{margin-top:0;}
 .pow-article .prose p{margin:0 0 1.1em;}
+/* Book-style justified body text: the running text fills the column to BOTH
+   margins (a crisp right edge like the comment cards, not a ragged one).
+   hyphens:auto keeps the inter-word spacing even — important on the narrow
+   mobile column where justify alone would open big gaps. Headings, code and
+   lists stay left-aligned. */
+.pow-article .prose p{text-align:justify;hyphens:auto;}
 .pow-article .prose h1,.pow-article .prose h2,.pow-article .prose h3,
 .pow-article .prose h4{color:var(--text);line-height:1.3;margin:1.6em 0 .5em;font-weight:700;
   font-family:'JetBrains Mono',ui-monospace,monospace;}
