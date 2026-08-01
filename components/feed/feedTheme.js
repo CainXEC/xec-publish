@@ -944,8 +944,6 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
   font-size:10.5px;color:var(--dim);text-align:center;line-height:1.5;}
 .pow-feed .np-foot a{color:var(--cyan);}
 .pow-feed .np-foot a:hover{border-bottom:1px solid var(--cyan);}
-.pow-feed .np-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--neon);
-  box-shadow:0 0 8px rgba(0,255,156,.8);margin-right:6px;vertical-align:2px;}
 /* the story currently being read (article page keeps this rail beside it) */
 .pow-feed .np-now,.pow-feed .np-entry.now .np-entry-h,.pow-feed .np-rank.now .np-rank-h{color:var(--neon);}
 /* Most-read ranked list. These were referenced but never styled, so the rank
@@ -1173,7 +1171,6 @@ html:not(.dark) .pow-feed .artcard:hover{border-color:var(--neon);background:var
 
 /* The neon green survives ONLY as a small solid fill: the live/thread dots. */
 html:not(.dark) .pow-feed .tdot,
-html:not(.dark) .pow-feed .np-dot,
 html:not(.dark) .pow-feed .arail-dot{background:var(--live);box-shadow:none;}
 html:not(.dark) .pow-feed .tnode.focused .tdot{background:var(--cyan);box-shadow:none;}
 

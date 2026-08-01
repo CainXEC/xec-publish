@@ -32,8 +32,6 @@ const REFRESH_MS = 5 * 60_000 // publishes are rare; the ticker announces them l
 const fmtPrice = (p) =>
   p != null && p > 0 ? `${Number(p).toLocaleString()} XEC` : 'free'
 
-const isFresh = (iso) => Date.now() - Date.parse(iso) < 24 * 60 * 60 * 1000
-
 // Live masthead dateline: the date plus a ticking clock (with seconds). Its own
 // component so only this line re-renders each second, not the whole rail. The
 // clock is null until mount, so the server renders a blank line and there's no
@@ -190,10 +188,7 @@ function Entry({ story, now, onOpen }) {
       onClick={open}
       data-no-navprogress={open ? '' : undefined}
     >
-      <span className="np-serif np-entry-h">
-        {isFresh(story.at) ? <span className="np-dot" aria-hidden /> : null}
-        {story.title}
-      </span>
+      <span className="np-serif np-entry-h">{story.title}</span>
       <Meta story={story} />
     </Link>
   )
