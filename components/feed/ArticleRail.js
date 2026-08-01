@@ -128,13 +128,10 @@ function Lead({ story, rank = null, now, onOpen }) {
         onClick={open}
         data-no-navprogress={open ? '' : undefined}
       >
+        {/* Matches a most-read rank row (number · headline · reads); the only
+            thing that sets the #1 apart is the teaser preview below. No fresh-dot. */}
         <span className="np-lead-hrow">
           {rank != null ? <span className="np-lead-n">{rank}</span> : null}
-          {/* The fresh-dot is its OWN flex item, not inline inside the headline:
-              as an inline-block it was a break opportunity, so in the narrow rail
-              it sat alone on the title's first line and shoved the title below the
-              rank/reads row. As a sibling, the title text starts on line one. */}
-          {isFresh(story.at) ? <span className="np-dot np-lead-dot" aria-hidden /> : null}
           <span className="np-serif np-lead-h">{story.title}</span>
           {rank != null ? (
             <span className="np-lead-c" title="unlocks in the last 7 days">

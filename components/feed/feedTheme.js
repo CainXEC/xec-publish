@@ -923,12 +923,11 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
    lead title — so all the most-read numbers read as one consistent column. */
 .pow-feed .np-lead-n{flex:none;min-width:13px;font-size:15px;font-weight:800;line-height:1.25;
   color:var(--neon);font-variant-numeric:tabular-nums;}
-/* Fresh-dot as a flex sibling of the headline (see ArticleRail): small fixed
-   marker on the title's first line, gap handles the spacing. */
-.pow-feed .np-lead-dot{flex:none;align-self:baseline;margin:0;}
-/* hyphens:auto puts a real hyphen at a wrap in a long word; overflow-wrap:anywhere
-   is the fallback that still fits an unbreakable token (e.g. a bare domain). */
-.pow-feed .np-lead-h{flex:1;min-width:0;font-size:20px;line-height:1.2;color:var(--text);font-weight:700;overflow-wrap:anywhere;hyphens:auto;}
+/* The #1 headline matches the 2–7 rows' headline (.np-rank-h) — same size and
+   weight; only the teaser preview below sets the lead apart. hyphens:auto puts a
+   real hyphen at a wrap in a long word; overflow-wrap:anywhere is the fallback
+   that still fits an unbreakable token (e.g. a bare domain). */
+.pow-feed .np-lead-h{flex:1;min-width:0;font-size:14.5px;line-height:1.3;color:var(--text);overflow-wrap:anywhere;hyphens:auto;}
 .pow-feed .np-lead-c{flex:none;font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap;}
 .pow-feed .np-lead-hl:hover .np-lead-h{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
 .pow-feed .np-lead-teaser-link{display:block;margin-top:9px;}
