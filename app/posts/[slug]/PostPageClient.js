@@ -79,7 +79,6 @@ export default function PostPageClient({
   const [tr, setTr] = useState(null)
 
   const [unlocked, setUnlocked] = useState(initialUnlocked)
-  const [unlockCheckPending, setUnlockCheckPending] = useState(!initialUnlocked)
 
   const [pollingActive, setPollingActive] = useState(false)
   const pollRef = useRef(null)
@@ -136,9 +135,6 @@ export default function PostPageClient({
 
   useEffect(() => {
     setUnlocked(initialUnlocked)
-    if (initialUnlocked) {
-      setUnlockCheckPending(false)
-    }
   }, [initialUnlocked])
 
   // Reader/author identity comes solely from the wallet session via /api/me.
@@ -335,41 +331,12 @@ export default function PostPageClient({
     }
   }, [])
 
-  useEffect(() => {
-    if (!post?.id) return
-    if (initialUnlocked) return
-
-    let cancelled = false
-
-    async function initialUnlock() {
-      setUnlockCheckPending(true)
-      try {
-        // cookie fast-path; address-based unlock now comes from /api/me below.
-        await checkUnlock(post.id)
-      } catch {
-        // A failed check must fail safe TO the paywall — never leave the reader
-        // stuck on "Checking access...". If they've actually paid, the address
-        // fast-path (/api/me unlockedPostIds) and the polling checks still
-        // reconcile them to unlocked.
-      } finally {
-        if (!cancelled) setUnlockCheckPending(false)
-      }
-    }
-
-    void initialUnlock()
-
-    return () => {
-      cancelled = true
-    }
-  }, [post?.id, checkUnlock, initialUnlocked])
-
   // Cross-device unlock paint: if this account's proven address has unlocked
   // this post (per /api/me), reveal it without needing the per-device cookie.
   useEffect(() => {
     if (!post?.id || unlocked) return
     if (Array.isArray(me?.unlockedPostIds) && me.unlockedPostIds.includes(post.id)) {
       setUnlocked(true)
-      setUnlockCheckPending(false)
     }
   }, [me, post?.id, unlocked])
 
@@ -737,7 +704,12 @@ export default function PostPageClient({
   const articleDateIso = post.published_at ?? post.created_at
   const previewReadTimeLabel = formatReadingTimeLabel(post.reading_time_minutes)
   const canViewFullPost = unlocked || isAuthorSession
-  const showPaywall = !canViewFullPost && !unlockCheckPending
+  // Paint from the SERVER's entitlement immediately — the SSR body already
+  // reflects the same cookie the initial client re-check reads, so gating the
+  // preview on that redundant round-trip only made every reader wait on a blank
+  // "Checking access…". The address-based checks (below, via /api/me + polling)
+  // still upgrade a cross-device unlock to the full story when they land.
+  const showPaywall = !canViewFullPost
 
   // The paywall card — mirrors the in-pane reader's PaneUnlock look (.hr-*): a
   // bordered card with "The rest is for readers.", an inline green Unlock button,
@@ -938,10 +910,6 @@ export default function PostPageClient({
               className="metaitem"
             />
           </div>
-
-          {unlockCheckPending && !canViewFullPost ? (
-            <p className="checking">Checking access...</p>
-          ) : null}
 
           {showPaywall && hasPaywallMarker ? (
             <section className="section">

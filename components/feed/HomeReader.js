@@ -25,6 +25,7 @@ import CopyLinkButton from '@/components/feed/CopyLinkButton'
 import TranslateButton from '@/components/TranslateButton'
 import ArticleComments from '@/components/ArticleComments'
 import PaneUnlock from '@/components/feed/PaneUnlock'
+import { takePrefetchedReader } from '@/lib/readerPrefetch'
 import { ARTICLE_CSS } from '@/app/posts/[slug]/articleTheme'
 
 // Pinned locale + UTC so SSR and client hydrate identical text (#418).
@@ -67,13 +68,20 @@ export default function HomeReader({ slug, onClose, backLabel = '← Feed' }) {
   // Reusable so an in-pane unlock can refetch: the server, now seeing the
   // entitlement, returns the FULL story and the paywall block melts away.
   const load = useCallback(
-    async ({ quiet = false } = {}) => {
+    async ({ quiet = false, fresh = false } = {}) => {
       if (!quiet) setState({ loading: true })
       try {
-        const res = await fetch(`/api/posts/reader/${encodeURIComponent(slug)}`, {
-          cache: 'no-store',
-        })
-        const j = await res.json()
+        // First open: use the payload a hover/press already warmed, so the pane
+        // paints without waiting on the round-trip. Reconciles (post-unlock,
+        // post-comment) pass fresh:true to skip the (now stale) warmed preview.
+        const warmed = fresh ? null : takePrefetchedReader(slug)
+        let j = warmed ? await warmed : null
+        if (!j || !j.ok) {
+          const res = await fetch(`/api/posts/reader/${encodeURIComponent(slug)}`, {
+            cache: 'no-store',
+          })
+          j = await res.json()
+        }
         setState(j.ok ? { loading: false, data: j } : { loading: false, error: j.error || 'Story unavailable.' })
       } catch {
         setState((cur) => (cur.data ? cur : { loading: false, error: 'Story unavailable — try again.' }))
@@ -232,7 +240,7 @@ export default function HomeReader({ slug, onClose, backLabel = '← Feed' }) {
                       : cur,
                   )
                 }
-                void load({ quiet: true })
+                void load({ quiet: true, fresh: true })
               }}
             />
           ) : null}
@@ -246,7 +254,7 @@ export default function HomeReader({ slug, onClose, backLabel = '← Feed' }) {
               canComment={d.unlocked}
               me={me}
               isAuthorSession={Boolean(me?.authorId && d.authorId && me.authorId === d.authorId)}
-              onChanged={() => void load({ quiet: true })}
+              onChanged={() => void load({ quiet: true, fresh: true })}
             />
           ) : null}
         </div>

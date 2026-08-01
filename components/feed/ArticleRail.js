@@ -27,6 +27,14 @@ import Link from 'next/link'
 import { WIDE_RAIL_MIN } from '@/components/feed/feedTheme'
 import { articleRouteFor } from '@/lib/searchResults'
 import { getAllArticleIntents, ARTICLE_INTENTS_EVENT } from '@/lib/translateStore'
+import { prefetchReader } from '@/lib/readerPrefetch'
+
+// Warm the reading pane's payload on hover/press so a click opens it instantly
+// instead of showing "Turning the page…". Cheap + deduped in prefetchReader.
+const warm = (slug) => ({
+  onPointerEnter: () => prefetchReader(slug),
+  onPointerDown: () => prefetchReader(slug),
+})
 
 const REFRESH_MS = 5 * 60_000 // publishes are rare; the ticker announces them live
 
@@ -125,6 +133,7 @@ function Lead({ story, rank = null, now, onOpen }) {
         className="np-lead-hl"
         href={href}
         onClick={open}
+        {...(open ? warm(story.slug) : {})}
         data-no-navprogress={open ? '' : undefined}
       >
         {/* Matches a most-read rank row (number · headline · reads); the only
@@ -144,6 +153,7 @@ function Lead({ story, rank = null, now, onOpen }) {
           className="np-lead-teaser-link"
           href={href}
           onClick={open}
+          {...(open ? warm(story.slug) : {})}
           data-no-navprogress={open ? '' : undefined}
         >
           <p className="np-lead-teaser">{story.teaser}</p>
@@ -167,6 +177,7 @@ function MostReadEntry({ story, rank, now, onOpen }) {
       className={`np-rank${now ? ' now' : ''}`}
       href={href}
       onClick={open}
+      {...(open ? warm(story.slug) : {})}
       data-no-navprogress={open ? '' : undefined}
     >
       <span className="np-rank-n">{rank}</span>
@@ -187,6 +198,7 @@ function Entry({ story, now, onOpen }) {
       className={`np-entry${now ? ' now' : ''}`}
       href={href}
       onClick={open}
+      {...(open ? warm(story.slug) : {})}
       data-no-navprogress={open ? '' : undefined}
     >
       <span className="np-serif np-entry-h">{story.title}</span>
