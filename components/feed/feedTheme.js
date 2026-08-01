@@ -921,7 +921,12 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 .pow-feed .np-lead-hrow{display:flex;align-items:baseline;gap:12px;}
 .pow-feed .np-lead-n{flex:none;font-size:20px;font-weight:800;line-height:1.2;
   color:var(--neon);font-variant-numeric:tabular-nums;}
-.pow-feed .np-lead-h{flex:1;min-width:0;font-size:20px;line-height:1.2;color:var(--text);font-weight:700;overflow-wrap:anywhere;}
+/* Fresh-dot as a flex sibling of the headline (see ArticleRail): small fixed
+   marker on the title's first line, gap handles the spacing. */
+.pow-feed .np-lead-dot{flex:none;align-self:baseline;margin:0;}
+/* hyphens:auto puts a real hyphen at a wrap in a long word; overflow-wrap:anywhere
+   is the fallback that still fits an unbreakable token (e.g. a bare domain). */
+.pow-feed .np-lead-h{flex:1;min-width:0;font-size:20px;line-height:1.2;color:var(--text);font-weight:700;overflow-wrap:anywhere;hyphens:auto;}
 .pow-feed .np-lead-c{flex:none;font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap;}
 .pow-feed .np-lead-hl:hover .np-lead-h{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
 .pow-feed .np-lead-teaser-link{display:block;margin-top:9px;}
@@ -931,7 +936,7 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 .pow-feed .np-lead.now .np-lead-h{color:var(--neon);}
 /* More-stories rows: the whole row is a click-to-open link (headline + meta) */
 .pow-feed .np-entry{display:block;padding:10px 0;border-bottom:1px solid rgba(23,58,51,.55);}
-.pow-feed .np-entry-h{display:block;font-size:14.5px;line-height:1.3;color:var(--text);overflow-wrap:anywhere;}
+.pow-feed .np-entry-h{display:block;font-size:14.5px;line-height:1.3;color:var(--text);overflow-wrap:anywhere;hyphens:auto;}
 .pow-feed .np-entry:hover .np-entry-h{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
 .pow-feed .np-entry .np-meta{margin-top:3px;}
 .pow-feed .np-foot{border-top:1px solid var(--line);margin-top:12px;padding-top:10px;
@@ -951,7 +956,7 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 .pow-feed .np-rank:last-child{border-bottom:none;}
 .pow-feed .np-rank-n{flex:none;min-width:13px;font-size:15px;font-weight:800;line-height:1.25;
   color:var(--neon);font-variant-numeric:tabular-nums;}
-.pow-feed .np-rank-h{flex:1;min-width:0;font-size:14.5px;line-height:1.3;color:var(--text);overflow-wrap:anywhere;}
+.pow-feed .np-rank-h{flex:1;min-width:0;font-size:14.5px;line-height:1.3;color:var(--text);overflow-wrap:anywhere;hyphens:auto;}
 .pow-feed .np-rank:hover .np-rank-h{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
 .pow-feed .np-rank-c{flex:none;font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap;}
 /* Entry (Latest) headline link wraps a block; teaser + button row when expanded. */
