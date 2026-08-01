@@ -30,6 +30,11 @@ export default async function AgentQueuePage() {
   if (!acct?.isAdmin) notFound()
 
   const supabase = adminDb()
+  // Dead drafts age off the audit list: vetoed/discarded rows stop rendering a
+  // week after they were drafted. Display-only — the rows (and veto reasons,
+  // the written taste record of RULES §7) stay in agent_queue, and the agent's
+  // dedup read over recent rows is untouched.
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
   const [pendingQ, recentQ, asgQ] = await Promise.all([
     supabase
       .from('agent_queue')
@@ -41,6 +46,7 @@ export default async function AgentQueuePage() {
       .from('agent_queue')
       .select('id, created_at, status, title, veto_reason, approved_at, post_url, publish_txid, published_at')
       .neq('status', 'pending')
+      .or(`status.not.in.(vetoed,discarded),created_at.gte.${weekAgo}`)
       .order('created_at', { ascending: false })
       .limit(20),
     supabase
