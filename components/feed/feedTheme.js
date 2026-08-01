@@ -919,7 +919,9 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
    taking the middle, and its 7-day read count at the right — the same
    [rank] headline [reads] layout as the ranked rows below, sized up. */
 .pow-feed .np-lead-hrow{display:flex;align-items:baseline;gap:12px;}
-.pow-feed .np-lead-n{flex:none;font-size:20px;font-weight:800;line-height:1.2;
+/* The #1's rank number matches the 2–7 rows' number (.np-rank-n), not the big
+   lead title — so all the most-read numbers read as one consistent column. */
+.pow-feed .np-lead-n{flex:none;min-width:13px;font-size:15px;font-weight:800;line-height:1.25;
   color:var(--neon);font-variant-numeric:tabular-nums;}
 /* Fresh-dot as a flex sibling of the headline (see ArticleRail): small fixed
    marker on the title's first line, gap handles the spacing. */
