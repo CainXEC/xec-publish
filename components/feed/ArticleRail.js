@@ -100,8 +100,7 @@ function FrontPageClock() {
 function MetaInner({ story }) {
   return (
     <>
-      {story.author}
-      {' · '}
+      <span className="np-author">{story.author}</span>
       <span className="np-price">{fmtPrice(story.priceXec)}</span>
     </>
   )
