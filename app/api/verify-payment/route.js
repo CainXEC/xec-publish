@@ -226,6 +226,10 @@ export async function POST(request) {
           postId,
           type: 'unlock',
           actorAddress: result.payerAddress,
+          // Gross paid = the article price (in XEC → sats); the bell shows the
+          // net after the 6% platform fee.
+          amountSats:
+            post?.price_xec != null ? Math.round(Number(post.price_xec) * 100) : null,
         }),
       )
     }

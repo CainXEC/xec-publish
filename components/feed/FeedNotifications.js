@@ -3,6 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import BellIcon from '@/components/BellIcon'
+import { computePaymentSplit } from '@/lib/paymentSplit'
+
+// The NET XEC the recipient EARNED from a paid action: gross (amount_sats, in
+// sats — 1 XEC = 100 sats) minus the 6% platform fee, via the same split applied
+// on-chain, shown with a leading "+". Null when nothing was recorded (older rows,
+// or an unpaid action) so the caller shows the plain verb.
+function earnedLabel(amountSats) {
+  if (amountSats == null) return null
+  const grossXec = Number(amountSats) / 100
+  const net = grossXec > 0 ? computePaymentSplit(grossXec)?.authorAmount : null
+  return net != null && net > 0 ? `+${net.toLocaleString()} XEC` : null
+}
 
 function timeAgo(iso) {
   if (!iso) return ''
@@ -52,34 +64,32 @@ function notifText(n) {
       ? `offered ${Number(n.offerAmountXec).toLocaleString()} XEC for ${name}`
       : `made an offer on ${name}`
   }
-  // Like/reply/repost all PAY the post's author (a like is a tip; a reply/repost
-  // pays 94% to them), so when we recorded what was paid, append the amount (in
-  // XEC; amount_sats is sats, 1 XEC = 100 sats). Older rows with no stored amount
-  // fall back to the plain verb. (A quote doesn't pay the quoted author, so it's
-  // deliberately left out.)
+  // Every paid action that EARNS the recipient (like/reply/repost pay the post's
+  // author; comment_like pays the commenter; unlock/comment pay the article
+  // author) appends the NET they earned — "· +94 XEC" — when we recorded the
+  // amount. Older rows without one fall back to the plain verb. (A quote doesn't
+  // pay the quoted author, so it never carries an amount.)
+  const earned = earnedLabel(n.amount_sats)
+  const withEarned = (base) => (earned ? `${base} · ${earned}` : base)
+
   if (n.type === 'like' || n.type === 'reply' || n.type === 'repost') {
-    const xec = n.amount_sats != null ? Number(n.amount_sats) / 100 : null
-    return xec != null && xec > 0
-      ? `${VERB[n.type]} · ${xec.toLocaleString()} XEC`
-      : VERB[n.type]
+    return withEarned(VERB[n.type])
   }
-  // A comment like is a tip too — append the amount, and name the article when
-  // we resolved its title. Never references the (paywalled) comment body.
+  // A comment like — name the article when we resolved its title. Never
+  // references the (paywalled) comment body.
   if (n.type === 'comment_like') {
-    const xec = n.amount_sats != null ? Number(n.amount_sats) / 100 : null
     const base = n.articleTitle
       ? `liked your comment on “${n.articleTitle}”`
       : VERB.comment_like
-    return xec != null && xec > 0 ? `${base} · ${xec.toLocaleString()} XEC` : base
+    return withEarned(base)
   }
   // Unlock/comment name the article when we resolved its title, else fall back
   // to the generic verb ("unlocked your article").
   if (n.type === 'unlock' || n.type === 'comment') {
-    if (n.articleTitle) {
-      const verb = n.type === 'unlock' ? 'unlocked' : 'commented on'
-      return `${verb} “${n.articleTitle}”`
-    }
-    return VERB[n.type]
+    const base = n.articleTitle
+      ? `${n.type === 'unlock' ? 'unlocked' : 'commented on'} “${n.articleTitle}”`
+      : VERB[n.type]
+    return withEarned(base)
   }
   return VERB[n.type] ?? 'interacted with your post'
 }

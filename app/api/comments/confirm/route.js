@@ -202,6 +202,7 @@ export async function POST(request) {
           actorIdentity: authorIdentity,
           type: 'comment',
           postTxid: postId, // article id — linkified to the article at read time
+          amountSats: match.sats, // paid to the parent commenter; bell shows net
         })
       }
     } else {
@@ -211,6 +212,7 @@ export async function POST(request) {
         actorAccountId: resolved.accountId,
         actorIdentity: authorIdentity,
         actorAddress: null,
+        amountSats: match.sats, // paid to the article author; bell shows net
       })
     }
   } catch (e) {
