@@ -52,14 +52,16 @@ function notifText(n) {
       ? `offered ${Number(n.offerAmountXec).toLocaleString()} XEC for ${name}`
       : `made an offer on ${name}`
   }
-  // A like is a tip: when we recorded what was paid, append the amount (in XEC;
-  // amount_sats is sats, 1 XEC = 100 sats). Older likes with no stored amount
-  // fall back to the plain verb.
-  if (n.type === 'like') {
+  // Like/reply/repost all PAY the post's author (a like is a tip; a reply/repost
+  // pays 94% to them), so when we recorded what was paid, append the amount (in
+  // XEC; amount_sats is sats, 1 XEC = 100 sats). Older rows with no stored amount
+  // fall back to the plain verb. (A quote doesn't pay the quoted author, so it's
+  // deliberately left out.)
+  if (n.type === 'like' || n.type === 'reply' || n.type === 'repost') {
     const xec = n.amount_sats != null ? Number(n.amount_sats) / 100 : null
     return xec != null && xec > 0
-      ? `${VERB.like} · ${xec.toLocaleString()} XEC`
-      : VERB.like
+      ? `${VERB[n.type]} · ${xec.toLocaleString()} XEC`
+      : VERB[n.type]
   }
   // A comment like is a tip too — append the amount, and name the article when
   // we resolved its title. Never references the (paywalled) comment body.

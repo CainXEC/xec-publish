@@ -254,6 +254,10 @@ export async function POST(request) {
       actorIdentity: authorIdentity,
       type: 'reply',
       postTxid: targetTxid,
+      // A reply pays the parent author (payoutAddress above) — carry the amount
+      // so the bell can show "· N XEC". (A quote doesn't pay the quoted author,
+      // so it stays amountless below.)
+      amountSats: match.sats,
     })
   } else if (action === FEED_ACTION.QUOTE && quotedAuthorAccountId) {
     await recordFeedNotification(supabase, {
