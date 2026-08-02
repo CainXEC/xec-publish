@@ -129,13 +129,14 @@ export async function POST(request) {
   let title = ''
   let hash = ''
   let scope = 'pub'
+  let pollOptions = null // [{ id, text }] when the feed post is a poll
 
   try {
     if (kind === 'feed') {
       const supabase = adminDb()
       const { data: post } = await supabase
         .from('feed_posts')
-        .select('content, content_hash, deleted_at')
+        .select('content, content_hash, deleted_at, card_kind, card_meta')
         .eq('txid', id)
         .maybeSingle()
       if (!post || post.deleted_at) {
@@ -143,6 +144,12 @@ export async function POST(request) {
       }
       sourceText = typeof post.content === 'string' ? post.content : ''
       hash = post.content_hash || contentHashHex(sourceText)
+      // A poll's options live in card_meta, not the body — carry them so the
+      // whole card localizes, not just the question. (Options are immutable, so
+      // caching them under the question's content hash is safe.)
+      if (post.card_kind === 'poll' && Array.isArray(post.card_meta?.options)) {
+        pollOptions = post.card_meta.options
+      }
     } else if (kind === 'comment') {
       const supabase = adminDb()
       const { data: comment } = await supabase
@@ -189,7 +196,10 @@ export async function POST(request) {
   // --- cache ---
   const cacheKey = `pow:tr:${CACHE_VERSION}:${kind}:${hash}:${scope}:${lang}`
   const cached = await cacheGet(cacheKey)
-  if (cached) {
+  // A poll cached before option-translation shipped lacks `options` — treat that
+  // as a miss so it re-translates with them (cacheSet overwrites). Everything
+  // else serves straight from cache.
+  if (cached && !(pollOptions?.length && !Array.isArray(cached.options))) {
     return NextResponse.json({ ok: true, lang, cached: true, ...cached })
   }
 
@@ -197,7 +207,23 @@ export async function POST(request) {
   try {
     let payload
     if (kind === 'feed' || kind === 'comment') {
-      payload = { translated: await translatePlain(sourceText, targetName) }
+      if (pollOptions?.length) {
+        // Translate the question + every option in parallel; keep each option's
+        // id so the client can swap labels in place.
+        const [translated, ...optTexts] = await Promise.all([
+          translatePlain(sourceText, targetName),
+          ...pollOptions.map((o) => {
+            const t = String(o?.text ?? '').trim()
+            return t ? translatePlain(t, targetName) : Promise.resolve(t)
+          }),
+        ])
+        payload = {
+          translated,
+          options: pollOptions.map((o, i) => ({ id: o.id, text: optTexts[i] || o.text })),
+        }
+      } else {
+        payload = { translated: await translatePlain(sourceText, targetName) }
+      }
     } else {
       const { sanitizePostBodyHtml } = await import('@/lib/sanitizePostBodyHtml')
       const [translatedHtml, translatedTitle] = await Promise.all([

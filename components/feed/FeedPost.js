@@ -219,6 +219,8 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
 export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = null, onDeleted, onBlocked, mintVariant = 'full', onOpenThread = null, allowOptimisticQuote = false }) {
   const router = useRouter()
   const [translated, setTranslated] = useState(null)
+  // Poll option labels from a translation ([{id,text}]); null = show originals.
+  const [translatedOptions, setTranslatedOptions] = useState(null)
   const [showReply, setShowReply] = useState(false)
   const [showQuote, setShowQuote] = useState(false)
   const [replyCount, setReplyCount] = useState(post.replyCount ?? 0)
@@ -500,7 +502,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
             </p>
           ) : null}
 
-          {isPoll ? <PollCard post={post} /> : null}
+          {isPoll ? <PollCard post={post} optionOverrides={translatedOptions} /> : null}
 
           {post.quoted_txid ? (
             <QuotedEmbed post={post.quoted ?? null} onOpenThread={onOpenThread ?? undefined} />
@@ -564,8 +566,14 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
           <TranslateButton
             kind="feed"
             id={post.txid}
-            onTranslated={(d) => setTranslated(d.translated)}
-            onShowOriginal={() => setTranslated(null)}
+            onTranslated={(d) => {
+              setTranslated(d.translated)
+              setTranslatedOptions(Array.isArray(d.options) ? d.options : null)
+            }}
+            onShowOriginal={() => {
+              setTranslated(null)
+              setTranslatedOptions(null)
+            }}
           />
         ) : null}
         {isOwn ? (

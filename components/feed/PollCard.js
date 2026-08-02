@@ -12,13 +12,24 @@
 //  this just reflects it.
 // =============================================================================
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 
 const pct = (n, total) => (total > 0 ? Math.round((n / total) * 100) : 0)
 
-export default function PollCard({ post }) {
+// optionOverrides: [{ id, text }] from a translation, so a translated poll shows
+// translated option labels too (the question is translated by FeedPost). Keyed by
+// option id; falls back to the original text for any unmatched option.
+export default function PollCard({ post, optionOverrides = null }) {
   const txid = post?.txid
+  const overrides = useMemo(() => {
+    const m = {}
+    for (const o of Array.isArray(optionOverrides) ? optionOverrides : []) {
+      if (o && o.id != null) m[o.id] = o.text
+    }
+    return m
+  }, [optionOverrides])
+  const optText = (o) => overrides[o.id] ?? o.text
   // Seed options from card_meta so the card paints instantly (labels don't need
   // the network); counts/vote fill in when the fetch lands.
   const seedOptions = Array.isArray(post?.card_meta?.options) ? post.card_meta.options : []
@@ -114,7 +125,7 @@ export default function PollCard({ post }) {
               disabled={Boolean(voting)}
               onClick={() => void vote(o.id)}
             >
-              <span className="poll-opt-text">{o.text}</span>
+              <span className="poll-opt-text">{optText(o)}</span>
             </button>
           ))}
         </div>
@@ -128,7 +139,7 @@ export default function PollCard({ post }) {
               <div key={o.id} className={`poll-res${mine ? ' mine' : ''}`}>
                 <div className="poll-res-fill" style={{ width: `${p}%` }} aria-hidden />
                 <span className="poll-res-text">
-                  {o.text}
+                  {optText(o)}
                   {mine ? ' ✓' : ''}
                 </span>
                 <span className="poll-res-pct">{p}%</span>

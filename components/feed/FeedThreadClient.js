@@ -183,6 +183,8 @@ export default function FeedThreadClient({
   const [showReply, setShowReply] = useState(false)
   const [showQuote, setShowQuote] = useState(false)
   const [translated, setTranslated] = useState(null)
+  // Poll option labels from a translation ([{id,text}]); null = show originals.
+  const [translatedOptions, setTranslatedOptions] = useState(null)
 
   // Add a reply to the thread + close the box. Idempotent by txid: a pocket reply
   // shows optimistically the instant it broadcasts (its recording is handed to a
@@ -305,7 +307,9 @@ export default function FeedThreadClient({
                       </p>
                     ) : null
                   })()}
-                  {post.card_kind === 'poll' ? <PollCard post={post} /> : null}
+                  {post.card_kind === 'poll' ? (
+                    <PollCard post={post} optionOverrides={translatedOptions} />
+                  ) : null}
                   {post.quoted_txid ? (
                     <QuotedEmbed post={post.quoted ?? null} onOpenThread={onOpenThread} />
                   ) : null}
@@ -346,8 +350,14 @@ export default function FeedThreadClient({
                   <TranslateButton
                     kind="feed"
                     id={post.txid}
-                    onTranslated={(d) => setTranslated(d.translated)}
-                    onShowOriginal={() => setTranslated(null)}
+                    onTranslated={(d) => {
+                      setTranslated(d.translated)
+                      setTranslatedOptions(Array.isArray(d.options) ? d.options : null)
+                    }}
+                    onShowOriginal={() => {
+                      setTranslated(null)
+                      setTranslatedOptions(null)
+                    }}
                   />
                 ) : null}
                 {isOwnRoot ? (
