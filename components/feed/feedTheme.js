@@ -205,10 +205,18 @@ export const FEED_CSS = `
 .pow-feed .notifpop{position:absolute;top:100%;right:0;margin-top:8px;z-index:60;width:300px;max-width:82vw;
   background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;
   box-shadow:0 10px 30px rgba(0,0,0,.55);}
-/* Mobile: the bell sits on the LEFT (bottom-bar shell), so the dropdown must
-   open to the RIGHT — the desktop right:0 anchor would slide it off-screen. */
+/* Desktop: the panel overlays the live rail (330px wide). Widen it to cover the
+   whole rail — a narrower panel left the rail's right edge peeking out beside it —
+   and nudge it right so its right edge meets the rail's (the bell sits ~44px left
+   of the rail's right edge, behind the search toggle). Wider also fits more text
+   per notification line. */
+@media (min-width:1100px){
+  .pow-feed .notifpop{width:350px;max-width:none;right:-46px;}
+}
+/* Mobile: the bell sits on the LEFT, so open to the RIGHT and fill the pane width
+   (the 300px dropdown wasted most of the screen). Capped so tablets stay sane. */
 @media (max-width:1099px){
-  .pow-feed .notifpop{right:auto;left:0;}
+  .pow-feed .notifpop{right:auto;left:0;width:calc(100vw - 32px);max-width:560px;}
 }
 .pow-feed .notifpop-head{padding:11px 14px;border-bottom:1px solid var(--line);
   font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);}
