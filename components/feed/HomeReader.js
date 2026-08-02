@@ -221,14 +221,16 @@ export default function HomeReader({ slug, onClose, backLabel = '← Feed' }) {
               entitled — the same bytes the article page would render. */}
           <div className="prose" dangerouslySetInnerHTML={{ __html: tr?.translated ?? d.bodyHtml }} />
 
-          {d.hasPaywall && !d.unlocked ? (
+          {!d.unlocked && Number(d.priceXec) > 0 ? (
             <PaneUnlock
               postId={d.postId}
               priceXec={d.priceXec}
               authorAddress={d.author?.xecAddress}
               slug={slug}
-              // Marker present but nothing behind it → unlocking only grants
-              // commenting; PaneUnlock says so instead of promising the rest.
+              // Show the unlock for any priced, not-yet-unlocked article — even one
+              // with NO paywall marker: unlocking still grants commenting, so the
+              // pane must offer it (matching the article page). commentsOnly drives
+              // the copy when nothing is actually locked.
               commentsOnly={!d.hasLockedContent}
               onUnlocked={(bodyHtml) => {
                 // Optimistic paint: verify-payment handed back the full body, so
