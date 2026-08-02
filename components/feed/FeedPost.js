@@ -13,6 +13,7 @@ import PollCard from '@/components/feed/PollCard'
 import FeedBody from '@/components/feed/FeedBody'
 import PostCopyLink from '@/components/feed/PostCopyLink'
 import TranslateButton from '@/components/TranslateButton'
+import { isSelectingWithin } from '@/lib/selectionGuard'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
 
@@ -343,6 +344,9 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
     if (e.target.closest('a, button, input, textarea, .inlinereply, .inlinequote, .quoted, .engage, .postmenu')) {
       return
     }
+    // Highlighting the post's text to copy it ends in a click — don't treat that
+    // as a tap-to-open.
+    if (isSelectingWithin(e.currentTarget)) return
     // Stop here so a click on a nested reply opens ITS thread, not the ancestor's.
     e.stopPropagation()
     // Host pages with a center reading pane (the home feed) open the thread
