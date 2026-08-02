@@ -202,7 +202,7 @@ export default function PaneUnlock({ postId, priceXec, authorAddress, slug, onUn
   // No payout address on file (rare legacy case) — the story's own page
   // still handles it.
   const lockline = commentsOnly
-    ? "You've read the whole post — nothing's locked."
+    ? "You've read it all, nothing's locked."
     : 'The rest is for readers.'
 
   if (!cashtabUrl || !postId) {

@@ -755,7 +755,7 @@ export default function PostPageClient({
     <div className="hr-paywall">
       <p className="hr-lockline">
         {commentsOnlyUnlock
-          ? "You've read the whole post — nothing's locked."
+          ? "You've read it all, nothing's locked."
           : 'The rest is for readers.'}
       </p>
       {!bip21Url ? (
