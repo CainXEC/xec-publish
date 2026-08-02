@@ -26,6 +26,8 @@ import TranslateButton from '@/components/TranslateButton'
 import ArticleComments from '@/components/ArticleComments'
 import PaneUnlock from '@/components/feed/PaneUnlock'
 import { takePrefetchedReader } from '@/lib/readerPrefetch'
+import { setTranslation, setArticleIntent } from '@/lib/translateStore'
+import { fetchTranslation } from '@/lib/translateClient'
 import { ARTICLE_CSS } from '@/app/posts/[slug]/articleTheme'
 
 // Pinned locale + UTC so SSR and client hydrate identical text (#418).
@@ -239,6 +241,20 @@ export default function HomeReader({ slug, onClose, backLabel = '← Feed' }) {
                       ? { ...cur, data: { ...cur.data, bodyHtml, unlocked: true } }
                       : cur,
                   )
+                }
+                // If a preview translation was showing, it covered only the public
+                // bytes — re-translate the now-full body. Drop the stale short
+                // translation first so the unlocked story shows immediately rather
+                // than looking empty while the new translation loads.
+                if (tr?.lang) {
+                  const lang = tr.lang
+                  setTr(null)
+                  void fetchTranslation('article', slug, lang).then((d) => {
+                    if (!d) return
+                    setTr(d)
+                    setTranslation('article', slug, d)
+                    setArticleIntent(slug, { lang, title: d.title })
+                  })
                 }
                 void load({ quiet: true, fresh: true })
               }}

@@ -8,6 +8,8 @@ import ArticleRail from '@/components/feed/ArticleRail'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import ArticleComments from '@/components/ArticleComments'
 import TranslateButton from '@/components/TranslateButton'
+import { setTranslation, setArticleIntent } from '@/lib/translateStore'
+import { fetchTranslation } from '@/lib/translateClient'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import { ARTICLE_CSS } from './articleTheme'
 import { encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
@@ -136,6 +138,36 @@ export default function PostPageClient({
   useEffect(() => {
     setUnlocked(initialUnlocked)
   }, [initialUnlocked])
+
+  // After an unlock, re-translate the FULL body. The reader translated the public
+  // preview, so `tr` covers only the public bytes; once the full body reveals, that
+  // stale short translation would hide the rest and the unlock looks empty ("waiting
+  // for the translation"). Show the untranslated full body immediately, then swap in
+  // a fresh full-scope translation when it lands.
+  const trRef = useRef(tr)
+  useEffect(() => {
+    trRef.current = tr
+  }, [tr])
+  const prevUnlockedRef = useRef(unlocked)
+  useEffect(() => {
+    const was = prevUnlockedRef.current
+    prevUnlockedRef.current = unlocked
+    if (was || !unlocked) return
+    const lang = trRef.current?.lang
+    if (!lang) return
+    setTr(null) // reveal the full body now — no stale preview, no blank wait
+    let cancelled = false
+    void fetchTranslation('article', slug, lang).then((d) => {
+      if (cancelled || !d) return
+      setTr(d)
+      setTranslation('article', slug, d) // keep in-memory + durable stores in sync
+      setArticleIntent(slug, { lang, title: d.title }) // with the full-scope result
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unlocked, slug])
 
   // Reader/author identity comes solely from the wallet session via /api/me.
   // readerWalletAddress mirrors me.address so existing consumers (follows, the
