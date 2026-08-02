@@ -19,6 +19,13 @@ import { deletePost } from '@/app/dashboard/deletePost'
 
 const PAGE_SIZE = 25
 
+// Append a new page of feed items, dropping any txid already shown (the pinned
+// post is prepended to page 1 and excluded from later pages, but dedupe anyway).
+function appendUnique(prev, more) {
+  const seen = new Set((prev ?? []).map((p) => p.txid))
+  return [...(prev ?? []), ...(more ?? []).filter((p) => p.txid && !seen.has(p.txid))]
+}
+
 function formatXec(amount) {
   const n = Number(amount)
   if (!Number.isFinite(n)) return '0'
@@ -254,6 +261,7 @@ export default function DashboardClient({
   walletBalanceSlot = null,
   viewerAccountId = null,
   initialFeedPosts = [],
+  initialFeedNextCursor = null,
   initialFeedReplies = null,
   library = [],
   followers = [],
@@ -300,11 +308,36 @@ export default function DashboardClient({
   // article manager below. New accounts land on Posts.
   const [tab, setTab] = useState('posts')
   const [feedPosts, setFeedPosts] = useState(initialFeedPosts ?? [])
+  // Cursor for the Posts tab: page 1 is server-rendered; "Load more" pages the
+  // rest via /api/feed/account-posts (null cursor = no more). Without this the
+  // dashboard only ever showed the first page of your posts.
+  const [feedPostsCursor, setFeedPostsCursor] = useState(initialFeedNextCursor)
+  const [feedPostsLoadingMore, setFeedPostsLoadingMore] = useState(false)
+  const loadMoreFeedPosts = useCallback(async () => {
+    if (!viewerAccountId || !feedPostsCursor || feedPostsLoadingMore) return
+    setFeedPostsLoadingMore(true)
+    try {
+      const res = await fetch(
+        `/api/feed/account-posts?accountId=${encodeURIComponent(viewerAccountId)}&cursor=${encodeURIComponent(feedPostsCursor)}`,
+      )
+      const data = await res.json()
+      if (data.ok) {
+        setFeedPosts((prev) => appendUnique(prev, data.posts))
+        setFeedPostsCursor(data.nextCursor ?? null)
+      }
+    } catch {
+      /* leave the cursor in place — clicking again retries */
+    } finally {
+      setFeedPostsLoadingMore(false)
+    }
+  }, [viewerAccountId, feedPostsCursor, feedPostsLoadingMore])
   // Replies load ON DEMAND: null = not fetched yet. The first switch to the
   // Replies tab fetches them from /api/feed/account-replies (same shape as the
   // server used to inline), so the dashboard render never waits on them.
   const [feedReplies, setFeedReplies] = useState(initialFeedReplies)
   const [feedRepliesLoading, setFeedRepliesLoading] = useState(false)
+  const [feedRepliesCursor, setFeedRepliesCursor] = useState(null)
+  const [feedRepliesLoadingMore, setFeedRepliesLoadingMore] = useState(false)
   const loadFeedReplies = useCallback(async () => {
     if (!viewerAccountId) { setFeedReplies((prev) => prev ?? []); return }
     setFeedRepliesLoading(true)
@@ -314,12 +347,31 @@ export default function DashboardClient({
       )
       const data = await res.json()
       setFeedReplies(Array.isArray(data.posts) ? data.posts : [])
+      setFeedRepliesCursor(data.nextCursor ?? null)
     } catch {
       setFeedReplies([])
     } finally {
       setFeedRepliesLoading(false)
     }
   }, [viewerAccountId])
+  const loadMoreFeedReplies = useCallback(async () => {
+    if (!viewerAccountId || !feedRepliesCursor || feedRepliesLoadingMore) return
+    setFeedRepliesLoadingMore(true)
+    try {
+      const res = await fetch(
+        `/api/feed/account-replies?accountId=${encodeURIComponent(viewerAccountId)}&cursor=${encodeURIComponent(feedRepliesCursor)}`,
+      )
+      const data = await res.json()
+      if (data.ok) {
+        setFeedReplies((prev) => appendUnique(prev, data.posts))
+        setFeedRepliesCursor(data.nextCursor ?? null)
+      }
+    } catch {
+      /* leave the cursor in place — clicking again retries */
+    } finally {
+      setFeedRepliesLoadingMore(false)
+    }
+  }, [viewerAccountId, feedRepliesCursor, feedRepliesLoadingMore])
   const openRepliesTab = useCallback(() => {
     setTab('replies')
     if (feedReplies === null && !feedRepliesLoading) void loadFeedReplies()
@@ -747,17 +799,31 @@ export default function DashboardClient({
               </p>
             </div>
           ) : (
-            <ul className="panel posts">
-              {feedPosts.map((post) => (
-                <FeedPost
-                  key={post.txid}
-                  post={post}
-                  viewerAccountId={viewerAccountId}
-                  onDeleted={removeFeedItem}
-                  onQuoted={handleFeedQuoted}
-                />
-              ))}
-            </ul>
+            <>
+              <ul className="panel posts">
+                {feedPosts.map((post) => (
+                  <FeedPost
+                    key={post.txid}
+                    post={post}
+                    viewerAccountId={viewerAccountId}
+                    onDeleted={removeFeedItem}
+                    onQuoted={handleFeedQuoted}
+                  />
+                ))}
+              </ul>
+              {feedPostsCursor ? (
+                <div className="loadmore">
+                  <button
+                    type="button"
+                    onClick={() => void loadMoreFeedPosts()}
+                    disabled={feedPostsLoadingMore}
+                    className="ghost"
+                  >
+                    {feedPostsLoadingMore ? 'Loading…' : 'Load more'}
+                  </button>
+                </div>
+              ) : null}
+            </>
           )
         ) : tab === 'replies' ? (
           feedRepliesLoading || feedReplies === null ? (
@@ -765,17 +831,31 @@ export default function DashboardClient({
           ) : feedReplies.length === 0 ? (
             <p className="empty">No replies yet.</p>
           ) : (
-            <ul className="panel posts">
-              {feedReplies.map((post) => (
-                <FeedPost
-                  key={post.txid}
-                  post={post}
-                  viewerAccountId={viewerAccountId}
-                  onDeleted={removeFeedItem}
-                  onQuoted={handleFeedQuoted}
-                />
-              ))}
-            </ul>
+            <>
+              <ul className="panel posts">
+                {feedReplies.map((post) => (
+                  <FeedPost
+                    key={post.txid}
+                    post={post}
+                    viewerAccountId={viewerAccountId}
+                    onDeleted={removeFeedItem}
+                    onQuoted={handleFeedQuoted}
+                  />
+                ))}
+              </ul>
+              {feedRepliesCursor ? (
+                <div className="loadmore">
+                  <button
+                    type="button"
+                    onClick={() => void loadMoreFeedReplies()}
+                    disabled={feedRepliesLoadingMore}
+                    className="ghost"
+                  >
+                    {feedRepliesLoadingMore ? 'Loading…' : 'Load more'}
+                  </button>
+                </div>
+              ) : null}
+            </>
           )
         ) : tab === 'library' ? (
           <section className="dashpanel">

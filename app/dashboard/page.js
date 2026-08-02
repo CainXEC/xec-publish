@@ -233,6 +233,7 @@ export default async function DashboardPage() {
       }
       viewerAccountId={acct.accountId}
       initialFeedPosts={feedPage.posts}
+      initialFeedNextCursor={feedPage.nextCursor ?? null}
       library={library}
       followers={followers}
       following={following}
