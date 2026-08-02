@@ -234,6 +234,8 @@ export const FEED_CSS = `
 .pow-feed .notifmore:disabled{color:var(--dim);cursor:default;}
 .pow-feed .notifmsg{font-size:13px;line-height:1.5;color:var(--text);}
 .pow-feed .notifmsg strong{color:var(--cyan);font-weight:700;}
+/* The earned amount leads the message (right after the handle) — money green. */
+.pow-feed .notifamt{color:var(--neon);font-weight:700;white-space:nowrap;}
 .pow-feed .notiftime{flex:none;font-size:11px;color:var(--dim);}
 
 /* ---- header ---- */

@@ -64,32 +64,25 @@ function notifText(n) {
       ? `offered ${Number(n.offerAmountXec).toLocaleString()} XEC for ${name}`
       : `made an offer on ${name}`
   }
-  // Every paid action that EARNS the recipient (like/reply/repost pay the post's
-  // author; comment_like pays the commenter; unlock/comment pay the article
-  // author) appends the NET they earned — "· +94 XEC" — when we recorded the
-  // amount. Older rows without one fall back to the plain verb. (A quote doesn't
-  // pay the quoted author, so it never carries an amount.)
-  const earned = earnedLabel(n.amount_sats)
-  const withEarned = (base) => (earned ? `${base} · ${earned}` : base)
-
+  // Just the action text — the earned amount ("+94 XEC") is rendered SEPARATELY,
+  // right after the handle (see the row markup), so the earnings are the first
+  // thing you see.
   if (n.type === 'like' || n.type === 'reply' || n.type === 'repost') {
-    return withEarned(VERB[n.type])
+    return VERB[n.type]
   }
   // A comment like — name the article when we resolved its title. Never
   // references the (paywalled) comment body.
   if (n.type === 'comment_like') {
-    const base = n.articleTitle
+    return n.articleTitle
       ? `liked your comment on “${n.articleTitle}”`
       : VERB.comment_like
-    return withEarned(base)
   }
   // Unlock/comment name the article when we resolved its title, else fall back
   // to the generic verb ("unlocked your article").
   if (n.type === 'unlock' || n.type === 'comment') {
-    const base = n.articleTitle
+    return n.articleTitle
       ? `${n.type === 'unlock' ? 'unlocked' : 'commented on'} “${n.articleTitle}”`
       : VERB[n.type]
-    return withEarned(base)
   }
   return VERB[n.type] ?? 'interacted with your post'
 }
@@ -315,6 +308,14 @@ export default function FeedNotifications({ signedIn = false, onAgentPending }) 
                     >
                       <span className="notifmsg">
                         <strong>{actorLabel(n.actor_identity)}</strong>{' '}
+                        {(() => {
+                          const earned = earnedLabel(n.amount_sats)
+                          return earned ? (
+                            <>
+                              <span className="notifamt">{earned}</span>{' '}
+                            </>
+                          ) : null
+                        })()}
                         {notifText(n)}
                       </span>
                       <span className="notiftime">{timeAgo(n.created_at)}</span>
