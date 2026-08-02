@@ -246,6 +246,35 @@ export default function FeedThreadClient({
     }
   }
 
+  // Pin / unpin this post to the top of your profile, right from its own page.
+  // Optimistic so the button flips instantly (mirrors FeedPost).
+  const [pinBusy, setPinBusy] = useState(false)
+  const [pinned, setPinned] = useState(Boolean(post?.isPinned))
+  useEffect(() => {
+    setPinned(Boolean(post?.isPinned))
+  }, [post?.isPinned])
+  const handlePinRoot = async () => {
+    if (pinBusy) return
+    const next = !pinned
+    setPinBusy(true)
+    setPinned(next)
+    try {
+      const res = await fetch('/api/feed/pin', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(next ? { txid: post.txid, pinned: true } : { pinned: false }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Failed to update pin')
+      router.refresh()
+    } catch (e) {
+      setPinned(!next)
+      window.alert(e?.message || 'Could not update pin')
+    } finally {
+      setPinBusy(false)
+    }
+  }
+
   // Pinned locale + UTC (with a zone label) so SSR and client hydrate
   // identical text (#418).
   const createdAt = post?.created_at
@@ -362,6 +391,16 @@ export default function FeedThreadClient({
                       setTranslatedOptions(null)
                     }}
                   />
+                ) : null}
+                {isOwnRoot ? (
+                  <button
+                    type="button"
+                    onClick={handlePinRoot}
+                    disabled={pinBusy}
+                    className="pinbtn"
+                  >
+                    {pinBusy ? '…' : pinned ? 'Unpin' : 'Pin'}
+                  </button>
                 ) : null}
                 {isOwnRoot ? (
                   <button

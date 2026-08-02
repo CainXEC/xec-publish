@@ -318,19 +318,29 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   // order. `post.isPinned` is set only on the profile's pinned row, so it reads
   // "Unpin" there and "Pin" on every other own post.
   const [pinBusy, setPinBusy] = useState(false)
+  // Local pin state so the button flips to Unpin instantly on click instead of
+  // waiting for a refresh (the feed's post objects aren't re-seeded on refresh,
+  // so `post.isPinned` alone never updated). Re-syncs if the prop does change.
+  const [pinned, setPinned] = useState(Boolean(post.isPinned))
+  useEffect(() => {
+    setPinned(Boolean(post.isPinned))
+  }, [post.isPinned])
   const handlePin = async () => {
     if (pinBusy) return
+    const next = !pinned
     setPinBusy(true)
+    setPinned(next) // optimistic
     try {
       const res = await fetch('/api/feed/pin', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(post.isPinned ? { pinned: false } : { txid: post.txid, pinned: true }),
+        body: JSON.stringify(next ? { txid: post.txid, pinned: true } : { pinned: false }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Failed to update pin')
-      router.refresh()
+      router.refresh() // reconcile profile ordering in the background
     } catch (e) {
+      setPinned(!next) // revert on failure
       window.alert(e?.message || 'Could not update pin')
     } finally {
       setPinBusy(false)
@@ -412,7 +422,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
 
   return (
     <li className={`post${compactMint ? ' mintline' : ''}`} onClick={openThread} style={{ cursor: 'pointer' }}>
-      {post.isPinned ? (
+      {pinned ? (
         <div className="pinnedtag"><span aria-hidden>📌</span> Pinned</div>
       ) : null}
       {repostedBy ? (
@@ -582,7 +592,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
         ) : null}
         {isOwn ? (
           <button type="button" onClick={handlePin} disabled={pinBusy} className="pinbtn">
-            {pinBusy ? '…' : post.isPinned ? 'Unpin' : 'Pin'}
+            {pinBusy ? '…' : pinned ? 'Unpin' : 'Pin'}
           </button>
         ) : null}
         {isOwn ? (
