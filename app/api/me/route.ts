@@ -24,7 +24,7 @@ export async function GET() {
 
   const { data: account } = await supabase
     .from("accounts")
-    .select("id, author_id, display_handle, handle_color, active_handle_token_id, account_addresses(address, is_primary)")
+    .select("id, author_id, display_handle, handle_color, active_handle_token_id, pinned_post_txid, account_addresses(address, is_primary)")
     .eq("id", claim.accountId)
     .maybeSingle();
 
@@ -86,6 +86,9 @@ export async function GET() {
     handleColor: account.handle_color ?? null,
     identity: formatIdentity(account.display_handle, primaryAddress),
     unlockedPostIds,
+    // The account's currently pinned feed post (one per account) — drives the
+    // Pin/Unpin button state everywhere the post appears.
+    pinnedPostTxid: account.pinned_post_txid ?? null,
     // 'challenge' (nonce-proven login) vs 'pay' (minted by a payment). The
     // Pocket wizard checks this before attempting register, which requires
     // challenge scope — same bar as change-address.

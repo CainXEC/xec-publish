@@ -19,6 +19,13 @@ import PollCard from '@/components/feed/PollCard'
 import TranslateButton from '@/components/TranslateButton'
 import { getTranslation } from '@/lib/translateStore'
 import { isSelectingWithin } from '@/lib/selectionGuard'
+import {
+  getMyPinnedTxid,
+  setMyPinnedTxid,
+  seedMyPinnedTxid,
+  subscribePinned,
+  hydratePinned,
+} from '@/lib/pinnedStore'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
 import { FEED_CSS } from '@/components/feed/feedTheme'
@@ -249,15 +256,24 @@ export default function FeedThreadClient({
   // Pin / unpin this post to the top of your profile, right from its own page.
   // Optimistic so the button flips instantly (mirrors FeedPost).
   const [pinBusy, setPinBusy] = useState(false)
-  const [pinned, setPinned] = useState(Boolean(post?.isPinned))
+  // Shared pin store (see FeedPost / lib/pinnedStore) — one source of truth for
+  // the viewer's pinned txid, so the button is right here too and survives reload.
+  const [myPinned, setMyPinned] = useState(
+    () => getMyPinnedTxid() ?? (isOwnRoot && post?.isPinned ? post.txid : null),
+  )
   useEffect(() => {
-    setPinned(Boolean(post?.isPinned))
-  }, [post?.isPinned])
+    if (isOwnRoot && post?.isPinned) seedMyPinnedTxid(post.txid)
+    void hydratePinned()
+    return subscribePinned(setMyPinned)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const pinned = isOwnRoot && !!post?.txid && myPinned === post.txid
   const handlePinRoot = async () => {
     if (pinBusy) return
     const next = !pinned
+    const prev = getMyPinnedTxid()
     setPinBusy(true)
-    setPinned(next)
+    setMyPinnedTxid(next ? post.txid : null)
     try {
       const res = await fetch('/api/feed/pin', {
         method: 'POST',
@@ -266,9 +282,8 @@ export default function FeedThreadClient({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Failed to update pin')
-      router.refresh()
     } catch (e) {
-      setPinned(!next)
+      setMyPinnedTxid(prev)
       window.alert(e?.message || 'Could not update pin')
     } finally {
       setPinBusy(false)

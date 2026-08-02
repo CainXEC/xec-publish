@@ -14,6 +14,13 @@ import FeedBody from '@/components/feed/FeedBody'
 import PostCopyLink from '@/components/feed/PostCopyLink'
 import TranslateButton from '@/components/TranslateButton'
 import { isSelectingWithin } from '@/lib/selectionGuard'
+import {
+  getMyPinnedTxid,
+  setMyPinnedTxid,
+  seedMyPinnedTxid,
+  subscribePinned,
+  hydratePinned,
+} from '@/lib/pinnedStore'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
 
@@ -318,18 +325,27 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   // order. `post.isPinned` is set only on the profile's pinned row, so it reads
   // "Unpin" there and "Pin" on every other own post.
   const [pinBusy, setPinBusy] = useState(false)
-  // Local pin state so the button flips to Unpin instantly on click instead of
-  // waiting for a refresh (the feed's post objects aren't re-seeded on refresh,
-  // so `post.isPinned` alone never updated). Re-syncs if the prop does change.
-  const [pinned, setPinned] = useState(Boolean(post.isPinned))
+  // Pin state comes from the shared store (the viewer's ONE pinned txid), so the
+  // button is correct wherever this post appears — feed, profile, thread — and
+  // survives a refresh (`post.isPinned` alone was only set on the profile row, so
+  // the feed showed "Pin" for a pinned post and flipped back on reload). Seed from
+  // a server-provided isPinned for no flash on the profile, then /api/me hydrates.
+  const [myPinned, setMyPinned] = useState(
+    () => getMyPinnedTxid() ?? (isOwn && post.isPinned ? post.txid : null),
+  )
   useEffect(() => {
-    setPinned(Boolean(post.isPinned))
-  }, [post.isPinned])
+    if (isOwn && post.isPinned) seedMyPinnedTxid(post.txid)
+    void hydratePinned()
+    return subscribePinned(setMyPinned)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const pinned = isOwn && !!post.txid && myPinned === post.txid
   const handlePin = async () => {
     if (pinBusy) return
     const next = !pinned
+    const prev = getMyPinnedTxid()
     setPinBusy(true)
-    setPinned(next) // optimistic
+    setMyPinnedTxid(next ? post.txid : null) // optimistic + global (enforces one pin)
     try {
       const res = await fetch('/api/feed/pin', {
         method: 'POST',
@@ -338,9 +354,8 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Failed to update pin')
-      router.refresh() // reconcile profile ordering in the background
     } catch (e) {
-      setPinned(!next) // revert on failure
+      setMyPinnedTxid(prev) // revert to the prior pin on failure
       window.alert(e?.message || 'Could not update pin')
     } finally {
       setPinBusy(false)
