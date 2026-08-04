@@ -110,13 +110,40 @@ export default function ComposeBox({
   const autosize = useCallback(() => {
     const el = textareaRef.current
     if (!el) return
+    // Cap the growth to what actually FITS on screen. The mobile keyboard shrinks
+    // the visual viewport, so a flat 360px cap could make the box taller than the
+    // visible area — the caret (and everything you were just typing) ended up
+    // hidden under the keyboard, with no way to scroll it back into view. Sizing
+    // off visualViewport keeps the box inside the visible strip, so it scrolls its
+    // own content instead and the caret stays put. Desktop is unchanged: a tall
+    // window still resolves to the same 360px ceiling.
+    const vh =
+      (typeof window !== 'undefined' && window.visualViewport?.height) ||
+      (typeof window !== 'undefined' ? window.innerHeight : 0)
+    const cap = vh ? Math.max(96, Math.min(360, Math.round(vh * 0.4))) : 360
+    el.style.maxHeight = `${cap}px`
     el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 360)}px`
+    el.style.height = `${Math.min(el.scrollHeight, cap)}px`
   }, [])
 
   useEffect(() => {
     autosize()
   }, [content, autosize])
+
+  // The keyboard opening/closing resizes the visual viewport — re-cap for the new
+  // space, and keep a focused composer in view so it isn't left under the keyboard.
+  useEffect(() => {
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null
+    if (!vv) return
+    const onViewportChange = () => {
+      autosize()
+      if (document.activeElement === textareaRef.current) {
+        textareaRef.current?.scrollIntoView({ block: 'nearest' })
+      }
+    }
+    vv.addEventListener('resize', onViewportChange)
+    return () => vv.removeEventListener('resize', onViewportChange)
+  }, [autosize])
 
   // Insert an emoji at the textarea caret (replacing any selection), then put
   // the caret right after it and refocus — so picking an emoji feels like typing
