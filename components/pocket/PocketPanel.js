@@ -685,9 +685,16 @@ function TopUp() {
               className="cta preset"
               onClick={() => startFund(amt)}
               disabled={overCap}
-              title={overCap ? 'That’s more than pocket change — keep the rest in Cashtab.' : undefined}
+              // The unit is dropped from the label so all four top-up buttons fit
+              // one row; the amount lives in the tooltip for anyone who wants it
+              // spelled out (the row's last button still names XEC's magnitude).
+              title={
+                overCap
+                  ? 'That’s more than pocket change — keep the rest in Cashtab.'
+                  : `Top up ${amt.toLocaleString()} XEC`
+              }
             >
-              {amt / 1000}K XEC
+              {amt / 1000}K
             </button>
           )
         })}
