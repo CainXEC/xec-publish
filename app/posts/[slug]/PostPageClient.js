@@ -363,14 +363,28 @@ export default function PostPageClient({
     }
   }, [])
 
-  // Cross-device unlock paint: if this account's proven address has unlocked
-  // this post (per /api/me), reveal it without needing the per-device cookie.
+  // Restore an unlock this device has no cookie for (new device, cleared or
+  // expired cookie). /api/check-unlock matches the post against the logged-in
+  // ACCOUNT's proven addresses and mints the unlock cookie, then checkUnlock
+  // reveals the full body. This runs in the BACKGROUND — nothing is gated on it,
+  // so the preview + paywall still paint instantly from SSR entitlement and only
+  // swap to the full story if the restore succeeds.
+  useEffect(() => {
+    if (!post?.id || initialUnlocked) return
+    void checkUnlock(post.id)
+  }, [post?.id, initialUnlocked, checkUnlock])
+
+  // Cross-device unlock paint: if this account's proven address has unlocked this
+  // post (per /api/me), restore it here too. Routed through checkUnlock (not a
+  // bare setUnlocked) because the reader route gates on the unlock COOKIE: just
+  // flipping the flag drops the paywall and opens comments while the body stays
+  // the public-only preview — the locked content would never load.
   useEffect(() => {
     if (!post?.id || unlocked) return
     if (Array.isArray(me?.unlockedPostIds) && me.unlockedPostIds.includes(post.id)) {
-      setUnlocked(true)
+      void checkUnlock(post.id)
     }
-  }, [me, post?.id, unlocked])
+  }, [me, post?.id, unlocked, checkUnlock])
 
   // Session changed elsewhere (Nav logout, or our own pay-to-unlock login).
   // Re-read identity and re-run SSR entitlement so locked content re-locks on
