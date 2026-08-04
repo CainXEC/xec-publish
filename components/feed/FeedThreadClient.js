@@ -190,7 +190,16 @@ export default function FeedThreadClient({
   const [viewerAccountId, setViewerAccountId] = useState(initialViewerAccountId)
   const [rootDeleted, setRootDeleted] = useState(Boolean(initialPost?.deleted))
   const [deletingRoot, setDeletingRoot] = useState(false)
-  const [showReply, setShowReply] = useState(false)
+  // Open a reply-less thread with the composer already up: "No replies yet." was a
+  // dead end, and being first to reply is the whole reason you opened it. Skipped
+  // for a deleted root (nothing to reply to). The pane keys this component by txid,
+  // so swapping threads re-evaluates it.
+  const [showReply, setShowReply] = useState(
+    initialReplies.length === 0 && !initialPost?.deleted,
+  )
+  // Auto-opening must NOT steal focus — on mobile that would throw the keyboard up
+  // over a post you came to read. Only an explicit tap on 💬 focuses the box.
+  const [replyFocus, setReplyFocus] = useState(false)
   const [showQuote, setShowQuote] = useState(false)
   const [translated, setTranslated] = useState(null)
   // Poll option labels from a translation ([{id,text}]); null = show originals.
@@ -373,7 +382,10 @@ export default function FeedThreadClient({
               <div className="actions">
                 <button
                   type="button"
-                  onClick={() => setShowReply((s) => !s)}
+                  onClick={() => {
+                    setShowReply((s) => !s)
+                    setReplyFocus(true) // an explicit tap puts the caret in the box
+                  }}
                   className="replybtn"
                   aria-label="Reply"
                   title="Reply"
@@ -433,7 +445,7 @@ export default function FeedThreadClient({
                   <ComposeBox
                     action="reply"
                     parentTxid={post.txid}
-                    autoFocus
+                    autoFocus={replyFocus}
                     compact
                     placeholder="Post your reply…"
                     allowOptimistic
@@ -464,7 +476,10 @@ export default function FeedThreadClient({
         </h2>
 
         {replies.length === 0 ? (
-          <p className="empty">No replies yet.</p>
+          // The open composer above IS the call to action — "No replies yet."
+          // under it just restates the "0 replies" heading. Show it only when the
+          // reader has closed the box.
+          showReply ? null : <p className="empty">No replies yet.</p>
         ) : (
           <ul className="panel posts">
             {replies.map((reply) => (
