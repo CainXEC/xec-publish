@@ -177,7 +177,7 @@ export const FEED_CSS = `
    that settle back into the steady state above. A title shot, not an ambient loop
    — nothing keeps blinking in the corner of the eye. PocketChip gates it to once
    per session and skips it entirely under reduced motion. */
-.pow-feed .pocketbtn.pocketbtn-empty.beckon{animation:pocket-beckon 2.6s cubic-bezier(.4,0,.2,1) .5s 1 both;}
+.pow-feed .pocketbtn.pocketbtn-empty.beckon{animation:pocket-beckon 2.6s cubic-bezier(.4,0,.2,1) .2s 1 both;}
 @keyframes pocket-beckon{
   0%{box-shadow:0 0 12px rgba(0,255,156,.22);transform:scale(1);}
   6%{box-shadow:0 0 22px rgba(0,255,156,.75);transform:scale(1.12);}

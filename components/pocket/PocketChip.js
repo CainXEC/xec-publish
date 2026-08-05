@@ -10,9 +10,15 @@ import { useRollingSats } from '@/lib/pocket/useRollingSats'
 // the long-press is now just a shortcut for repeat users).
 const LONG_PRESS_MS = 450
 
-// Remembers that the no-Pocket chip already played its one-shot beckon this
-// session, so it introduces itself once rather than on every page load.
-const BECKON_KEY = 'pow_pocket_beckoned'
+// How long the no-Pocket beckon runs (CSS: .2s delay + 2.6s animation).
+const BECKON_MS = 3000
+
+// Plays once per full page load — the masthead's contract (see AnimatedLogo).
+// A MODULE-level flag, not sessionStorage: a real load re-evaluates the module
+// and replays the entrance, while in-app navigations that remount the chip
+// (FeedTopbar is rendered per page, not in a persistent layout) reuse the loaded
+// module and skip it.
+let hasBeckonedThisLoad = false
 
 /**
  * Topbar Pocket button.
@@ -65,24 +71,63 @@ export default function PocketChip() {
     return () => clearTimeout(id)
   }, [pocket.spendPulse])
 
-  // No Pocket yet → beckon ONCE per browser session: the chip pulses a few times
-  // shortly after it appears, then settles into its steady neon state (the CSS
-  // keeps the glow either way). Session-gated so it stays a title shot instead of
-  // pulsing at you on every page load, and skipped outright under reduced motion.
+  // No Pocket yet → the chip beckons: a few soft beats, then it settles into its
+  // steady neon state (the CSS keeps the glow either way). Same contract as the
+  // masthead: once per full page load, and re-struck on every light/dark flip.
   const [beckon, setBeckon] = useState(false)
+  // Bumped per strike; it keys the button, so a remount restarts the CSS
+  // animation from its 0% frame — synchronous and reliable on every engine,
+  // unlike class-toggle + reflow (the masthead remounts its letters for the
+  // same reason).
+  const [beckonGen, setBeckonGen] = useState(0)
+  const reducedMotion = useRef(false)
+
+  // Track the reduced-motion preference live; if it flips on mid-run, stop.
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const sync = () => {
+      reducedMotion.current = mq.matches
+      if (mq.matches) setBeckon(false)
+    }
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
+  // Strike on mount, gated to once per full page load by the module flag.
+  useEffect(() => {
+    if (pocket.status !== 'none' || reducedMotion.current) return
+    if (hasBeckonedThisLoad) return
+    hasBeckonedThisLoad = true
+    setBeckon(true)
+    setBeckonGen((g) => g + 1)
+  }, [pocket.status])
+
+  // Re-strike on every theme flip, watching the root class the toggle writes —
+  // the masthead does exactly this (a finished animation won't restart on its
+  // own on mobile Safari/Chrome, so it has to be driven explicitly).
   useEffect(() => {
     if (pocket.status !== 'none') return undefined
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return undefined
-    try {
-      if (sessionStorage.getItem(BECKON_KEY)) return undefined
-      sessionStorage.setItem(BECKON_KEY, '1')
-    } catch {
-      /* private mode: play it, just don't remember */
-    }
-    setBeckon(true)
-    const id = setTimeout(() => setBeckon(false), 3400)
-    return () => clearTimeout(id)
+    const root = document.documentElement
+    let wasDark = root.classList.contains('dark')
+    const obs = new MutationObserver(() => {
+      const isDark = root.classList.contains('dark')
+      if (isDark === wasDark) return // some other class changed
+      wasDark = isDark
+      if (reducedMotion.current) return
+      setBeckon(true)
+      setBeckonGen((g) => g + 1)
+    })
+    obs.observe(root, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
   }, [pocket.status])
+
+  // Drop the class once a strike has played out, so the next one is a clean run.
+  useEffect(() => {
+    if (!beckon) return undefined
+    const id = setTimeout(() => setBeckon(false), BECKON_MS)
+    return () => clearTimeout(id)
+  }, [beckon, beckonGen])
 
   const status = pocket.status
   if (status !== 'ready' && status !== 'none') return null
@@ -95,6 +140,7 @@ export default function PocketChip() {
       <div className="pocketbtn-wrap">
         <button
           type="button"
+          key={beckonGen}
           className={`pocketbtn pocketbtn-empty${beckon ? ' beckon' : ''}`}
           aria-label="Set up a Pocket — one-tap likes, replies and unlocks."
           onClick={openPocket}
