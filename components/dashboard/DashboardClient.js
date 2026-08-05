@@ -26,6 +26,20 @@ function appendUnique(prev, more) {
   return [...(prev ?? []), ...(more ?? []).filter((p) => p.txid && !seen.has(p.txid))]
 }
 
+// Pinned locale + UTC timezone so the server and the client hydrate identical
+// text (an un-pinned toLocaleDateString disagrees across zones → React #418).
+function formatShortDate(iso) {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+}
+
 function formatXec(amount) {
   const n = Number(amount)
   if (!Number.isFinite(n)) return '0'
@@ -59,13 +73,7 @@ function LibraryCard({ item }) {
     ? `/${encodeURIComponent(item.slug)}`
     : `/posts/${encodeURIComponent(item.slug)}`
   const readTime = formatReadingTimeLabel(item.readMinutes)
-  const unlockedLabel = item.unlockedAt
-    ? new Date(item.unlockedAt).toLocaleDateString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    : null
+  const unlockedLabel = formatShortDate(item.unlockedAt)
   return (
     <li className="dashpost">
       <div className="dashpost-row">
@@ -175,13 +183,7 @@ function DashboardPostCard({
   // Published pieces show when they went live (paid-flow posts keep that in
   // created_at); drafts show when they were started.
   const wentLiveIso = post.published_at ?? post.created_at
-  const dateLabel = wentLiveIso
-    ? new Date(wentLiveIso).toLocaleDateString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    : null
+  const dateLabel = formatShortDate(wentLiveIso)
   const publicHref =
     post.slug && post.legacy
       ? `/${encodeURIComponent(post.slug)}`
