@@ -59,7 +59,7 @@ export default function PocketPanel() {
       <header className="pockethead">
         <h1 className="title">Pocket</h1>
         <p className="sub">
-          Pocket a few coins for one-tap actions.
+          Put some XEC in your Pocket and pay without opening your wallet every time.
         </p>
       </header>
 
@@ -605,10 +605,15 @@ function PocketDashboard({ pocket }) {
       </div>
 
       <div className="panel">
-        <h2 className="h2">Take it back out</h2>
+        <h2 className="h2">If you lose this device</h2>
         <p className="body">
-          The Pocket is always yours to empty — one click returns everything to your wallet.
+          Sweep your funds back to Cashtab anytime, or sign the same sentence with your wallet on
+          any device and the identical Pocket reappears. The signature is the key: never paste it
+          anywhere but proofofwriting.com.
         </p>
+      </div>
+
+      <div className="panel">
         <div className="row stretch">
           <button className="cta" onClick={() => void sweep()} disabled={busy || !(pocket.balanceSats > 0)}>
             {busy ? 'Sweeping…' : 'Sweep to my wallet'}
@@ -618,15 +623,6 @@ function PocketDashboard({ pocket }) {
           </button>
         </div>
         {notice && <p className="notice ok">{notice}</p>}
-      </div>
-
-      <div className="panel">
-        <h2 className="h2">If you lose this device</h2>
-        <p className="body dim">
-          Nothing is lost. Sign the same sentence with your wallet on any device and the identical
-          Pocket reappears. The signature is the key: never share it, never paste it anywhere but
-          proofofwriting.com.
-        </p>
       </div>
     </>
   )
@@ -762,7 +758,7 @@ const CSS = `
   --bg:#070b0a; --panel:#0d1513; --line:#173a33; --text:#d6fff0; --dim:#5f8a7e;
   --neon:#00ff9c; --cyan:#3df0ff; --no:#ff5c6c;
   max-width:640px; margin:0 auto; padding:0; box-sizing:border-box;
-  color:var(--text); text-align:left;
+  color:var(--text); text-align:center;
 }
 /* Header matches the marketplace page (MarketplaceClient .mkhead/.title/.sub). */
 .pow-pocket .pockethead{margin:0 0 16px;text-align:center;}
@@ -778,8 +774,7 @@ const CSS = `
 .pow-pocket .panel.freeze{border-left:2px solid var(--no);padding-left:16px;}
 .pow-pocket .h2{font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);margin:0 0 10px;}
 .pow-pocket .h2note{text-transform:none;font-weight:400;font-size:12px;letter-spacing:0;color:var(--dim);}
-.pow-pocket .body{font-size:14px;line-height:1.6;color:var(--text);margin:0 0 12px;
-  text-align:justify;-webkit-hyphens:auto;hyphens:auto;}
+.pow-pocket .body{font-size:14px;line-height:1.6;color:var(--text);margin:0 0 12px;text-align:center;}
 .pow-pocket .body.center{text-align:center;}
 .pow-pocket .body.dim{color:var(--dim);}
 .pow-pocket .body a{color:var(--cyan);}
@@ -788,7 +783,7 @@ const CSS = `
 .pow-pocket .addrcopy:hover{color:var(--cyan);}
 .pow-pocket .sentence{background:#04120c;border:1px dashed var(--neon);border-radius:10px;padding:14px 16px;margin:0 0 12px;}
 .pow-pocket .sentence code{font-size:13px;line-height:1.6;color:var(--neon);word-break:break-word;}
-.pow-pocket .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 6px;}
+.pow-pocket .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;margin:0 0 6px;}
 /* The sweep/forget row: two equal-width buttons that always stay on one row and
    match the taller sibling's height, content centered. */
 .pow-pocket .row.stretch{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch;}
