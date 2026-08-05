@@ -114,6 +114,55 @@ export default function FeedClient({
   })
   const [loading, setLoading] = useState(false)
 
+  // "N new posts" banner for For You. Tracks the newest (created_at, id) among
+  // posts already loaded — NOT the top of the displayed (ranked) order, since
+  // ranking can put an older post above a newer one that's simply lower-scored;
+  // using that would false-positive "new" on content already in hand. Polled
+  // rather than pushed: at real post volume (~1/hour) a light interval is far
+  // cheaper than a websocket for something this low-stakes.
+  const foryouNewestRef = useRef(null)
+  useEffect(() => {
+    let best = null
+    for (const p of tabs.foryou.posts) {
+      if (!p || p.mintDigest || !p.created_at || !p.id) continue
+      if (!best || p.created_at > best.t || (p.created_at === best.t && p.id > best.i)) {
+        best = { t: p.created_at, i: p.id }
+      }
+    }
+    foryouNewestRef.current = best
+  }, [tabs.foryou.posts])
+
+  const [newCount, setNewCount] = useState(0)
+  const [loadingNew, setLoadingNew] = useState(false)
+
+  const checkForNew = useCallback(async () => {
+    const boundary = foryouNewestRef.current
+    if (!boundary) return
+    try {
+      const qs = new URLSearchParams({ t: boundary.t, i: boundary.i })
+      const res = await fetch(`/api/feed/new-count?${qs}`, { cache: 'no-store' })
+      if (!res.ok) return
+      const data = await res.json()
+      setNewCount(data.count ?? 0)
+    } catch {
+      /* best-effort — the banner just stays as it was */
+    }
+  }, [])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') void checkForNew()
+    }, 45000)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void checkForNew()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [checkForNew])
+
   // Opportunistically nudge the reconcile sweep on load: it promotes provisional
   // (0-conf) posts/reactions once their tx finalizes and removes any that never
   // did. Fire-and-forget and rate-limited server-side; a Vercel Cron also runs
@@ -298,6 +347,28 @@ export default function FeedClient({
     }
   }, [loading, active, scope, fetchScope, patchTab])
 
+  // Banner click: fetch the current top window and prepend whatever's genuinely
+  // new (dedup by txid) ahead of what's already loaded, rather than replacing
+  // the tab — a "Load more" still resumes from the same nextCursor after this.
+  const loadNewer = useCallback(async () => {
+    if (loadingNew) return
+    setLoadingNew(true)
+    try {
+      const data = await fetchScope('foryou', null)
+      patchTab('foryou', (t) => {
+        const seen = new Set(t.posts.map((p) => p.txid))
+        const fresh = (data.posts ?? []).filter((p) => p?.txid && !seen.has(p.txid))
+        return fresh.length ? { ...t, posts: [...fresh, ...t.posts] } : t
+      })
+      setNewCount(0)
+      if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+    } catch {
+      /* leave the banner up so the user can retry */
+    } finally {
+      setLoadingNew(false)
+    }
+  }, [loadingNew, fetchScope, patchTab])
+
   return (
     <div className="pow-feed has-rail">
       <style>{FEED_CSS}</style>
@@ -358,6 +429,16 @@ export default function FeedClient({
             Following
           </button>
         </div>
+
+        {scope === 'foryou' && newCount > 0 ? (
+          <div className="newposts">
+            <button type="button" onClick={() => void loadNewer()} disabled={loadingNew}>
+              {loadingNew
+                ? 'Loading…'
+                : `↑ ${newCount}${newCount >= 50 ? '+' : ''} new post${newCount === 1 ? '' : 's'}`}
+            </button>
+          </div>
+        ) : null}
 
         {active.error ? <div className="error">{active.error}</div> : null}
 

@@ -402,6 +402,15 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .tab:hover{color:var(--cyan);}
 .pow-feed .tab.on{color:var(--neon);border-bottom-color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.4);}
 
+/* ---- new posts banner ---- */
+.pow-feed .newposts{margin-top:16px;text-align:center;}
+.pow-feed .newposts button{background:var(--accent-tint,rgba(0,255,156,.12));border:1px solid var(--neon);
+  color:var(--neon);border-radius:999px;padding:9px 20px;font:inherit;font-size:12px;font-weight:700;
+  letter-spacing:.04em;cursor:pointer;transition:background .15s,box-shadow .15s;
+  box-shadow:0 0 12px rgba(0,255,156,.18);}
+.pow-feed .newposts button:hover:not(:disabled){background:var(--neon);color:#04120c;box-shadow:0 0 22px rgba(0,255,156,.4);}
+.pow-feed .newposts button:disabled{opacity:.6;cursor:not-allowed;}
+
 /* ---- feed list ---- */
 /* overflow stays visible so a post's hover popovers (e.g. the like → tip menu)
    can escape the panel instead of being clipped on the first/last post. Posts
