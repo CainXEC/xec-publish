@@ -166,18 +166,27 @@ export async function GET(req: NextRequest) {
     eventsQuery = addressForms.length > 0
       ? eventsQuery.in("payout_address", addressForms)
       : eventsQuery.eq("txid", "-"); // unmatchable → empty source
+  } else {
+    // The global rail drops plain likes, and likes are ~80% of this table — left
+    // unfiltered they'd eat the whole PER_SOURCE budget and then be discarded,
+    // starving the rail of the reposts and tips it does show. Fetch only those.
+    eventsQuery = eventsQuery.or(`action.eq.4,amount_sats.gt.${LIKE_FLOOR_SATS}`);
   }
 
-  let unlocksQuery = supabase
+  // Unlocks are a SCOPED-only source now: the global rail no longer shows them,
+  // so it shouldn't pay for the query (the builder is lazy — never awaited on the
+  // unscoped path, so no request goes out). A profile's economy rail still needs
+  // them: those are the author's sales.
+  const unlocksBase = supabase
     .from("unlocks")
     .select("txid, payer_address, unlocked_at, posts!inner(title, slug, price_xec, author_id, legacy)")
     .order("unlocked_at", { ascending: false })
     .limit(PER_SOURCE);
-  if (scoped) {
-    unlocksQuery = authorId
-      ? unlocksQuery.eq("posts.author_id", authorId)
-      : unlocksQuery.eq("txid", "-");
-  }
+  const unlocksQuery = !scoped
+    ? Promise.resolve({ data: [] as Array<never> })
+    : authorId
+      ? unlocksBase.eq("posts.author_id", authorId)
+      : unlocksBase.eq("txid", "-");
 
   let publishesQuery = supabase
     .from("publishes")
@@ -248,13 +257,10 @@ export async function GET(req: NextRequest) {
   // GAVE (outbound, actor). References the ARTICLE title, never the paywalled body.
   const commentLikesSelect =
     "txid, target_txid, actor_account_id, actor_identity, payer_address, amount_sats, created_at";
-  const commentLikesQuery = scoped
-    ? Promise.resolve({ data: [] as Array<never> })
-    : supabase
-        .from("comment_events")
-        .select(commentLikesSelect)
-        .order("created_at", { ascending: false })
-        .limit(PER_SOURCE);
+  // The site-wide firehose of comment likes is retired: the global rail no longer
+  // shows likes of any kind, and the scoped rail is served by the inbound/outbound
+  // queries below. Kept as an empty source so the destructuring below is unchanged.
+  const commentLikesQuery = Promise.resolve({ data: [] as Array<never> });
   const inboundCommentLikesQuery =
     scoped && authorAddressForms.length > 0
       ? supabase
@@ -719,7 +725,19 @@ export async function GET(req: NextRequest) {
   }
 
   items.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
-  const page = items.slice(0, MAX_ITEMS);
+
+  // The GLOBAL live rail drops plain likes (post and comment) and unlocks: at
+  // 100 XEC apiece they're the highest-volume rows on the site and they crowded
+  // out the writing itself. Tips still show — a like above LIKE_FLOOR_SATS is
+  // classed "tip", so the meaningful money stays on the rail.
+  //
+  // Scoped rails are untouched: a profile's "economy" rail is that author's
+  // sales ledger, and its own subtitle promises "Unlocks, tips and posts
+  // touching this author".
+  const visible = scoped
+    ? items
+    : items.filter((i) => i.kind !== "like" && i.kind !== "comment_like" && i.kind !== "unlock");
+  const page = visible.slice(0, MAX_ITEMS);
 
   return NextResponse.json(
     { ok: true, items: page },
