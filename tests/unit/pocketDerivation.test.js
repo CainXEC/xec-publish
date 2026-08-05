@@ -4,6 +4,7 @@ import {
   POCKET_SENTENCE_V1,
   parsePastedSignature,
   verifySignatureAgainstPrimary,
+  verifySignatureAgainstAny,
   derivePocketFromSignature,
   buildRegisterProofString,
   signRegisterProof,
@@ -96,6 +97,21 @@ describe('verifySignatureAgainstPrimary', () => {
     expect(verifySignatureAgainstPrimary(GOLDEN_SIG, other)).toBe(false)
     expect(verifySignatureAgainstPrimary('AAAA', WALLET_ADDR)).toBe(false)
     expect(verifySignatureAgainstPrimary(GOLDEN_SIG, '')).toBe(false)
+  })
+})
+
+describe('verifySignatureAgainstAny', () => {
+  it('matches when the signing wallet is anywhere in the list — not just first', () => {
+    const decoy = 'ecash:qpsxhjn66jxdms06nv89k5n5uply6vk3fvjhetxzla' // not the signer
+    expect(verifySignatureAgainstAny(GOLDEN_SIG, [decoy, WALLET_ADDR])).toBe(WALLET_ADDR)
+    expect(verifySignatureAgainstAny(GOLDEN_SIG, [WALLET_ADDR, decoy])).toBe(WALLET_ADDR)
+  })
+
+  it('returns null when no linked address matches, or the list is empty', () => {
+    const decoy = 'ecash:qpsxhjn66jxdms06nv89k5n5uply6vk3fvjhetxzla'
+    expect(verifySignatureAgainstAny(GOLDEN_SIG, [decoy])).toBe(null)
+    expect(verifySignatureAgainstAny(GOLDEN_SIG, [])).toBe(null)
+    expect(verifySignatureAgainstAny(GOLDEN_SIG, undefined)).toBe(null)
   })
 })
 

@@ -32,7 +32,7 @@ import {
   POCKET_SENTENCE_V1,
   CASHTAB_SIGN_URL,
   parsePastedSignature,
-  verifySignatureAgainstPrimary,
+  verifySignatureAgainstAny,
   derivePocketFromSignature,
   buildRegisterProofString,
   signRegisterProof,
@@ -177,10 +177,13 @@ function CreateOrRestore({ pocket }) {
         setError(parsed.error)
         return
       }
-      if (!verifySignatureAgainstPrimary(parsed.sigBase64, pocket.primaryAddress ?? '')) {
+      // Any wallet linked to the account passes — not just the current primary,
+      // so restoring a Pocket set up under an old (since-replaced) wallet works
+      // without first swapping primary back to it.
+      if (!verifySignatureAgainstAny(parsed.sigBase64, pocket.linkedAddresses ?? [])) {
         setError(
-          `That signature wasn’t made by your login wallet (${shorten(pocket.primaryAddress)}). ` +
-            'In Cashtab, make sure the wallet you log in with is the ACTIVE wallet, then sign the sentence again.',
+          'That signature doesn’t match any wallet linked to your account. In Cashtab, make ' +
+            'sure the wallet that’s ACTIVE is one you’ve logged in with, then sign the sentence again.',
         )
         return
       }
@@ -216,7 +219,7 @@ function CreateOrRestore({ pocket }) {
       setBusy(false)
       setAutoDeriving(false)
     }
-  }, [busy, pasted, pocket.primaryAddress, needsWalletLogin, registerPocket, finishCreate])
+  }, [busy, pasted, pocket.linkedAddresses, needsWalletLogin, registerPocket, finishCreate])
 
   // Open Cashtab's Sign & Verify in a new tab and leave the sentence on the
   // clipboard so it can be pasted in. POW stays open here so the user can return

@@ -19,17 +19,34 @@ import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 import { payWithCashtab } from '@/lib/ecash/cashtabPay'
-import { usePocket } from '@/lib/pocket/store'
 
 export default function ChangeAddressCard({ currentAddress, handle = null }) {
   const router = useRouter()
-  const pocket = usePocket()
   const [phase, setPhase] = useState('idle') // idle | starting | proving | done
   const [started, setStarted] = useState(null)
   const [notice, setNotice] = useState('')
   const [secondsLeft, setSecondsLeft] = useState(null)
   const [copied, setCopied] = useState(false)
   const [result, setResult] = useState(null)
+  // Server-truth Pocket balance (not this device's local record — a device
+  // that never set the Pocket up locally would otherwise miss this warning
+  // entirely even though the account's registered Pocket has real funds).
+  const [pocketXec, setPocketXec] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/pocket/status', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (cancelled || !j?.pocket) return
+        const sats = j.pocket.balanceSats ?? 0
+        if (sats > 0) setPocketXec(Math.floor(sats / 100))
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // RAW bip21 (no encodeURIComponent), same as WalletLogin — carries the nonce.
   const cashtabUrl = started ? `https://cashtab.com/#/send?bip21=${started.bip21Url}` : '#'
@@ -197,11 +214,11 @@ export default function ChangeAddressCard({ currentAddress, handle = null }) {
                 under “Your handles” — you can do that before or after switching.
               </li>
             ) : null}
-            {pocket.status === 'ready' && (pocket.balanceSats ?? 0) > 0 ? (
-              <li>
-                Your <strong>Pocket</strong> holds {Math.floor(pocket.balanceSats / 100).toLocaleString()}{' '}
-                XEC and was created by your <strong>current</strong> wallet’s signature — after the
-                switch, recovering it needs the old wallet.{' '}
+            {pocketXec != null ? (
+              <li className="addrx-pocketwarn">
+                Your <strong>Pocket</strong> holds {pocketXec.toLocaleString()} XEC, tied to your{' '}
+                <strong>current</strong> wallet’s signature — after the switch, recovering it needs
+                that old wallet again.{' '}
                 <Link href="/pocket">Sweep the Pocket to your wallet first</Link>, then set up a
                 fresh one with the new wallet.
               </li>
@@ -264,6 +281,9 @@ const ADDR_CSS = `
 .pow-feed .addrx-warns{margin:14px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px;}
 .pow-feed .addrx-warns li{font-size:12px;line-height:1.55;color:var(--dim);}
 .pow-feed .addrx-warns strong{color:var(--text);font-weight:700;}
+.pow-feed .addrx-pocketwarn{color:var(--no,#ff5c6c);}
+.pow-feed .addrx-pocketwarn strong{color:inherit;}
+.pow-feed .addrx-pocketwarn a{color:inherit;text-decoration:underline;}
 .pow-feed .addrx-actions{margin-top:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
 .pow-feed .addrx-actions a.dashbtn{text-decoration:none;}
 .pow-feed .addrx-poll{margin:14px 0 0;font-size:13px;color:var(--text);}

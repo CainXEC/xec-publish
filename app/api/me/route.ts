@@ -85,6 +85,12 @@ export async function GET() {
     handle: account.display_handle ?? null,
     handleColor: account.handle_color ?? null,
     identity: formatIdentity(account.display_handle, primaryAddress),
+    // Every wallet linked to this account (primary + old, still-linked-for-
+    // recovery addresses) — the Pocket restore flow needs the whole set, not
+    // just the primary, so a signature from an old wallet still validates.
+    linkedAddresses: [
+      ...new Set(addrRows.map((r: any) => String(r?.address ?? "")).filter(Boolean)),
+    ],
     unlockedPostIds,
     // The account's currently pinned feed post (one per account) — drives the
     // Pin/Unpin button state everywhere the post appears.

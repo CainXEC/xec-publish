@@ -15,6 +15,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { primaryAddressForAccount } from "@/lib/walletAuth";
+import { getXecBalanceSats } from "@/lib/xecBalance";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +37,12 @@ export async function GET() {
     primaryAddressForAccount(claim.accountId, claim.address ?? ""),
   ]);
 
+  // Server-truth balance for the registered pocket — independent of THIS
+  // device's local pocket record, so a "you have funds here" warning (e.g.
+  // before an address change) works even from a browser that never set the
+  // pocket up locally. Only fetched when a pocket is actually registered.
+  const balanceSats = pocket ? await getXecBalanceSats(pocket.address) : null;
+
   return NextResponse.json({
     ok: true,
     pocket: pocket
@@ -44,6 +51,7 @@ export async function GET() {
           pubkey: pocket.pubkey,
           delegateTxid: pocket.delegate_txid ?? null,
           createdAt: pocket.created_at,
+          balanceSats,
         }
       : null,
     primaryAddress: primaryAddress || null,
