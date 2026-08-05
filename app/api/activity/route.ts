@@ -155,9 +155,13 @@ export async function GET(req: NextRequest) {
       : postsQuery.eq("author_account_id", "00000000-0000-0000-0000-000000000000"); // no account → no feed posts
   }
 
+  // Reposts only (action 4). Neither rail shows likes or tips any more, and likes
+  // are ~80% of this table — fetching them would spend the PER_SOURCE budget on
+  // rows that get discarded, starving the rail of what it does show.
   let eventsQuery = supabase
     .from("feed_events")
     .select("txid, action, actor_account_id, actor_identity, payer_address, amount_sats, target_txid, created_at")
+    .eq("action", 4)
     .order("created_at", { ascending: false })
     .limit(PER_SOURCE);
   if (scoped) {
@@ -166,11 +170,6 @@ export async function GET(req: NextRequest) {
     eventsQuery = addressForms.length > 0
       ? eventsQuery.in("payout_address", addressForms)
       : eventsQuery.eq("txid", "-"); // unmatchable → empty source
-  } else {
-    // The global rail drops plain likes, and likes are ~80% of this table — left
-    // unfiltered they'd eat the whole PER_SOURCE budget and then be discarded,
-    // starving the rail of the reposts and tips it does show. Fetch only those.
-    eventsQuery = eventsQuery.or(`action.eq.4,amount_sats.gt.${LIKE_FLOOR_SATS}`);
   }
 
   // Unlocks are a SCOPED-only source now: the global rail no longer shows them,
@@ -255,30 +254,13 @@ export async function GET(req: NextRequest) {
   // Paid LIKES on article comments (comment_events). Site-wide firehose; scoped =
   // likes RECEIVED on the author's comments (inbound, payout_address) + likes they
   // GAVE (outbound, actor). References the ARTICLE title, never the paywalled body.
-  const commentLikesSelect =
-    "txid, target_txid, actor_account_id, actor_identity, payer_address, amount_sats, created_at";
-  // The site-wide firehose of comment likes is retired: the global rail no longer
-  // shows likes of any kind, and the scoped rail is served by the inbound/outbound
-  // queries below. Kept as an empty source so the destructuring below is unchanged.
+  // Comment likes are retired from BOTH rails (neither shows likes now), so all
+  // three comment_events sources resolve empty and no query is issued. Kept as
+  // named empties so the Promise.all destructuring below is unchanged, and so
+  // re-enabling is restoring a query rather than rebuilding the plumbing.
   const commentLikesQuery = Promise.resolve({ data: [] as Array<never> });
-  const inboundCommentLikesQuery =
-    scoped && authorAddressForms.length > 0
-      ? supabase
-          .from("comment_events")
-          .select(commentLikesSelect)
-          .in("payout_address", authorAddressForms)
-          .order("created_at", { ascending: false })
-          .limit(PER_SOURCE)
-      : Promise.resolve({ data: [] as Array<never> });
-  const outboundCommentLikesQuery =
-    scoped && scopedAccountId
-      ? supabase
-          .from("comment_events")
-          .select(commentLikesSelect)
-          .eq("actor_account_id", scopedAccountId)
-          .order("created_at", { ascending: false })
-          .limit(PER_SOURCE)
-      : Promise.resolve({ data: [] as Array<never> });
+  const inboundCommentLikesQuery = Promise.resolve({ data: [] as Array<never> });
+  const outboundCommentLikesQuery = Promise.resolve({ data: [] as Array<never> });
 
   const [
     postsQ, eventsQ, unlocksQ, publishesQ, mintsQ, commentsQ, ownReactionsQ,
@@ -311,17 +293,18 @@ export async function GET(req: NextRequest) {
           .not("txid", "is", null)
           .order("created_at", { ascending: false })
           .limit(PER_SOURCE),
-    // Scoped only: the author's OWN reactions — likes, tips AND reposts. The
-    // main events query returns reactions the author RECEIVED (payout_address =
-    // them); without this, an author who likes/reposts but hasn't been liked or
-    // reposted back shows none of their own engagement — even though their
-    // replies and quotes already appear (those are stored as feed_posts). Merged
-    // + de-duped into `events` below.
+    // Scoped only: the author's OWN reposts (action 4 — their likes and tips are
+    // no longer shown). The main events query returns reactions the author
+    // RECEIVED (payout_address = them); without this, an author who reposts but
+    // hasn't been reposted back shows none of their own engagement — even though
+    // their replies and quotes already appear (those are stored as feed_posts).
+    // Merged + de-duped into `events` below.
     scoped && scopedAccountId
       ? supabase
           .from("feed_events")
           .select("txid, action, actor_account_id, actor_identity, payer_address, amount_sats, target_txid, created_at")
           .eq("actor_account_id", scopedAccountId)
+          .eq("action", 4)
           .order("created_at", { ascending: false })
           .limit(PER_SOURCE)
       : Promise.resolve({ data: [] as Array<never> }),
@@ -726,17 +709,17 @@ export async function GET(req: NextRequest) {
 
   items.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
 
-  // The GLOBAL live rail drops plain likes (post and comment) and unlocks: at
-  // 100 XEC apiece they're the highest-volume rows on the site and they crowded
-  // out the writing itself. Tips still show — a like above LIKE_FLOOR_SATS is
-  // classed "tip", so the meaningful money stays on the rail.
+  // Reactions are off BOTH rails: likes (post and comment) and tips are the
+  // highest-volume rows on the site and they crowded out the writing itself.
+  // UNLOCKS are the one difference — hidden on the global rail, kept on a
+  // profile's "economy" rail, where they're that author's sales ledger.
   //
-  // Scoped rails are untouched: a profile's "economy" rail is that author's
-  // sales ledger, and its own subtitle promises "Unlocks, tips and posts
-  // touching this author".
-  const visible = scoped
-    ? items
-    : items.filter((i) => i.kind !== "like" && i.kind !== "comment_like" && i.kind !== "unlock");
+  // The sources above already avoid fetching what's hidden; this is the backstop
+  // that keeps the contract in one readable place.
+  const HIDDEN_EVERYWHERE = new Set(["like", "comment_like", "tip"]);
+  const visible = items.filter(
+    (i) => !HIDDEN_EVERYWHERE.has(i.kind) && (scoped || i.kind !== "unlock"),
+  );
   const page = visible.slice(0, MAX_ITEMS);
 
   return NextResponse.json(
