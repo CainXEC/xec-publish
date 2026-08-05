@@ -59,7 +59,7 @@ export default function PocketPanel() {
       <header className="pockethead">
         <h1 className="title">Pocket</h1>
         <p className="sub">
-          Put some XEC in your Pocket and pay without opening your wallet every time.
+          Put some XEC in your Pocket to pay without opening your wallet every time.
         </p>
       </header>
 
@@ -403,18 +403,13 @@ function CreateOrRestore({ pocket }) {
     <>
       <div className="panel">
         <h2 className="h2">1 · Sign this sentence in Cashtab</h2>
-        <p className="body">
-          Your signature <em>is</em> the key to your Pocket: the same wallet signing the same
-          sentence always produces the same key, so you can rebuild your Pocket on any device by
-          signing again.
-        </p>
         <div className="sentence">
           <code>{POCKET_SENTENCE_V1}</code>
         </div>
         <button className="cta full" onClick={() => void signInCashtab()} disabled={extSigning}>
           {extSigning ? 'Check Cashtab…' : 'Sign in Cashtab →'}
         </button>
-        <p className="body dim">
+        <p className="body">
           Cashtab opens in a new tab with the sentence copied to your clipboard. Paste it into the
           Message to sign field, click sign, then come back and paste the signature below.
         </p>
@@ -604,7 +599,7 @@ function PocketDashboard({ pocket }) {
         <TopUp />
       </div>
 
-      <div className="panel">
+      <div className="panel gap-before">
         <h2 className="h2">If you lose this device</h2>
         <p className="body">
           Sweep your funds back to Cashtab anytime, or sign the same sentence with your wallet on
@@ -767,10 +762,20 @@ const CSS = `
 .pow-pocket .sub{color:#a6d8c9;font-size:14.5px;line-height:1.6;margin:0 auto;max-width:640px;
   text-align:center;}
 @media (max-width:520px){.pow-pocket .title{font-size:30px;}}
+/* Desktop only: shrink just enough for the subhead to hold one line at the
+   panel's 640px column (measured: 13px keeps ~40px of headroom). Mobile keeps
+   the roomier 14.5px and wraps — no need to fight for one line at phone widths. */
+@media (min-width:521px){.pow-pocket .sub{font-size:13px;white-space:nowrap;}}
 .pow-pocket .center{text-align:center;}
 /* Flat sections — no tile cards, separated by whitespace. Reset the card look
    inherited from FEED_CSS's .pow-feed .panel (bg/border/radius/shadow). */
 .pow-pocket .panel{padding:0;margin:0 0 20px;background:none;border:none;border-radius:0;box-shadow:none;}
+/* Extra breathing room above "If you lose this device" (on top of the standard
+   20px panel gap) — it reads as a distinct, more serious note after the
+   routine top-up buttons, not just the next item in the same list. padding, not
+   margin: adjacent-sibling margins collapse (take the larger, not the sum), which
+   quietly ate this as a 4px bump instead of the intended ~24px addition. */
+.pow-pocket .panel.gap-before{padding-top:24px;}
 .pow-pocket .panel.freeze{border-left:2px solid var(--no);padding-left:16px;}
 .pow-pocket .h2{font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);margin:0 0 10px;}
 .pow-pocket .h2note{text-transform:none;font-weight:400;font-size:12px;letter-spacing:0;color:var(--dim);}
