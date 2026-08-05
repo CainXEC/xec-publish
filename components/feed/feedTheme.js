@@ -166,7 +166,44 @@ export const FEED_CSS = `
 .pow-feed .pocketbtn svg{display:block;}
 /* NB: modifier is prefixed — a bare .empty class collides with the feed's
    empty-state panel style (44px padding) further down this sheet. */
-.pow-feed .pocketbtn.pocketbtn-empty{color:var(--dim);border-style:dashed;}
+/* No Pocket yet: this chip is the way in, so it should INVITE rather than recede.
+   It used to be dimmed (var(--dim)) and read as disabled. Now it carries the live
+   neon + a steady soft glow, with the dashed border left in place as the "not set
+   up yet" tell. Colors come from the theme vars, so paper mode inherits its ink
+   green automatically. */
+.pow-feed .pocketbtn.pocketbtn-empty{color:var(--neon);border-color:var(--neon);border-style:dashed;
+  box-shadow:0 0 12px rgba(0,255,156,.22);}
+/* …plus a ONE-SHOT beckon the first time it's seen in a session: three soft beats
+   that settle back into the steady state above. A title shot, not an ambient loop
+   — nothing keeps blinking in the corner of the eye. PocketChip gates it to once
+   per session and skips it entirely under reduced motion. */
+.pow-feed .pocketbtn.pocketbtn-empty.beckon{animation:pocket-beckon 2.6s cubic-bezier(.4,0,.2,1) .5s 1 both;}
+@keyframes pocket-beckon{
+  0%{box-shadow:0 0 12px rgba(0,255,156,.22);transform:scale(1);}
+  6%{box-shadow:0 0 22px rgba(0,255,156,.75);transform:scale(1.12);}
+  14%{box-shadow:0 0 12px rgba(0,255,156,.22);transform:scale(1);}
+  24%{box-shadow:0 0 22px rgba(0,255,156,.7);transform:scale(1.1);}
+  32%{box-shadow:0 0 12px rgba(0,255,156,.22);transform:scale(1);}
+  42%{box-shadow:0 0 20px rgba(0,255,156,.6);transform:scale(1.07);}
+  52%,100%{box-shadow:0 0 12px rgba(0,255,156,.22);transform:scale(1);}
+}
+@media (prefers-reduced-motion:reduce){
+  .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation:none;}
+}
+/* Paper mode kills neon halos by design, so the invitation is carried by the
+   accent tint + ink-green dashed border, and the beckon beats on scale alone
+   (same rhythm, no glow). */
+html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty{background:var(--accent-tint);box-shadow:none;}
+html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation-name:pocket-beckon-paper;}
+@keyframes pocket-beckon-paper{
+  0%{transform:scale(1);}
+  6%{transform:scale(1.12);}
+  14%{transform:scale(1);}
+  24%{transform:scale(1.1);}
+  32%{transform:scale(1);}
+  42%{transform:scale(1.07);}
+  52%,100%{transform:scale(1);}
+}
 /* Balance + actions card: shown on HOVER (hover-capable devices) or a TAP-toggled
    .open class (touch). The "Open Pocket →" button inside is the discoverable way
    to the full screen on mobile; long-press to /pocket is now just a shortcut.

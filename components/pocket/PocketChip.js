@@ -10,6 +10,10 @@ import { useRollingSats } from '@/lib/pocket/useRollingSats'
 // the long-press is now just a shortcut for repeat users).
 const LONG_PRESS_MS = 450
 
+// Remembers that the no-Pocket chip already played its one-shot beckon this
+// session, so it introduces itself once rather than on every page load.
+const BECKON_KEY = 'pow_pocket_beckoned'
+
 /**
  * Topbar Pocket button.
  *   desktop : hover shows a balance card (with an Open button) · click opens /pocket
@@ -61,6 +65,25 @@ export default function PocketChip() {
     return () => clearTimeout(id)
   }, [pocket.spendPulse])
 
+  // No Pocket yet → beckon ONCE per browser session: the chip pulses a few times
+  // shortly after it appears, then settles into its steady neon state (the CSS
+  // keeps the glow either way). Session-gated so it stays a title shot instead of
+  // pulsing at you on every page load, and skipped outright under reduced motion.
+  const [beckon, setBeckon] = useState(false)
+  useEffect(() => {
+    if (pocket.status !== 'none') return undefined
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return undefined
+    try {
+      if (sessionStorage.getItem(BECKON_KEY)) return undefined
+      sessionStorage.setItem(BECKON_KEY, '1')
+    } catch {
+      /* private mode: play it, just don't remember */
+    }
+    setBeckon(true)
+    const id = setTimeout(() => setBeckon(false), 3400)
+    return () => clearTimeout(id)
+  }, [pocket.status])
+
   const status = pocket.status
   if (status !== 'ready' && status !== 'none') return null
   const hasPocket = status === 'ready'
@@ -72,7 +95,7 @@ export default function PocketChip() {
       <div className="pocketbtn-wrap">
         <button
           type="button"
-          className="pocketbtn pocketbtn-empty"
+          className={`pocketbtn pocketbtn-empty${beckon ? ' beckon' : ''}`}
           aria-label="Set up a Pocket — one-tap likes, replies and unlocks."
           onClick={openPocket}
           onContextMenu={(e) => e.preventDefault()}
