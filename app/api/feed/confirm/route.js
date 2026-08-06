@@ -245,42 +245,52 @@ export async function POST(request) {
     return NextResponse.json({ error: insertError.message }, { status: 500 })
   }
 
-  // Notify the owner of the post being replied to / quoted (best-effort). A
-  // plain top-level POST references no one, so nothing fires there.
-  if (action === FEED_ACTION.REPLY && parentAuthorAccountId) {
-    await recordFeedNotification(supabase, {
-      recipientAccountId: parentAuthorAccountId,
+  // Notifications are best-effort and OFF the critical path: the poster is
+  // blocked on this response, so recording the reply/quote ping AND resolving
+  // @mentions (up to a few extra DB queries + inserts) is deferred to after() —
+  // it runs post-response instead of delaying the row the client nests. after()
+  // throws synchronously outside a request scope (handlers invoked directly in
+  // tests); there we just fire-and-forget so behavior is unchanged.
+  const recordNotifications = async () => {
+    if (action === FEED_ACTION.REPLY && parentAuthorAccountId) {
+      await recordFeedNotification(supabase, {
+        recipientAccountId: parentAuthorAccountId,
+        actorAccountId: resolved.accountId,
+        actorIdentity: authorIdentity,
+        type: 'reply',
+        postTxid: targetTxid,
+        // A reply pays the parent author (payoutAddress above) — carry the amount
+        // so the bell can show "· N XEC". (A quote doesn't pay the quoted author,
+        // so it stays amountless below.)
+        amountSats: match.sats,
+        // The reply's OWN txid (distinct from postTxid, the target) — lets the
+        // notifications page show the reply's actual text.
+        actionTxid: inserted.txid,
+      })
+    } else if (action === FEED_ACTION.QUOTE && quotedAuthorAccountId) {
+      await recordFeedNotification(supabase, {
+        recipientAccountId: quotedAuthorAccountId,
+        actorAccountId: resolved.accountId,
+        actorIdentity: authorIdentity,
+        type: 'quote',
+        postTxid: inserted.txid,
+      })
+    }
+    // Notify anyone @-tagged in the post's text, excluding whoever the reply/quote
+    // above already pinged so they don't get a duplicate.
+    await recordFeedMentionNotifications(supabase, {
+      content,
       actorAccountId: resolved.accountId,
       actorIdentity: authorIdentity,
-      type: 'reply',
-      postTxid: targetTxid,
-      // A reply pays the parent author (payoutAddress above) — carry the amount
-      // so the bell can show "· N XEC". (A quote doesn't pay the quoted author,
-      // so it stays amountless below.)
-      amountSats: match.sats,
-      // The reply's OWN txid (distinct from postTxid, the target) — lets the
-      // notifications page show the reply's actual text.
-      actionTxid: inserted.txid,
-    })
-  } else if (action === FEED_ACTION.QUOTE && quotedAuthorAccountId) {
-    await recordFeedNotification(supabase, {
-      recipientAccountId: quotedAuthorAccountId,
-      actorAccountId: resolved.accountId,
-      actorIdentity: authorIdentity,
-      type: 'quote',
       postTxid: inserted.txid,
+      excludeAccountIds: [parentAuthorAccountId, quotedAuthorAccountId].filter(Boolean),
     })
   }
-
-  // Notify anyone @-tagged in the post's text (best-effort). Exclude whoever was
-  // already pinged by the reply/quote above so they don't get a duplicate.
-  await recordFeedMentionNotifications(supabase, {
-    content,
-    actorAccountId: resolved.accountId,
-    actorIdentity: authorIdentity,
-    postTxid: inserted.txid,
-    excludeAccountIds: [parentAuthorAccountId, quotedAuthorAccountId].filter(Boolean),
-  })
+  try {
+    after(recordNotifications)
+  } catch {
+    void recordNotifications()
+  }
 
   // Freshen the shared For You cache so the new post (or a reply's bumped count)
   // shows within seconds instead of waiting out the revalidate window. Cheap:

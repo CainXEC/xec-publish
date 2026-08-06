@@ -336,7 +336,20 @@ export default function ComposeBox({
   useEffect(() => {
     if (phase !== 'paying' || !intent) return undefined
     let stopped = false
+    let timer = null
+    const startedAt = Date.now()
+    const BASE_DELAY = 1200
+    const MAX_DELAY = 8000
+    const MAX_LIFETIME = 120_000
+    let delay = BASE_DELAY
+
+    const stop = () => {
+      stopped = true
+      if (timer) clearTimeout(timer)
+    }
+
     const confirm = async (manualTxid) => {
+      if (stopped) return
       try {
         // A pocket-paid post knows its txid up front — send it so confirm does
         // a single-tx verify (records on the first request, no address scan).
@@ -354,29 +367,52 @@ export default function ComposeBox({
             ...(knownTxid ? { txid: knownTxid } : {}),
           }),
         })
+        if (stopped) return
+        // Throttled: back off so a stuck poll stops burning the per-IP budget
+        // (which would 429 the user's other feed actions too). Keep waiting.
+        if (res.status === 429) {
+          delay = Math.min(delay * 2, MAX_DELAY)
+          return
+        }
         const data = await res.json()
         if (stopped) return
         if (data.status === 'posted' && data.post) {
-          stopped = true
+          stop()
           // The confirm route returns the bare inserted row with no `quoted`
           // preview, so handlePosted attaches the one we already have to avoid a
           // transient "Quoted post unavailable." until the next server render.
           handlePosted(data.post)
         } else if (!res.ok) {
           setNotice(data.error || 'Verification failed.')
+        } else {
+          delay = BASE_DELAY // healthy pending — resume the normal cadence
         }
       } catch {
         /* keep polling */
       }
     }
-    confirm()
-    const id = setInterval(() => !stopped && confirm(), 1200)
+
+    const loop = async () => {
+      if (stopped) return
+      // A payment that never lands would otherwise poll forever; stop after a
+      // sensible window. The tx is on-chain regardless, and the reconcile sweep
+      // + next feed render will surface it, so giving up quietly is safe.
+      if (Date.now() - startedAt > MAX_LIFETIME) {
+        stop()
+        setNotice('Still confirming — refresh in a moment if your post doesn’t appear.')
+        return
+      }
+      await confirm()
+      if (!stopped) timer = setTimeout(loop, delay)
+    }
+
+    void loop()
     // Chronik ws nudge: the instant a tx touches the pay address, confirm now
-    // instead of waiting for the next 1.2s tick. Pass the ws's txid straight
-    // through so the server does a single-tx lookup (verifyFeedTxid) instead of
-    // scanning the busy platform address's recent history — a post/reply/quote
-    // is disambiguated by its content hash, so a cross-fired txid just misses
-    // and polling continues. Server still verifies + gates.
+    // instead of waiting for the next tick. Pass the ws's txid straight through
+    // so the server does a single-tx lookup (verifyFeedTxid) instead of scanning
+    // the busy platform address's recent history — a post/reply/quote is
+    // disambiguated by its content hash, so a cross-fired txid just misses and
+    // polling continues. Server still verifies + gates. Event-driven, off the timer.
     const unwatch = watchPaymentAddress(
       intent.payAddress,
       (txid) => { if (!stopped) void confirm(txid) },
@@ -385,8 +421,7 @@ export default function ComposeBox({
       () => { if (!stopped) void confirm() },
     )
     return () => {
-      stopped = true
-      clearInterval(id)
+      stop()
       unwatch()
     }
   }, [phase, intent, content, action, parentTxid, quotedTxid, handlePosted])
