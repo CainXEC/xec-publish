@@ -258,6 +258,9 @@ export async function POST(request) {
       // so the bell can show "· N XEC". (A quote doesn't pay the quoted author,
       // so it stays amountless below.)
       amountSats: match.sats,
+      // The reply's OWN txid (distinct from postTxid, the target) — lets the
+      // notifications page show the reply's actual text.
+      actionTxid: inserted.txid,
     })
   } else if (action === FEED_ACTION.QUOTE && quotedAuthorAccountId) {
     await recordFeedNotification(supabase, {

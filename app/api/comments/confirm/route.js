@@ -203,6 +203,9 @@ export async function POST(request) {
           type: 'comment',
           postTxid: postId, // article id — linkified to the article at read time
           amountSats: match.sats, // paid to the parent commenter; bell shows net
+          // The comment's OWN txid — lets the notifications page show its text
+          // and distinguish "replied to your comment" from a fresh top-level one.
+          actionTxid: inserted.txid,
         })
       }
     } else {
@@ -213,6 +216,7 @@ export async function POST(request) {
         actorIdentity: authorIdentity,
         actorAddress: null,
         amountSats: match.sats, // paid to the article author; bell shows net
+        actionTxid: inserted.txid,
       })
     }
   } catch (e) {

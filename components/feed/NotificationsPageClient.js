@@ -1,0 +1,183 @@
+'use client'
+
+import { useCallback, useMemo, useState } from 'react'
+import Link from 'next/link'
+import {
+  earnedLabel,
+  timeAgo,
+  actorLabel,
+  notifText,
+  targetHref,
+  groupNotifications,
+} from '@/lib/notifFormat'
+
+// Types that always carry their own full text inline (never grouped — see
+// GROUPABLE_TYPES in lib/notifFormat).
+const HAS_BODY = new Set(['reply', 'quote', 'comment'])
+
+// "A liked", "A and B liked", "A, B and C liked", "A, B and 4 others liked" —
+// standard list grammar (Oxford "and" before the last part), capped at
+// MAX_NAMED_ACTORS named actors before collapsing the rest into a count.
+const MAX_NAMED_ACTORS = 3
+
+function ActorList({ items, verbSuffix }) {
+  const named = items.slice(0, MAX_NAMED_ACTORS)
+  const rest = items.length - named.length
+  const tail = rest > 0 ? `${rest} other${rest === 1 ? '' : 's'}` : null
+  const partCount = named.length + (tail ? 1 : 0)
+  return (
+    <>
+      {named.map((n, i) => (
+        <span key={n.id}>
+          {i > 0 ? (i === partCount - 1 ? ' and ' : ', ') : ''}
+          <strong>{actorLabel(n.actor_identity)}</strong>
+        </span>
+      ))}
+      {tail ? (
+        <span className="notifpage-more">
+          {named.length > 0 ? ' and ' : ''}
+          {tail}
+        </span>
+      ) : null}{' '}
+      {verbSuffix}
+    </>
+  )
+}
+
+function NotifBody({ n }) {
+  if (!HAS_BODY.has(n.type)) return null
+  return n.actionContent ? (
+    <p className="notifpage-body">{n.actionContent}</p>
+  ) : (
+    <p className="notifpage-body gone">This {n.type === 'quote' ? 'quote' : n.type} is no longer available.</p>
+  )
+}
+
+/** The TOTAL earned across a group's items (a single item's own amount, for an
+ *  ungrouped row) — never just the first item's, which would misattribute a
+ *  shared tip total to one actor when several people tipped the same post. */
+function EarnedChip({ items }) {
+  const totalSats = items.reduce((sum, n) => sum + (Number(n.amount_sats) || 0), 0)
+  const earned = earnedLabel(totalSats > 0 ? totalSats : null)
+  return earned ? <span className="notifamt">{earned} · </span> : null
+}
+
+export default function NotificationsPageClient({ initialItems, initialCursor, agentPending }) {
+  const [items, setItems] = useState(initialItems ?? [])
+  const [cursor, setCursor] = useState(initialCursor ?? null)
+  const [loadingMore, setLoadingMore] = useState(false)
+
+  const groups = useMemo(() => groupNotifications(items), [items])
+
+  const loadMore = useCallback(async () => {
+    if (!cursor || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const res = await fetch(`/api/feed/notifications?before=${encodeURIComponent(cursor)}`, {
+        cache: 'no-store',
+      })
+      if (res.ok) {
+        const data = await res.json()
+        const more = Array.isArray(data.notifications) ? data.notifications : []
+        setItems((prev) => {
+          const seen = new Set(prev.map((n) => n.id))
+          return [...prev, ...more.filter((n) => !seen.has(n.id))]
+        })
+        setCursor(data.nextCursor ?? null)
+      }
+    } catch {
+      /* best-effort; the button stays so the user can retry */
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [cursor, loadingMore])
+
+  return (
+    <>
+      {agentPending ? (
+        <Link href="/admin/agent" className="notif-agent" style={{ margin: '16px 0 0' }}>
+          <span className="notif-agent-dot" aria-hidden />
+          {agentPending} agent draft{agentPending === 1 ? '' : 's'} awaiting review →
+        </Link>
+      ) : null}
+
+      {groups.length === 0 ? (
+        <p className="notifempty">Nothing yet.</p>
+      ) : (
+        <ul className="notifpage-list">
+          {groups.map((g) => {
+            const head = g.items[0]
+            const rowCls = `notifpage-row${g.read ? '' : ' unread'}`
+            const content = (
+              <>
+                <div className="notifpage-top">
+                  <span className="notifpage-actors">
+                    <EarnedChip items={g.items} />
+                    <ActorList items={g.items} verbSuffix={notifText(head)} />
+                  </span>
+                  <span className="notiftime">{timeAgo(head.created_at)}</span>
+                </div>
+                {g.items.length === 1 ? <NotifBody n={head} /> : null}
+                {g.items.length > 1 && g.targetContent ? (
+                  <p className="notifpage-body">{g.targetContent}</p>
+                ) : null}
+              </>
+            )
+            // A grouped 'follow' row has no single target — each name links to
+            // its OWN profile instead of the row being one big link.
+            if (g.type === 'follow' && g.items.length > 1) {
+              return (
+                <li key={g.id}>
+                  <div className={rowCls}>
+                    <div className="notifpage-top">
+                      <span className="notifpage-actors">
+                        {(() => {
+                          const named = g.items.slice(0, MAX_NAMED_ACTORS)
+                          const rest = g.items.length - named.length
+                          return (
+                            <>
+                              {named.map((n, i) => (
+                                <span key={n.id}>
+                                  {i > 0 ? (i === named.length - 1 && rest === 0 ? ' and ' : ', ') : ''}
+                                  <Link href={targetHref(n)}>
+                                    <strong>{actorLabel(n.actor_identity)}</strong>
+                                  </Link>
+                                </span>
+                              ))}
+                              {rest > 0 ? (
+                                <span className="notifpage-more">
+                                  {' '}and {rest} other{rest === 1 ? '' : 's'}
+                                </span>
+                              ) : null}
+                            </>
+                          )
+                        })()}{' '}
+                        followed you
+                      </span>
+                      <span className="notiftime">{timeAgo(head.created_at)}</span>
+                    </div>
+                  </div>
+                </li>
+              )
+            }
+            return (
+              <li key={g.id}>
+                <Link href={targetHref(head)} className={rowCls} unstable_dynamicOnHover>
+                  {content}
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      {cursor ? (
+        <div className="loadmore">
+          <button type="button" className="notifmore" onClick={loadMore} disabled={loadingMore}>
+            {loadingMore ? 'Loading…' : 'Load more'}
+          </button>
+        </div>
+      ) : null}
+    </>
+  )
+}

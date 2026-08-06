@@ -125,20 +125,19 @@ export const FEED_CSS = `
   .pow-feed .tb-search{display:none;}
 }
 
-/* ---- notification bell ---- */
-.pow-feed .notifbell{position:relative;display:inline-flex;}
+/* ---- notification bell (links to /notifications — no dropdown) ---- */
 .pow-feed .notifbtn{position:relative;display:inline-flex;align-items:center;justify-content:center;
   width:34px;height:34px;background:transparent;border:1px solid var(--line);border-radius:8px;
   color:var(--neon);line-height:1;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
 .pow-feed .notifbtn:hover{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
 .pow-feed .notifbtn svg{display:block;}
 /* ---- pinned agent-queue row (admin sessions only) ----
-   A standing to-do at the top of the bell dropdown: persists until the drafts
-   are judged — mark-read never clears it. The API only sends the count to
-   admin sessions, so this row can't exist for anyone else. */
+   A standing to-do at the top of /notifications: persists until the drafts are
+   judged — mark-read never clears it. The API only sends the count to admin
+   sessions, so this row can't exist for anyone else. */
 .pow-feed .notif-agent{display:flex;align-items:center;gap:8px;padding:11px 14px;
-  font-size:12.5px;letter-spacing:.04em;color:var(--neon);
-  border-bottom:1px solid var(--line);background:rgba(0,255,156,.06);transition:background .12s;}
+  font-size:12.5px;letter-spacing:.04em;color:var(--neon);border:1px solid var(--line);border-radius:10px;
+  background:rgba(0,255,156,.06);transition:background .12s;text-decoration:none;}
 .pow-feed .notif-agent:hover{background:rgba(0,255,156,.12);}
 .pow-feed .notif-agent-dot{width:7px;height:7px;border-radius:50%;background:var(--neon);
   box-shadow:0 0 8px rgba(0,255,156,.8);flex:none;}
@@ -239,32 +238,7 @@ html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation-name:pocke
   display:inline-flex;align-items:center;justify-content:center;border-radius:9px;
   background:var(--no);color:#0b0304;font-size:10px;font-weight:800;line-height:1;
   box-shadow:0 0 10px rgba(255,92,108,.6);}
-.pow-feed .notifpop{position:absolute;top:100%;right:0;margin-top:8px;z-index:60;width:300px;max-width:82vw;
-  background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;
-  box-shadow:0 10px 30px rgba(0,0,0,.55);}
-/* Desktop: the panel overlays the live rail (330px wide). Widen it to cover the
-   whole rail — a narrower panel left the rail's right edge peeking out beside it —
-   and nudge it right so its right edge meets the rail's (the bell sits ~44px left
-   of the rail's right edge, behind the search toggle). Wider also fits more text
-   per notification line. */
-@media (min-width:1100px){
-  .pow-feed .notifpop{width:350px;max-width:none;right:-46px;}
-}
-/* Mobile: the bell sits on the LEFT, so open to the RIGHT and fill the pane width
-   (the 300px dropdown wasted most of the screen). Capped so tablets stay sane. */
-@media (max-width:1099px){
-  .pow-feed .notifpop{right:auto;left:0;width:calc(100vw - 32px);max-width:560px;}
-}
-.pow-feed .notifpop-head{padding:11px 14px;border-bottom:1px solid var(--line);
-  font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);}
 .pow-feed .notifempty{margin:0;padding:18px 14px;font-size:13px;color:var(--dim);text-align:center;}
-.pow-feed .notiflist{list-style:none;margin:0;padding:0;max-height:60vh;overflow-y:auto;}
-.pow-feed .notifitem{display:flex;align-items:baseline;gap:10px;justify-content:space-between;
-  padding:11px 14px;border-bottom:1px solid rgba(23,58,51,.5);transition:background .12s;}
-.pow-feed .notiflist li:last-child .notifitem{border-bottom:none;}
-.pow-feed .notifitem:hover{background:rgba(0,255,156,.06);}
-.pow-feed .notifitem.unread{background:rgba(0,255,156,.08);}
-.pow-feed .notifitem.unread:hover{background:rgba(0,255,156,.12);}
 .pow-feed .notifmore{display:block;width:100%;background:none;border:none;border-top:1px solid var(--line);
   padding:11px 14px;font:inherit;font-size:13px;color:var(--cyan);cursor:pointer;text-align:center;transition:background .12s;}
 .pow-feed .notifmore:hover{background:rgba(61,240,255,.08);}
@@ -274,6 +248,27 @@ html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation-name:pocke
 /* The earned amount leads the message (right after the handle) — money green. */
 .pow-feed .notifamt{color:var(--neon);font-weight:700;white-space:nowrap;}
 .pow-feed .notiftime{flex:none;font-size:11px;color:var(--dim);}
+
+/* ---- /notifications page ---- */
+.pow-feed .notifpage-list{list-style:none;margin:16px 0 0;padding:0;border:1px solid var(--line);
+  border-radius:14px;overflow:hidden;}
+.pow-feed .notifpage-row{display:block;padding:14px 16px;border-bottom:1px solid var(--line);
+  text-decoration:none;transition:background .12s;}
+.pow-feed .notifpage-list li:last-child .notifpage-row{border-bottom:none;}
+.pow-feed .notifpage-row:hover{background:rgba(0,255,156,.06);}
+.pow-feed .notifpage-row.unread{background:rgba(0,255,156,.08);}
+.pow-feed .notifpage-row.unread:hover{background:rgba(0,255,156,.12);}
+.pow-feed .notifpage-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+.pow-feed .notifpage-actors{display:flex;flex-wrap:wrap;gap:4px;font-size:13.5px;line-height:1.5;color:var(--text);}
+.pow-feed .notifpage-actors a{color:inherit;text-decoration:none;}
+.pow-feed .notifpage-actors a:hover strong{text-decoration:underline;}
+.pow-feed .notifpage-more{color:var(--dim);font-weight:400;}
+/* The reply/quote/comment's own words — same visual language as a feed quote
+   embed, so "here is the actual text" reads consistently across the site. */
+.pow-feed .notifpage-body{margin:8px 0 0;padding:11px 13px;border:1px solid var(--line);border-radius:11px;
+  background:var(--panel2);font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word;
+  color:#b9e6d8;}
+.pow-feed .notifpage-body.gone{color:var(--dim);font-style:italic;}
 
 /* ---- header ---- */
 .pow-feed .head{max-width:640px;margin:0 auto;padding:28px 20px 18px;text-align:center;}
@@ -888,6 +883,7 @@ html:not(.dark) .pow-feed *{text-shadow:none;}
 /* body/secondary copy -> warm ink so it reads on paper (was light-teal) */
 html:not(.dark) .pow-feed .sub{color:#4a4d42;}
 html:not(.dark) .pow-feed .qbody,
+html:not(.dark) .pow-feed .notifpage-body,
 html:not(.dark) .pow-feed .artcard-teaser,
 html:not(.dark) .pow-feed .artrow-teaser,
 html:not(.dark) .pow-feed .profbio,
@@ -1250,17 +1246,16 @@ html:not(.dark) .pow-feed .notif-agent-dot{box-shadow:none;}
 /* Floating menus / popovers: a soft ink shadow, not the dark theme's rgba(0,0,0,.5). */
 html:not(.dark) .pow-feed .hammenu,
 html:not(.dark) .pow-feed .menupop,
-html:not(.dark) .pow-feed .notifpop,
 html:not(.dark) .pow-feed .tipmenu{box-shadow:0 8px 24px rgba(26,28,23,.12);}
 
 /* Green/white hover washes -> a soft warm accent tint so they read on paper. */
 html:not(.dark) .pow-feed .hammenu-item:hover,
-html:not(.dark) .pow-feed .notifitem:hover,
-html:not(.dark) .pow-feed .notifitem.unread,
+html:not(.dark) .pow-feed .notifpage-row:hover,
+html:not(.dark) .pow-feed .notifpage-row.unread,
 html:not(.dark) .pow-feed .notifmore:hover,
 html:not(.dark) .pow-feed .dashnotif-more:hover,
 html:not(.dark) .pow-feed .tippreset:hover{background:var(--accent-tint);}
-html:not(.dark) .pow-feed .notifitem.unread:hover{background:#dce8dc;}
+html:not(.dark) .pow-feed .notifpage-row.unread:hover{background:#dce8dc;}
 html:not(.dark) .pow-feed .menubtn:hover{background:rgba(26,28,23,.06);}
 html:not(.dark) .pow-feed .postcopy:hover{background:rgba(26,28,23,.06);}
 
