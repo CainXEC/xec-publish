@@ -46,11 +46,18 @@ function ActorList({ items, verbSuffix }) {
 
 function NotifBody({ n }) {
   if (!HAS_BODY.has(n.type)) return null
-  return n.actionContent ? (
-    <p className="notifpage-body">{n.actionContent}</p>
-  ) : (
-    <p className="notifpage-body gone">This {n.type === 'quote' ? 'quote' : n.type} is no longer available.</p>
-  )
+  // Text resolved -> show it. A pointer that resolved to nothing (deleted/missing)
+  // -> the "gone" note. Neither (an older notification with no stored pointer)
+  // -> nothing; the verb line already reads fine on its own.
+  if (n.actionContent) return <p className="notifpage-body">{n.actionContent}</p>
+  if (n.actionGone) {
+    return (
+      <p className="notifpage-body gone">
+        This {n.type === 'quote' ? 'quote' : n.type} is no longer available.
+      </p>
+    )
+  }
+  return null
 }
 
 /** The TOTAL earned across a group's items (a single item's own amount, for an
