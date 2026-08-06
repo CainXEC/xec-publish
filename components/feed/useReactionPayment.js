@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { normalizeTipXec } from '@/lib/feedPricing'
-import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
+import { prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
+import { pollUntil } from '@/lib/ecash/pollUntil'
 // Pocket-aware gateway: identical contract to the cashtabPay trio. Pocket
 // eligible → local sign + instant broadcast (r.txid feeds the confirm poll);
 // otherwise the exact extension/web-tab behavior.
@@ -156,33 +157,17 @@ export function useReactionPayment({
     [pending, liked, reposted, targetTxid, endpointBase, applyReaction, revertReaction],
   )
 
-  // Poll for the on-chain reaction while a payment is pending. Self-scheduling
-  // (setTimeout, not setInterval) so it can BACK OFF when the server throttles:
-  // the confirm route is rate-limited per IP, and a stuck poll hammering it at a
-  // fixed 1.2s would burn the whole budget (and 429 everything else). On a 429 we
-  // double the delay up to a cap; a normal pending resets to the base cadence. A
-  // hard lifetime cap stops a never-settling payment from polling forever — the
-  // reaction is already flipped optimistically and the payment is on-chain
-  // regardless, so giving up quietly costs nothing but the background noise.
+  // Poll for the on-chain reaction while a payment is pending, via the shared
+  // pollUntil primitive: it owns the interval, the Chronik ws nudge (confirm the
+  // instant the payment lands), the 429 backoff (so a stuck poll can't burn the
+  // per-IP budget and 429 the user's other actions), and a lifetime cap (a
+  // never-settling payment stops polling — the reaction is already flipped
+  // optimistically and the tx is on-chain regardless).
   useEffect(() => {
     if (!pending || !intent) return undefined
-    let stopped = false
-    let timer = null
-    const startedAt = Date.now()
-    const BASE_DELAY = 1200
-    const MAX_DELAY = 8000
-    const MAX_LIFETIME = 90_000
-    let delay = BASE_DELAY
-
-    const stop = () => {
-      stopped = true
-      if (timer) clearTimeout(timer)
-    }
-
-    const check = async (manualTxid) => {
-      if (stopped) return
-      try {
-        const knownTxid = manualTxid ?? intent.knownTxid
+    return pollUntil(
+      async () => {
+        const knownTxid = intent.knownTxid
         const res = await fetch(`${endpointBase}/confirm`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -193,50 +178,17 @@ export function useReactionPayment({
             ...(knownTxid ? { txid: knownTxid } : {}),
           }),
         })
-        if (stopped) return
-        // Throttled: back off so we stop adding to the per-IP budget. Silent —
-        // the optimistic flip already shows success; this is just settling.
-        if (res.status === 429) {
-          delay = Math.min(delay * 2, MAX_DELAY)
-          return
-        }
+        if (res.status === 429) return { backoff: true }
         const data = await res.json()
-        if (stopped) return
         if (data.status === 'reacted') {
-          stop()
           finalizeReacted()
-        } else if (!res.ok) {
-          setNotice(data.error || 'Verification failed.')
-        } else {
-          delay = BASE_DELAY // healthy pending — resume the normal cadence
+          return { done: true }
         }
-      } catch {
-        /* keep polling */
-      }
-    }
-
-    const loop = async () => {
-      if (stopped) return
-      if (Date.now() - startedAt > MAX_LIFETIME) {
-        stop()
-        return
-      }
-      await check()
-      if (!stopped) timer = setTimeout(loop, delay)
-    }
-
-    void loop()
-    // Chronik ws nudge: confirm the instant the payment touches the payout
-    // address instead of waiting for the next tick (event-driven, off the timer).
-    const unwatch = watchPaymentAddress(
-      intent.payAddress,
-      () => { if (!stopped) void check() },
-      () => { if (!stopped) void check() },
+        if (!res.ok) setNotice(data.error || 'Verification failed.')
+        return undefined
+      },
+      { onWsAddress: intent.payAddress, maxLifetimeMs: 90_000 },
     )
-    return () => {
-      stop()
-      unwatch()
-    }
   }, [pending, intent, targetTxid, endpointBase, finalizeReacted])
 
   const verifyManual = useCallback(async () => {

@@ -17,7 +17,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
-import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
+import { prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
+import { pollUntil } from '@/lib/ecash/pollUntil'
 import { payWithCashtab } from '@/lib/ecash/cashtabPay'
 
 export default function ChangeAddressCard({ currentAddress, handle = null }) {
@@ -96,47 +97,38 @@ export default function ChangeAddressCard({ currentAddress, handle = null }) {
     }
   }
 
-  // poll for the new wallet's proof payment
+  // poll for the new wallet's proof payment (shared pollUntil: interval + ws
+  // nudge on the proof address + 429 backoff; bounded by the expiry countdown
+  // below, which flips `phase` and tears this down).
   useEffect(() => {
     if (phase !== 'proving' || !started) return
-    let stopped = false
-    const apply = (j) => {
-      if (j.ok && j.newAddress) {
-        setResult(j)
-        setNotice('')
-        setPhase('done')
-        // The server re-stamped the session cookie for the new address; let the
-        // nav byline re-read /api/me and re-render this page's server data.
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('sessionChanged'))
-        }
-        router.refresh()
-      } else if (j.status && j.status !== 'awaiting_payment' && j.error) {
-        // Recoverable while the countdown runs (e.g. paid from the wrong
-        // wallet): show why and keep polling — paying again from the right
-        // wallet with the SAME request completes the change.
-        setNotice(j.error)
-      }
-    }
-    const poll = async () => {
-      try {
+    return pollUntil(
+      async () => {
         const r = await fetch('/api/account/change-address/status', { cache: 'no-store' })
-        if (!stopped) apply(await r.json())
-      } catch {
-        /* keep polling */
-      }
-    }
-    poll()
-    const id = setInterval(() => !stopped && poll(), 1200)
-    // Live nudge: poll the instant Chronik sees a tx touch the proof address;
-    // third arg = wake on tab refocus (the payment often lands while the user
-    // is over in Cashtab).
-    const stopWatch = watchPaymentAddress(
-      started.proofAddress,
-      () => { if (!stopped) poll() },
-      () => { if (!stopped) poll() },
+        if (r.status === 429) return { backoff: true }
+        const j = await r.json()
+        if (j.ok && j.newAddress) {
+          setResult(j)
+          setNotice('')
+          setPhase('done')
+          // The server re-stamped the session cookie for the new address; let the
+          // nav byline re-read /api/me and re-render this page's server data.
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('sessionChanged'))
+          }
+          router.refresh()
+          return { done: true }
+        }
+        if (j.status && j.status !== 'awaiting_payment' && j.error) {
+          // Recoverable while the countdown runs (e.g. paid from the wrong
+          // wallet): show why and keep polling — paying again from the right
+          // wallet with the SAME request completes the change.
+          setNotice(j.error)
+        }
+        return undefined
+      },
+      { onWsAddress: started.proofAddress },
     )
-    return () => { stopped = true; clearInterval(id); stopWatch() }
   }, [phase, started, router])
 
   // countdown to nonce expiry

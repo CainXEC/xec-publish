@@ -10,7 +10,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { watchPaymentAddress, prewarmPaymentWatch } from "@/lib/ecash/watchPaymentAddress";
+import { prewarmPaymentWatch } from "@/lib/ecash/watchPaymentAddress";
+import { pollUntil } from "@/lib/ecash/pollUntil";
 import { payWithCashtab } from "@/lib/ecash/cashtabPay";
 
 type Started = {
@@ -79,39 +80,34 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
     }
   }, [phase, started, openCashtab]);
 
-  // poll for the login payment
+  // poll for the login payment (shared pollUntil: interval + ws nudge on the
+  // proof address + 429 backoff; bounded by the nonce-expiry countdown below,
+  // which flips `phase` and tears this down).
   useEffect(() => {
     if (phase !== "proving" || !started) return;
-    let stopped = false;
-    const apply = (j: any) => {
-      if (j.ok && j.accountId) {
-        setPhase("done");
-        // hard navigation so every component re-reads auth via /api/me
-        setTimeout(() => { if (typeof window !== "undefined") window.location.assign(redirectTo); }, 600);
-      } else if (j.status === "pocket_address") {
-        // Paid from the Pocket (spending balance) — that key can't authenticate.
-        // The nonce stays alive server-side, so paying again from the main
-        // wallet completes this SAME challenge; keep polling.
-        setNotice(j.error ?? "That payment came from your Pocket. Pay from your main Cashtab wallet instead.");
-      } else if (j.status === "error") {
-        setNotice(j.error ?? "Something went wrong verifying your login.");
-      }
-    };
-    const poll = async () => {
-      try {
+    return pollUntil(
+      async () => {
         const r = await fetch("/api/auth/status", { cache: "no-store" });
-        if (!stopped) apply(await r.json());
-      } catch { /* keep polling */ }
-    };
-    poll();
-    const id = setInterval(() => !stopped && poll(), 1200);
-    // Live nudge: a Chronik websocket on the proof address fires an immediate
-    // poll the instant the login payment lands, instead of waiting up to 2.5s
-    // for the next tick. The status route still verifies the nonce server-side.
-    // Third arg = wake (tab foregrounded / ws reconnect): poll immediately in
-    // case the login payment broadcast while the tab was suspended in Cashtab.
-    const stopWatch = watchPaymentAddress(started.proofAddress, () => { if (!stopped) poll(); }, () => { if (!stopped) poll(); });
-    return () => { stopped = true; clearInterval(id); stopWatch(); };
+        if (r.status === 429) return { backoff: true };
+        const j = await r.json();
+        if (j.ok && j.accountId) {
+          setPhase("done");
+          // hard navigation so every component re-reads auth via /api/me
+          setTimeout(() => { if (typeof window !== "undefined") window.location.assign(redirectTo); }, 600);
+          return { done: true };
+        }
+        if (j.status === "pocket_address") {
+          // Paid from the Pocket (spending balance) — that key can't authenticate.
+          // The nonce stays alive server-side, so paying again from the main
+          // wallet completes this SAME challenge; keep polling.
+          setNotice(j.error ?? "That payment came from your Pocket. Pay from your main Cashtab wallet instead.");
+        } else if (j.status === "error") {
+          setNotice(j.error ?? "Something went wrong verifying your login.");
+        }
+        return undefined;
+      },
+      { onWsAddress: started.proofAddress },
+    );
   }, [phase, started, redirectTo]);
 
   // countdown to nonce expiry

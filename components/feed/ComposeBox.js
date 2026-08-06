@@ -4,7 +4,8 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import EmojiPicker from '@/components/EmojiPicker'
-import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
+import { prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
+import { pollUntil } from '@/lib/ecash/pollUntil'
 // Pocket-aware gateway: identical contract to the cashtabPay trio. Pocket
 // eligible → local sign + instant broadcast (r.txid feeds the confirm poll);
 // otherwise the exact extension/web-tab behavior this file always had.
@@ -47,11 +48,13 @@ export default function ComposeBox({
   autoFocus = false,
   placeholder,
   initialContent = '',
-  // Opt-in (persistent composers only): show the post OPTIMISTICALLY the moment
-  // the pocket broadcasts, before the server records it. Safe only where the box
-  // stays mounted through confirmation (the top-of-feed composer) — a reply/quote
-  // box unmounts when it closes, which would kill the confirm poll, so those keep
-  // the classic flow for now.
+  // Opt-in: show the post OPTIMISTICALLY the moment the payment broadcasts, before
+  // the server records it. Enabled for the top-of-feed composer AND inline
+  // reply/quote boxes — those unmount when they close, but the optimistic path
+  // hands recording to confirmFeedPostInBackground (a DETACHED poll that survives
+  // the unmount), so the reply/quote still records. Only fires when a txid is in
+  // hand at broadcast (Pocket or the Cashtab extension); the web-tab path has no
+  // txid until the chain shows it, so it stays on the in-component confirm poll.
   allowOptimistic = false,
 }) {
   const [content, setContent] = useState(initialContent)
@@ -333,27 +336,19 @@ export default function ComposeBox({
 
   // Poll for the on-chain payment while paying (Cashtab + non-optimistic pocket;
   // the optimistic path hands recording to confirmFeedPostInBackground instead).
+  // The shared pollUntil owns the interval, the ws nudge, the 429 backoff, and
+  // the lifetime cap. The ws THREADS its txid into confirm (wsThreadsTxid) so the
+  // server does a single-tx verify (verifyFeedTxid) instead of scanning the busy
+  // platform address's recent history — a cross-fired txid just misses on the
+  // content hash and polling continues. Server still verifies + gates.
   useEffect(() => {
     if (phase !== 'paying' || !intent) return undefined
-    let stopped = false
-    let timer = null
-    const startedAt = Date.now()
-    const BASE_DELAY = 1200
-    const MAX_DELAY = 8000
-    const MAX_LIFETIME = 120_000
-    let delay = BASE_DELAY
-
-    const stop = () => {
-      stopped = true
-      if (timer) clearTimeout(timer)
-    }
-
-    const confirm = async (manualTxid) => {
-      if (stopped) return
-      try {
-        // A pocket-paid post knows its txid up front — send it so confirm does
-        // a single-tx verify (records on the first request, no address scan).
-        const knownTxid = manualTxid ?? intent.knownTxid
+    return pollUntil(
+      async (wsTxid) => {
+        // A pocket-paid post knows its txid up front (intent.knownTxid); the ws
+        // nudge supplies it for the web-tab path. Either way a known txid means a
+        // single-tx verify, recorded on the first request with no address scan.
+        const knownTxid = wsTxid ?? intent.knownTxid
         const res = await fetch('/api/feed/confirm', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -367,63 +362,26 @@ export default function ComposeBox({
             ...(knownTxid ? { txid: knownTxid } : {}),
           }),
         })
-        if (stopped) return
-        // Throttled: back off so a stuck poll stops burning the per-IP budget
-        // (which would 429 the user's other feed actions too). Keep waiting.
-        if (res.status === 429) {
-          delay = Math.min(delay * 2, MAX_DELAY)
-          return
-        }
+        if (res.status === 429) return { backoff: true }
         const data = await res.json()
-        if (stopped) return
         if (data.status === 'posted' && data.post) {
-          stop()
           // The confirm route returns the bare inserted row with no `quoted`
           // preview, so handlePosted attaches the one we already have to avoid a
           // transient "Quoted post unavailable." until the next server render.
           handlePosted(data.post)
-        } else if (!res.ok) {
-          setNotice(data.error || 'Verification failed.')
-        } else {
-          delay = BASE_DELAY // healthy pending — resume the normal cadence
+          return { done: true }
         }
-      } catch {
-        /* keep polling */
-      }
-    }
-
-    const loop = async () => {
-      if (stopped) return
-      // A payment that never lands would otherwise poll forever; stop after a
-      // sensible window. The tx is on-chain regardless, and the reconcile sweep
-      // + next feed render will surface it, so giving up quietly is safe.
-      if (Date.now() - startedAt > MAX_LIFETIME) {
-        stop()
-        setNotice('Still confirming — refresh in a moment if your post doesn’t appear.')
-        return
-      }
-      await confirm()
-      if (!stopped) timer = setTimeout(loop, delay)
-    }
-
-    void loop()
-    // Chronik ws nudge: the instant a tx touches the pay address, confirm now
-    // instead of waiting for the next tick. Pass the ws's txid straight through
-    // so the server does a single-tx lookup (verifyFeedTxid) instead of scanning
-    // the busy platform address's recent history — a post/reply/quote is
-    // disambiguated by its content hash, so a cross-fired txid just misses and
-    // polling continues. Server still verifies + gates. Event-driven, off the timer.
-    const unwatch = watchPaymentAddress(
-      intent.payAddress,
-      (txid) => { if (!stopped) void confirm(txid) },
-      // Wake (tab back to foreground / ws reconnect): the payment may have
-      // broadcast while this tab was suspended — check now, don't wait a tick.
-      () => { if (!stopped) void confirm() },
+        if (!res.ok) setNotice(data.error || 'Verification failed.')
+        return undefined
+      },
+      {
+        onWsAddress: intent.payAddress,
+        wsThreadsTxid: true,
+        maxLifetimeMs: 120_000,
+        onLifetimeExpired: () =>
+          setNotice('Still confirming — refresh in a moment if your post doesn’t appear.'),
+      },
     )
-    return () => {
-      stop()
-      unwatch()
-    }
   }, [phase, intent, content, action, parentTxid, quotedTxid, handlePosted])
 
   const verifyManual = useCallback(async () => {

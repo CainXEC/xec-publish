@@ -7,7 +7,8 @@ import { tokenizeUrls } from '@/lib/contentLinks'
 import TranslateButton from '@/components/TranslateButton'
 import CommentLike from '@/components/feed/CommentLike'
 import EmojiPicker from '@/components/EmojiPicker'
-import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
+import { prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
+import { pollUntil } from '@/lib/ecash/pollUntil'
 // Pocket-aware gateway: identical contract to the cashtabPay trio. Pocket
 // eligible → local sign + instant broadcast (r.txid feeds the confirm poll);
 // otherwise the exact extension/web-tab behavior this file always had.
@@ -253,14 +254,17 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
   }, [content, parentId, postId, priced.ok, priced.costXec, resetToCompose, handlePosted, onPosted, onConfirmed])
 
   // Poll for the on-chain payment while paying via Cashtab. (The pocket path is
-  // optimistic — it hands recording to confirmCommentInBackground instead.)
+  // optimistic — it hands recording to confirmCommentInBackground instead.) The
+  // shared pollUntil owns the interval + ws nudge and adds a 429 backoff + a
+  // lifetime cap this loop previously lacked, so a stuck comment payment can't
+  // hammer the rate-limited confirm route.
   useEffect(() => {
     if (phase !== 'paying' || !intent || payViaPocket) return undefined
-    let stopped = false
-    const confirm = async (manualTxid) => {
-      try {
-        // A pocket-paid comment knows its txid up front — single-tx verify.
-        const knownTxid = manualTxid ?? intent.pocketTxid
+    return pollUntil(
+      async (wsTxid) => {
+        // A pocket-paid comment knows its txid up front; the ws nudge supplies it
+        // for the web-tab path — either way a single-tx verify.
+        const knownTxid = wsTxid ?? intent.pocketTxid
         const res = await fetch('/api/comments/confirm', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -272,30 +276,17 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
             ...(knownTxid ? { txid: knownTxid } : {}),
           }),
         })
+        if (res.status === 429) return { backoff: true }
         const data = await res.json().catch(() => ({}))
-        if (stopped) return
         if (data.status === 'posted' && data.comment) {
-          stopped = true
           handlePosted(data.comment)
-        } else if (!res.ok) {
-          setNotice(data.error || 'Verification failed.')
+          return { done: true }
         }
-      } catch {
-        /* keep polling */
-      }
-    }
-    confirm()
-    const id = setInterval(() => !stopped && confirm(), 1200)
-    const unwatch = watchPaymentAddress(
-      intent.payAddress,
-      (txid) => { if (!stopped) void confirm(txid) },
-      () => { if (!stopped) void confirm() },
+        if (!res.ok) setNotice(data.error || 'Verification failed.')
+        return undefined
+      },
+      { onWsAddress: intent.payAddress, wsThreadsTxid: true, maxLifetimeMs: 120_000 },
     )
-    return () => {
-      stopped = true
-      clearInterval(id)
-      unwatch()
-    }
   }, [phase, intent, payViaPocket, content, parentId, postId, handlePosted])
 
   const verifyManual = useCallback(async () => {
