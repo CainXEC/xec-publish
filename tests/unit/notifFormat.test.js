@@ -59,14 +59,16 @@ describe('groupNotifications', () => {
     expect(groups[0].items).toHaveLength(2)
   })
 
-  it('never groups reply/quote/comment/offer — each keeps its own payload', () => {
+  it('never groups reply/quote/comment/offer/mention — each keeps its own payload', () => {
     const groups = groupNotifications([
       row({ type: 'reply', post_txid: 'p1' }),
       row({ type: 'reply', post_txid: 'p1' }),
       row({ type: 'comment', post_txid: 'a1' }),
       row({ type: 'comment', post_txid: 'a1' }),
+      row({ type: 'mention', post_txid: 'p2' }),
+      row({ type: 'mention', post_txid: 'p2' }),
     ])
-    expect(groups).toHaveLength(4)
+    expect(groups).toHaveLength(6)
   })
 
   it('an empty or missing list yields no groups', () => {
@@ -113,5 +115,28 @@ describe('targetHref', () => {
   it('reply/quote/like/repost open the feed thread by post_txid', () => {
     expect(targetHref(row({ type: 'reply', post_txid: 'abc' }))).toBe('/feed/abc')
     expect(targetHref(row({ type: 'reply', post_txid: null }))).toBe('#')
+  })
+
+  it('an article mention opens the article; a feed mention opens the post', () => {
+    // article mention: articleHref set (post_txid is a uuid)
+    expect(
+      targetHref(row({ type: 'mention', articleHref: '/posts/x', post_txid: 'a-uuid-1234' })),
+    ).toBe('/posts/x')
+    // feed mention: no articleHref, post_txid is a 64-hex feed txid
+    const txid = 'a'.repeat(64)
+    expect(targetHref(row({ type: 'mention', articleHref: null, post_txid: txid }))).toBe(
+      `/feed/${txid}`,
+    )
+    // a non-txid, non-article mention can't resolve a link
+    expect(targetHref(row({ type: 'mention', articleHref: null, post_txid: 'not-hex' }))).toBe('#')
+  })
+})
+
+describe('notifText — mention', () => {
+  it('names the article when known, else a bare "mentioned you"', () => {
+    expect(notifText(row({ type: 'mention', articleTitle: 'On eCash' }))).toBe(
+      'mentioned you in “On eCash”',
+    )
+    expect(notifText(row({ type: 'mention', articleTitle: null }))).toBe('mentioned you')
   })
 })

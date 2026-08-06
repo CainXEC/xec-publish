@@ -11,9 +11,10 @@ import {
   groupNotifications,
 } from '@/lib/notifFormat'
 
-// Types that always carry their own full text inline (never grouped — see
-// GROUPABLE_TYPES in lib/notifFormat).
-const HAS_BODY = new Set(['reply', 'quote', 'comment'])
+// Types that can carry their own full text inline (never grouped — see
+// GROUPABLE_TYPES in lib/notifFormat). A FEED mention shows the post you were
+// tagged in; an article mention has no inline body (NotifBody renders nothing).
+const HAS_BODY = new Set(['reply', 'quote', 'comment', 'mention'])
 
 // "A liked", "A and B liked", "A, B and C liked", "A, B and 4 others liked" —
 // standard list grammar (Oxford "and" before the last part), capped at
@@ -51,11 +52,10 @@ function NotifBody({ n }) {
   // -> nothing; the verb line already reads fine on its own.
   if (n.actionContent) return <p className="notifpage-body">{n.actionContent}</p>
   if (n.actionGone) {
-    return (
-      <p className="notifpage-body gone">
-        This {n.type === 'quote' ? 'quote' : n.type} is no longer available.
-      </p>
-    )
+    // "mention" -> the POST they were tagged in; "quote"/"reply"/"comment" name
+    // themselves.
+    const noun = n.type === 'quote' ? 'quote' : n.type === 'mention' ? 'post' : n.type
+    return <p className="notifpage-body gone">This {noun} is no longer available.</p>
   }
   return null
 }

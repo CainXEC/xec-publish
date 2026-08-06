@@ -14,7 +14,7 @@ import { resolveOrCreateAccount, primaryAddressForAccount } from '@/lib/walletAu
 import { formatIdentity } from '@/lib/formatIdentity'
 import { displayHandlesByAccountId } from '@/lib/authorDisplayHandles'
 import { isBlockedPair } from '@/lib/feedBlocks'
-import { recordFeedNotification } from '@/lib/feedNotifications'
+import { recordFeedNotification, recordFeedMentionNotifications } from '@/lib/feedNotifications'
 import { mintPaySession } from '@/lib/paySession'
 
 const FEED_POST_COLUMNS =
@@ -271,6 +271,16 @@ export async function POST(request) {
       postTxid: inserted.txid,
     })
   }
+
+  // Notify anyone @-tagged in the post's text (best-effort). Exclude whoever was
+  // already pinged by the reply/quote above so they don't get a duplicate.
+  await recordFeedMentionNotifications(supabase, {
+    content,
+    actorAccountId: resolved.accountId,
+    actorIdentity: authorIdentity,
+    postTxid: inserted.txid,
+    excludeAccountIds: [parentAuthorAccountId, quotedAuthorAccountId].filter(Boolean),
+  })
 
   // Freshen the shared For You cache so the new post (or a reply's bumped count)
   // shows within seconds instead of waiting out the revalidate window. Cheap:

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
+import { recordArticleMentionNotifications } from '@/lib/feedNotifications'
 
 // POST /api/agent/article/publish — REST publish flip for external clients
 // (the AI_SATOSHI agent). Runs after the on-chain fee cleared: the agent has
@@ -55,7 +56,8 @@ export async function POST(request) {
   }
 
   const payload = { published: true }
-  if (!existing.published_at) {
+  const firstPublish = !existing.published_at
+  if (firstPublish) {
     payload.published_at = new Date().toISOString()
   }
 
@@ -71,6 +73,11 @@ export async function POST(request) {
   }
   if (!updated) {
     return NextResponse.json({ error: 'Post not found.' }, { status: 404 })
+  }
+
+  // First publish only → notify anyone @-tagged in the article (best-effort).
+  if (firstPublish) {
+    await recordArticleMentionNotifications(admin, { postId: updated.id })
   }
 
   return NextResponse.json(
