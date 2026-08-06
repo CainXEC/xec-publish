@@ -432,10 +432,23 @@ export default function FeedClient({
 
         {scope === 'foryou' && newCount > 0 ? (
           <div className="newposts">
-            <button type="button" onClick={() => void loadNewer()} disabled={loadingNew}>
-              {loadingNew
-                ? 'Loading…'
-                : `↑ ${newCount}${newCount >= 50 ? '+' : ''} new post${newCount === 1 ? '' : 's'}`}
+            <button
+              type="button"
+              className="newposts-pill"
+              onClick={() => void loadNewer()}
+              disabled={loadingNew}
+            >
+              {loadingNew ? (
+                <span className="newposts-label">Loading…</span>
+              ) : (
+                <>
+                  <span className="newposts-chev" aria-hidden="true">↑</span>
+                  <span className="newposts-label">
+                    {newCount}
+                    {newCount >= 50 ? '+' : ''} new post{newCount === 1 ? '' : 's'}
+                  </span>
+                </>
+              )}
             </button>
           </div>
         ) : null}
