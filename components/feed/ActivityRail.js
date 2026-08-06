@@ -133,6 +133,10 @@ export default function ActivityRail({
     return () => mq.removeEventListener('change', update)
   }, [minWidth])
 
+  // Returns true on a clean load, false on any failure — the caller uses that to
+  // retry a FAILED first load quickly instead of stranding the rail on
+  // "Listening…" until the 45s poll (the /api/activity endpoint can 500 on a
+  // transient DB blip / cold start; that used to require a manual refresh).
   const refresh = useCallback(async () => {
     lastRefreshAt.current = Date.now()
     try {
@@ -141,8 +145,9 @@ export default function ActivityRail({
       if (scope?.address) params.set('address', scope.address)
       const qs = params.toString()
       const res = await fetch(`/api/activity${qs ? `?${qs}` : ''}`, { cache: 'no-store' })
+      if (!res.ok) return false
       const data = await res.json()
-      if (!data.ok) return
+      if (!data.ok) return false
       const next = data.items ?? []
       // Mark rows we haven't seen before so they flash in (skipped on the
       // very first load — the backfill shouldn't strobe).
@@ -153,14 +158,31 @@ export default function ActivityRail({
       }
       knownIds.current = new Set(next.map((it) => it.id))
       setItems(next)
+      return true
     } catch {
-      /* best-effort; the next tick covers it */
+      return false
     }
   }, [scope?.authorId, scope?.address])
 
   useEffect(() => {
     if (!active) return
-    void refresh()
+    let stopped = false
+    // Fast-retry the FIRST load until it succeeds (2s, 4s, 8s… capped), so a
+    // transient endpoint failure recovers on its own in seconds rather than
+    // hanging on "Listening…" until the next 45s poll. Steady-state polling
+    // below is unaffected — this chain self-terminates on the first success.
+    let retryTimer = null
+    let retryDelay = 2_000
+    const RETRY_MAX = 20_000
+    const initialLoad = async () => {
+      if (stopped) return
+      const ok = await refresh()
+      if (!ok && !stopped) {
+        retryTimer = setTimeout(initialLoad, retryDelay)
+        retryDelay = Math.min(retryDelay * 2, RETRY_MAX)
+      }
+    }
+    void initialLoad()
     const interval = setInterval(() => void refresh(), POLL_MS)
     // The doorbell: any POWR tx on the network → one delayed refetch. Repeated
     // pushes inside the beat collapse into a single fetch.
@@ -180,6 +202,8 @@ export default function ActivityRail({
       },
     )
     return () => {
+      stopped = true
+      if (retryTimer) clearTimeout(retryTimer)
       clearInterval(interval)
       stopWatch()
       if (nudgeTimer.current) clearTimeout(nudgeTimer.current)

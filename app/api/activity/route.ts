@@ -101,7 +101,20 @@ const profileHref = (rawIdentity: string | null | undefined): string | null => {
   return /^[a-z0-9]{42}$/.test(b) ? `/@${b}` : null;
 };
 
+// Thin wrapper so a transient failure in any of the ~10 source queries returns a
+// clean { ok: false } instead of an unhandled throw (an opaque 500 whose body the
+// client can't even parse). The rail treats !ok as a failure and fast-retries, so
+// a DB blip / cold-start self-heals in seconds instead of hanging on "Listening…".
 export async function GET(req: NextRequest) {
+  try {
+    return await buildActivity(req);
+  } catch (e) {
+    console.error("[activity] failed", e instanceof Error ? e.message : e);
+    return NextResponse.json({ ok: false, error: "activity_unavailable" }, { status: 500 });
+  }
+}
+
+async function buildActivity(req: NextRequest) {
   // Optional author scoping (profile pages): ?authorId=<uuid>&address=<ecash>
   // narrows the stream to one author's economy — their feed posts, value
   // received on their content, and their articles' unlocks/publishes. Mints
