@@ -30,6 +30,11 @@ export default function TranslateButton({
 }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  // `pending` drives the visible "Translating…" caption. It's a subset of `busy`:
+  // only a USER-initiated translate sets it, so the silent cache-rehydrate on
+  // mount (below) stays quiet — that one is near-instant from Redis and would
+  // just flicker a caption on every load of an already-translated article.
+  const [pending, setPending] = useState(false)
   const [active, setActive] = useState(false)
   const [error, setError] = useState('')
   const rootRef = useRef(null)
@@ -50,7 +55,10 @@ export default function TranslateButton({
   // cache, so re-applying a translation never re-spends API credits.
   const translateTo = async (lang, { silent = false } = {}) => {
     setBusy(true)
-    if (!silent) setError('')
+    if (!silent) {
+      setError('')
+      setPending(true)
+    }
     try {
       localStorage.setItem(LS_KEY, lang)
     } catch {
@@ -85,6 +93,7 @@ export default function TranslateButton({
       else setError('Network hiccup — try again.')
     } finally {
       setBusy(false)
+      setPending(false)
     }
   }
 
@@ -205,6 +214,11 @@ export default function TranslateButton({
         </span>
       ) : null}
 
+      {pending ? (
+        <span className="tb-loading" role="status" aria-live="polite">
+          Translating<span className="tb-dots" aria-hidden="true" />
+        </span>
+      ) : null}
       {error ? <span className="tb-err">{error}</span> : null}
       <style>{TB_CSS}</style>
     </span>
@@ -219,6 +233,19 @@ const TB_CSS = `
 .tb-btn:disabled{opacity:.5;cursor:default;}
 .tb-on{opacity:.85;}
 .tb-note{font-size:11px;opacity:.55;font-style:italic;}
+/* The "Translating…" caption: a plainly readable pending state (NOT the faded
+   italic of .tb-note — the whole point is that it's noticeable on a slow first
+   translation). A soft pulse plus animated dots read as "working", not stuck. */
+.tb-loading{display:inline-flex;align-items:center;font-size:12px;opacity:.9;white-space:nowrap;
+  color:inherit;animation:tb-pulse 1.6s ease-in-out infinite;}
+.tb-dots{display:inline-block;width:1.1em;text-align:left;}
+.tb-dots::after{content:'…';animation:tb-dots 1.4s steps(1,end) infinite;}
+@keyframes tb-dots{0%{content:'.';}33%{content:'..';}66%{content:'…';}}
+@keyframes tb-pulse{0%,100%{opacity:.55;}50%{opacity:1;}}
+@media (prefers-reduced-motion:reduce){
+  .tb-loading{animation:none;opacity:.9;}
+  .tb-dots::after{content:'…';animation:none;}
+}
 .tb-err{font-size:11px;color:#ff5c6c;}
 .tb-menu{position:absolute;top:100%;left:0;margin-top:8px;z-index:60;display:flex;
   flex-direction:column;min-width:160px;max-height:260px;overflow:auto;
