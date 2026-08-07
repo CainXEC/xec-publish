@@ -1003,6 +1003,21 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 .pow-feed .np-stat{white-space:nowrap;font-variant-numeric:tabular-nums;}
 .pow-feed .np-sec{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);
   border-bottom:1px solid var(--line);padding:16px 0 5px;}
+/* Front-page lens filter: a bare <select> dressed as a section heading — mono,
+   uppercase, with a drawn ▾ caret that tints neon on hover. */
+.pow-feed .np-filterbar{padding:12px 0 10px;border-bottom:1px solid var(--line);}
+.pow-feed .np-filter{appearance:none;-webkit-appearance:none;background-color:transparent;
+  border:1px solid var(--line);border-radius:8px;color:var(--text);font:inherit;font-size:11px;
+  font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:6px 26px 6px 11px;cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),
+    linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 14px) center,calc(100% - 10px) center;
+  background-size:4px 4px,4px 4px;background-repeat:no-repeat;
+  transition:border-color .15s,color .15s,box-shadow .15s;}
+.pow-feed .np-filter:hover{border-color:var(--neon);color:var(--neon);}
+.pow-feed .np-filter:focus-visible{outline:none;border-color:var(--neon);box-shadow:0 0 0 1px var(--neon);}
+.pow-feed .np-filter option{background:var(--panel,#0d1513);color:var(--text);
+  text-transform:none;letter-spacing:normal;font-weight:400;}
 /* the lead: a full newspaper hero — headline, meta beneath it, then a generous
    preview. The whole thing opens the story (no buttons); unlock lives inside. */
 .pow-feed .np-lead{padding:13px 0 15px;border-bottom:1px solid var(--line);}
@@ -1050,6 +1065,9 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 .pow-feed .np-rank-h{flex:1;min-width:0;font-size:14.5px;line-height:1.3;color:var(--text);overflow-wrap:anywhere;hyphens:auto;}
 .pow-feed .np-rank:hover .np-rank-h{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
 .pow-feed .np-rank-c{flex:none;font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap;}
+/* Latest lens: a byline sits where the read count would be — dim, ellipsized. */
+.pow-feed .np-rank-by{flex:none;max-width:42%;font-size:10.5px;color:var(--dim);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;}
 /* Entry (Latest) headline link wraps a block; teaser + button row when expanded. */
 .pow-feed .np-hl{display:block;text-decoration:none;}
 .pow-feed .np-teaser{font-size:12.5px;line-height:1.6;color:var(--dim);margin:8px 0 0;}

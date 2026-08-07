@@ -1,21 +1,18 @@
 // =============================================================================
-//  app/api/articles/rail/route.ts — the desktop left rail's "front page".
+//  app/api/articles/rail/route.ts — the front page's "front page" rail.
 //
-//  One payload for the newspaper rail: MOST READ THIS WEEK (the headline section,
-//  whose #1 is the hero lead) and a MORE STORIES list — plus dateline stats.
-//  Ranking is deliberately LEGIBLE (the anti-black-box to the feed's ranker):
-//    mostRead = ranked by RECENT (7-day) unlock volume — this is how an OLD or
-//               legacy article being unlocked a lot right now leads the front
-//               page, independent of its age. mostRead[0] is the hero.
-//    lead     = fallback hero ONLY when nothing was unlocked this week:
-//               (1 + all-time readers) · exp(−age_days / 3) · sublinear price nudge
-//    more     = pure chronology (newest first), minus everything shown above
-//  Reader counts come from the get_unlock_counts RPC, so "readers" here always
-//  means verified on-chain unlocks, never views. That RPC — and its sibling
-//  get_recent_hot_posts, which pulls hot legacy posts into the candidate pool so
-//  they can appear here at all — excludes house/AI unlockers (authors.is_ai): a
-//  patron's grants pay the author for real but must not inflate this public reach
-//  ranking (see sql/rpc_get_unlock_counts.sql, sql/rpc_get_recent_hot_posts.sql).
+//  ONE filtered list of up to 25 stories. `?range=` picks the lens (default 7d):
+//    24h / 7d / all  → MOST READ: ranked by verified on-chain unlock volume over
+//                      that window (24h/7d/all-time). This is how an OLD or legacy
+//                      article being unlocked a lot right now resurfaces here,
+//                      independent of age. #1 is the hero.
+//    latest          → newest published first (published_at ?? created_at), no
+//                      read filter — a plain chronology.
+//  Reader counts come from the get_unlock_counts / get_recent_hot_posts RPCs, so
+//  "reads" always means verified unlocks, never views — and both exclude house/AI
+//  unlockers (authors.is_ai) so a patron's grants can't inflate this public reach
+//  ranking (sql/rpc_get_unlock_counts.sql, sql/rpc_get_recent_hot_posts.sql). Both
+//  RPCs take a nullable `since` (NULL = all-time), so one value drives every window.
 //
 //  posts.published_at is null on paid-flow posts — created_at is the real
 //  publication moment there, so both are selected and coalesced.
@@ -30,18 +27,24 @@ export const dynamic = "force-dynamic";
 
 const supabase = adminDb();
 
-const CANDIDATES = 40;
-// The front-page rail scrolls independently (.feed-left is a sticky, overflowing
-// column), so "More stories" can run long without shifting the page — 12 gives a
-// fuller front page while staying curated.
-const MORE_N = 12;
-// "Most read this week" is the front page's headline section: the #1 story is the
-// hero (numbered 1), then ranks 2..N below it — so MOST_READ_N counts the hero.
-// HOT_CANDIDATES is how many hot posts to pull into the candidate pool so an
-// OLD/legacy article being unlocked a lot right now can resurface — the
-// recency-only pools below would never include it. See sql/rpc_get_recent_hot_posts.sql.
-const MOST_READ_N = 7;
-const HOT_CANDIDATES = 24;
+const CANDIDATES = 60;
+// How many rows the rail lists.
+const LIST_N = 25;
+// How many hot post ids to pull into the candidate pool so an OLD/legacy article
+// unlocked a lot in the window can resurface — the recency pools alone never would.
+const HOT_CANDIDATES = 30;
+
+type RangeKey = "24h" | "7d" | "all" | "latest";
+function parseRange(v: string | null): RangeKey {
+  return v === "24h" || v === "all" || v === "latest" ? v : "7d";
+}
+// The unlock-count window for a range: 24h / 7d back, or null (all-time) for
+// 'all' and 'latest'.
+function sinceFor(range: RangeKey): string | null {
+  if (range === "24h") return new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  if (range === "7d") return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  return null;
+}
 
 type RailStory = {
   id: string;
@@ -56,8 +59,9 @@ type RailStory = {
   readMinutes: number | null;
   at: string;
   author: string;
-  readers: number;
-  readers7d: number;
+  // Unlock count over the selected window (all-time for 'all'/'latest'). The
+  // ranking basis for the most-read ranges; shown as "N reads".
+  count: number;
   comments: number;
 };
 
@@ -67,15 +71,17 @@ const shortAddr = (address: string) => {
   return `${b.slice(0, 8)}…${b.slice(-4)}`;
 };
 
-export async function GET() {
+export async function GET(request: Request) {
+  const range = parseRange(new URL(request.url).searchParams.get("range"));
+  const isLatest = range === "latest";
+  const since = sinceFor(range);
+
   type PostRow = {
     id: string; title: string | null; slug: string | null; teaser: string | null;
     price_xec: number | null; reading_time_minutes: number | null;
     published_at: string | null; created_at: string | null; author_id: string | null;
     legacy: boolean | null;
   };
-
-  const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const COLS =
     "id, title, slug, teaser, price_xec, reading_time_minutes, published_at, created_at, author_id, legacy";
@@ -85,10 +91,9 @@ export async function GET() {
   // pool ordered only by created_at silently excludes it (loadAuthorProfile
   // documents the same trap). We can't COALESCE inside .order(), so take the
   // union of two pools — newest-created AND newest-published — and dedupe.
-  // The created_at pool also covers legacy paid-flow posts whose published_at
-  // is null (created_at is their real go-live moment); the published_at pool
-  // (nulls last) catches the long-drafted just-published case. The JS ranking
-  // below then sorts the merged set by published_at ?? created_at.
+  // For the MOST-READ ranges we also fold in get_recent_hot_posts (the hottest
+  // over the window) — the ONLY way an old/legacy article resurfaces. 'latest'
+  // is pure chronology, so it skips the hot pool.
   const [byCreated, byPublished, hotRes] = await Promise.all([
     supabase
       .from("posts").select(COLS).eq("published", true)
@@ -96,11 +101,11 @@ export async function GET() {
     supabase
       .from("posts").select(COLS).eq("published", true)
       .order("published_at", { ascending: false, nullsFirst: false }).limit(CANDIDATES),
-    // Recently-hot posts by 7-day unlock volume (house/AI excluded). This is the
-    // ONLY way an old/legacy article enters the pool — the two pools above are
-    // pure publication recency. Best-effort: if the RPC isn't applied yet we log
-    // and carry on with just the recency pools, so the rail never breaks on it.
-    supabase.rpc("get_recent_hot_posts", { since: since7d, max_posts: HOT_CANDIDATES }),
+    // Best-effort: if the RPC isn't applied yet we log and carry on with just the
+    // recency pools, so the rail never breaks on it.
+    isLatest
+      ? Promise.resolve({ data: [], error: null } as { data: unknown; error: { message: string } | null })
+      : supabase.rpc("get_recent_hot_posts", { since, max_posts: HOT_CANDIDATES }),
   ]);
 
   // Pull the full post rows for the hot ids the recency pools didn't already cover.
@@ -131,18 +136,15 @@ export async function GET() {
   const posts = [...byId.values()].filter((p) => p.slug && p.title);
   const ids = posts.map((p) => p.id);
 
-  // ---- readers: all-time (display) + 7-day (ranking) + comment counts ----
-  const readers = new Map<string, number>();
-  const readers7d = new Map<string, number>();
+  // ---- unlock count over the window (all-time for 'all'/'latest') + comments ----
+  const count = new Map<string, number>();
   const comments = new Map<string, number>();
   if (ids.length > 0) {
-    const [allTime, week, commentRes] = await Promise.all([
-      fetchAllUnlockCountRows(supabase, ids, null),
-      fetchAllUnlockCountRows(supabase, ids, since7d),
+    const [windowRows, commentRes] = await Promise.all([
+      fetchAllUnlockCountRows(supabase, ids, since),
       supabase.rpc("get_comment_counts", { post_ids: ids }),
     ]);
-    for (const r of allTime.rows ?? []) readers.set(r.post_id, Number(r.count) || 0);
-    for (const r of week.rows ?? []) readers7d.set(r.post_id, Number(r.count) || 0);
+    for (const r of windowRows.rows ?? []) count.set(r.post_id, Number(r.count) || 0);
     for (const r of (commentRes.data ?? []) as Array<{ post_id: string; count: number }>) {
       comments.set(r.post_id, Number(r.count) || 0);
     }
@@ -174,64 +176,25 @@ export async function GET() {
     readMinutes: p.reading_time_minutes,
     at: p.published_at ?? p.created_at ?? new Date(0).toISOString(),
     author: (p.author_id ? byline.get(p.author_id) : null) ?? "an author",
-    readers: readers.get(p.id) ?? 0,
-    readers7d: readers7d.get(p.id) ?? 0,
+    count: count.get(p.id) ?? 0,
     comments: comments.get(p.id) ?? 0,
   }));
 
-  // ---- the legible ranking: a LEAD story, then MORE STORIES in chronology.
-  //  Lead score = breadth × freshness × a SUBLINEAR price nudge:
-  //      (1 + readers) · exp(−ageDays / HALF_LIFE) · (1 + log10(1 + priceXec))
-  //  Breadth (reader count) dominates; freshness decays it over days so a stale
-  //  hit yields the front page; the log price factor lets a pricier article edge
-  //  ahead of an equally-read cheaper one WITHOUT letting one costly unlock top a
-  //  widely-read piece (price is author-set, so it may only nudge, never rule).
-  //  The (1 + readers) base means a brand-new, unread post can still lead on
-  //  freshness alone, so the page is never empty right after a publish. ----
-  const HALF_LIFE_DAYS = 3;
-  const now = Date.now();
-  const priceFactor = (price: number | null) =>
-    1 + Math.log10(1 + Math.max(0, Number(price) || 0));
-  const freshness = (iso: string) => {
-    const ageDays = Math.max(0, (now - Date.parse(iso)) / 86_400_000);
-    return Math.exp(-ageDays / HALF_LIFE_DAYS);
-  };
-  const score = (s: RailStory) =>
-    (1 + s.readers) * freshness(s.at) * priceFactor(s.priceXec);
-
-  // "Most read this week" is the front page's headline section, ranked purely by
-  // recent (7-day) unlock volume — so an OLD or legacy piece unlocked a lot right
-  // now resurfaces here regardless of age. readers7d comes from get_unlock_counts,
-  // so house/AI unlocks are already excluded. The #1 entry is the HERO the client
-  // renders as the big lead (numbered 1); the rest rank 2..N below it. Drop
-  // anything with zero recent unlocks (nothing to be "most read" about); ties
-  // break toward the newer piece.
-  const mostRead = stories
-    .filter((s) => s.readers7d > 0)
-    .sort((a, b) => b.readers7d - a.readers7d || (a.at < b.at ? 1 : -1))
-    .slice(0, MOST_READ_N);
-
-  // Fallback hero for a quiet week: with NOTHING unlocked in the last 7 days there
-  // is no "most read", so fall back to the legible breadth × freshness × price
-  // pick — the page still leads with a story instead of a blank hero. The client
-  // shows this one unlabelled (no "most read" header, no rank number).
-  const lead = mostRead.length === 0 && stories.length > 0
-    ? [...stories].sort((a, b) => score(b) - score(a))[0]
-    : null;
-
-  // "More stories": newest-first, skipping everything already shown above — the
-  // most-read section and/or the fallback hero. A repeat there reads as a bug.
-  const shownIds = new Set(
-    [lead?.id, ...mostRead.map((s) => s.id)].filter(Boolean),
-  );
-  const more = stories
-    .filter((s) => !shownIds.has(s.id))
-    .sort((a, b) => (a.at < b.at ? 1 : -1))
-    .slice(0, MORE_N);
+  // The single list. MOST-READ ranges rank by unlock volume over the window and
+  // drop anything with zero reads (nothing to be "most read" about); ties break
+  // toward the newer piece. LATEST is pure chronology, newest first, no read
+  // filter. Either way, the top 25.
+  const list = isLatest
+    ? [...stories].sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, LIST_N)
+    : stories
+        .filter((s) => s.count > 0)
+        .sort((a, b) => b.count - a.count || (a.at < b.at ? 1 : -1))
+        .slice(0, LIST_N);
 
   return NextResponse.json(
-    { ok: true, lead, more, mostRead },
-    // Publishes are rare events; a minute of CDN cache keeps this free.
+    { ok: true, range, stories: list },
+    // Publishes are rare events; a minute of CDN cache keeps this free. The range
+    // varies the response, so cache per-URL (Next keys the CDN cache by full URL).
     { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
   );
 }

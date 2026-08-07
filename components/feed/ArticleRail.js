@@ -1,25 +1,21 @@
 'use client'
 // =============================================================================
-//  ArticleRail.js — the desktop LEFT rail: the site's front page.
+//  ArticleRail.js — the front page rail (desktop left column, the mobile Paper
+//  tab, and the narrow-desktop reflow).
 //
-//  An editor-less newspaper whose editor is the chain: MOST READ THIS WEEK leads,
-//  ranked by recent (7-day) unlock volume — the #1 story is the hero (numbered 1),
-//  ranks 2..7 below it — so an old or even legacy article being unlocked a lot
-//  right now leads the front page regardless of age. Then MORE STORIES in pure
-//  chronology. (A week with zero unlocks falls back to a single breadth × freshness
-//  hero so the page is never blank.) The feed is social time; this rail is
-//  editorial time.
+//  ONE filtered list of the top 25 stories. A dropdown picks the lens:
+//    Most read · 24h / this week / all time  → ranked by verified on-chain unlock
+//        volume over that window; an old/legacy piece unlocked a lot right now
+//        resurfaces regardless of age. #1 is the hero.
+//    Latest                                  → newest published first, plain
+//        chronology, no read filter.
+//  The feed is social time; this rail is editorial time. Newspaper-ness comes from
+//  STRUCTURE (masthead, dateline folio, a hero lead, hairline entries) — serif
+//  headlines (serif = writing, mono = machinery, neon = money).
 //
-//  Newspaper-ness comes from STRUCTURE (masthead between double rules, a
-//  dateline folio, a hero lead, hairline-separated entries below), not from
-//  paper skin — it lives happily in the terminal theme. The one new
-//  ingredient: story headlines are SERIF. The site's
-//  three-voice type rule: serif = writing, mono = machinery, neon = money.
-//
-//  Interactions: clicking a headline opens the story; clicking anywhere else
-//  on an entry opens a "peek" in place (teaser + Read/Unlock) — one open at
-//  a time. Fresh stories (<24h) get the live dot. With no stories at all the
-//  rail becomes a house ad: even the empty column-inch sells publishing.
+//  Interactions: a headline opens the story; on the home page it opens a center
+//  reading pane, elsewhere it navigates. Fresh stories (<24h being read) get the
+//  live dot. With no stories the rail becomes a house ad.
 // =============================================================================
 
 import { useEffect, useState } from 'react'
@@ -38,19 +34,22 @@ const warm = (slug) => ({
 
 const REFRESH_MS = 5 * 60_000 // publishes are rare; the ticker announces them live
 
-const fmtPrice = (p) =>
-  p != null && p > 0 ? `${Number(p).toLocaleString()} XEC` : 'free'
+// The filter lenses. `title` is the read-count tooltip; Latest shows no count.
+const RANGES = [
+  { key: '24h', label: 'Most read · 24h', title: 'unlocks in the last 24 hours' },
+  { key: '7d', label: 'Most read · this week', title: 'unlocks in the last 7 days' },
+  { key: 'all', label: 'Most read · all time', title: 'unlocks all-time' },
+  { key: 'latest', label: 'Latest', title: null },
+]
+const DEFAULT_RANGE = '7d'
+const RANGE_BY_KEY = Object.fromEntries(RANGES.map((r) => [r.key, r]))
 
 // Live masthead dateline: the date plus a ticking clock (with seconds). Its own
-// component so only this line re-renders each second, not the whole rail. The
-// clock is null until mount, so the server renders a blank line and there's no
-// hydration mismatch from server-vs-client time.
+// component so only this line re-renders each second, not the whole rail.
 function FrontPageClock() {
   const [now, setNow] = useState(null)
 
   useEffect(() => {
-    // Prime on the next tick (not synchronously in the effect body) so the
-    // clock fills in immediately after mount without a cascading render.
     const prime = setTimeout(() => setNow(new Date()), 0)
     const id = setInterval(() => setNow(new Date()), 1000)
     return () => {
@@ -94,38 +93,13 @@ function FrontPageClock() {
   )
 }
 
-// Meta content for the More-stories rows: just byline · price. Unlock and comment
-// counts were removed here to declutter — reads live in the "Most read this week"
-// section above, where the count is the whole point.
-function MetaInner({ story }) {
-  return (
-    <>
-      <span className="np-author">{story.author}</span>
-      <span className="np-price">{fmtPrice(story.priceXec)}</span>
-    </>
-  )
-}
-
-function Meta({ story }) {
-  return (
-    <div className="np-meta">
-      <MetaInner story={story} />
-    </div>
-  )
-}
-
-// The lead: the #1 most-read as a hero — rank · big serif headline · its 7-day
-// read count to the RIGHT (matching the ranked rows below), then a preview. The
-// headline AND the teaser open the story (center pane on the home page, else its
-// own page); no buttons — the unlock flow lives in the story itself. (A fallback
-// hero, rendered with no rank on a zero-unlock week, shows no read count.)
-function Lead({ story, rank = null, now, onOpen }) {
-  // Home-page clicks open in the center pane (the reader route resolves legacy
-  // and current posts alike); href stays the story's real permalink — legacy at
-  // /<slug>, current at /posts/<slug> — so cmd-click and no-JS still navigate right.
+// The #1 story as a hero: rank · big serif headline · its read count to the RIGHT
+// (matching the rows below), then a teaser. For 'Latest' there's no count, just
+// the headline + teaser.
+function Lead({ story, rank, now, onOpen, showCount, countTitle }) {
   const href = articleRouteFor(story.slug, story.legacy)
   const open = onOpen ? (e) => onOpen(e, story.slug) : undefined
-  const reads = Number(story.readers7d) || 0
+  const reads = Number(story.count) || 0
   return (
     <div className={`np-lead${now ? ' now' : ''}`}>
       <Link
@@ -135,13 +109,11 @@ function Lead({ story, rank = null, now, onOpen }) {
         {...(open ? warm(story.slug) : {})}
         data-no-navprogress={open ? '' : undefined}
       >
-        {/* Matches a most-read rank row (number · headline · reads); the only
-            thing that sets the #1 apart is the teaser preview below. No fresh-dot. */}
         <span className="np-lead-hrow">
-          {rank != null ? <span className="np-lead-n">{rank}</span> : null}
+          <span className="np-lead-n">{rank}</span>
           <span className="np-serif np-lead-h">{story.title}</span>
-          {rank != null ? (
-            <span className="np-lead-c" title="unlocks in the last 7 days">
+          {showCount ? (
+            <span className="np-lead-c" title={countTitle || undefined}>
               {reads.toLocaleString()} {reads === 1 ? 'read' : 'reads'}
             </span>
           ) : null}
@@ -162,13 +134,10 @@ function Lead({ story, rank = null, now, onOpen }) {
   )
 }
 
-// A "Most read this week" row: rank · serif headline · recent-unlock count. The
-// count is the 7-DAY tally (readers7d), not all-time — this section is where an
-// old or legacy article being unlocked a lot right now resurfaces, so it's ranked
-// and labelled by recent reads, deliberately distinct from the all-time 🔓 meta
-// the lead and More rows carry.
-function MostReadEntry({ story, rank, now, onOpen }) {
-  const reads = Number(story.readers7d) || 0
+// A ranked row: rank · serif headline · read count (most-read lenses) OR the
+// byline (Latest, where reads aren't the ranking basis).
+function StoryRow({ story, rank, now, onOpen, showCount, countTitle }) {
+  const reads = Number(story.count) || 0
   const href = articleRouteFor(story.slug, story.legacy)
   const open = onOpen ? (e) => onOpen(e, story.slug) : undefined
   return (
@@ -181,27 +150,13 @@ function MostReadEntry({ story, rank, now, onOpen }) {
     >
       <span className="np-rank-n">{rank}</span>
       <span className="np-serif np-rank-h">{story.title}</span>
-      <span className="np-rank-c" title="unlocks in the last 7 days">
-        {reads.toLocaleString()} {reads === 1 ? 'read' : 'reads'}
-      </span>
-    </Link>
-  )
-}
-
-// A More-stories row: headline + meta; the whole row opens the story on click.
-function Entry({ story, now, onOpen }) {
-  const href = articleRouteFor(story.slug, story.legacy)
-  const open = onOpen ? (e) => onOpen(e, story.slug) : undefined
-  return (
-    <Link
-      className={`np-entry${now ? ' now' : ''}`}
-      href={href}
-      onClick={open}
-      {...(open ? warm(story.slug) : {})}
-      data-no-navprogress={open ? '' : undefined}
-    >
-      <span className="np-serif np-entry-h">{story.title}</span>
-      <Meta story={story} />
+      {showCount ? (
+        <span className="np-rank-c" title={countTitle || undefined}>
+          {reads.toLocaleString()} {reads === 1 ? 'read' : 'reads'}
+        </span>
+      ) : (
+        <span className="np-rank-by">{story.author}</span>
+      )}
     </Link>
   )
 }
@@ -210,15 +165,14 @@ export default function ArticleRail({
   minWidth = WIDE_RAIL_MIN,
   currentSlug = null,
   onOpenStory = null,
-  // 'rail' = the wide-desktop LEFT column (≥ minWidth). 'top' = the compact,
-  // collapsible reflow that fills the gap BELOW the rail but ABOVE the mobile
-  // bottom bar — the 1100–1279 band where there's neither the left rail (≥1280)
-  // nor the bottom nav's "Paper" tab (<1100), so the front page would otherwise
-  // vanish. Below 1100 the Paper tab already carries it, so the reflow stops
-  // there rather than stacking on phones.
+  // 'rail' = the wide-desktop LEFT column (≥ minWidth); also the mobile Paper tab
+  // (rendered with minWidth=0 so it's always active + full width). 'top' = the
+  // compact reflow in the 1100–1279 band with neither the left rail nor the mobile
+  // Paper tab, so the front page would otherwise vanish there.
   variant = 'rail',
 }) {
   const [data, setData] = useState(null)
+  const [range, setRange] = useState(DEFAULT_RANGE)
   // The front page only fetches where it can actually show — the rail above its
   // breakpoint, the compact reflow in the gap band below it.
   const [active, setActive] = useState(false)
@@ -253,7 +207,7 @@ export default function ArticleRail({
     let alive = true
     const load = async () => {
       try {
-        const res = await fetch('/api/articles/rail', { cache: 'no-store' })
+        const res = await fetch(`/api/articles/rail?range=${range}`, { cache: 'no-store' })
         const j = await res.json()
         if (alive && j.ok) setData(j)
       } catch {
@@ -266,12 +220,10 @@ export default function ArticleRail({
       alive = false
       clearInterval(id)
     }
-  }, [active])
+  }, [active, range])
 
   // An article you've translated stays translated for you here too: show its
-  // stored translated title in the rail (front page and article-page rail
-  // alike). Read on mount and kept live — translating/reverting on the article
-  // page fires ARTICLE_INTENTS_EVENT (same tab); other tabs ride `storage`.
+  // stored translated title in the rail. Read on mount and kept live.
   const [titleOverrides, setTitleOverrides] = useState({})
   useEffect(() => {
     const sync = () => setTitleOverrides(getAllArticleIntents())
@@ -288,55 +240,97 @@ export default function ArticleRail({
     return t ? { ...s, title: t } : s
   }
 
-  const lead = withTitle(data?.lead ?? null)
-  const more = (data?.more ?? []).map(withTitle)
-  const mostRead = (data?.mostRead ?? []).map(withTitle)
+  const stories = (data?.stories ?? []).map(withTitle)
+  const showCount = range !== 'latest'
+  const countTitle = RANGE_BY_KEY[range]?.title ?? null
 
-  // Compact reflow (below the rail breakpoint): masthead + lead + the top few
-  // "most read" always visible, then the rest of the stories behind a native
-  // <details> expander. Stories navigate to their page (no in-pane intercept),
-  // which works at every width down to phones. Same data, same sub-components.
+  const onRangeChange = (e) => {
+    setRange(e.target.value)
+    setData(null) // show the skeleton instantly while the new lens loads
+  }
+
+  const Filter = (
+    <select className="np-filter" value={range} onChange={onRangeChange} aria-label="Front page filter">
+      {RANGES.map((r) => (
+        <option key={r.key} value={r.key}>
+          {r.label}
+        </option>
+      ))}
+    </select>
+  )
+
+  // The list: hero (#1) + ranked rows. `compact` (the narrow reflow) shows a few
+  // rows then tucks the rest behind a native <details> so it doesn't run long
+  // above the feed.
+  const renderList = (onOpen, { compact = false } = {}) => {
+    const head = stories[0]
+    const rest = stories.slice(1)
+    const visibleRest = compact ? rest.slice(0, 5) : rest
+    const hiddenRest = compact ? rest.slice(5) : []
+    return (
+      <>
+        <Lead
+          story={head}
+          rank={1}
+          now={isNow(head)}
+          onOpen={onOpen}
+          showCount={showCount}
+          countTitle={countTitle}
+        />
+        {visibleRest.map((s, i) => (
+          <StoryRow
+            key={s.id}
+            story={s}
+            rank={i + 2}
+            now={isNow(s)}
+            onOpen={onOpen}
+            showCount={showCount}
+            countTitle={countTitle}
+          />
+        ))}
+        {hiddenRest.length > 0 ? (
+          <details className="np-more">
+            <summary className="np-sec np-more-sum">
+              Show all {stories.length} <span className="np-more-n">(+{hiddenRest.length})</span>
+            </summary>
+            <div className="np-more-body">
+              {hiddenRest.map((s, i) => (
+                <StoryRow
+                  key={s.id}
+                  story={s}
+                  rank={i + 2 + visibleRest.length}
+                  now={isNow(s)}
+                  onOpen={onOpen}
+                  showCount={showCount}
+                  countTitle={countTitle}
+                />
+              ))}
+            </div>
+          </details>
+        ) : null}
+      </>
+    )
+  }
+
+  const emptyNote = range === 'latest'
+    ? 'No stories yet.'
+    : 'Nothing unlocked in this window yet — try “all time” or “Latest”.'
+
+  const body =
+    data === null ? (
+      <p className="np-empty">Setting the type…</p>
+    ) : stories.length === 0 ? (
+      <p className="np-empty">{emptyNote}</p>
+    ) : (
+      renderList(variant === 'top' ? null : interceptOpen, { compact: variant === 'top' })
+    )
+
   if (variant === 'top') {
-    const hasAny = lead || more.length > 0 || mostRead.length > 0
     return (
       <div className="npaper npaper-top">
         <div className="np-mast">The front page</div>
-
-        {data === null ? (
-          <p className="np-empty">Setting the type…</p>
-        ) : !hasAny ? (
-          <p className="np-empty">The presses are warm and the front page is blank.</p>
-        ) : (
-          <>
-            {/* Compact: the #1 most-read leads (numbered 1), a few ranked below,
-                the rest in the More-stories expander. Fallback hero unlabelled. */}
-            {mostRead.length > 0 ? (
-              <>
-                <div className="np-sec">Most read this week</div>
-                <Lead story={mostRead[0]} rank={1} now={isNow(mostRead[0])} onOpen={null} />
-                {mostRead.slice(1, 4).map((s, i) => (
-                  <MostReadEntry key={s.id} story={s} rank={i + 2} now={isNow(s)} onOpen={null} />
-                ))}
-              </>
-            ) : lead ? (
-              <Lead story={lead} now={isNow(lead)} onOpen={null} />
-            ) : null}
-
-            {more.length > 0 ? (
-              <details className="np-more">
-                <summary className="np-sec np-more-sum">
-                  More stories <span className="np-more-n">({more.length})</span>
-                </summary>
-                <div className="np-more-body">
-                  {more.map((s) => (
-                    <Entry key={s.id} story={s} now={isNow(s)} onOpen={null} />
-                  ))}
-                </div>
-              </details>
-            ) : null}
-          </>
-        )}
-
+        <div className="np-filterbar">{Filter}</div>
+        {body}
         <div className="np-foot">
           <Link href="/dashboard">Write and Publish for 1,000 XEC</Link>
         </div>
@@ -348,45 +342,8 @@ export default function ArticleRail({
     <div className="npaper">
       <div className="np-mast">The front page</div>
       <FrontPageClock />
-
-      {data === null ? (
-        <p className="np-empty">Setting the type…</p>
-      ) : !lead && mostRead.length === 0 && more.length === 0 ? (
-        <p className="np-empty">The presses are warm and the front page is blank.</p>
-      ) : (
-        <>
-          {/* The headline section: the week's #1 most-read leads as the hero
-              (numbered 1), then ranks 2..N below it. On a week with no unlocks
-              at all, `lead` is the unlabelled fallback hero (no number). */}
-          {mostRead.length > 0 ? (
-            <>
-              <div className="np-sec">Most read this week</div>
-              <Lead story={mostRead[0]} rank={1} now={isNow(mostRead[0])} onOpen={interceptOpen} />
-              {mostRead.slice(1).map((s, i) => (
-                <MostReadEntry
-                  key={s.id}
-                  story={s}
-                  rank={i + 2}
-                  now={isNow(s)}
-                  onOpen={interceptOpen}
-                />
-              ))}
-            </>
-          ) : lead ? (
-            <Lead story={lead} now={isNow(lead)} onOpen={interceptOpen} />
-          ) : null}
-
-          {more.length > 0 ? (
-            <>
-              <div className="np-sec">More stories</div>
-              {more.map((s) => (
-                <Entry key={s.id} story={s} now={isNow(s)} onOpen={interceptOpen} />
-              ))}
-            </>
-          ) : null}
-        </>
-      )}
-
+      <div className="np-filterbar">{Filter}</div>
+      {body}
       <div className="np-foot">
         <Link href="/dashboard">Write and Publish for 1,000 XEC</Link>
       </div>
