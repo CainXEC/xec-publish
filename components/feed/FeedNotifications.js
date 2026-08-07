@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import BellIcon from '@/components/BellIcon'
 
@@ -12,15 +12,28 @@ const POLL_MS = 60_000
  * group). Polls the count on an interval. Renders nothing for a signed-out
  * viewer. Mark-as-read happens on the notifications page itself, not here.
  *
+ * Admin sessions additionally fold in the AI_SATOSHI review-queue count: the API
+ * returns `agentPending` (absent for everyone else), which adds to the badge.
+ * `onAgentPending` reports it up to FeedTopbar, which reveals the admin "agent"
+ * hamburger item.
  */
-export default function FeedNotifications({ signedIn = false }) {
+export default function FeedNotifications({ signedIn = false, onAgentPending }) {
   const [unread, setUnread] = useState(0)
+  const [agentPending, setAgentPending] = useState(null) // null = not an admin session
+
+  const onAgentPendingRef = useRef(onAgentPending)
+  useEffect(() => {
+    onAgentPendingRef.current = onAgentPending
+  }, [onAgentPending])
 
   const refresh = useCallback(async () => {
     try {
       const res = await fetch('/api/feed/notifications', { cache: 'no-store' })
       if (!res.ok) return
       const data = await res.json()
+      const pending = typeof data.agentPending === 'number' ? data.agentPending : null
+      setAgentPending(pending)
+      onAgentPendingRef.current?.(pending)
       setUnread(Number(data.unreadCount) || 0)
     } catch {
       /* best-effort; the badge just won't update this cycle */
