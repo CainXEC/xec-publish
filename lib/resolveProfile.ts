@@ -319,16 +319,47 @@ function displayHandleWithReverify(
   },
   primaryAddress: string | null,
 ): string | null {
-  const tokenId = account.active_handle_token_id;
-  if (!tokenId) return null;
-
-  const lastChecked = account.display_handle_checked_at
-    ? Date.parse(account.display_handle_checked_at)
-    : 0;
-  if (Date.now() - lastChecked >= HOLDER_TTL_MS) {
-    after(() => reverifyHandleBinding(account.id, tokenId, primaryAddress));
-  }
+  if (!account.active_handle_token_id) return null;
+  scheduleHandleReverifyIfStale(account, primaryAddress);
   return account.display_handle;
+}
+
+/** True when the cached on-chain holder check is older than the TTL (or never
+ *  ran) — i.e. it's time to re-verify who actually holds the handle. Pure so it
+ *  can be reasoned about / tested without Chronik. */
+export function handleCheckIsStale(checkedAtIso: string | null | undefined): boolean {
+  const lastChecked = checkedAtIso ? Date.parse(checkedAtIso) : 0;
+  return Date.now() - lastChecked >= HOLDER_TTL_MS;
+}
+
+/** Fire the same out-of-band handle re-verification the profile page uses, from
+ *  ANY surface that renders a byline — the owner's session (/api/me,
+ *  getAuthedAccount) and the live feed/comment byline resolvers. This is what
+ *  makes a SOLD handle revert everywhere: whoever loads a page first schedules
+ *  the check, `reverifyHandleBinding` clears `display_handle` when the token has
+ *  moved wallets, and every byline (all read that one column) then falls back to
+ *  the address. TTL-gated so a hot page can't re-check the same account more than
+ *  once per HOLDER_TTL_MS; non-blocking via after(); a no-op when the account
+ *  displays no handle. `after()` needs a request scope, so it's guarded — outside
+ *  one (a test, a cached render) we skip and let a real request catch it. */
+export function scheduleHandleReverifyIfStale(
+  account: {
+    id: string;
+    active_handle_token_id: string | null;
+    display_handle_checked_at: string | null;
+  },
+  primaryAddress: string | null,
+): boolean {
+  const tokenId = account.active_handle_token_id;
+  if (!tokenId) return false;
+  if (!handleCheckIsStale(account.display_handle_checked_at)) return false;
+  try {
+    after(() => reverifyHandleBinding(account.id, tokenId, primaryAddress));
+    return true;
+  } catch {
+    /* no request scope (test / cached render) — a real request re-verifies */
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -339,7 +370,7 @@ function displayHandleWithReverify(
  *  after() so it never blocks the response. Same writes freshDisplayHandle
  *  makes: bump display_handle_checked_at when the account still holds the
  *  token, clear the binding when the handle has moved wallets. Never throws. */
-async function reverifyHandleBinding(
+export async function reverifyHandleBinding(
   accountId: string,
   tokenId: string,
   primaryAddress: string | null,
@@ -413,14 +444,10 @@ async function resolveHandle(handleRaw: string): Promise<ResolvedProfile | null>
     const primaryAddress = embeddedPrimaryAddress(bound.account_addresses);
     const author = embedOne(bound.authors);
 
-    const lastChecked = bound.display_handle_checked_at
-      ? Date.parse(bound.display_handle_checked_at)
-      : 0;
-    const fresh = Date.now() - lastChecked < HOLDER_TTL_MS;
-    if (!fresh) {
-      // Serve the cached binding NOW; re-verify on-chain after the response.
-      after(() => reverifyHandleBinding(bound.id, h.token_id, primaryAddress));
-    }
+    // Serve the cached binding NOW; re-verify on-chain after the response when
+    // the last check has aged past the TTL (bound.active_handle_token_id is
+    // h.token_id — that's how this row was found).
+    scheduleHandleReverifyIfStale(bound, primaryAddress);
 
     return {
       kind: "handle",

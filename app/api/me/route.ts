@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { formatIdentity } from "@/lib/formatIdentity";
+import { scheduleHandleReverifyIfStale } from "@/lib/resolveProfile";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ export async function GET() {
 
   const { data: account } = await supabase
     .from("accounts")
-    .select("id, author_id, display_handle, handle_color, active_handle_token_id, pinned_post_txid, account_addresses(address, is_primary)")
+    .select("id, author_id, display_handle, handle_color, active_handle_token_id, display_handle_checked_at, pinned_post_txid, account_addresses(address, is_primary)")
     .eq("id", claim.accountId)
     .maybeSingle();
 
@@ -39,6 +40,19 @@ export async function GET() {
   const addrRows = Array.isArray(account.account_addresses) ? account.account_addresses : [];
   const primaryAddress =
     addrRows.find((r: any) => r?.is_primary === true)?.address ?? claim.address;
+
+  // The nav polls /api/me, so this is the owner's most frequent surface — a
+  // reliable trigger to re-verify (out-of-band) that they still hold their
+  // displayed handle. Clears display_handle when the token has moved wallets,
+  // reverting every byline to the address. TTL-gated + non-blocking.
+  scheduleHandleReverifyIfStale(
+    {
+      id: account.id,
+      active_handle_token_id: account.active_handle_token_id ?? null,
+      display_handle_checked_at: account.display_handle_checked_at ?? null,
+    },
+    primaryAddress,
+  );
 
   // which posts has this ACCOUNT unlocked? Unlocks are keyed by payer_address
   // and the account may have proven several wallets (e.g. after a change-address
