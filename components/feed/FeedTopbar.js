@@ -78,6 +78,13 @@ export default function FeedTopbar({
   // or mobile menu rows ('hammenu-item'). Both close the menu on click.
   const renderLinks = (cls, mobile = false) => (
     <>
+      {/* The wordmark already links home, but as an icon-only mark it doesn't
+          read as "back to the feed" — people land on the dashboard/profile
+          and don't realize this is the way back. First in the list since
+          it's the most-needed escape hatch. */}
+      <Link href="/" className={cls} onClick={onWordmarkClick}>
+        feed
+      </Link>
       {/* Desktop entry point for search (the hamburger only renders >=1100px);
           mobile uses the tb-search icon in the bar instead. */}
       <Link href="/search" className={cls} onClick={() => setOpen(false)}>
@@ -137,15 +144,6 @@ export default function FeedTopbar({
           {renderLinks('hammenu-item', true)}
         </div>
       </div>
-
-      {/* Desktop-only text label next to the hamburger: the wordmark already
-          links home, but as an icon-only mark it doesn't read as "back to the
-          feed" — people land on the dashboard/profile and don't realize this
-          is the way back. Mobile already has a labeled "Feed" tab in the
-          bottom nav, so this is hidden there (CSS) rather than duplicating it. */}
-      <Link href="/" className="tb-feedlink" onClick={onWordmarkClick}>
-        Feed
-      </Link>
 
       {/* Pocket chip — a standalone topbar item placed on the LEFT by CSS order
           (right of the hamburger on desktop; right of the bell on mobile, where
