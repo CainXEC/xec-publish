@@ -4,10 +4,10 @@
 //  tab, and the narrow-desktop reflow).
 //
 //  ONE filtered list of the top 25 stories. A dropdown picks the lens:
-//    Most read · 24h / this week / all time  → ranked by verified on-chain unlock
+//    Most read · 24h / 7d / all time  → ranked by verified on-chain unlock
 //        volume over that window; an old/legacy piece unlocked a lot right now
 //        resurfaces regardless of age. #1 is the hero.
-//    Latest                                  → newest published first, plain
+//    Latest                           → newest published first, plain
 //        chronology, no read filter.
 //  The feed is social time; this rail is editorial time. Newspaper-ness comes from
 //  STRUCTURE (masthead, dateline folio, a hero lead, hairline entries) — serif
@@ -37,7 +37,7 @@ const REFRESH_MS = 5 * 60_000 // publishes are rare; the ticker announces them l
 // The filter lenses. `title` is the read-count tooltip; Latest shows no count.
 const RANGES = [
   { key: '24h', label: 'Most read · 24h', title: 'unlocks in the last 24 hours' },
-  { key: '7d', label: 'Most read · this week', title: 'unlocks in the last 7 days' },
+  { key: '7d', label: 'Most read · 7d', title: 'unlocks in the last 7 days' },
   { key: 'all', label: 'Most read · all time', title: 'unlocks all-time' },
   { key: 'latest', label: 'Latest', title: null },
 ]
@@ -114,7 +114,7 @@ function Lead({ story, rank, now, onOpen, showCount, countTitle }) {
           <span className="np-serif np-lead-h">{story.title}</span>
           {showCount ? (
             <span className="np-lead-c" title={countTitle || undefined}>
-              {reads.toLocaleString()} {reads === 1 ? 'read' : 'reads'}
+              {reads.toLocaleString()}
             </span>
           ) : null}
         </span>
@@ -134,8 +134,10 @@ function Lead({ story, rank, now, onOpen, showCount, countTitle }) {
   )
 }
 
-// A ranked row: rank · serif headline · read count (most-read lenses) OR the
-// byline (Latest, where reads aren't the ranking basis).
+// A ranked row: rank · serif headline · read count (most-read lenses), or —
+// Latest, where reads aren't the ranking basis — rank · headline spanning the
+// full width, with the byline stacked BELOW it instead of competing for room
+// beside it.
 function StoryRow({ story, rank, now, onOpen, showCount, countTitle }) {
   const reads = Number(story.count) || 0
   const href = articleRouteFor(story.slug, story.legacy)
@@ -149,14 +151,15 @@ function StoryRow({ story, rank, now, onOpen, showCount, countTitle }) {
       data-no-navprogress={open ? '' : undefined}
     >
       <span className="np-rank-n">{rank}</span>
-      <span className="np-serif np-rank-h">{story.title}</span>
+      <span className="np-rank-body">
+        <span className="np-serif np-rank-h">{story.title}</span>
+        {showCount ? null : <span className="np-rank-by">{story.author}</span>}
+      </span>
       {showCount ? (
         <span className="np-rank-c" title={countTitle || undefined}>
-          {reads.toLocaleString()} {reads === 1 ? 'read' : 'reads'}
+          {reads.toLocaleString()}
         </span>
-      ) : (
-        <span className="np-rank-by">{story.author}</span>
-      )}
+      ) : null}
     </Link>
   )
 }
