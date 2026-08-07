@@ -1003,12 +1003,16 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 .pow-feed .np-stat{white-space:nowrap;font-variant-numeric:tabular-nums;}
 .pow-feed .np-sec{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);
   border-bottom:1px solid var(--line);padding:16px 0 5px;}
-/* Front-page lens filter: a bare <select> dressed as a section heading — mono,
-   uppercase, with a drawn ▾ caret that tints neon on hover. */
+/* Front-page lens filter: a bare <select> dressed as a section heading — same
+   size/letter-spacing as the masthead ("THE FRONT PAGE"), stretched to fill the
+   card's width (a <select> otherwise only sizes to its selected option's text,
+   which is what left the empty gap on the right) — with a drawn ▾ caret that
+   tints neon on hover. */
 .pow-feed .np-filterbar{padding:12px 0 10px;border-bottom:1px solid var(--line);}
-.pow-feed .np-filter{appearance:none;-webkit-appearance:none;background-color:transparent;
-  border:1px solid var(--line);border-radius:8px;color:var(--text);font:inherit;font-size:11px;
-  font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:6px 26px 6px 11px;cursor:pointer;
+.pow-feed .np-filter{display:block;width:100%;box-sizing:border-box;
+  appearance:none;-webkit-appearance:none;background-color:transparent;
+  border:1px solid var(--line);border-radius:8px;color:var(--text);font:inherit;font-size:12px;
+  font-weight:700;letter-spacing:.24em;text-transform:uppercase;padding:7px 26px 7px 11px;cursor:pointer;
   background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),
     linear-gradient(135deg,currentColor 50%,transparent 50%);
   background-position:calc(100% - 14px) center,calc(100% - 10px) center;
@@ -1018,6 +1022,12 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 .pow-feed .np-filter:focus-visible{outline:none;border-color:var(--neon);box-shadow:0 0 0 1px var(--neon);}
 .pow-feed .np-filter option{background:var(--panel,#0d1513);color:var(--text);
   text-transform:none;letter-spacing:normal;font-weight:400;}
+/* The mast's wide .24em tracking doesn't fit the longer option labels ("MOST
+   READ · THIS WEEK") in a narrow card — tighten it below the width where that
+   starts clipping against the caret. */
+@media (max-width:420px){
+  .pow-feed .np-filter{font-size:11px;letter-spacing:.11em;padding-right:24px;}
+}
 /* the lead: a full newspaper hero — headline, meta beneath it, then a generous
    preview. The whole thing opens the story (no buttons); unlock lives inside. */
 .pow-feed .np-lead{padding:13px 0 15px;border-bottom:1px solid var(--line);}
