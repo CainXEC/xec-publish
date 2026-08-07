@@ -1046,6 +1046,10 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
    that still fits an unbreakable token (e.g. a bare domain). */
 .pow-feed .np-lead-h{flex:1;min-width:0;font-size:14.5px;line-height:1.3;color:var(--text);overflow-wrap:anywhere;hyphens:auto;}
 .pow-feed .np-lead-c{flex:none;font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap;}
+/* Latest lens: the byline, below the headline row (matching .np-rank-by), left-
+   indented to align under the headline rather than the rank number. */
+.pow-feed .np-lead-by{display:block;margin:4px 0 0 25px;font-size:10.5px;color:var(--dim);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .pow-feed .np-lead-hl:hover .np-lead-h{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
 .pow-feed .np-lead-teaser-link{display:block;margin-top:9px;}
 .pow-feed .np-lead-teaser{font-size:12.5px;line-height:1.6;color:var(--dim);margin:0;

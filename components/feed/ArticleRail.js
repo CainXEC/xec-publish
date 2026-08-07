@@ -94,8 +94,8 @@ function FrontPageClock() {
 }
 
 // The #1 story as a hero: rank · big serif headline · its read count to the RIGHT
-// (matching the rows below), then a teaser. For 'Latest' there's no count, just
-// the headline + teaser.
+// (matching the rows below), then a teaser. For 'Latest' there's no count —
+// instead the byline sits below the headline, matching the ranked rows.
 function Lead({ story, rank, now, onOpen, showCount, countTitle }) {
   const href = articleRouteFor(story.slug, story.legacy)
   const open = onOpen ? (e) => onOpen(e, story.slug) : undefined
@@ -118,6 +118,7 @@ function Lead({ story, rank, now, onOpen, showCount, countTitle }) {
             </span>
           ) : null}
         </span>
+        {showCount ? null : <span className="np-lead-by">{story.author}</span>}
       </Link>
       {story.teaser ? (
         <Link
