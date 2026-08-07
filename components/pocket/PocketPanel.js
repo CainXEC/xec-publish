@@ -755,9 +755,7 @@ const CSS = `
 .pow-pocket{
   --bg:#070b0a; --panel:#0d1513; --line:#173a33; --text:#d6fff0; --dim:#5f8a7e;
   --neon:#00ff9c; --cyan:#3df0ff; --no:#ff5c6c;
-  /* The page (.wrap-full, app/pocket/page.js) already dropped its own 640px cap
-     to fill the screen on desktop — this root must not silently reimpose one. */
-  max-width:none; width:100%; margin:0 auto; padding:0; box-sizing:border-box;
+  max-width:640px; margin:0 auto; padding:0; box-sizing:border-box;
   color:var(--text); text-align:center;
 }
 /* Header matches the marketplace page (MarketplaceClient .mkhead/.title/.sub). */

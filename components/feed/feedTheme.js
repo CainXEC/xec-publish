@@ -249,14 +249,6 @@ html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation-name:pocke
 .pow-feed .notifamt{color:var(--neon);font-weight:700;white-space:nowrap;}
 .pow-feed .notiftime{flex:none;font-size:11px;color:var(--dim);}
 
-/* Fills the screen instead of the site's usual 640px reading column. For pages
-   with no side rail to share the width with (/notifications, /pocket) — there's
-   no prose measure to protect on a notification list or a short settings page,
-   so the .wrap container may as well use what's there. Add alongside "wrap".
-   Selector chains BOTH classes (not just .wrap-full) so its specificity beats
-   plain .wrap regardless of which rule appears later in this sheet. */
-.pow-feed .wrap.wrap-full{max-width:none;width:100%;}
-
 /* ---- /notifications page ---- */
 /* No outer box around the list itself — each row is just hairline-separated
    (its own border-bottom); the ONLY boxed "harness" left is .notifpage-body,
