@@ -16,6 +16,20 @@ import {
 // tagged in; an article mention has no inline body (NotifBody renders nothing).
 const HAS_BODY = new Set(['reply', 'quote', 'comment', 'mention'])
 
+// The actor's name, tinted with their chosen handle color (--hc) when they show
+// a handle — matching the feed/profile/thread. A raw-address actor gets no tint.
+function ActorName({ n }) {
+  const isHandle = typeof n?.actor_identity === 'string' && n.actor_identity.startsWith('@')
+  return (
+    <strong
+      className="notifpage-name"
+      style={isHandle && n.actor_color ? { '--hc': n.actor_color } : undefined}
+    >
+      {actorLabel(n.actor_identity)}
+    </strong>
+  )
+}
+
 // "A liked", "A and B liked", "A, B and C liked", "A, B and 4 others liked" —
 // standard list grammar (Oxford "and" before the last part), capped at
 // MAX_NAMED_ACTORS named actors before collapsing the rest into a count.
@@ -31,7 +45,7 @@ function ActorList({ items, verbSuffix }) {
       {named.map((n, i) => (
         <span key={n.id}>
           {i > 0 ? (i === partCount - 1 ? ' and ' : ', ') : ''}
-          <strong>{actorLabel(n.actor_identity)}</strong>
+          <ActorName n={n} />
         </span>
       ))}
       {tail ? (
@@ -147,7 +161,7 @@ export default function NotificationsPageClient({ initialItems, initialCursor, a
                                 <span key={n.id}>
                                   {i > 0 ? (i === named.length - 1 && rest === 0 ? ' and ' : ', ') : ''}
                                   <Link href={targetHref(n)}>
-                                    <strong>{actorLabel(n.actor_identity)}</strong>
+                                    <ActorName n={n} />
                                   </Link>
                                 </span>
                               ))}

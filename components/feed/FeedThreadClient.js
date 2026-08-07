@@ -64,11 +64,18 @@ function timeAgo(iso) {
   })
 }
 
-function ThreadByline({ identity }) {
+function ThreadByline({ identity, color = null }) {
   const id = typeof identity === 'string' ? identity.trim() : ''
   if (id.startsWith('@')) {
+    // Carry the holder's chosen handle color (the same `--hc` var FeedPost's
+    // Byline uses); without it the byline falls back to the default neon, which
+    // is why the color used to "revert to green" on the focused/ancestor posts.
     return (
-      <Link href={`/@${id.slice(1)}`} className="byline">
+      <Link
+        href={`/@${id.slice(1)}`}
+        className="byline"
+        style={color ? { '--hc': color } : undefined}
+      >
         {id.slice(1)}
       </Link>
     )
@@ -133,7 +140,10 @@ function AncestorNode({ post, top = false, onOpenThread = null }) {
       </div>
       <div className="tbody">
         <div className="tmeta">
-          <ThreadByline identity={post.displayIdentity ?? post.author_identity} />
+          <ThreadByline
+            identity={post.displayIdentity ?? post.author_identity}
+            color={post.displayColor}
+          />
           <span aria-hidden className="dot">
             ·
           </span>
@@ -327,7 +337,10 @@ export default function FeedThreadClient({
             <div className="tbody">
               <div className="tmeta">
                 <span aria-hidden className="tdot" />
-                <ThreadByline identity={post.displayIdentity ?? post.author_identity} />
+                <ThreadByline
+                  identity={post.displayIdentity ?? post.author_identity}
+                  color={post.displayColor}
+                />
                 <span aria-hidden className="dot">
                   ·
                 </span>

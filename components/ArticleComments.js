@@ -571,6 +571,12 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
               : parent?.author_identity?.trim() ||
                 (parent?.payer_address ? parent.payer_address.trim() : '') ||
                 'a comment'
+            // Tint the "Replying to @X" name with the parent's chosen handle color,
+            // same as their byline — only for a handle (not a raw address/label).
+            const parentColor =
+              parent && !parent.deleted && parent.color && parentWho.startsWith('@')
+                ? parent.color
+                : null
             const canDelete =
               !comment.deleted &&
               (isAuthorSession || (byline && ownedIds.includes(byline)) || (copyAddr && ownedIds.includes(copyAddr)))
@@ -594,7 +600,12 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
                 {parent ? (
                   <p className="comment-replyingto">
                     <span className="comment-replyarrow">↳</span> Replying to{' '}
-                    <span className="comment-replyingto-who">{truncateIdentity(parentWho)}</span>
+                    <span
+                      className="comment-replyingto-who"
+                      style={parentColor ? { '--hc': parentColor } : undefined}
+                    >
+                      {truncateIdentity(parentWho)}
+                    </span>
                   </p>
                 ) : null}
                 <div className="commenthead">

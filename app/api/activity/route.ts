@@ -37,6 +37,9 @@ export type ActivityItem = {
     | "unlock" | "publish" | "mint" | "comment" | "comment_like";
   /** Frozen display byline: "@handle" or a raw eCash address. */
   actor: string;
+  /** The actor's chosen handle color (--hc), when they show a @handle. Null for
+   *  address / placeholder bylines — the rail tints only a live handle. */
+  color?: string | null;
   /** Link to the actor's profile ("/@handle" or "/a/<address>"), or null for
    *  placeholder bylines ("a reader", "an author") that have no profile. */
   actorHref: string | null;
@@ -473,6 +476,12 @@ async function buildActivity(req: NextRequest) {
     if (entry?.handle) return `@${entry.handle}`;
     return (accountId && primaryByAccount.get(accountId)) || frozen || payerAddress || null;
   };
+  // The actor's chosen handle color — only when they currently show a @handle
+  // (an address byline gets no tint, matching the feed).
+  const liveColor = (accountId: string | null | undefined): string | null => {
+    const entry = accountId ? handleMap[accountId] : null;
+    return entry?.handle ? entry.color ?? null : null;
+  };
 
   // ---- feed posts / replies / quotes (mint cards ride `handles` instead) ----
   for (const p of posts) {
@@ -483,6 +492,7 @@ async function buildActivity(req: NextRequest) {
       id: `fp:${p.txid}`,
       kind,
       actor: displayIdentity(identity, "someone"),
+      color: liveColor(p.author_account_id),
       actorHref: profileHref(identity),
       target: snippet(p.content),
       amountXec: p.amount_sats == null ? null : p.amount_sats / 100,
@@ -508,6 +518,7 @@ async function buildActivity(req: NextRequest) {
       id: `fe:${e.txid}`,
       kind,
       actor: displayIdentity(actorIdentity, "someone"),
+      color: liveColor(e.actor_account_id),
       actorHref: profileHref(actorIdentity),
       target: targetText,
       amountXec: e.amount_sats == null ? null : e.amount_sats / 100,
@@ -606,9 +617,11 @@ async function buildActivity(req: NextRequest) {
   // authorDisplay truncates the address for display; authorRaw keeps the FULL
   // identity ("@handle" or full bare address) so the byline can link to a profile.
   const authorRaw = new Map<string, string>();
+  // Chosen handle color, keyed by author_id — only set for authors showing a handle.
+  const authorColor = new Map<string, string>();
   if (authorIds.length > 0) {
     const [{ data: accounts }, { data: authors }] = await Promise.all([
-      supabase.from("accounts").select("author_id, display_handle").in("author_id", authorIds),
+      supabase.from("accounts").select("author_id, display_handle, handle_color").in("author_id", authorIds),
       supabase.from("authors").select("id, xec_address").in("id", authorIds),
     ]);
     for (const a of (authors ?? []) as Array<{ id: string; xec_address: string | null }>) {
@@ -617,10 +630,11 @@ async function buildActivity(req: NextRequest) {
         authorRaw.set(a.id, bare(a.xec_address));
       }
     }
-    for (const a of (accounts ?? []) as Array<{ author_id: string; display_handle: string | null }>) {
+    for (const a of (accounts ?? []) as Array<{ author_id: string; display_handle: string | null; handle_color: string | null }>) {
       if (a.display_handle) {
         authorDisplay.set(a.author_id, `@${a.display_handle}`);
         authorRaw.set(a.author_id, `@${a.display_handle}`);
+        if (a.handle_color) authorColor.set(a.author_id, a.handle_color);
       }
     }
   }
@@ -630,6 +644,7 @@ async function buildActivity(req: NextRequest) {
       id: `pb:${p.txid}`,
       kind: "publish",
       actor: (p.author_id ? authorDisplay.get(p.author_id) : null) ?? "an author",
+      color: (p.author_id ? authorColor.get(p.author_id) : null) ?? null,
       actorHref: profileHref(p.author_id ? authorRaw.get(p.author_id) : null),
       target: p.posts.title ?? "an article",
       amountXec: p.amount_sats == null ? null : p.amount_sats / 100,
@@ -689,6 +704,7 @@ async function buildActivity(req: NextRequest) {
       id: `cm:${c.txid}`,
       kind: "comment",
       actor: displayIdentity(identity, "someone"),
+      color: liveColor(c.author_account_id),
       actorHref: profileHref(identity),
       // The article, not the (paywalled) comment text — see the query note.
       target: cp.title ?? "an article",
@@ -709,6 +725,7 @@ async function buildActivity(req: NextRequest) {
       id: `cl:${e.txid}`,
       kind: "comment_like",
       actor: displayIdentity(identity, "someone"),
+      color: liveColor(e.actor_account_id),
       actorHref: profileHref(identity),
       // The article, never the paywalled comment body.
       target: art.title ?? "an article",

@@ -250,13 +250,21 @@ export default function ActivityRail({
             return (
             <li key={it.id} className={`arow${freshIds.current.has(it.id) ? ' fresh' : ''}`}>
               <div className="arow-main">
-                {it.actorHref ? (
-                  <Link href={it.actorHref} className="arow-actor arow-actor-link">
-                    {it.actor}
-                  </Link>
-                ) : (
-                  <strong className="arow-actor">{it.actor}</strong>
-                )}{' '}
+                {(() => {
+                  // Tint the actor with their chosen handle color (--hc) when they
+                  // show a @handle — matching the feed/thread/profile.
+                  const hc =
+                    it.color && String(it.actor).startsWith('@') ? { '--hc': it.color } : undefined
+                  return it.actorHref ? (
+                    <Link href={it.actorHref} className="arow-actor arow-actor-link" style={hc}>
+                      {it.actor}
+                    </Link>
+                  ) : (
+                    <strong className="arow-actor" style={hc}>
+                      {it.actor}
+                    </strong>
+                  )
+                })()}{' '}
                 <Link
                   href={it.href}
                   className="arow-say"

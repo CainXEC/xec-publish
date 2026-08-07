@@ -262,6 +262,9 @@ html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation-name:pocke
 .pow-feed .notifpage-actors{display:flex;flex-wrap:wrap;gap:4px;font-size:13.5px;line-height:1.5;color:var(--text);}
 .pow-feed .notifpage-actors a{color:inherit;text-decoration:none;}
 .pow-feed .notifpage-actors a:hover strong{text-decoration:underline;}
+/* Actor name tints with the holder's chosen handle color (--hc); no color set
+   → the default text color, so address/handle-less actors read unchanged. */
+.pow-feed .notifpage-name{color:var(--hc,inherit);}
 .pow-feed .notifpage-more{color:var(--dim);font-weight:400;}
 /* The reply/quote/comment's own words — same visual language as a feed quote
    embed, so "here is the actual text" reads consistently across the site. */
@@ -1205,13 +1208,15 @@ html:not(.dark) .pow-feed .np-mast{text-shadow:none;}
 @keyframes arow-in{0%{background:rgba(0,255,156,.16);}100%{background:transparent;}}
 .pow-feed .arow-main{display:block;font-size:12.5px;line-height:1.5;color:var(--text);word-break:break-word;}
 .pow-feed .arow-say{color:inherit;}
-.pow-feed .arow-actor{font-weight:700;transition:color .15s;}
+/* Tints with the actor's chosen handle color (--hc) when set inline; otherwise
+   inherits the row's text color, so address/placeholder bylines read unchanged. */
+.pow-feed .arow-actor{color:var(--hc,inherit);font-weight:700;transition:color .15s;}
 /* The byline is its own link to the actor's profile; light it up on hover so
    it reads as tappable, distinct from the rest of the row (which opens the
-   thread/article). The static <strong> variant — placeholder bylines with no
-   profile — stays plain. */
-.pow-feed .arow-actor-link:hover{color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.4);}
-html:not(.dark) .pow-feed .arow-actor-link:hover{color:var(--accent-hover);text-shadow:none;}
+   thread/article). A colored handle keeps ITS color on hover (--hc wins) instead
+   of flipping to neon; the static <strong> variant stays plain. */
+.pow-feed .arow-actor-link:hover{color:var(--hc,var(--neon));text-shadow:0 0 8px rgba(0,255,156,.4);}
+html:not(.dark) .pow-feed .arow-actor-link:hover{color:var(--hc,var(--accent-hover));text-shadow:none;}
 .pow-feed .arow-target{color:#a6d8c9;}
 .pow-feed .arow-meta{display:flex;align-items:center;gap:10px;margin-top:3px;font-size:11px;
   color:var(--dim);font-variant-numeric:tabular-nums;}
