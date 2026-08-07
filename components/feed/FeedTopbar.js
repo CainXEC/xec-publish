@@ -77,7 +77,7 @@ export default function FeedTopbar({
           read as "back to the feed" — people land on the dashboard/profile
           and don't realize this is the way back. First in the list since
           it's the most-needed escape hatch. */}
-      <Link href="/" className={cls} onClick={onWordmarkClick}>
+      <Link href="/" className={cls} onClick={() => setOpen(false)}>
         feed
       </Link>
       {/* Desktop entry point for search (the hamburger only renders >=1100px);
