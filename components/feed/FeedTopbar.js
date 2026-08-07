@@ -138,6 +138,15 @@ export default function FeedTopbar({
         </div>
       </div>
 
+      {/* Desktop-only text label next to the hamburger: the wordmark already
+          links home, but as an icon-only mark it doesn't read as "back to the
+          feed" — people land on the dashboard/profile and don't realize this
+          is the way back. Mobile already has a labeled "Feed" tab in the
+          bottom nav, so this is hidden there (CSS) rather than duplicating it. */}
+      <Link href="/" className="tb-feedlink" onClick={onWordmarkClick}>
+        Feed
+      </Link>
+
       {/* Pocket chip — a standalone topbar item placed on the LEFT by CSS order
           (right of the hamburger on desktop; right of the bell on mobile, where
           the hamburger is gone). Self-fetching; renders null when signed out or

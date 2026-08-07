@@ -53,6 +53,7 @@ export const FEED_CSS = `
    hamburger on the LEFT. Desktop: [hamburger][pocket] … [bell][theme].
    Mobile (<1100): hamburger gone, [bell][pocket] … [theme]. */
 .pow-feed .topnav{order:0;}
+.pow-feed .tb-feedlink{order:0;display:none;}
 .pow-feed .tb-bell{display:inline-flex;order:2;margin-left:auto;}
 .pow-feed .toplinks{order:3;}
 /* Extra .topbar ancestor = higher specificity, so these win over the base
@@ -123,6 +124,13 @@ export const FEED_CSS = `
    desktop bar to bell + theme toggle. */
 @media (min-width:1100px){
   .pow-feed .tb-search{display:none;}
+  /* The wordmark is an icon-only home link; this text label next to the
+     hamburger makes "back to the feed" legible on desktop, where there's no
+     bottom nav to fall back on. */
+  .pow-feed .tb-feedlink{display:inline-flex;align-items:center;font-size:12px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--cyan);border:1px solid var(--line);border-radius:8px;
+    padding:8px 14px;transition:border-color .15s,box-shadow .15s;}
+  .pow-feed .tb-feedlink:hover{border-color:var(--cyan);box-shadow:0 0 16px rgba(61,240,255,.22);}
 }
 
 /* ---- notification bell (links to /notifications — no dropdown) ---- */
@@ -1122,6 +1130,10 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 /* shown only on mobile (the bottom-bar shell), hidden where the topbar
    hamburger still carries the same action */
 @media (min-width:1100px){.pow-feed .dash-mobile-only{display:none;}}
+/* the inverse: shown only on desktop, hidden on mobile where the bottom nav's
+   labeled "Feed" tab already covers the same action */
+.pow-feed .dash-desktop-only{display:none;}
+@media (min-width:1100px){.pow-feed .dash-desktop-only{display:inline-flex;}}
 
 /* author profile spread: the handle carousel lives in the CENTER column
    below the wide tier (unchanged mobile) and moves into the left rail on wide
