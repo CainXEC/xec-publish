@@ -54,7 +54,6 @@ export default function ProfileSettingsForm({
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
-  const [savedMessage, setSavedMessage] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState(null)
 
@@ -65,7 +64,6 @@ export default function ProfileSettingsForm({
   async function handleSubmit(e) {
     e.preventDefault()
     setSubmitError(null)
-    setSavedMessage(false)
     setSubmitting(true)
 
     try {
@@ -109,12 +107,15 @@ export default function ProfileSettingsForm({
       }
 
       setSaved({ bio, color, activeTokenId })
-      setSavedMessage(true)
       // Update the live nav byline / feed color without a full reload.
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('sessionChanged'))
       }
-      router.refresh()
+      // Saving is done — send them back to the dashboard (a fresh server render
+      // picks up the new bio/handle/color). The form is now clean (setSaved
+      // above), so even after `finally` re-enables it the button stays disabled.
+      router.push('/dashboard')
+      return
     } finally {
       setSubmitting(false)
     }
@@ -234,13 +235,7 @@ export default function ProfileSettingsForm({
               </p>
             ) : null}
 
-            {savedMessage && !dirty ? (
-              <p className="prof-ok" role="status">
-                Changes saved.
-              </p>
-            ) : null}
-
-            <div style={{ marginTop: submitError || (savedMessage && !dirty) ? '18px' : 0 }}>
+            <div style={{ marginTop: submitError ? '18px' : 0 }}>
               <button type="submit" disabled={submitting || !dirty} className="dashbtn">
                 {submitting ? 'Saving…' : dirty ? 'Save changes' : 'Saved'}
               </button>
