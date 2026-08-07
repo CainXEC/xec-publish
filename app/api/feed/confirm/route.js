@@ -4,6 +4,7 @@ import { NextResponse, after } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { adminDb } from '@/lib/db'
+import { getAuthedAccount } from '@/lib/authHelpers'
 import { FEED_CACHE_TAG, profileCacheTag, getFeedPostForCard } from '@/lib/getFeed'
 import { feedOpenGraphMetadata } from '@/lib/feedOgMetadata'
 import { priceFeedPost } from '@/lib/feedPricing'
@@ -142,7 +143,32 @@ export async function POST(request) {
     quotedAuthorAccountId = quoted?.author_account_id ?? null
   }
 
-  const expected = { action, parentTxid: targetTxid, contentHash, platformAddress, payoutAddress, costXec }
+  // A self-reply (you reply to your OWN post) is forced 100% platform — no 94%
+  // rebate to yourself. Detected the SAME way prepare did (the logged-in session
+  // matching the parent's author), so both agree on the split and the paid tx
+  // always matches what we verify.
+  let selfReply = false
+  if (action === FEED_ACTION.REPLY && parentAuthorAccountId) {
+    // Best-effort session read (throws outside a request scope, e.g. in tests);
+    // no session → not a self-reply (falls back to the normal 94/6 split).
+    let acct = null
+    try {
+      acct = await getAuthedAccount()
+    } catch {
+      /* no request scope / no session */
+    }
+    selfReply = Boolean(acct?.accountId && acct.accountId === parentAuthorAccountId)
+  }
+
+  const expected = {
+    action,
+    parentTxid: targetTxid,
+    contentHash,
+    platformAddress,
+    payoutAddress: selfReply ? null : payoutAddress,
+    costXec,
+    platformOnly: selfReply,
+  }
 
   // Skip txs already recorded for this exact content (avoids re-attributing an
   // identical post from another wallet).

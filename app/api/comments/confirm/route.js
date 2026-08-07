@@ -109,7 +109,22 @@ export async function POST(request) {
     }
   }
 
-  const expected = { action, parentTxid, contentHash, platformAddress, payoutAddress, costXec }
+  // A self-reply (you reply to your OWN comment) is forced 100% platform — no 94%
+  // rebate to yourself. Detected the SAME way prepare did (the proven commenter
+  // matching the parent comment's author), so both agree on the split.
+  const selfReply = Boolean(
+    parentId && parentAuthorAccountId && who.accountId && who.accountId === parentAuthorAccountId,
+  )
+
+  const expected = {
+    action,
+    parentTxid,
+    contentHash,
+    platformAddress,
+    payoutAddress: selfReply ? null : payoutAddress,
+    costXec,
+    platformOnly: selfReply,
+  }
 
   // Skip txs already recorded for this exact content (avoids re-attributing an
   // identical comment paid from another wallet).

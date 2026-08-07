@@ -3,6 +3,7 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { adminDb } from '@/lib/db'
+import { getAuthedAccount } from '@/lib/authHelpers'
 import { priceFeedPost } from '@/lib/feedPricing'
 import { computePaymentSplit, buildPaywallBip21, buildPublishFeeBip21 } from '@/lib/paymentSplit'
 import { contentHashHex, encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
@@ -55,6 +56,11 @@ export async function POST(request) {
   let targetTxid = null
   let quotedTxid = null
   let payoutAddress = null
+  // A self-reply (you reply to your OWN post) pays 100% to the platform — no 94%
+  // rebate to yourself. Detected from the logged-in session: the session account
+  // matching the parent's author account. Confirm re-checks the SAME way, so the
+  // two never disagree on the split.
+  let selfReply = false
   if (action === FEED_ACTION.REPLY) {
     targetTxid = typeof body?.parentTxid === 'string' ? body.parentTxid.trim().toLowerCase() : ''
     if (!/^[0-9a-f]{64}$/.test(targetTxid)) {
@@ -63,7 +69,7 @@ export async function POST(request) {
     const supabase = adminDb()
     const { data: parent, error } = await supabase
       .from('feed_posts')
-      .select('payout_address')
+      .select('payout_address, author_account_id')
       .eq('txid', targetTxid)
       .maybeSingle()
     if (error) {
@@ -73,6 +79,15 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Parent post not found' }, { status: 404 })
     }
     payoutAddress = parent.payout_address
+    // Best-effort session read (getSession reads cookies, which throws outside a
+    // request scope — e.g. a direct call in tests); no session → not a self-reply.
+    let acct = null
+    try {
+      acct = await getAuthedAccount()
+    } catch {
+      /* no request scope / no session */
+    }
+    selfReply = Boolean(acct?.accountId && acct.accountId === parent.author_account_id)
   } else if (action === FEED_ACTION.QUOTE) {
     targetTxid = typeof body?.quotedTxid === 'string' ? body.quotedTxid.trim().toLowerCase() : ''
     if (!/^[0-9a-f]{64}$/.test(targetTxid)) {
@@ -100,14 +115,14 @@ export async function POST(request) {
     return NextResponse.json({ error: e?.message || 'Failed to build commitment' }, { status: 500 })
   }
 
-  // Post and quote are your own content → 100% platform fee. Reply splits 94/6
-  // to the parent's author.
+  // Post and quote are your own content → 100% platform fee, as is a SELF-reply.
+  // A reply to SOMEONE ELSE splits 94/6 to the parent's author.
   let bip21Url
   // Address the payment's primary output lands on — handed to the client so it
   // can open a Chronik websocket on it and trigger an immediate confirm the
   // moment the payment appears, instead of waiting for the next 2.5s poll tick.
   let payAddress
-  if (action === FEED_ACTION.REPLY) {
+  if (action === FEED_ACTION.REPLY && !selfReply) {
     const split = computePaymentSplit(costXec)
     if (!split) {
       return NextResponse.json({ error: 'Invalid price' }, { status: 500 })
@@ -121,6 +136,7 @@ export async function POST(request) {
     )
     payAddress = payoutAddress
   } else {
+    // POST, QUOTE, or SELF-reply → single 100%-platform output.
     bip21Url = buildPublishFeeBip21(platformAddress, costXec, opReturnRaw)
     payAddress = platformAddress
   }

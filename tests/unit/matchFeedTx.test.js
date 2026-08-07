@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { encodeCashAddress } from 'ecashaddrjs'
-import { matchFeedTx } from '@/lib/verifyFeedPost'
+import { matchFeedTx, matchCommentTx } from '@/lib/verifyFeedPost'
 import { FEED_ACTION, contentHashHex, encodeFeedOpReturnRaw } from '@/lib/feedProtocol'
 
 // Build a P2PKH scriptPubKey + its ecash address from a 20-byte hash, so the
@@ -120,6 +120,107 @@ describe('matchFeedTx — content-bearing actions', () => {
       costXec: 100,
     })
     expect(m).toMatchObject({ sats: 10000 })
+  })
+
+  it('accepts a SELF-reply forced 100% to the platform (platformOnly)', () => {
+    const commit = encodeFeedOpReturnRaw({
+      action: FEED_ACTION.REPLY,
+      targetTxid: TARGET,
+      contentHash: HASH,
+    })
+    const t = tx(commit, [out(PLATFORM, 100)])
+    const m = matchFeedTx(t, {
+      action: FEED_ACTION.REPLY,
+      parentTxid: TARGET,
+      contentHash: HASH,
+      platformAddress: PLATFORM.address,
+      payoutAddress: null,
+      costXec: 100,
+      platformOnly: true,
+    })
+    expect(m).toMatchObject({ txid: t.txid, sats: 10000 })
+  })
+
+  it('rejects a SELF-reply that took the 94/6 rebate when platform-only is required', () => {
+    // The whole point: a self-reply must NOT rebate 94% to itself. A tx that paid
+    // 94 to the author-self + 6 to the platform has a platform leg of only 6 XEC,
+    // below the required 100, so it's rejected — the reply won't record.
+    const commit = encodeFeedOpReturnRaw({
+      action: FEED_ACTION.REPLY,
+      targetTxid: TARGET,
+      contentHash: HASH,
+    })
+    const t = tx(commit, [out(AUTHOR, 94), out(PLATFORM, 6)])
+    expect(
+      matchFeedTx(t, {
+        action: FEED_ACTION.REPLY,
+        parentTxid: TARGET,
+        contentHash: HASH,
+        platformAddress: PLATFORM.address,
+        payoutAddress: AUTHOR.address,
+        costXec: 100,
+        platformOnly: true,
+      }),
+    ).toBeNull()
+  })
+})
+
+describe('matchCommentTx — self-reply platform-only', () => {
+  it('accepts a self comment-reply forced 100% to the platform', () => {
+    const commit = encodeFeedOpReturnRaw({
+      action: FEED_ACTION.COMMENT_REPLY,
+      targetTxid: TARGET,
+      contentHash: HASH,
+    })
+    const t = tx(commit, [out(PLATFORM, 100)])
+    const m = matchCommentTx(t, {
+      action: FEED_ACTION.COMMENT_REPLY,
+      parentTxid: TARGET,
+      contentHash: HASH,
+      platformAddress: PLATFORM.address,
+      payoutAddress: null,
+      costXec: 100,
+      platformOnly: true,
+    })
+    expect(m).toMatchObject({ txid: t.txid, sats: 10000 })
+  })
+
+  it('rejects a self comment-reply that took the 94/6 rebate', () => {
+    const commit = encodeFeedOpReturnRaw({
+      action: FEED_ACTION.COMMENT_REPLY,
+      targetTxid: TARGET,
+      contentHash: HASH,
+    })
+    const t = tx(commit, [out(AUTHOR, 94), out(PLATFORM, 6)])
+    expect(
+      matchCommentTx(t, {
+        action: FEED_ACTION.COMMENT_REPLY,
+        parentTxid: TARGET,
+        contentHash: HASH,
+        platformAddress: PLATFORM.address,
+        payoutAddress: AUTHOR.address,
+        costXec: 100,
+        platformOnly: true,
+      }),
+    ).toBeNull()
+  })
+
+  it('still accepts a normal comment-reply split 94/6 (no platformOnly)', () => {
+    const commit = encodeFeedOpReturnRaw({
+      action: FEED_ACTION.COMMENT_REPLY,
+      targetTxid: TARGET,
+      contentHash: HASH,
+    })
+    const t = tx(commit, [out(AUTHOR, 94), out(PLATFORM, 6)])
+    const m = matchCommentTx(t, {
+      action: FEED_ACTION.COMMENT_REPLY,
+      parentTxid: TARGET,
+      contentHash: HASH,
+      platformAddress: PLATFORM.address,
+      payoutAddress: AUTHOR.address,
+      costXec: 100,
+    })
+    expect(m).toMatchObject({ txid: t.txid, sats: 10000 })
   })
 })
 

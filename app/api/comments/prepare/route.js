@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { adminDb } from '@/lib/db'
 import { priceFeedPost } from '@/lib/feedPricing'
-import { computePaymentSplit, buildPaywallBip21 } from '@/lib/paymentSplit'
+import { computePaymentSplit, buildPaywallBip21, buildPublishFeeBip21 } from '@/lib/paymentSplit'
 import { contentHashHex, encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
 import { resolveCommenter, resolveParentPayout, toEcashAddr } from '@/lib/commentGate'
 import { payoutAddressForAuthorId } from '@/lib/accountAuthorLink'
@@ -63,6 +63,10 @@ export async function POST(request) {
   let action
   let payoutAddress
   let parentTxid = null
+  // A self-reply (you reply to your OWN comment) pays 100% to the platform — no
+  // 94% rebate to yourself. Detected from the proven commenter matching the parent
+  // comment's author account; confirm re-checks the SAME way.
+  let selfReply = false
   if (parentId) {
     const { data: parent, error } = await supabase
       .from('comments')
@@ -82,6 +86,7 @@ export async function POST(request) {
     }
     payoutAddress = payee.payoutAddress
     parentTxid = payee.parentTxid
+    selfReply = Boolean(who.accountId && payee.parentAccountId && who.accountId === payee.parentAccountId)
     // A paid parent has a txid to target on-chain (COMMENT_REPLY); a legacy free
     // parent doesn't, so the reply is a plain COMMENT that still splits to that
     // author (its parent link lives in the DB, by parent_id).
@@ -119,13 +124,16 @@ export async function POST(request) {
     return NextResponse.json({ error: e?.message || 'Failed to build commitment' }, { status: 500 })
   }
 
-  const bip21Url = buildPaywallBip21(
-    payoutAddress,
-    platformAddress,
-    split.authorAmount,
-    split.platformAmount,
-    opReturnRaw,
-  )
+  // Self-reply → single 100%-platform output; everything else splits 94/6.
+  const bip21Url = selfReply
+    ? buildPublishFeeBip21(platformAddress, costXec, opReturnRaw)
+    : buildPaywallBip21(
+        payoutAddress,
+        platformAddress,
+        split.authorAmount,
+        split.platformAmount,
+        opReturnRaw,
+      )
 
   return NextResponse.json({
     ok: true,
@@ -136,7 +144,7 @@ export async function POST(request) {
     amountXec: costXec,
     contentHash,
     bip21Url,
-    payAddress: payoutAddress,
+    payAddress: selfReply ? platformAddress : payoutAddress,
     cashtabUrl: `https://cashtab.com/#/send?bip21=${bip21Url}`,
     preparedAt: Math.floor(Date.now() / 1000),
   })
