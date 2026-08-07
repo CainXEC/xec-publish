@@ -745,14 +745,6 @@ export default function DashboardClient({
             <Link href="/dashboard/new-article" className="dashbtn">
               New Article
             </Link>
-            {/* Short feed posts are written on the home page, not here — this
-                dashboard doesn't otherwise say so, so people land here for a
-                "post" and only find the (longer, paid) article flow. Desktop
-                only: mobile already has a labeled "Feed" tab in the bottom
-                nav that gets you to the same compose box. */}
-            <Link href="/?compose=1" className="dashbtn sec dash-desktop-only">
-              New Post
-            </Link>
             <Link href="/dashboard/profile" className="dashbtn sec">
               Edit Profile
             </Link>
