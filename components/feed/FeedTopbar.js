@@ -29,11 +29,6 @@ export default function FeedTopbar({
   showDashboard = true,
 }) {
   const [open, setOpen] = useState(false)
-  // null = not an admin session; a number = the AI_SATOSHI review-queue count,
-  // reported up by the bell's poll (one fetch serves both surfaces). Drives
-  // the admin-only "agent" item in the hamburger — desktop-only for free,
-  // since the hamburger doesn't render below 1100px (the bottom bar takes over).
-  const [agentPending, setAgentPending] = useState(null)
   const rootRef = useRef(null)
   const router = useRouter()
   const pathname = usePathname()
@@ -110,14 +105,6 @@ export default function FeedTopbar({
           log out
         </button>
       ) : null}
-      {/* Admin-only, and last: a rarely-used house utility shouldn't sit above
-          the links everyone actually came for. Renders only when the pending
-          count resolves, which is admin sessions only. */}
-      {agentPending != null ? (
-        <Link href="/admin/agent" className={cls} onClick={() => setOpen(false)}>
-          agent{agentPending > 0 ? ` · ${agentPending}` : ''}
-        </Link>
-      ) : null}
     </>
   )
 
@@ -156,7 +143,7 @@ export default function FeedTopbar({
           the bottom bar takes over navigation. One instance either way (never
           double-mounted → never double-polls). */}
       <div className="tb-bell">
-        <FeedNotifications signedIn={signedIn} onAgentPending={setAgentPending} />
+        <FeedNotifications signedIn={signedIn} />
       </div>
 
       <Link href="/" className="wordmark" onClick={onWordmarkClick} aria-label="Proof of Writing — home">
