@@ -59,12 +59,47 @@ function ActorList({ items, verbSuffix }) {
   )
 }
 
+// Same clamp length as a feed post's own "Show more" (FeedPost.js FEED_CLAMP_CHARS)
+// — a reply/comment shown here is the same kind of content, so it should read
+// the same amount before asking to expand.
+const BODY_CLAMP_CHARS = 280
+
+/** The boxed quoted-text body (a reply/comment/quote's own words, or a liked/
+ *  reposted target's text) — the one "harness" left on this page. Long text
+ *  clamps with a Show more/less toggle, matching the feed's own pattern. The
+ *  whole row is a Link (see below), so the button must preventDefault +
+ *  stopPropagation or clicking it would navigate away instead of expanding. */
+function ClampedBody({ text }) {
+  const [expanded, setExpanded] = useState(false)
+  if (!text) return null
+  const isLong = text.length > BODY_CLAMP_CHARS
+  const shown = !isLong || expanded ? text : `${text.slice(0, BODY_CLAMP_CHARS).trimEnd()}…`
+  return (
+    <p className="notifpage-body">
+      {shown}
+      {isLong ? (
+        <button
+          type="button"
+          className="showmore"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            setExpanded((s) => !s)
+          }}
+        >
+          {expanded ? 'Show less' : 'Show more'}
+        </button>
+      ) : null}
+    </p>
+  )
+}
+
 function NotifBody({ n }) {
   if (!HAS_BODY.has(n.type)) return null
-  // Text resolved -> show it. A pointer that resolved to nothing (deleted/missing)
-  // -> the "gone" note. Neither (an older notification with no stored pointer)
-  // -> nothing; the verb line already reads fine on its own.
-  if (n.actionContent) return <p className="notifpage-body">{n.actionContent}</p>
+  // Text resolved -> show it (clamped). A pointer that resolved to nothing
+  // (deleted/missing) -> the "gone" note. Neither (an older notification with no
+  // stored pointer) -> nothing; the verb line already reads fine on its own.
+  if (n.actionContent) return <ClampedBody text={n.actionContent} />
   if (n.actionGone) {
     // "mention" -> the POST they were tagged in; "quote"/"reply"/"comment" name
     // themselves.
@@ -139,9 +174,7 @@ export default function NotificationsPageClient({ initialItems, initialCursor, a
                   <span className="notiftime">{timeAgo(head.created_at)}</span>
                 </div>
                 {g.items.length === 1 ? <NotifBody n={head} /> : null}
-                {g.items.length > 1 && g.targetContent ? (
-                  <p className="notifpage-body">{g.targetContent}</p>
-                ) : null}
+                {g.items.length > 1 && g.targetContent ? <ClampedBody text={g.targetContent} /> : null}
               </>
             )
             // A grouped 'follow' row has no single target — each name links to

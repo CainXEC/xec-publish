@@ -250,10 +250,16 @@ html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation-name:pocke
 .pow-feed .notiftime{flex:none;font-size:11px;color:var(--dim);}
 
 /* ---- /notifications page ---- */
-.pow-feed .notifpage-list{list-style:none;margin:16px 0 0;padding:0;border:1px solid var(--line);
-  border-radius:14px;overflow:hidden;}
-.pow-feed .notifpage-row{display:block;padding:14px 16px;border-bottom:1px solid var(--line);
-  text-decoration:none;transition:background .12s;}
+/* Fills the screen instead of the site's usual 640px reading column — a
+   notification list (and the reply/comment text inside it) reads fine wide,
+   and there's no prose measure to protect here. */
+.pow-feed .notifpage-wrap{max-width:none;width:100%;}
+/* No outer box around the list itself — each row is just hairline-separated
+   (its own border-bottom); the ONLY boxed "harness" left is .notifpage-body,
+   the actual quoted reply/comment text, same as a feed quote embed. */
+.pow-feed .notifpage-list{list-style:none;margin:16px 0 0;padding:0;}
+.pow-feed .notifpage-row{display:block;padding:14px 16px;margin:0 -16px;border-bottom:1px solid var(--line);
+  text-decoration:none;transition:background .12s;border-radius:10px;}
 .pow-feed .notifpage-list li:last-child .notifpage-row{border-bottom:none;}
 .pow-feed .notifpage-row:hover{background:rgba(0,255,156,.06);}
 .pow-feed .notifpage-row.unread{background:rgba(0,255,156,.08);}
