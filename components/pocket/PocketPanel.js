@@ -755,7 +755,9 @@ const CSS = `
 .pow-pocket{
   --bg:#070b0a; --panel:#0d1513; --line:#173a33; --text:#d6fff0; --dim:#5f8a7e;
   --neon:#00ff9c; --cyan:#3df0ff; --no:#ff5c6c;
-  max-width:640px; margin:0 auto; padding:0; box-sizing:border-box;
+  /* The page (.wrap-full, app/pocket/page.js) already dropped its own 640px cap
+     to fill the screen on desktop — this root must not silently reimpose one. */
+  max-width:none; width:100%; margin:0 auto; padding:0; box-sizing:border-box;
   color:var(--text); text-align:center;
 }
 /* Header matches the marketplace page (MarketplaceClient .mkhead/.title/.sub). */
@@ -779,6 +781,12 @@ const CSS = `
    margin: adjacent-sibling margins collapse (take the larger, not the sum), which
    quietly ate this as a 4px bump instead of the intended ~24px addition. */
 .pow-pocket .panel.gap-before{padding-top:24px;}
+/* "If you lose this device" is recovery instructions, not a marketing line — it
+   reads as actual prose (multi-sentence), so left-justify it (both heading and
+   body) against the page's usual center-everything grain. .body's own
+   text-align:center below needs a more specific override to lose here. */
+.pow-pocket .panel.gap-before{text-align:left;}
+.pow-pocket .panel.gap-before .body{text-align:left;}
 .pow-pocket .panel.freeze{border-left:2px solid var(--no);padding-left:16px;}
 .pow-pocket .h2{font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--neon);margin:0 0 10px;}
 .pow-pocket .h2note{text-transform:none;font-weight:400;font-size:12px;letter-spacing:0;color:var(--dim);}
