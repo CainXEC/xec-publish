@@ -29,7 +29,7 @@ async function isAuthorOrAdmin(acct, postId, supabaseService) {
   return Boolean(ownedPost)
 }
 
-export async function GET(_request, { params }) {
+export async function GET(request, { params }) {
   const { postId } = await params
   if (!postId) {
     return NextResponse.json({ error: 'Missing postId' }, { status: 400 })
@@ -95,8 +95,12 @@ export async function GET(_request, { params }) {
 
   // Paid like counts + whether the viewer already liked, per on-chain comment.
   // Likes live in comment_events (target_txid = the comment's txid); counts are
-  // computed live from the rows. likedByViewer keys on the viewer's ACCOUNT (the
-  // confirm route dedups per account), with the primary address as a fallback.
+  // computed live from the rows. "Me" for the liked check = the session account
+  // (if any) PLUS — critically — the address proven by this article's UNLOCK
+  // COOKIE, mirroring the DELETE handler below. A reader who unlocked via Cashtab
+  // (no wallet login) or whose like never minted a session is otherwise invisible
+  // here, so every heart renders empty and they can re-PAY a like they already
+  // made — the double-tip bug. Matching their unlock-wallet payer_address fixes it.
   const likeCountByTxid = new Map()
   const likedTxids = new Set()
   const commentTxids = [...new Set((data ?? []).map((c) => c.txid).filter(Boolean))]
@@ -112,12 +116,34 @@ export async function GET(_request, { params }) {
     for (const r of likeRows ?? []) {
       likeCountByTxid.set(r.target_txid, (likeCountByTxid.get(r.target_txid) ?? 0) + 1)
     }
-    if (viewer) {
-      const addrForms = new Set(addressForms(viewer.address))
+
+    // Every address that counts as "mine" — the session wallet + the unlock-cookie
+    // wallet — plus my account id.
+    const myAccountId = viewer?.accountId ?? null
+    const myAddrForms = new Set(viewer ? addressForms(viewer.address) : [])
+    try {
+      const rawCookie = request.cookies.get(`unlock_${postId}`)?.value
+      const { valid, txid } = verifyCookieValue(postId, rawCookie)
+      if (valid && String(txid).trim()) {
+        const { data: unlockRow } = await supabase
+          .from('unlocks')
+          .select('payer_address')
+          .eq('post_id', postId)
+          .eq('txid', String(txid).trim())
+          .maybeSingle()
+        if (unlockRow?.payer_address) {
+          for (const f of addressForms(unlockRow.payer_address)) myAddrForms.add(f)
+        }
+      }
+    } catch {
+      /* best-effort; a missing/invalid cookie just falls back to the session */
+    }
+
+    if (myAccountId || myAddrForms.size > 0) {
       for (const r of likeRows ?? []) {
         const mine =
-          (viewer.accountId && r.actor_account_id === viewer.accountId) ||
-          (r.payer_address && addrForms.has(r.payer_address))
+          (myAccountId && r.actor_account_id === myAccountId) ||
+          (r.payer_address && myAddrForms.has(r.payer_address))
         if (mine) likedTxids.add(r.target_txid)
       }
     }

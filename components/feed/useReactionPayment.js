@@ -9,6 +9,38 @@ import { pollUntil } from '@/lib/ecash/pollUntil'
 // otherwise the exact extension/web-tab behavior.
 import { beginPayment, completePayment, abortPayment } from '@/lib/pocket/payGateway'
 
+// A device-local record of reactions this browser has CONFIRMED paying for, so a
+// like/repost you already made can never render as un-done — which is what let a
+// stale empty heart be re-paid (a double-tip). It's a belt to the server's
+// likedByViewer suspenders: the server can miss you (a logged-out paid reader, or
+// a like that minted no session), but this device always remembers. Keyed by
+// (action:targetTxid); written only on a confirmed 'reacted', so an abandoned
+// payment is never remembered. Same-device only — which is exactly the
+// navigate-away-and-back case that caused the double charge.
+const REACTED_LS_KEY = 'pow_reacted_v1'
+function loadReacted() {
+  if (typeof window === 'undefined') return {}
+  try {
+    return JSON.parse(window.localStorage.getItem(REACTED_LS_KEY) || '{}') || {}
+  } catch {
+    return {}
+  }
+}
+function hasReacted(action, txid) {
+  if (typeof window === 'undefined' || !txid || !action) return false
+  return Boolean(loadReacted()[`${action}:${txid}`])
+}
+function rememberReacted(action, txid) {
+  if (typeof window === 'undefined' || !txid || !action) return
+  try {
+    const m = loadReacted()
+    m[`${action}:${txid}`] = 1
+    window.localStorage.setItem(REACTED_LS_KEY, JSON.stringify(m))
+  } catch {
+    /* storage full / disabled — the server likedByViewer still covers the common case */
+  }
+}
+
 /**
  * The shared paid-reaction flow (like / repost) behind both EngagementBar (feed
  * posts) and CommentLike (article comments). It owns the optimistic flip, the
@@ -56,12 +88,15 @@ export function useReactionPayment({
   useEffect(() => {
     setReposts(repostCount)
   }, [repostCount])
+  // OR-in this device's own confirmed reactions so a like/repost you already paid
+  // for stays filled even when the server didn't recognize you (never downgrades a
+  // remembered reaction to false — the whole point is it can't be re-paid).
   useEffect(() => {
-    setLiked(likedByViewer)
-  }, [likedByViewer])
+    setLiked(likedByViewer || hasReacted('like', targetTxid))
+  }, [likedByViewer, targetTxid])
   useEffect(() => {
-    setReposted(repostedByViewer)
-  }, [repostedByViewer])
+    setReposted(repostedByViewer || hasReacted('repost', targetTxid))
+  }, [repostedByViewer, targetTxid])
 
   // Optimistic flip: reflect the like/repost the instant you tap.
   const applyReaction = useCallback((action) => {
@@ -181,6 +216,9 @@ export function useReactionPayment({
         if (res.status === 429) return { backoff: true }
         const data = await res.json()
         if (data.status === 'reacted') {
+          // Remember it on THIS device before anything else, so a later visit
+          // where the server doesn't recognize us can't re-charge this reaction.
+          rememberReacted(pending, targetTxid)
           finalizeReacted()
           return { done: true }
         }
@@ -206,6 +244,7 @@ export function useReactionPayment({
       })
       const data = await res.json()
       if (data.status === 'reacted') {
+        rememberReacted(pending, targetTxid)
         finalizeReacted()
       } else if (data.status === 'awaiting_payment') {
         setNotice("That transaction doesn't match this reaction yet.")
