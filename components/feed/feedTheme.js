@@ -685,6 +685,18 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
    the invisible hover-bridge above the menu (between button and menu) to match. */
 .pow-feed .tipwrap .tipmenu{top:calc(100% + 6px);bottom:auto;}
 .pow-feed .tipwrap .tipmenu::after{top:auto;bottom:100%;}
+/* On phones the 264px dropdown, anchored to the button's left edge, runs off the
+   right side (worse the further right the button sits — a longer follower count,
+   or the logged-in +menu). Detach it from the button and pin it to the viewport
+   as a bottom sheet: full width minus 12px margins (always fits, any handset),
+   sitting just above the fixed bottom nav (.pow-bnav, 57px, z-index 80). */
+@media (max-width:600px){
+  .pow-feed .tipwrap .tipmenu{
+    position:fixed;left:12px;right:12px;width:auto;top:auto;
+    bottom:calc(69px + env(safe-area-inset-bottom, 0px));z-index:90;
+  }
+  .pow-feed .tipwrap .tipmenu::after{display:none;}
+}
 .pow-feed .tipbtn{background:none;border:1px solid var(--line);color:var(--text);font:inherit;font-size:14px;
   font-weight:600;line-height:1;padding:8px 15px;border-radius:999px;cursor:pointer;display:inline-flex;
   align-items:center;gap:6px;transition:border-color .15s,color .15s;}
