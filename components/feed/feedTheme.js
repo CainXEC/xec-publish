@@ -171,20 +171,21 @@ export const FEED_CSS = `
    up yet" tell. Colors come from the theme vars, so paper mode inherits its ink
    green automatically. */
 .pow-feed .pocketbtn.pocketbtn-empty{color:var(--neon);border-color:var(--neon);border-style:dashed;
-  box-shadow:0 0 12px rgba(0,255,156,.22);}
+  background:rgba(0,255,156,.10);
+  box-shadow:0 0 18px rgba(0,255,156,.55),0 0 5px rgba(0,255,156,.5);}
 /* …plus a ONE-SHOT beckon the first time it's seen in a session: three soft beats
    that settle back into the steady state above. A title shot, not an ambient loop
    — nothing keeps blinking in the corner of the eye. PocketChip gates it to once
    per session and skips it entirely under reduced motion. */
 .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation:pocket-beckon 2.6s cubic-bezier(.4,0,.2,1) .2s 1 both;}
 @keyframes pocket-beckon{
-  0%{box-shadow:0 0 12px rgba(0,255,156,.22);transform:scale(1);}
-  6%{box-shadow:0 0 22px rgba(0,255,156,.75);transform:scale(1.12);}
-  14%{box-shadow:0 0 12px rgba(0,255,156,.22);transform:scale(1);}
-  24%{box-shadow:0 0 22px rgba(0,255,156,.7);transform:scale(1.1);}
-  32%{box-shadow:0 0 12px rgba(0,255,156,.22);transform:scale(1);}
-  42%{box-shadow:0 0 20px rgba(0,255,156,.6);transform:scale(1.07);}
-  52%,100%{box-shadow:0 0 12px rgba(0,255,156,.22);transform:scale(1);}
+  0%{box-shadow:0 0 18px rgba(0,255,156,.55),0 0 5px rgba(0,255,156,.5);transform:scale(1);}
+  6%{box-shadow:0 0 28px rgba(0,255,156,.95),0 0 8px rgba(0,255,156,.7);transform:scale(1.12);}
+  14%{box-shadow:0 0 18px rgba(0,255,156,.55),0 0 5px rgba(0,255,156,.5);transform:scale(1);}
+  24%{box-shadow:0 0 26px rgba(0,255,156,.9),0 0 8px rgba(0,255,156,.65);transform:scale(1.1);}
+  32%{box-shadow:0 0 18px rgba(0,255,156,.55),0 0 5px rgba(0,255,156,.5);transform:scale(1);}
+  42%{box-shadow:0 0 24px rgba(0,255,156,.8),0 0 7px rgba(0,255,156,.6);transform:scale(1.07);}
+  52%,100%{box-shadow:0 0 18px rgba(0,255,156,.55),0 0 5px rgba(0,255,156,.5);transform:scale(1);}
 }
 @media (prefers-reduced-motion:reduce){
   .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation:none;}
@@ -192,7 +193,12 @@ export const FEED_CSS = `
 /* Paper mode kills neon halos by design, so the invitation is carried by the
    accent tint + ink-green dashed border, and the beckon beats on scale alone
    (same rhythm, no glow). */
-html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty{background:var(--accent-tint);box-shadow:none;}
+/* Paper kills neon halos, so "lighted" here = a stronger ink-green tint fill, a
+   solid ink-green ring reinforcing the dashed border, and a soft green shadow —
+   noticeable on the light masthead without a garish glow. */
+html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty{
+  background:color-mix(in oklab, var(--neon) 14%, #fff);
+  box-shadow:0 0 0 1px var(--neon),0 2px 12px rgba(18,112,60,.28);}
 html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation-name:pocket-beckon-paper;}
 @keyframes pocket-beckon-paper{
   0%{transform:scale(1);}
