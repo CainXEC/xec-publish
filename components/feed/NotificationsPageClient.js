@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
-  earnedLabel,
+  amountLabelForType,
   timeAgo,
   actorLabel,
   notifText,
@@ -114,9 +114,10 @@ function NotifBody({ n }) {
 /** The TOTAL earned across a group's items (a single item's own amount, for an
  *  ungrouped row) — never just the first item's, which would misattribute a
  *  shared tip total to one actor when several people tipped the same post. */
-function EarnedChip({ items }) {
+function EarnedChip({ items, type }) {
   const totalSats = items.reduce((sum, n) => sum + (Number(n.amount_sats) || 0), 0)
-  const earned = earnedLabel(totalSats > 0 ? totalSats : null)
+  // Tips pay the recipient 100% (gross); every other paid action nets the 6% fee.
+  const earned = amountLabelForType(type, totalSats > 0 ? totalSats : null)
   return earned ? <span className="notifamt">{earned} · </span> : null
 }
 
@@ -170,7 +171,7 @@ export default function NotificationsPageClient({ initialItems, initialCursor, a
               <>
                 <div className="notifpage-top">
                   <span className="notifpage-actors">
-                    <EarnedChip items={g.items} />
+                    <EarnedChip items={g.items} type={g.type} />
                     <ActorList items={g.items} verbSuffix={notifText(head)} />
                   </span>
                   <span className="notiftime">{timeAgo(head.created_at)}</span>

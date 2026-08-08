@@ -168,9 +168,22 @@ describe('decodeFeedOpReturn', () => {
   })
 
   it('returns null for an out-of-range action opcode', () => {
-    // OP_13 (0x5d) is beyond the defined POWR actions (OP_1..OP_12).
-    const bad = `6a04${LOKAD_HEX}005d` + `20${TARGET}`
+    // OP_14 (0x5e) is beyond the defined POWR actions (OP_1..OP_13).
+    const bad = `6a04${LOKAD_HEX}005e` + `20${TARGET}`
     expect(decodeFeedOpReturn(bad)).toBeNull()
+  })
+
+  it('round-trips a tip: a bare marker with no target/hash/nonce', () => {
+    const raw = encodeFeedOpReturnRaw({ action: FEED_ACTION.TIP })
+    const decoded = decodeFeedOpReturn(asScript(raw))
+    expect(decoded).toMatchObject({
+      version: 0,
+      action: FEED_ACTION.TIP,
+      targetTxid: null,
+      contentHash: null,
+      nonce: null,
+      pubkey: null,
+    })
   })
 
   it('returns null for a delegate whose pubkey push is the wrong length', () => {

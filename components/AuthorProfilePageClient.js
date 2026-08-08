@@ -8,6 +8,7 @@ import AuthorFrontPage from '@/components/feed/AuthorFrontPage'
 import HomeReader from '@/components/feed/HomeReader'
 import FeedPost from '@/components/feed/FeedPost'
 import FeedTopbar from '@/components/feed/FeedTopbar'
+import TipButton from '@/components/feed/TipButton'
 import HandleCarousel from '@/components/HandleCarousel'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
@@ -446,6 +447,9 @@ export default function AuthorProfilePageClient({
   const bioText = bio != null && String(bio).trim() !== '' ? String(bio).trim() : ''
   const canManageAuthor =
     !!profileAccountId && !!viewerAccountId && viewerAccountId !== profileAccountId
+  // Anyone (even signed-out — paying doubles as login) can tip a REAL account
+  // that isn't their own. A handle with no proofofwriting account can't receive.
+  const canTip = !!profileAccountId && viewerAccountId !== profileAccountId
 
   return (
     <div className="pow-feed has-rail">
@@ -507,20 +511,23 @@ export default function AuthorProfilePageClient({
             </>
           ) : null}
 
-          {canManageAuthor ? (
-            <ProfileActionsMenu
-              accountId={profileAccountId}
-              initialFollowing={initialFollowing}
-              initialBlocked={initialBlocked}
-              followerCount={followerCount}
-              onBlockedChange={setBlocked}
-            />
-          ) : (
-            <span className="proffollowers standalone">
-              <strong>{Number(followerCount).toLocaleString()}</strong>{' '}
-              {Number(followerCount) === 1 ? 'follower' : 'followers'}
-            </span>
-          )}
+          <div className="profactions">
+            {canManageAuthor ? (
+              <ProfileActionsMenu
+                accountId={profileAccountId}
+                initialFollowing={initialFollowing}
+                initialBlocked={initialBlocked}
+                followerCount={followerCount}
+                onBlockedChange={setBlocked}
+              />
+            ) : (
+              <span className="proffollowers standalone">
+                <strong>{Number(followerCount).toLocaleString()}</strong>{' '}
+                {Number(followerCount) === 1 ? 'follower' : 'followers'}
+              </span>
+            )}
+            {canTip ? <TipButton toAccountId={profileAccountId} /> : null}
+          </div>
 
           {bioText ? <p className="profbio">{bioText}</p> : null}
         </header>
