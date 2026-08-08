@@ -12,7 +12,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { prewarmPaymentWatch } from "@/lib/ecash/watchPaymentAddress";
 import { pollUntil } from "@/lib/ecash/pollUntil";
-import { payWithCashtab } from "@/lib/ecash/cashtabPay";
+import { payWithCashtab, isCashtabExtensionAvailable } from "@/lib/ecash/cashtabPay";
 
 type Started = {
   ok: true;
@@ -153,7 +153,26 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
       {phase === "proving" && started && (
         <div className="pay">
           <p className="poll">Waiting for your {started.amountXec} XEC login payment{secondsLeft != null && secondsLeft > 0 && <span className="timer"> · expires in {mm}:{ss}</span>}</p>
-          <button type="button" className="cta" onClick={openCashtab}>Open Cashtab</button>
+          {/* A REAL anchor, not a window.open() call: a native link click is the
+              only reliable way to open Cashtab on iOS Safari, which blocks
+              programmatic opens made outside a user tap (that's why the auto-open
+              above never fires there). Desktop with the extension intercepts the
+              click and routes through the in-page popup instead of a tab. */}
+          <a
+            href={cashtabUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="cta"
+            onClick={(e) => {
+              cashtabOpenedRef.current = true;
+              if (isCashtabExtensionAvailable()) {
+                e.preventDefault();
+                void payWithCashtab({ bip21: started.bip21Url, cashtabUrl });
+              }
+            }}
+          >
+            Open Cashtab
+          </a>
           <p className="fallback">Cashtab didn’t open? Scan the code or use the address below.</p>
           <div className="qr"><QRCodeSVG value={started.bip21Url} size={188} bgColor="#dffff2" fgColor="#05130d" /></div>
           <p className="addr" title={started.proofAddress}>{started.proofAddress}</p>
