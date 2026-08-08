@@ -7,6 +7,7 @@ import FeedNotifications from '@/components/feed/FeedNotifications'
 import PocketChip from '@/components/pocket/PocketChip'
 import ThemeToggle from '@/components/ThemeToggle'
 import AnimatedLogo from '@/components/AnimatedLogo'
+import { armLoginLaunch } from '@/lib/ecash/loginLaunch'
 
 /**
  * The shared feed-theme header, used by every neon page (feed, thread, profile,
@@ -89,7 +90,7 @@ export default function FeedTopbar({
         </Link>
       ) : null}
       {!signedIn && !isAuthor ? (
-        <Link href="/login" className={cls} onClick={() => setOpen(false)}>
+        <Link href="/login" className={cls} onClick={() => { setOpen(false); armLoginLaunch(); }}>
           log in
         </Link>
       ) : null}

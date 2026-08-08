@@ -12,7 +12,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { prewarmPaymentWatch } from "@/lib/ecash/watchPaymentAddress";
 import { pollUntil } from "@/lib/ecash/pollUntil";
-import { payWithCashtab } from "@/lib/ecash/cashtabPay";
+import {
+  payWithCashtab,
+  completeCashtabPayment,
+  abortCashtabPayment,
+  type CashtabGesture,
+} from "@/lib/ecash/cashtabPay";
+import { takeLoginLaunch } from "@/lib/ecash/loginLaunch";
 
 type Started = {
   ok: true;
@@ -31,6 +37,11 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
   const [copied, setCopied] = useState(false);
   const startedOnceRef = useRef(false);
   const cashtabOpenedRef = useRef(false);
+  // A window pre-opened by the "Login" tap (see loginLaunch). On iOS Safari this
+  // is the ONLY way to end up with a real new window for Cashtab — the OS won't
+  // let the page-load effect open one. Captured on mount; null when /login was
+  // reached without a tap (redirect / hard load) — then we fall back below.
+  const launchRef = useRef<CashtabGesture | null>(null);
 
   // Cashtab web deep link — RAW bip21 (no encodeURIComponent), carries the nonce.
   const cashtabUrl = started ? `https://cashtab.com/#/send?bip21=${started.bip21Url}` : "#";
@@ -38,9 +49,17 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
   const openCashtab = useCallback(() => {
     if (!started || typeof window === "undefined") return;
     cashtabOpenedRef.current = true;
-    // Cashtab extension if present (in-page popup, no tab), else a Cashtab web
-    // tab — exactly one, never both. The QR/address fallback below covers a
-    // rejected extension popup, so no extra reset is needed here.
+    // If the Login tap pre-opened a window, point THAT at Cashtab — a real
+    // window.open()'d tab, so Cashtab can self-close and return after the send
+    // (works on iOS Safari, where a fresh window.open here would be blocked).
+    const launch = launchRef.current;
+    if (launch) {
+      launchRef.current = null;
+      void completeCashtabPayment(launch, { bip21: started.bip21Url, cashtabUrl });
+      return;
+    }
+    // No pre-opened window (desktop/Android auto-open, or a manual button tap):
+    // extension → in-page popup, else a new Cashtab tab. Exactly one, never both.
     void payWithCashtab({ bip21: started.bip21Url, cashtabUrl });
   }, [started, cashtabUrl]);
 
@@ -57,10 +76,17 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
     try {
       const r = await fetch("/api/auth/start", { method: "POST" });
       const j = await r.json();
-      if (!j.ok) { setNotice(j.error ?? "Couldn’t start login. Try again."); setPhase("retry"); return; }
+      if (!j.ok) {
+        // Login couldn't start — don't strand the pre-opened Cashtab tab.
+        if (launchRef.current) { abortCashtabPayment(launchRef.current); launchRef.current = null; }
+        setNotice(j.error ?? "Couldn’t start login. Try again."); setPhase("retry"); return;
+      }
       setStarted(j);
       setPhase("proving");
-    } catch { setNotice("Network hiccup — try again."); setPhase("retry"); }
+    } catch {
+      if (launchRef.current) { abortCashtabPayment(launchRef.current); launchRef.current = null; }
+      setNotice("Network hiccup — try again."); setPhase("retry");
+    }
   }, []);
 
   // Kick the login off the moment the page loads — no intermediate screen. We
@@ -68,6 +94,9 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
   useEffect(() => {
     if (startedOnceRef.current) return;
     startedOnceRef.current = true;
+    // Grab the window the "Login" tap pre-opened (if any) BEFORE the async start,
+    // so openCashtab can redirect it the moment the nonce lands.
+    launchRef.current = takeLoginLaunch();
     void startLogin();
   }, [startLogin]);
 

@@ -14,6 +14,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { armLoginLaunch } from '@/lib/ecash/loginLaunch'
 
 const HOME = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -98,6 +99,10 @@ export default function BottomNav() {
             href={t.href}
             className={`bn-tab${on ? ' on' : ''}`}
             aria-current={on ? 'page' : undefined}
+            // Tapping "Login" pre-opens the Cashtab window in THIS tap gesture so
+            // /login can point it at the payment — the only way iOS Safari yields
+            // a real new window (see loginLaunch).
+            onClick={t.href === '/login' ? () => armLoginLaunch() : undefined}
           >
             <span className="bn-ic" aria-hidden>{t.icon}</span>
             <span className="bn-l">{t.label}</span>
