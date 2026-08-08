@@ -174,7 +174,11 @@ export default function NotificationsPageClient({ initialItems, initialCursor, a
                   <span className="notiftime">{timeAgo(head.created_at)}</span>
                 </div>
                 {g.items.length === 1 ? <NotifBody n={head} /> : null}
-                {g.items.length > 1 && g.targetContent ? <ClampedBody text={g.targetContent} /> : null}
+                {/* A like/repost carries no action text of its own, so show the
+                    post that was liked/reposted (targetContent) — for a single
+                    row or a grouped one. Other types set actionContent instead
+                    (rendered by NotifBody above) and never targetContent. */}
+                {g.targetContent ? <ClampedBody text={g.targetContent} /> : null}
               </>
             )
             // A grouped 'follow' row has no single target — each name links to
