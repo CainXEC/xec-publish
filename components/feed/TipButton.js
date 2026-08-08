@@ -51,9 +51,12 @@ export default function TipButton({ toAccountId }) {
           disabled={pending && !inPagePay}
           aria-haspopup="menu"
           aria-label="Tip this author"
-          title="Tip this author — 100% goes to them"
         >
-          {pending ? 'Sending…' : justTipped ? 'Tipped ✓' : '💸 Tip'}
+          {/* Same heart glyph + class as the feed like button — the tip menu's
+              own title line already spells out "100% goes to them", so this
+              button carries no separate tooltip. */}
+          <span aria-hidden className="likeico">♡</span>{' '}
+          {pending ? 'Sending…' : justTipped ? 'Tipped ✓' : 'Tip'}
         </button>
         {!pending && !justTipped ? (
           <div className="tipmenu" role="menu">

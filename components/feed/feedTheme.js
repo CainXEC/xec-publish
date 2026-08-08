@@ -670,6 +670,11 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .profname{margin:0;font-size:30px;font-weight:800;letter-spacing:.02em;color:var(--hc,var(--neon));
   text-shadow:0 0 14px rgba(0,255,156,.45);word-break:break-word;}
 .pow-feed .profname.isaddr{font-size:18px;letter-spacing:0;color:var(--cyan);text-shadow:0 0 12px rgba(61,240,255,.4);}
+/* The address + Tip button share one row right under the byline; each child's
+   own top margin is reset here so the ROW carries that spacing instead (else
+   they'd double up). */
+.pow-feed .profaddrrow{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:8px 0 0;}
+.pow-feed .profaddrrow .profaddr,.pow-feed .profaddrrow .profcopied{margin:0;}
 .pow-feed .profaddr{display:inline-block;margin:8px 0 0;padding:0;font:inherit;font-size:12px;background:none;border:0;color:var(--dim);cursor:pointer;transition:color .15s;}
 .pow-feed .profaddr:hover{color:var(--cyan);}
 .pow-feed .profcopied{display:inline-block;margin:8px 0 0 10px;font-size:12px;color:var(--neon);}
@@ -678,10 +683,8 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .proffollowers.standalone{display:block;margin:14px 0 0;}
 .pow-feed .proffollowers strong{color:var(--text);font-weight:700;}
 .pow-feed .proffollow .postmenu{margin-left:0;}
-/* Follow control + Tip button share one row under the byline. The children keep
-   their own vertical rhythm, so reset their top margins inside this flex row. The
-   Tip button's pending panel (.reactpay) has flex-basis:100%, so it wraps to its
-   own full-width line below. */
+/* The follow control sits alone in its own row now (Tip moved up next to the
+   address — see .profaddrrow above). */
 .pow-feed .profactions{display:flex;align-items:center;flex-wrap:wrap;gap:14px;margin:14px 0 0;}
 .pow-feed .profactions .proffollow,.pow-feed .profactions .proffollowers.standalone{margin-top:0;}
 .pow-feed .tipwrap{display:inline-flex;}
@@ -693,18 +696,18 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .tipwrap .tipmenu::after{top:auto;bottom:100%;}
 /* On phones the 264px dropdown, anchored to the BUTTON's left edge, ran off the
    right side (worse the further right the button sits — a longer follower count,
-   or the logged-in +menu). Keep it a dropdown BELOW the button, but anchor it to
-   the actions row (which starts at the content's left margin, not wherever the
+   or a long address). Keep it a dropdown BELOW the button, but anchor it to the
+   address row (which starts at the content's left margin, not wherever the
    button landed) and cap its width to the viewport — so it always fits. */
 @media (max-width:600px){
-  .pow-feed .profactions{position:relative;}
-  .pow-feed .tipwrap{position:static;} /* menu now anchors to .profactions, not the button */
+  .pow-feed .profaddrrow{position:relative;}
+  .pow-feed .tipwrap{position:static;} /* menu now anchors to .profaddrrow, not the button */
   .pow-feed .tipwrap .tipmenu{
     top:calc(100% + 6px);bottom:auto;left:0;right:auto;
     width:min(264px, calc(100vw - 24px));
   }
 }
-.pow-feed .tipbtn{background:none;border:1px solid var(--line);color:var(--text);font:inherit;font-size:14px;
+.pow-feed .tipbtn{background:none;border:1px solid var(--line);color:var(--text);font:inherit;font-size:12px;
   font-weight:600;line-height:1;padding:8px 15px;border-radius:999px;cursor:pointer;display:inline-flex;
   align-items:center;gap:6px;transition:border-color .15s,color .15s;}
 .pow-feed .tipbtn:hover{border-color:var(--neon);color:var(--neon);}

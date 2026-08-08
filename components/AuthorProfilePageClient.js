@@ -515,7 +515,7 @@ export default function AuthorProfilePageClient({
           </h1>
 
           {holderAddress ? (
-            <>
+            <span className="profaddrrow">
               <button
                 type="button"
                 className="profaddr"
@@ -524,9 +524,18 @@ export default function AuthorProfilePageClient({
               >
                 {truncateAddress(holderAddress)}
               </button>
+              {canTip ? <TipButton toAccountId={profileAccountId} /> : null}
               {copiedAddress ? <span className="profcopied">Copied!</span> : null}
-            </>
-          ) : null}
+            </span>
+          ) : (
+            // No on-chain address to show it next to (rare) — the Tip button
+            // still needs a home, so it falls back to its own row.
+            canTip ? (
+              <span className="profaddrrow">
+                <TipButton toAccountId={profileAccountId} />
+              </span>
+            ) : null
+          )}
 
           <div className="profactions">
             {canManageAuthor ? (
@@ -543,7 +552,6 @@ export default function AuthorProfilePageClient({
                 {Number(followerCount) === 1 ? 'follower' : 'followers'}
               </span>
             )}
-            {canTip ? <TipButton toAccountId={profileAccountId} /> : null}
           </div>
 
           {bioText ? <p className="profbio">{bioText}</p> : null}
