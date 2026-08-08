@@ -708,8 +708,8 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
   }
 }
 .pow-feed .tipbtn{background:none;border:1px solid var(--line);color:var(--text);font:inherit;font-size:12px;
-  font-weight:600;line-height:1;padding:8px 15px;border-radius:999px;cursor:pointer;display:inline-flex;
-  align-items:center;gap:6px;transition:border-color .15s,color .15s;}
+  font-weight:600;line-height:1;padding:4px 9px;border-radius:999px;cursor:pointer;display:inline-flex;
+  align-items:center;gap:4px;transition:border-color .15s,color .15s;}
 .pow-feed .tipbtn:hover{border-color:var(--neon);color:var(--neon);}
 .pow-feed .tipbtn:disabled{opacity:.7;cursor:default;}
 .pow-feed .profstats{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin:16px 0 0;font-size:13px;color:var(--dim);}
