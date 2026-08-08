@@ -12,7 +12,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { prewarmPaymentWatch } from "@/lib/ecash/watchPaymentAddress";
 import { pollUntil } from "@/lib/ecash/pollUntil";
-import { payWithCashtab, isCashtabExtensionAvailable } from "@/lib/ecash/cashtabPay";
+import { payWithCashtab } from "@/lib/ecash/cashtabPay";
 
 type Started = {
   ok: true;
@@ -22,32 +22,6 @@ type Started = {
   bip21Url: string;
   expiresAt: string;
 };
-
-// The live challenge is stashed here so an iOS same-tab open (navigating this tab
-// to Cashtab) can RESUME the same login on return instead of minting a fresh
-// nonce — the payment the user just made would otherwise be for a dead nonce.
-// sessionStorage is per-tab and survives same-tab navigations + back/forward,
-// and clears when the tab closes (a login challenge shouldn't outlive the tab).
-const CHALLENGE_KEY = "pow_login_challenge";
-
-function readSavedChallenge(): Started | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = sessionStorage.getItem(CHALLENGE_KEY);
-    if (!raw) return null;
-    const s = JSON.parse(raw) as Started;
-    // A challenge past its expiry is dead server-side — don't resume it.
-    if (!s?.expiresAt || new Date(s.expiresAt).getTime() <= Date.now()) return null;
-    return s;
-  } catch {
-    return null;
-  }
-}
-
-function clearSavedChallenge() {
-  if (typeof window === "undefined") return;
-  try { sessionStorage.removeItem(CHALLENGE_KEY); } catch { /* ignore */ }
-}
 
 export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string }) {
   const [phase, setPhase] = useState<"starting" | "proving" | "done" | "retry">("starting");
@@ -64,24 +38,10 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
   const openCashtab = useCallback(() => {
     if (!started || typeof window === "undefined") return;
     cashtabOpenedRef.current = true;
-    // Desktop extension → in-page approval popup, no tab.
-    if (isCashtabExtensionAvailable()) {
-      void payWithCashtab({ bip21: started.bip21Url, cashtabUrl });
-      return;
-    }
-    // Try a new tab (desktop + Android Chrome allow a programmatic open here).
-    // iOS Safari BLOCKS a new-tab open made outside a user tap and returns null —
-    // a new tab simply can't be auto-opened there. So navigate THIS tab to
-    // Cashtab instead: top-frame navigation is NOT gated by a user gesture on
-    // iOS, so it opens automatically (no "Open Cashtab" tap needed). The
-    // challenge is persisted to sessionStorage below, so returning to /login
-    // resumes the SAME login and detects the payment — no lost state.
-    const w = window.open(cashtabUrl, "_blank");
-    if (w) {
-      try { w.opener = null; } catch { /* cross-origin — fine */ }
-    } else {
-      window.location.assign(cashtabUrl);
-    }
+    // Cashtab extension if present (in-page popup, no tab), else a Cashtab web
+    // tab — exactly one, never both. The QR/address fallback below covers a
+    // rejected extension popup, so no extra reset is needed here.
+    void payWithCashtab({ bip21: started.bip21Url, cashtabUrl });
   }, [started, cashtabUrl]);
 
   const copyAddr = async () => {
@@ -99,7 +59,6 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
       const j = await r.json();
       if (!j.ok) { setNotice(j.error ?? "Couldn’t start login. Try again."); setPhase("retry"); return; }
       setStarted(j);
-      try { sessionStorage.setItem(CHALLENGE_KEY, JSON.stringify(j)); } catch { /* ignore */ }
       setPhase("proving");
     } catch { setNotice("Network hiccup — try again."); setPhase("retry"); }
   }, []);
@@ -109,17 +68,6 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
   useEffect(() => {
     if (startedOnceRef.current) return;
     startedOnceRef.current = true;
-    // Returning from Cashtab (the iOS same-tab open) — resume the SAME challenge
-    // rather than minting a new nonce, and DON'T auto-open again (that would
-    // bounce the user straight back out to Cashtab). The poll below then detects
-    // the payment they just made and logs them in.
-    const saved = readSavedChallenge();
-    if (saved) {
-      cashtabOpenedRef.current = true;
-      setStarted(saved);
-      setPhase("proving");
-      return;
-    }
     void startLogin();
   }, [startLogin]);
 
@@ -143,7 +91,6 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
         if (r.status === 429) return { backoff: true };
         const j = await r.json();
         if (j.ok && j.accountId) {
-          clearSavedChallenge();
           setPhase("done");
           // hard navigation so every component re-reads auth via /api/me
           setTimeout(() => { if (typeof window !== "undefined") window.location.assign(redirectTo); }, 600);
@@ -175,7 +122,6 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
   // if the window expires without payment, let them restart
   useEffect(() => {
     if (phase === "proving" && secondsLeft === 0) {
-      clearSavedChallenge();
       setNotice("This login request expired. Start again.");
       setPhase("retry");
       setStarted(null);
@@ -207,26 +153,7 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
       {phase === "proving" && started && (
         <div className="pay">
           <p className="poll">Waiting for your {started.amountXec} XEC login payment{secondsLeft != null && secondsLeft > 0 && <span className="timer"> · expires in {mm}:{ss}</span>}</p>
-          {/* A REAL anchor, not a window.open() call: a native link click is the
-              only reliable way to open Cashtab on iOS Safari, which blocks
-              programmatic opens made outside a user tap (that's why the auto-open
-              above never fires there). Desktop with the extension intercepts the
-              click and routes through the in-page popup instead of a tab. */}
-          <a
-            href={cashtabUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="cta"
-            onClick={(e) => {
-              cashtabOpenedRef.current = true;
-              if (isCashtabExtensionAvailable()) {
-                e.preventDefault();
-                void payWithCashtab({ bip21: started.bip21Url, cashtabUrl });
-              }
-            }}
-          >
-            Open Cashtab
-          </a>
+          <button type="button" className="cta" onClick={openCashtab}>Open Cashtab</button>
           <p className="fallback">Cashtab didn’t open? Scan the code or use the address below.</p>
           <div className="qr"><QRCodeSVG value={started.bip21Url} size={188} bgColor="#dffff2" fgColor="#05130d" /></div>
           <p className="addr" title={started.proofAddress}>{started.proofAddress}</p>
