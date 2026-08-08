@@ -7,10 +7,14 @@ import { priceFeedPost } from '@/lib/feedPricing'
 import { contentHashHex, FEED_ACTION } from '@/lib/feedProtocol'
 import { verifyCommentTxid, findCommentPayment } from '@/lib/verifyFeedPost'
 import { resolveCommenter, resolveParentPayout, toEcashAddr } from '@/lib/commentGate'
-import { payoutAddressForAuthorId } from '@/lib/accountAuthorLink'
+import { payoutAddressForAuthorId, accountIdForAuthorId } from '@/lib/accountAuthorLink'
 import { resolveOrCreateAccount, primaryAddressForAccount } from '@/lib/walletAuth'
 import { formatIdentity } from '@/lib/formatIdentity'
-import { recordArticleNotification, recordFeedNotification } from '@/lib/feedNotifications'
+import {
+  recordArticleNotification,
+  recordFeedNotification,
+  recordCommentMentionNotifications,
+} from '@/lib/feedNotifications'
 import { mintPaySession } from '@/lib/paySession'
 
 const COMMENT_COLUMNS =
@@ -71,6 +75,7 @@ export async function POST(request) {
   let payoutAddress
   let parentTxid = null
   let parentAuthorAccountId = null
+  let articleAuthorId = null // top-level only — to dedupe them out of mention pings
   if (parentId) {
     const { data: parent, error } = await supabase
       .from('comments')
@@ -103,6 +108,7 @@ export async function POST(request) {
     if (!post?.author_id) {
       return NextResponse.json({ error: 'Article not found' }, { status: 404 })
     }
+    articleAuthorId = post.author_id
     payoutAddress = toEcashAddr(await payoutAddressForAuthorId(supabase, post.author_id))
     if (!payoutAddress) {
       return NextResponse.json({ error: "This article's author can't receive comments yet" }, { status: 409 })
@@ -234,6 +240,21 @@ export async function POST(request) {
         actionTxid: inserted.txid,
       })
     }
+
+    // Ping anyone @-mentioned in the comment — deduped against whoever the
+    // reply/article ping above already notified (the parent commenter, or the
+    // article author) so nobody gets doubled. Links to the article's #comments.
+    const alreadyNotified = parentId
+      ? [parentAuthorAccountId]
+      : [articleAuthorId ? await accountIdForAuthorId(supabase, articleAuthorId) : null]
+    await recordCommentMentionNotifications(supabase, {
+      content,
+      actorAccountId: resolved.accountId,
+      actorIdentity: authorIdentity,
+      postId,
+      commentTxid: inserted.txid,
+      excludeAccountIds: alreadyNotified.filter(Boolean),
+    })
   } catch (e) {
     console.error('[comment-confirm] notify threw (comment still ok)', e)
   }

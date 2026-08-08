@@ -129,6 +129,13 @@ describe('targetHref', () => {
     )
     // a non-txid, non-article mention can't resolve a link
     expect(targetHref(row({ type: 'mention', articleHref: null, post_txid: 'not-hex' }))).toBe('#')
+    // a COMMENT mention (article-decorated + a comment action_txid) opens the
+    // article's comments section
+    expect(
+      targetHref(
+        row({ type: 'mention', articleHref: '/posts/x', post_txid: 'a-uuid-1234', action_txid: 'c'.repeat(64) }),
+      ),
+    ).toBe('/posts/x#comments')
   })
 })
 
@@ -138,5 +145,15 @@ describe('notifText — mention', () => {
       'mentioned you in “On eCash”',
     )
     expect(notifText(row({ type: 'mention', articleTitle: null }))).toBe('mentioned you')
+  })
+
+  it('names a comment mention distinctly', () => {
+    expect(
+      notifText(row({ type: 'mention', articleTitle: 'On eCash', action_txid: 'c'.repeat(64) })),
+    ).toBe('mentioned you in a comment on “On eCash”')
+    // article-body mention (no comment action_txid) keeps the plain wording
+    expect(
+      notifText(row({ type: 'mention', articleTitle: 'On eCash' })),
+    ).toBe('mentioned you in “On eCash”')
   })
 })
