@@ -33,9 +33,12 @@
   line-height: 1;
   white-space: nowrap;
 
-  /* Dark (the site's default theme): emitted light. */
+  /* Dark (the site's default theme): emitted light. No wide drop-shadow bloom —
+   * a 22px blur of the whole word merged with the per-letter glow into a filled
+   * neon RECTANGLE around the wordmark (worst on the dense all-caps mobile size).
+   * The per-letter text-shadow below carries the neon; the glow now hugs the
+   * strokes instead of filling a box. */
   color: var(--pow-neon-hot);
-  filter: drop-shadow(0 0 22px var(--pow-bloom));
 }
 
 /* NO display:inline-block on .letter. Inline-block boxes size to glyph ink, not
@@ -44,7 +47,9 @@
  * animate. */
 .letter {
   color: var(--pow-neon-hot);
-  text-shadow: 0 0 6px var(--pow-neon), 0 0 20px var(--pow-glow);
+  /* Tight glow that hugs the strokes. The old 0 0 20px halo bled between the
+   * closely-set letters and pooled into a rectangle. */
+  text-shadow: 0 0 3px var(--pow-neon), 0 0 7px var(--pow-glow);
 }
 
 /* .word stays inline-block so a flicker's opacity applies to the whole word
@@ -56,12 +61,9 @@
   margin-right: 0.28em;
 }
 
-/* The ambient glow-breath hums only where there IS a glow — dark mode. On
- * paper the sign is unlit tubing (filter: none), so humming a green drop-shadow
- * there would bleed neon onto the manuscript. Matches the demo's dark-only hum. */
-:global(html.dark) .igniting {
-  animation: pow-hum 7s ease-in-out infinite;
-}
+/* The ambient glow-breath "hum" was removed with the wide bloom: it pulsed that
+ * whole-word drop-shadow, which was the rectangular glow box, and it was an
+ * ambient loop besides. The one-shot ignition below is the only motion now. */
 .igniting .letter {
   animation: pow-ignite 1.5s backwards;
 }
@@ -95,16 +97,19 @@
   animation: pow-fill-in 1.5s backwards;
 }
 
+/* Glow radii tightened to match the box-free resting state — the power-on still
+ * flickers through color/brightness, but never blooms wide enough to pool into a
+ * rectangle, and 100% lands on the .letter base so the settle is seamless. */
 @keyframes pow-ignite {
   0%, 7% { color: var(--pow-neon-dim); text-shadow: none; }
-  12% { color: var(--pow-neon-low); text-shadow: 0 0 5px var(--pow-neon), 0 0 14px var(--pow-neon); }
+  12% { color: var(--pow-neon-low); text-shadow: 0 0 4px var(--pow-neon), 0 0 8px var(--pow-neon); }
   16% { color: var(--pow-neon-dim); text-shadow: none; }
-  26% { color: var(--pow-neon-mid); text-shadow: 0 0 6px var(--pow-neon), 0 0 18px var(--pow-neon); }
+  26% { color: var(--pow-neon-mid); text-shadow: 0 0 5px var(--pow-neon), 0 0 9px var(--pow-neon); }
   32% { color: var(--pow-neon-dim); text-shadow: none; }
-  44% { color: var(--pow-neon-hot); text-shadow: 0 0 8px var(--pow-neon), 0 0 26px var(--pow-neon); }
+  44% { color: var(--pow-neon-hot); text-shadow: 0 0 6px var(--pow-neon), 0 0 12px var(--pow-neon); }
   50% { color: var(--pow-neon-ember); text-shadow: 0 0 2px var(--pow-neon); }
-  66% { color: var(--pow-neon-hot); text-shadow: 0 0 7px var(--pow-neon), 0 0 24px var(--pow-glow); }
-  100% { color: var(--pow-neon-hot); text-shadow: 0 0 6px var(--pow-neon), 0 0 20px var(--pow-glow); }
+  66% { color: var(--pow-neon-hot); text-shadow: 0 0 4px var(--pow-neon), 0 0 9px var(--pow-glow); }
+  100% { color: var(--pow-neon-hot); text-shadow: 0 0 3px var(--pow-neon), 0 0 7px var(--pow-glow); }
 }
 
 @keyframes pow-fill-in {
@@ -130,10 +135,6 @@
   86% { opacity: 1; }
 }
 
-@keyframes pow-hum {
-  0%, 100% { filter: drop-shadow(0 0 22px var(--pow-bloom)); }
-  50% { filter: drop-shadow(0 0 26px var(--pow-bloom-peak)); }
-}
 
 /* Lit is the base style, so killing every animation leaves the sign correctly
  * rendered. Rapid luminance flicker is a photosensitivity trigger and this runs
