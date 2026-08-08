@@ -70,7 +70,14 @@ export default function FeedNotifications({ signedIn = false, onAgentPending }) 
       aria-label={badgeCount > 0 ? `Notifications (${badgeCount})` : 'Notifications'}
       // The target page is force-dynamic (it mark-reads on load); the default
       // prefetch still warms its loading.js shell for an instant skeleton.
-      onClick={() => setUnread(0)}
+      // When you're ALREADY on /notifications, this Link is a no-op navigation —
+      // the page won't re-render server-side, so it never sees notifications that
+      // arrived since it loaded. Fire an event so the page pulls the new ones in;
+      // harmless anywhere else (no listener mounted).
+      onClick={() => {
+        setUnread(0)
+        window.dispatchEvent(new CustomEvent('notifications:refresh'))
+      }}
     >
       <BellIcon />
       {badgeCount > 0 ? (
