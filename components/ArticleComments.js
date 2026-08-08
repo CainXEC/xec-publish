@@ -3,7 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
-import { tokenizeUrls } from '@/lib/contentLinks'
+import { tokenizeContent } from '@/lib/contentLinks'
 import TranslateButton from '@/components/TranslateButton'
 import CommentLike from '@/components/feed/CommentLike'
 import EmojiPicker from '@/components/EmojiPicker'
@@ -41,16 +41,26 @@ function truncateIdentity(id) {
 // internal links; external URLs stay inert plain text. Text runs are emitted as
 // raw nodes so `.commentbody`'s white-space: pre-wrap keeps newlines intact.
 function CommentBody({ text }) {
-  const tokens = tokenizeUrls(text)
-  return tokens.map((t, i) =>
-    t.type === 'link' ? (
-      <Link key={i} href={t.href}>
-        {t.value}
-      </Link>
-    ) : (
-      <Fragment key={i}>{t.value}</Fragment>
-    ),
-  )
+  const tokens = tokenizeContent(text)
+  return tokens.map((t, i) => {
+    // @handle → the mentioned profile (same convention as the feed). Tagging
+    // someone here also pings them (see recordCommentMentionNotifications).
+    if (t.type === 'mention') {
+      return (
+        <Link key={i} href={`/@${t.handle}`} className="mention">
+          {t.value}
+        </Link>
+      )
+    }
+    if (t.type === 'link') {
+      return (
+        <Link key={i} href={t.href}>
+          {t.value}
+        </Link>
+      )
+    }
+    return <Fragment key={i}>{t.value}</Fragment>
+  })
 }
 
 // A comment byline links to the commenter's profile, same as everywhere else:
