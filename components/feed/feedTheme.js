@@ -685,17 +685,18 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
    the invisible hover-bridge above the menu (between button and menu) to match. */
 .pow-feed .tipwrap .tipmenu{top:calc(100% + 6px);bottom:auto;}
 .pow-feed .tipwrap .tipmenu::after{top:auto;bottom:100%;}
-/* On phones the 264px dropdown, anchored to the button's left edge, runs off the
+/* On phones the 264px dropdown, anchored to the BUTTON's left edge, ran off the
    right side (worse the further right the button sits — a longer follower count,
-   or the logged-in +menu). Detach it from the button and pin it to the viewport
-   as a bottom sheet: full width minus 12px margins (always fits, any handset),
-   sitting just above the fixed bottom nav (.pow-bnav, 57px, z-index 80). */
+   or the logged-in +menu). Keep it a dropdown BELOW the button, but anchor it to
+   the actions row (which starts at the content's left margin, not wherever the
+   button landed) and cap its width to the viewport — so it always fits. */
 @media (max-width:600px){
+  .pow-feed .profactions{position:relative;}
+  .pow-feed .tipwrap{position:static;} /* menu now anchors to .profactions, not the button */
   .pow-feed .tipwrap .tipmenu{
-    position:fixed;left:12px;right:12px;width:auto;top:auto;
-    bottom:calc(69px + env(safe-area-inset-bottom, 0px));z-index:90;
+    top:calc(100% + 6px);bottom:auto;left:0;right:auto;
+    width:min(264px, calc(100vw - 24px));
   }
-  .pow-feed .tipwrap .tipmenu::after{display:none;}
 }
 .pow-feed .tipbtn{background:none;border:1px solid var(--line);color:var(--text);font:inherit;font-size:14px;
   font-weight:600;line-height:1;padding:8px 15px;border-radius:999px;cursor:pointer;display:inline-flex;
