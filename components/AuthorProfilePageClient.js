@@ -316,6 +316,23 @@ export default function AuthorProfilePageClient({
     return () => document.removeEventListener('click', onCapture, true)
   }, [readerSlug, closeReader])
 
+  // Land at the very TOP on a fresh navigation here. Next resets scroll on client
+  // nav, but iOS Safari can settle a little below the top — enough to hide the
+  // @handle under the sticky topbar — when the profile's streamed sections shift
+  // layout right after that reset. Pin to the top on mount, then again next frame
+  // to beat any late shift. (Runs once per mount, so it never fights the reader's
+  // own scroll save/restore, which happens later via state.)
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    window.scrollTo(0, 0)
+    const raf = requestAnimationFrame(() => window.scrollTo(0, 0))
+    const t = setTimeout(() => window.scrollTo(0, 0), 60)
+    return () => {
+      cancelAnimationFrame(raf)
+      clearTimeout(t)
+    }
+  }, [])
+
   const [posts, setPosts] = useState(initialPosts)
   // Cursor for the Posts tab: the server renders page 1 and hands us the cursor
   // for page 2; null means no more pages. Infinite scroll walks it forward.
