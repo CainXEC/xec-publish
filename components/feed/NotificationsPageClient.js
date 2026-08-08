@@ -30,10 +30,12 @@ function ActorName({ n }) {
   )
 }
 
-// "A liked", "A and B liked", "A, B and C liked", "A, B and 4 others liked" —
-// standard list grammar (Oxford "and" before the last part), capped at
-// MAX_NAMED_ACTORS named actors before collapsing the rest into a count.
-const MAX_NAMED_ACTORS = 3
+// Grouped rows name the MOST RECENT actor (items are newest-first) and collapse
+// everyone else into a count: "A liked", "A and 1 other liked", "A and 4 others
+// liked". One name keeps the line short and puts the freshest actor first — the
+// summed tip (EarnedChip) and the target post (targetContent) are shown once for
+// the whole group, so the individual names add little.
+const MAX_NAMED_ACTORS = 1
 
 function ActorList({ items, verbSuffix }) {
   const named = items.slice(0, MAX_NAMED_ACTORS)
