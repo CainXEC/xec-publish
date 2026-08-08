@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   amountLabelForType,
@@ -127,6 +127,44 @@ export default function NotificationsPageClient({ initialItems, initialCursor, a
   const [loadingMore, setLoadingMore] = useState(false)
 
   const groups = useMemo(() => groupNotifications(items), [items])
+
+  // Pull in notifications that arrived AFTER this page loaded and prepend them.
+  // The page renders its list once (server-side) and otherwise only appends OLDER
+  // rows via loadMore, so without this a notification that lands while you're
+  // sitting here — flagged by the bell's red badge — would never show. Fired by
+  // the header bell's click (the badge you tap), since clicking it while already
+  // on /notifications is a no-op navigation that can't refetch server-side.
+  const refreshLatest = useCallback(async () => {
+    try {
+      const res = await fetch('/api/feed/notifications', { cache: 'no-store' })
+      if (!res.ok) return
+      const data = await res.json()
+      const latest = Array.isArray(data.notifications) ? data.notifications : []
+      setItems((prev) => {
+        const seen = new Set(prev.map((n) => n.id))
+        const fresh = latest.filter((n) => !seen.has(n.id))
+        if (fresh.length === 0) return prev
+        // API is newest-first, so the new rows lead — prepend them ahead of the
+        // existing list, preserving overall newest-first order. They arrive with
+        // read:false, so they render with the unread highlight for this view.
+        return [...fresh, ...prev]
+      })
+      // Clear the DB unread so the bell badge doesn't re-appear on its next poll —
+      // mirrors the page's mark-read-on-load behavior. The rows we just added keep
+      // their unread styling here (we don't re-read their state), same as a load.
+      if (Number(data.unreadCount) > 0) {
+        fetch('/api/feed/notifications/mark-read', { method: 'POST' }).catch(() => {})
+      }
+    } catch {
+      /* best-effort; the badge stays and the next click retries */
+    }
+  }, [])
+
+  useEffect(() => {
+    const onRefresh = () => void refreshLatest()
+    window.addEventListener('notifications:refresh', onRefresh)
+    return () => window.removeEventListener('notifications:refresh', onRefresh)
+  }, [refreshLatest])
 
   const loadMore = useCallback(async () => {
     if (!cursor || loadingMore) return
