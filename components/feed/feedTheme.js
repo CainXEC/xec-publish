@@ -672,6 +672,24 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .proffollowers.standalone{display:block;margin:14px 0 0;}
 .pow-feed .proffollowers strong{color:var(--text);font-weight:700;}
 .pow-feed .proffollow .postmenu{margin-left:0;}
+/* Follow control + Tip button share one row under the byline. The children keep
+   their own vertical rhythm, so reset their top margins inside this flex row. The
+   Tip button's pending panel (.reactpay) has flex-basis:100%, so it wraps to its
+   own full-width line below. */
+.pow-feed .profactions{display:flex;align-items:center;flex-wrap:wrap;gap:14px;margin:14px 0 0;}
+.pow-feed .profactions .proffollow,.pow-feed .profactions .proffollowers.standalone{margin-top:0;}
+.pow-feed .tipwrap{display:inline-flex;}
+/* The feed like menu opens UPWARD (the like button sits at the bottom of a post).
+   The profile Tip button sits near the TOP of the page under a sticky header, so
+   an upward menu would render behind it — flip this one to open DOWNWARD, and move
+   the invisible hover-bridge above the menu (between button and menu) to match. */
+.pow-feed .tipwrap .tipmenu{top:calc(100% + 6px);bottom:auto;}
+.pow-feed .tipwrap .tipmenu::after{top:auto;bottom:100%;}
+.pow-feed .tipbtn{background:none;border:1px solid var(--line);color:var(--text);font:inherit;font-size:14px;
+  font-weight:600;line-height:1;padding:8px 15px;border-radius:999px;cursor:pointer;display:inline-flex;
+  align-items:center;gap:6px;transition:border-color .15s,color .15s;}
+.pow-feed .tipbtn:hover{border-color:var(--neon);color:var(--neon);}
+.pow-feed .tipbtn:disabled{opacity:.7;cursor:default;}
 .pow-feed .profstats{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin:16px 0 0;font-size:13px;color:var(--dim);}
 .pow-feed .profstat{display:inline-flex;align-items:center;gap:6px;}
 .pow-feed .profstat strong{color:var(--text);font-weight:700;}
