@@ -41,7 +41,9 @@ const RANGES = [
   { key: 'all', label: 'Most read · all time', title: 'unlocks all-time' },
   { key: 'latest', label: 'Latest', title: null },
 ]
-const DEFAULT_RANGE = '7d'
+// Opens on the newest article, not a most-read ranking — a fresh visitor's
+// first view of the front page is what just got published, not what's popular.
+const DEFAULT_RANGE = 'latest'
 const RANGE_BY_KEY = Object.fromEntries(RANGES.map((r) => [r.key, r]))
 
 // Live masthead dateline: the date plus a ticking clock (with seconds). Its own
