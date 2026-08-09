@@ -604,7 +604,8 @@ export default function ComposeBox({
               Cancel
             </button>
           ) : null}
-          <button type="button" disabled={!canSubmit} onClick={() => void startPayment()} className="btn">
+          <button type="button" disabled={!canSubmit} onClick={() => void startPayment()} className="paybtn">
+            <span aria-hidden className="paybtn-bolt">⚡</span>
             {priced.ok ? `Pay · ${priced.costXec} XEC` : 'Pay'}
           </button>
         </div>

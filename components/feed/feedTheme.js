@@ -387,6 +387,22 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .btn.block{display:block;width:100%;text-align:center;}
 .pow-feed .ghost{background:transparent;border:1px solid var(--line);color:var(--dim);border-radius:9px;
   padding:9px 16px;font:inherit;font-size:12px;cursor:pointer;transition:border-color .15s,color .15s;}
+
+/* The feed composer's Pay button: a FILLED pill (not the shared outline .btn),
+   since this is the one button on the page that spends real money — it should
+   read as the primary, weighted action, not just another outline control. */
+.pow-feed .paybtn{display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,var(--neon),var(--cyan));
+  color:#04120c;border:none;border-radius:999px;padding:10px 20px;font:inherit;font-size:13px;font-weight:800;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:nowrap;
+  box-shadow:0 0 18px rgba(0,255,156,.4),0 2px 6px rgba(0,0,0,.3);
+  transition:transform .12s ease,box-shadow .15s ease,filter .15s ease;}
+.pow-feed .paybtn-bolt{font-size:14px;line-height:1;filter:drop-shadow(0 0 4px rgba(255,255,255,.6));}
+.pow-feed .paybtn:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.08);
+  box-shadow:0 0 26px rgba(0,255,156,.6),0 4px 10px rgba(0,0,0,.35);}
+.pow-feed .paybtn:active:not(:disabled){transform:translateY(0);box-shadow:0 0 14px rgba(0,255,156,.35);}
+.pow-feed .paybtn:disabled{background:var(--line);color:var(--dim);box-shadow:none;cursor:not-allowed;}
+.pow-feed .paybtn:disabled .paybtn-bolt{filter:none;opacity:.6;}
+@media (max-width:480px){.pow-feed .composebar .paybtn{padding:9px 16px;letter-spacing:.03em;}}
 .pow-feed .ghost:hover{border-color:var(--neon);color:var(--neon);}
 .pow-feed .linkbtn{background:none;border:none;color:var(--dim);font:inherit;font-size:12px;cursor:pointer;padding:0;
   transition:color .15s;}
@@ -1344,6 +1360,12 @@ html:not(.dark) .pow-feed .tipgo:hover{
 html:not(.dark) .pow-feed .btn:disabled,
 html:not(.dark) .pow-feed .dashbtn:disabled{
   background:transparent;color:var(--dim);border-color:var(--line);box-shadow:none;}
+/* Pay button: same flat ink-green fill as the primary buttons above (paper
+   kills gradients/glow), keeping only its own pill shape + bolt for distinction. */
+html:not(.dark) .pow-feed .paybtn{background:var(--neon);color:#fdfcf8;box-shadow:var(--paper-shadow);}
+html:not(.dark) .pow-feed .paybtn-bolt{filter:none;}
+html:not(.dark) .pow-feed .paybtn:hover:not(:disabled){background:var(--accent-hover);box-shadow:var(--paper-shadow);filter:none;}
+html:not(.dark) .pow-feed .paybtn:disabled{background:var(--line);color:var(--dim);box-shadow:none;}
 /* Secondary/ghost dashbtn stays an outline, not a fill. */
 html:not(.dark) .pow-feed .dashbtn.sec{background:transparent;color:var(--neon);border-color:var(--border-strong,#cfc9b8);}
 html:not(.dark) .pow-feed .dashbtn.sec:hover{background:var(--accent-tint);color:var(--accent-hover);border-color:var(--neon);box-shadow:none;}
