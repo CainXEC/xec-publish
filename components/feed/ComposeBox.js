@@ -484,8 +484,18 @@ export default function ComposeBox({
         <textarea
           ref={textareaRef}
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={(e) => {
+            setContent(e.target.value)
+            // Recompute the @mention context from WITHIN this same React
+            // handler (not a separate DOM listener) — see useMentionSuggest's
+            // header comment for why that matters: a plain addEventListener
+            // here raced React's own controlled-value update and could
+            // silently revert the very character just typed.
+            mention.recompute()
+          }}
           onKeyDown={mention.onKeyDown}
+          onKeyUp={mention.recompute}
+          onClick={mention.recompute}
           rows={isReply ? 2 : 3}
           placeholder={
             placeholder ||

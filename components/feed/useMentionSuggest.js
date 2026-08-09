@@ -14,6 +14,18 @@
 //  replacement text + where the caret should land, and the host (which already
 //  owns `content` state, e.g. ComposeBox) applies it exactly like it applies an
 //  emoji pick.
+//
+//  `recompute` is exposed for the HOST to call from its own onChange/onClick/
+//  onKeyUp handlers — this hook does NOT attach its own addEventListener to the
+//  textarea. It used to, and that raced React's controlled-input update on the
+//  very same keystroke: a plain DOM listener on 'input' can run its setState
+//  before React's own synthetic onChange has committed `content`, and the
+//  reconciliation that follows can re-render the textarea with the STALE
+//  `content` value — silently reverting whatever was just typed. Typing "@" as
+//  literally the first character (content: '' -> '@') hit this every time;
+//  "c@" mostly didn't, because content was already non-empty going into the
+//  keystroke. Driving recompute from React's own handlers keeps every state
+//  update inside React's normal batch, in the right order, every time.
 // =============================================================================
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -53,16 +65,6 @@ export function useMentionSuggest(textareaRef, { onSelect } = {}) {
     setQuery(partial)
     setRange({ start: caret - partial.length - 1, end: caret })
   }, [textareaRef])
-
-  // Re-check on every keystroke, click, or caret move — not just value changes,
-  // so clicking elsewhere in the text (away from an "@partial") closes the menu.
-  useEffect(() => {
-    const el = textareaRef.current
-    if (!el) return undefined
-    const events = ['input', 'click', 'keyup', 'select']
-    events.forEach((ev) => el.addEventListener(ev, recompute))
-    return () => events.forEach((ev) => el.removeEventListener(ev, recompute))
-  }, [textareaRef, recompute])
 
   // Fetch suggestions for the active query (debounced). Bare "@" (query === '')
   // schedules nothing — `open` below requires a non-empty query, so there's
@@ -136,5 +138,5 @@ export function useMentionSuggest(textareaRef, { onSelect } = {}) {
     [open, items, activeIndex, select, close],
   )
 
-  return { items, activeIndex, setActiveIndex, open, onKeyDown, select, close }
+  return { items, activeIndex, setActiveIndex, open, onKeyDown, recompute, select, close }
 }
