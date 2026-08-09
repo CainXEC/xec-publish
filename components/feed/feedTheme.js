@@ -1076,7 +1076,7 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 @media (min-width:${WIDE_RAIL_MIN}px){
   .pow-feed.has-rail .topbar{max-width:1346px;}
   .pow-feed.has-rail .feed-cols{
-    grid-template-columns:minmax(240px,300px) 640px minmax(288px,330px);
+    grid-template-columns:minmax(264px,315px) 640px minmax(264px,315px);
     gap:clamp(12px,1.2vw,18px);padding:0 clamp(12px,1.4vw,20px);}
   .pow-feed .feed-left{display:block;position:sticky;top:76px;align-self:start;
     max-height:calc(100dvh - 96px);overflow-y:auto;}
