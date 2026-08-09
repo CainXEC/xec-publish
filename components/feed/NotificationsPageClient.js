@@ -10,6 +10,7 @@ import {
   targetHref,
   groupNotifications,
 } from '@/lib/notifFormat'
+import { broadcastNotificationsRead } from '@/lib/notifSync'
 
 // Types that can carry their own full text inline (never grouped — see
 // GROUPABLE_TYPES in lib/notifFormat). A FEED mention shows the post you were
@@ -127,6 +128,14 @@ export default function NotificationsPageClient({ initialItems, initialCursor, a
   const [loadingMore, setLoadingMore] = useState(false)
 
   const groups = useMemo(() => groupNotifications(items), [items])
+
+  // The server already marked everything read before this component ever
+  // mounted (app/notifications/page.js runs markFeedNotificationsRead during
+  // its own render) — broadcast that so any OTHER open tab's bell clears its
+  // badge immediately instead of waiting out its next ~60s poll.
+  useEffect(() => {
+    broadcastNotificationsRead()
+  }, [])
 
   // Pull in notifications that arrived AFTER this page loaded and prepend them.
   // The page renders its list once (server-side) and otherwise only appends OLDER
