@@ -237,13 +237,17 @@ export default function FeedThreadClient({
     setReplies((prev) => prev.filter((r) => r.author_account_id !== accountId))
   }, [])
 
-  // A quote is a new top-level post; jump to its thread once it's recorded.
+  // A quote is a new top-level post. In a reading pane (onOpenThread set), swap
+  // the pane to its thread. On the STANDALONE thread page there's no pane to
+  // swap — land back on the main feed (where the fresh quote sorts to the top)
+  // rather than the quote's own bare permalink page, which read as "lost" the
+  // post you were just viewing for a page with nothing else on it.
   const handleQuoted = useCallback(
     (quote) => {
       setShowQuote(false)
       if (!quote?.txid) return
       if (onOpenThread) onOpenThread(quote.txid)
-      else router.push(`/feed/${quote.txid}`)
+      else router.push('/')
     },
     [router, onOpenThread],
   )
