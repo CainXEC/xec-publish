@@ -514,7 +514,11 @@ export default function ComposeBox({
           }
         />
         {mention.open ? (
-          <ul className="mentionsuggest" role="listbox">
+          <ul
+            className="mentionsuggest"
+            role="listbox"
+            style={{ top: mention.coords.top, left: mention.coords.left }}
+          >
             {mention.items.map((it, i) => (
               <li key={it.handle}>
                 <button

@@ -36,11 +36,66 @@ const HANDLE_CHARS = 'A-Za-z0-9_'
 const MENTION_QUERY_RE = new RegExp(`(^|[^${HANDLE_CHARS}@./])@([${HANDLE_CHARS}]{0,15})$`)
 const DEBOUNCE_MS = 150
 
+// Computed style properties that affect text layout/wrapping — copied onto a
+// hidden mirror div so it wraps text identically to the real textarea. This
+// is how the dropdown anchors to the "@" itself instead of the bottom of the
+// whole (possibly multi-row, empty-below-the-caret) textarea box.
+const MIRROR_PROPS = [
+  'boxSizing',
+  'width',
+  'fontFamily',
+  'fontSize',
+  'fontWeight',
+  'fontStyle',
+  'letterSpacing',
+  'lineHeight',
+  'textTransform',
+  'wordSpacing',
+  'textIndent',
+  'paddingTop',
+  'paddingRight',
+  'paddingBottom',
+  'paddingLeft',
+  'borderTopWidth',
+  'borderRightWidth',
+  'borderBottomWidth',
+  'borderLeftWidth',
+  'borderStyle',
+]
+
+/** Pixel offset of the character at `index`, relative to the textarea's own
+ *  border-box top-left, one line below (where a dropdown should sit). */
+function caretCoordinates(textarea, index) {
+  const style = window.getComputedStyle(textarea)
+  const mirror = document.createElement('div')
+  mirror.style.position = 'absolute'
+  mirror.style.visibility = 'hidden'
+  mirror.style.whiteSpace = 'pre-wrap'
+  mirror.style.wordWrap = 'break-word'
+  mirror.style.top = '0'
+  mirror.style.left = '0'
+  for (const prop of MIRROR_PROPS) mirror.style[prop] = style[prop]
+  document.body.appendChild(mirror)
+
+  mirror.textContent = textarea.value.slice(0, index)
+  const marker = document.createElement('span')
+  marker.textContent = '​'
+  mirror.appendChild(marker)
+
+  const lineHeight = parseFloat(style.lineHeight) || marker.offsetHeight
+  const top = marker.offsetTop + parseInt(style.borderTopWidth, 10) - textarea.scrollTop + lineHeight
+  const left = marker.offsetLeft + parseInt(style.borderLeftWidth, 10) - textarea.scrollLeft
+
+  document.body.removeChild(mirror)
+  return { top, left }
+}
+
 export function useMentionSuggest(textareaRef, { onSelect } = {}) {
   const [query, setQuery] = useState(null) // null = no active mention context
   const [range, setRange] = useState(null) // { start, end } of "@partial" in the text
   const [items, setItems] = useState([])
   const [activeIndex, setActiveIndex] = useState(0)
+  const [coords, setCoords] = useState({ top: 0, left: 0 })
   const debounceRef = useRef(null)
   const reqIdRef = useRef(0)
 
@@ -62,8 +117,12 @@ export function useMentionSuggest(textareaRef, { onSelect } = {}) {
       return
     }
     const partial = m[2]
+    const start = caret - partial.length - 1
     setQuery(partial)
-    setRange({ start: caret - partial.length - 1, end: caret })
+    setRange({ start, end: caret })
+    // Anchor to the "@" itself, not the caret — so the dropdown stays put as
+    // more letters are typed instead of creeping right with the query.
+    setCoords(caretCoordinates(el, start))
   }, [textareaRef])
 
   // Fetch suggestions for the active query (debounced). Bare "@" (query === '')
@@ -138,5 +197,5 @@ export function useMentionSuggest(textareaRef, { onSelect } = {}) {
     [open, items, activeIndex, select, close],
   )
 
-  return { items, activeIndex, setActiveIndex, open, onKeyDown, recompute, select, close }
+  return { items, activeIndex, setActiveIndex, open, onKeyDown, recompute, select, close, coords }
 }
