@@ -524,6 +524,11 @@ const FORM_CSS = `
   transition:border-color .15s,color .15s;}
 .pow-feed .pf-focus:hover{border-color:var(--cyan);color:var(--cyan);}
 .pow-feed .pf-focus[aria-pressed="true"]{border-color:var(--neon);color:var(--neon);}
+/* Focus mode hides the notification bell too — the whole point is a
+   distraction-free page, and an unread badge is exactly the kind of thing
+   that pulls your eye away from the sentence you're writing. Every screen
+   size, not just the desktop alley-collapse below. */
+.pow-feed.write-shell.write-focus .tb-bell{display:none;}
 /* Focus mode: the writing card EXPANDS to fill the width the two alleys leave,
    and animates both directions. Mechanism — the shell keeps its normal centered
    track cluster; toggling focus collapses the side tracks to 0 and lifts the

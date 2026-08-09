@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import BellIcon from '@/components/BellIcon'
+import { onNotificationsReadElsewhere } from '@/lib/notifSync'
 
 const POLL_MS = 60_000
 
@@ -56,6 +57,15 @@ export default function FeedNotifications({ signedIn = false, onAgentPending }) 
     window.addEventListener('agent-queue-changed', onQueueChange)
     return () => window.removeEventListener('agent-queue-changed', onQueueChange)
   }, [signedIn, refresh])
+
+  // Read /notifications in ANOTHER tab → clear this tab's badge too, instead
+  // of leaving it stale until this tab's own next poll. Cross-tab (unlike the
+  // custom event above): the storage event only ever fires in OTHER tabs, so
+  // the tab that actually visited /notifications handles itself separately.
+  useEffect(() => {
+    if (!signedIn) return
+    return onNotificationsReadElsewhere(() => setUnread(0))
+  }, [signedIn])
 
   if (!signedIn) return null
 
