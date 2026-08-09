@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import EmojiPicker from '@/components/EmojiPicker'
+import EcashIcon from '@/components/EcashIcon'
 import { useMentionSuggest } from '@/components/feed/useMentionSuggest'
 import { prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 import { pollUntil } from '@/lib/ecash/pollUntil'
@@ -96,6 +97,10 @@ export default function ComposeBox({
   const pollCleanOptions = pollOptions.map((o) => o.trim()).filter(Boolean)
   const pollValid = !pollActive || pollCleanOptions.length >= 2
   const canSubmit = priced.ok && pollValid && !submitting
+  // The Pay control starts as a plain icon-only square; the instant you start
+  // typing it lights up, widens, and reveals the amount — so it stays quiet
+  // until there's actually something to pay for.
+  const payActive = chars > 0
 
   const setOption = (i, val) =>
     setPollOptions((prev) => prev.map((o, idx) => (idx === i ? val : o)))
@@ -614,8 +619,17 @@ export default function ComposeBox({
               Cancel
             </button>
           ) : null}
-          <button type="button" disabled={!canSubmit} onClick={() => void startPayment()} className="btn">
-            {priced.ok ? `Pay · ${priced.costXec} XEC` : 'Pay'}
+          <button
+            type="button"
+            disabled={!canSubmit}
+            onClick={() => void startPayment()}
+            className={`paybtn${payActive ? ' active' : ''}`}
+            aria-label={priced.ok ? `Pay ${priced.costXec} XEC` : 'Pay'}
+          >
+            <span aria-hidden className="paybtn-icon">
+              <EcashIcon size={15} />
+            </span>
+            <span className="paybtn-amt">{priced.ok ? `${priced.costXec} XEC` : ''}</span>
           </button>
         </div>
       </div>
