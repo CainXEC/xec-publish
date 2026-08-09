@@ -527,8 +527,14 @@ const FORM_CSS = `
 /* Focus mode hides the notification bell too — the whole point is a
    distraction-free page, and an unread badge is exactly the kind of thing
    that pulls your eye away from the sentence you're writing. Every screen
-   size, not just the desktop alley-collapse below. */
-.pow-feed.write-shell.write-focus .tb-bell{display:none;}
+   size, not just the desktop alley-collapse below.
+   visibility, NOT display:none: .tb-bell carries margin-left:auto on desktop
+   (feedTheme.js) — that's what pushes the theme toggle to the topbar's far
+   right. display:none removes the bell from the flex line entirely, taking
+   that auto-margin with it, so the toggle collapsed back next to the
+   hamburger. visibility:hidden keeps its layout box (and its margin) in
+   place while painting nothing, so the toggle stays exactly put. */
+.pow-feed.write-shell.write-focus .tb-bell{visibility:hidden;pointer-events:none;}
 /* Focus mode: the writing card EXPANDS to fill the width the two alleys leave,
    and animates both directions. Mechanism — the shell keeps its normal centered
    track cluster; toggling focus collapses the side tracks to 0 and lifts the
