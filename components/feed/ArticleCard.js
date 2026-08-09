@@ -14,11 +14,6 @@ function priceLabel(priceXec) {
   return `${n.toLocaleString()} XEC`
 }
 
-// How long the one-shot border-trace plays before the card settles into its
-// plain static glow — must stay in step with the `artcard-trace` CSS
-// animation's own duration (1.3s) plus a small buffer.
-const ENTER_MS = 1500
-
 /**
  * A compact preview card for an on-site article linked from a feed post. Given
  * a server-resolved `card` it renders immediately; for a just-posted (optimistic)
@@ -50,20 +45,6 @@ export default function ArticleCard({ card = null, content = '' }) {
   }, [card, content])
 
   const resolved = card ?? fetched
-
-  // The one-shot "just appeared" trace: true for ENTER_MS after the card
-  // actually has something to show, then permanently false — never re-fires on
-  // a later re-render (e.g. a translated title swapping in), only on a genuine
-  // remount. Gated on `resolved` (not mount) so an optimistic post's fetch
-  // delay doesn't eat into — or fully consume — the window before anything is
-  // even visible. Reduced-motion is handled entirely in CSS (feedTheme.js).
-  const [entering, setEntering] = useState(true)
-  useEffect(() => {
-    if (!resolved) return undefined
-    const t = setTimeout(() => setEntering(false), ENTER_MS)
-    return () => clearTimeout(t)
-  }, [resolved])
-
   if (!resolved) return null
 
   const readingLabel = formatReadingTimeLabel(resolved.readingTimeMinutes)
@@ -73,7 +54,7 @@ export default function ArticleCard({ card = null, content = '' }) {
   ].filter(Boolean)
 
   return (
-    <Link href={`/posts/${resolved.slug}`} className={`artcard${entering ? ' entering' : ''}`}>
+    <Link href={`/posts/${resolved.slug}`} className="artcard">
       <span className="artcard-tag">Article</span>
       <span className="artcard-title">{resolved.title || 'Read the article'}</span>
       {resolved.teaser ? (

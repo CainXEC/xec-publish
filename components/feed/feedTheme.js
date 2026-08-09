@@ -690,45 +690,36 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .quoted-gone{color:var(--dim);font-style:italic;font-size:13px;}
 
 /* ---- article link card ---- */
-/* A shared post is the one thing in the feed that costs money to read and
-   points off-feed — it should read as a distinct, weightier object at a
-   glance while scrolling, not just another bordered box. Three additive
-   pieces: a persistent glow (was hover-only), a left accent stripe (quick to
-   spot mid-scroll), and a ONE-SHOT trace animation that plays once when the
-   card first mounts (a fresh post, or scrolling a paginated batch into the
-   DOM) then settles into the static glow — same "title shot, not an ambient
-   loop" contract as the wordmark ignition and the Pocket beckon. */
+/* Trying the OTHER idea from the share-card brainstorm this time: not a
+   settle-into-static-glow entrance, but a genuine ambient loop — a thin arc
+   perpetually orbits the border ring via a masked conic-gradient overlay
+   (same trick as before: a ::before sized to the border, masked so only the
+   ring shows), driven by an animated @property angle. Dark mode only — a
+   rotating gradient read as "glow in motion" needs real light to travel
+   through, which paper's flat ink-on-paper theme doesn't have; light mode
+   keeps the plain hairline card, hover-lit like every other feed element. */
 @property --artcard-angle{syntax:'<angle>';inherits:false;initial-value:0deg;}
 .pow-feed .artcard{position:relative;isolation:isolate;display:flex;flex-direction:column;gap:6px;
-  margin:12px 0 0;padding:14px 16px;border:1px solid var(--neon);border-left-width:4px;border-radius:12px;
-  background:var(--panel2);box-shadow:0 0 14px rgba(0,255,156,.22),0 0 3px rgba(0,255,156,.3);
+  margin:12px 0 0;padding:14px 16px;
+  border:1px solid var(--neon);border-radius:12px;background:var(--panel2);
   transition:box-shadow .15s,background .15s;}
-.pow-feed .artcard:hover{box-shadow:0 0 28px rgba(0,255,156,.45);background:rgba(0,255,156,.06);}
+.pow-feed .artcard:hover{box-shadow:0 0 20px rgba(0,255,156,.22);background:rgba(0,255,156,.06);}
+.pow-feed .artcard::before{content:"";position:absolute;inset:-1px;border-radius:inherit;
+  padding:1.5px;pointer-events:none;opacity:.8;
+  background:conic-gradient(from var(--artcard-angle),transparent 0deg,var(--neon) 40deg,transparent 110deg,transparent 360deg);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+  animation:artcard-orbit 4s linear infinite;}
+@keyframes artcard-orbit{to{--artcard-angle:360deg;}}
+@media (prefers-reduced-motion:reduce){
+  .pow-feed .artcard::before{animation:none;display:none;}
+}
 .pow-feed .artcard-tag{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--neon);
   text-shadow:0 0 8px rgba(0,255,156,.4);}
 .pow-feed .artcard-title{font-size:16px;font-weight:700;line-height:1.35;color:var(--text);}
 .pow-feed .artcard-teaser{font-size:13px;line-height:1.5;color:#b9e6d8;}
 .pow-feed .artcard-meta{margin-top:2px;font-size:12px;letter-spacing:.02em;color:var(--dim);}
 .pow-feed .artcard-price{color:var(--cyan);}
-/* The one-shot trace: a bright arc sweeps once around the border ring via a
-   masked conic-gradient overlay (the classic "animated gradient border" CSS
-   trick — a ::before sized to the border ring, masked so only the ring shows),
-   then the overlay's opacity fades to 0, leaving the plain static glow above. */
-.pow-feed .artcard.entering::before{content:"";position:absolute;inset:-1px;border-radius:inherit;
-  padding:2px;pointer-events:none;
-  background:conic-gradient(from var(--artcard-angle),transparent 0deg,#fff 6deg,var(--neon) 34deg,transparent 80deg);
-  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
-  -webkit-mask-composite:xor;mask-composite:exclude;
-  animation:artcard-trace 1.3s cubic-bezier(.3,0,.2,1) 1 both;}
-@keyframes artcard-trace{
-  0%{--artcard-angle:0deg;opacity:0;}
-  8%{opacity:1;}
-  100%{--artcard-angle:360deg;opacity:0;}
-}
-@media (prefers-reduced-motion:reduce){
-  .pow-feed .artcard.entering::before{animation:none;display:none;}
-  .pow-feed .artcard.entering{animation:none;}
-}
 
 /* ---- profile header ---- */
 .pow-feed .profhead{margin:0 0 8px;}
@@ -1422,23 +1413,12 @@ html:not(.dark) .pow-feed .newposts-pill{color:var(--neon);
 html:not(.dark) .pow-feed .newposts-pill:hover:not(:disabled){color:#fdfcf8;
   background:var(--accent-hover);border-color:var(--accent-hover);box-shadow:var(--paper-shadow);}
 
-/* Article link card: a hairline card that warms on hover — no neon border/glow. */
-/* Paper's "static glow" equivalent: an ink-green ring + a warm tint fill at
-   REST (was a plain muted line, neon only on hover) — the closest a flat
-   ink-on-paper theme gets to "always lit" without an actual glow. */
-html:not(.dark) .pow-feed .artcard{border-color:var(--neon);
-  background:color-mix(in oklab,var(--neon) 8%,var(--panel));
-  box-shadow:0 0 0 1px var(--neon),var(--paper-shadow);}
-html:not(.dark) .pow-feed .artcard:hover{background:var(--accent-tint);box-shadow:0 0 0 1px var(--neon),var(--paper-shadow);}
-/* No gradient sweep on paper (glow/motion-via-light is a dark-theme device) —
-   the one-shot instead fades the ring in from a pale line to full ink-green,
-   the same "ignite via saturation, not glow" swap AnimatedLogo makes. */
-html:not(.dark) .pow-feed .artcard.entering::before{content:none;display:none;}
-html:not(.dark) .pow-feed .artcard.entering{animation:artcard-fadein-paper 1.1s ease-out 1 both;}
-@keyframes artcard-fadein-paper{
-  0%{border-color:var(--line);box-shadow:0 0 0 1px var(--line),var(--paper-shadow);}
-  100%{border-color:var(--neon);box-shadow:0 0 0 1px var(--neon),var(--paper-shadow);}
-}
+/* Article link card: a hairline card that warms on hover — no neon border/glow,
+   and no orbiting ring (that's a dark-theme-only device, see feedTheme's
+   .artcard::before comment above). */
+html:not(.dark) .pow-feed .artcard{border-color:var(--line);background:var(--panel);box-shadow:var(--paper-shadow);}
+html:not(.dark) .pow-feed .artcard:hover{border-color:var(--neon);background:var(--accent-tint);box-shadow:var(--paper-shadow);}
+html:not(.dark) .pow-feed .artcard::before{content:none;display:none;}
 
 /* The neon green survives ONLY as a small solid fill: the live/thread dots. */
 html:not(.dark) .pow-feed .tdot,
