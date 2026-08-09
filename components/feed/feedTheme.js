@@ -1091,10 +1091,14 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 .pow-feed .feed-left::-webkit-scrollbar,.pow-feed .feed-rail::-webkit-scrollbar{display:none;}
 
 /* ---- the front page (left rail): newspaper structure, terminal skin.
-   Type rule: serif = writing, mono = machinery, neon = money. Same 21px
-   top margin arithmetic as .arail so all three column tops align. ---- */
+   Type rule: serif = writing, mono = machinery, neon = money. Same 17px
+   top margin arithmetic as .arail so all three column tops align — the
+   sticky rail clamps to top:76px while .wrap's own natural (non-sticky)
+   top sits at 65px, an 11px gap the wrap's paddingTop:28px doesn't share,
+   so this margin needs to be 11px short of matching it (28-11=17), not
+   equal to it. ---- */
 .pow-feed .npaper{border:1px solid var(--line);border-radius:14px;background:var(--panel2);
-  padding:16px 16px 12px;margin-top:21px;}
+  padding:16px 16px 12px;margin-top:17px;}
 .pow-feed .np-serif{font-family:Georgia,'Iowan Old Style','Times New Roman',serif;}
 .pow-feed .np-mast{border-bottom:1px solid var(--line);
   padding:0 0 7px;text-align:center;font-size:12px;letter-spacing:.24em;text-transform:uppercase;
@@ -1327,13 +1331,16 @@ html:not(.dark) .pow-feed .hr-commentarea::placeholder{color:#8fb3a6;}
 html:not(.dark) .pow-feed .np-entry{border-bottom-color:rgba(191,230,213,.85);}
 html:not(.dark) .pow-feed .np-mast{text-shadow:none;}
 
-/* the ticker card. margin-top is 21px, not the column's 28px, on purpose:
-   the sticky rail is pinned at top:76px — 7px past the grid's natural top
-   under the topbar (69px) — so 76 + 21 = 97px puts this card's top edge
-   exactly level with the compose card (69 + 28) from the very first paint,
-   and keeps it there while scrolling. */
+/* the ticker card. margin-top is 17px, not the column's 28px, on purpose:
+   the sticky rail clamps to top:76px, 11px past .wrap's own natural
+   (non-sticky) top of 65px under the topbar — so this margin has to be
+   11px short of the wrap's paddingTop:28px (28-11=17) for 76+17 to land on
+   the same 93px as the compose card (65+28), not equal to it. Re-measure
+   both numbers (getBoundingClientRect on .feed-rail and .wrap) if the
+   topbar's height ever changes — they silently drifted 4px out of sync
+   once already. */
 .pow-feed .arail{border:1px solid var(--line);border-radius:14px;background:var(--panel2);
-  padding:16px 16px 8px;margin-top:21px;}
+  padding:16px 16px 8px;margin-top:17px;}
 .pow-feed .arail-head{display:flex;align-items:center;gap:9px;font-size:12px;letter-spacing:.22em;
   text-transform:uppercase;color:var(--neon);text-shadow:0 0 10px rgba(0,255,156,.35);}
 .pow-feed .arail-dot{width:7px;height:7px;border-radius:50%;background:var(--neon);
