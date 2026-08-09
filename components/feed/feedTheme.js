@@ -388,6 +388,28 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .ghost{background:transparent;border:1px solid var(--line);color:var(--dim);border-radius:9px;
   padding:9px 16px;font:inherit;font-size:12px;cursor:pointer;transition:border-color .15s,color .15s;}
 .pow-feed .ghost:hover{border-color:var(--neon);color:var(--neon);}
+
+/* The feed composer's Pay button: an icon-only sharp-cornered square at rest
+   (the eCash mark, same asset as the dashboard "Total earned" stat), quiet
+   until you actually have something to pay for. The instant you type, it
+   lights up, widens, the icon settles to the left edge, and the amount
+   reveals on the right. min-width (not width) carries the growth animation —
+   width:auto lets it grow past that for an unusually large amount without
+   clipping, min-width is what's actually animatable. */
+.pow-feed .paybtn{position:relative;display:flex;align-items:center;height:38px;width:40px;min-width:40px;
+  background:transparent;border:1.5px solid var(--line);border-radius:2px;cursor:pointer;overflow:hidden;
+  padding:0;flex:none;transition:min-width .32s cubic-bezier(.4,0,.2,1),border-color .25s,box-shadow .25s;}
+.pow-feed .paybtn.active{width:auto;min-width:118px;}
+.pow-feed .paybtn:disabled{cursor:not-allowed;opacity:.6;}
+.pow-feed .paybtn-icon{position:absolute;top:50%;left:12px;transform:translate(0,-50%);line-height:1;
+  transition:left .32s cubic-bezier(.4,0,.2,1);}
+.pow-feed .paybtn.active .paybtn-icon{left:11px;}
+.pow-feed .paybtn-amt{position:absolute;top:50%;right:12px;transform:translate(6px,-50%);font-size:12.5px;
+  font-weight:700;letter-spacing:.02em;white-space:nowrap;opacity:0;color:var(--neon);
+  transition:opacity .22s .08s,transform .22s .08s;}
+.pow-feed .paybtn.active .paybtn-amt{opacity:1;transform:translate(0,-50%);}
+.pow-feed .paybtn.active:not(:disabled){border-color:var(--neon);box-shadow:0 0 14px rgba(0,255,156,.4);}
+.pow-feed .paybtn.active:hover:not(:disabled){box-shadow:0 0 22px rgba(0,255,156,.55);}
 .pow-feed .linkbtn{background:none;border:none;color:var(--dim);font:inherit;font-size:12px;cursor:pointer;padding:0;
   transition:color .15s;}
 .pow-feed .linkbtn:hover{color:var(--cyan);}
@@ -1373,6 +1395,11 @@ html:not(.dark) .pow-feed .tipgo:hover{
 html:not(.dark) .pow-feed .btn:disabled,
 html:not(.dark) .pow-feed .dashbtn:disabled{
   background:transparent;color:var(--dim);border-color:var(--line);box-shadow:none;}
+/* Pay button on paper: an ink-green ring, no glow (paper kills glow/light-as-
+   motion — same trade every other lit-up control on this theme makes). */
+html:not(.dark) .pow-feed .paybtn-amt{color:var(--neon);}
+html:not(.dark) .pow-feed .paybtn.active:not(:disabled){border-color:var(--neon);box-shadow:0 0 0 1px var(--neon);}
+html:not(.dark) .pow-feed .paybtn.active:hover:not(:disabled){box-shadow:0 0 0 1.5px var(--neon);}
 /* Secondary/ghost dashbtn stays an outline, not a fill. */
 html:not(.dark) .pow-feed .dashbtn.sec{background:transparent;color:var(--neon);border-color:var(--border-strong,#cfc9b8);}
 html:not(.dark) .pow-feed .dashbtn.sec:hover{background:var(--accent-tint);color:var(--accent-hover);border-color:var(--neon);box-shadow:none;}
