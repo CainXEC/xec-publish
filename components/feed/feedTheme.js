@@ -389,15 +389,16 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
   padding:9px 16px;font:inherit;font-size:12px;cursor:pointer;transition:border-color .15s,color .15s;}
 .pow-feed .ghost:hover{border-color:var(--neon);color:var(--neon);}
 
-/* The feed composer's Pay button: an icon-only sharp-cornered square at rest
-   (the eCash mark, same asset as the dashboard "Total earned" stat), quiet
-   until you actually have something to pay for. The instant you type, it
-   lights up, widens, the icon settles to the left edge, and the amount
-   reveals on the right. min-width (not width) carries the growth animation —
-   width:auto lets it grow past that for an unusually large amount without
-   clipping, min-width is what's actually animatable. */
+/* The feed composer's Pay button: an icon-only square at rest (the eCash
+   mark, same asset as the dashboard "Total earned" stat), quiet until you
+   actually have something to pay for. The instant you type, it lights up,
+   widens, the icon settles to the left edge, and the amount reveals on the
+   right. min-width (not width) carries the growth animation — width:auto
+   lets it grow past that for an unusually large amount without clipping,
+   min-width is what's actually animatable. Corners rounded to match the
+   site's other buttons (9px, same as the shared .btn radius). */
 .pow-feed .paybtn{position:relative;display:flex;align-items:center;height:38px;width:40px;min-width:40px;
-  background:transparent;border:1.5px solid var(--line);border-radius:2px;cursor:pointer;overflow:hidden;
+  background:transparent;border:1.5px solid var(--line);border-radius:9px;cursor:pointer;overflow:hidden;
   padding:0;flex:none;transition:min-width .32s cubic-bezier(.4,0,.2,1),border-color .25s,box-shadow .25s;}
 .pow-feed .paybtn.active{width:auto;min-width:118px;}
 .pow-feed .paybtn:disabled{cursor:not-allowed;opacity:.6;}
