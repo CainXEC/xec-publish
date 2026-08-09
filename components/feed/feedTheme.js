@@ -304,9 +304,12 @@ html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation-name:pocke
   display:block;}
 .pow-feed .compose textarea::placeholder{color:#37655a;}
 /* @mention autocomplete: anchored to the textarea's own wrapper (not the whole
-   panel) so it never collides with the poll-composer block below the text. */
+   panel) so it never collides with the poll-composer block below the text.
+   top/left are set inline per-keystroke (useMentionSuggest's caretCoordinates)
+   to sit right under the "@" itself, not the bottom of the whole (often
+   multi-row, mostly-empty-below-the-caret) textarea box. */
 .pow-feed .composetextwrap{position:relative;}
-.pow-feed .mentionsuggest{position:absolute;top:100%;left:0;z-index:20;margin:4px 0 0;width:min(240px,100%);
+.pow-feed .mentionsuggest{position:absolute;z-index:20;margin:4px 0 0;width:min(240px,100%);
   max-height:220px;overflow-y:auto;list-style:none;padding:6px;background:var(--panel);
   border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.4);}
 .pow-feed .mentionsuggest-item{display:block;width:100%;box-sizing:border-box;text-align:left;background:none;
