@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import EmojiPicker from '@/components/EmojiPicker'
+import { useMentionSuggest } from '@/components/feed/useMentionSuggest'
 import { prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 import { pollUntil } from '@/lib/ecash/pollUntil'
 // Pocket-aware gateway: identical contract to the cashtabPay trio. Pocket
@@ -167,6 +168,20 @@ export default function ComposeBox({
       return next
     })
   }, [])
+
+  // @handle autocomplete: type "@" + letters, pick from who matches. Applies
+  // its pick the same way insertEmoji does — replace the span, refocus, put the
+  // caret right after it — so it feels like an ordinary part of typing.
+  const mention = useMentionSuggest(textareaRef, {
+    onSelect: useCallback((next, pos) => {
+      setContent(next)
+      requestAnimationFrame(() => {
+        const el = textareaRef.current
+        el?.focus()
+        try { el?.setSelectionRange(pos, pos) } catch { /* noop */ }
+      })
+    }, []),
+  })
 
   const resetToCompose = useCallback(() => {
     setPhase('compose')
@@ -465,22 +480,52 @@ export default function ComposeBox({
 
   return (
     <div className={`panel compose${compact ? ' compact' : ''}`}>
-      <textarea
-        ref={textareaRef}
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        rows={isReply ? 2 : 3}
-        placeholder={
-          placeholder ||
-          (isReply
-            ? 'Post your reply…'
-            : isQuote
-              ? 'Add a comment…'
-              : pollActive
-                ? 'Ask a question…'
-                : feedPlaceholder)
-        }
-      />
+      <div className="composetextwrap">
+        <textarea
+          ref={textareaRef}
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          onKeyDown={mention.onKeyDown}
+          rows={isReply ? 2 : 3}
+          placeholder={
+            placeholder ||
+            (isReply
+              ? 'Post your reply…'
+              : isQuote
+                ? 'Add a comment…'
+                : pollActive
+                  ? 'Ask a question…'
+                  : feedPlaceholder)
+          }
+        />
+        {mention.open ? (
+          <ul className="mentionsuggest" role="listbox">
+            {mention.items.map((it, i) => (
+              <li key={it.handle}>
+                <button
+                  type="button"
+                  className={`mentionsuggest-item${i === mention.activeIndex ? ' active' : ''}`}
+                  role="option"
+                  aria-selected={i === mention.activeIndex}
+                  // mousedown-preventDefault keeps the textarea's selection/caret
+                  // intact through the click, same trick EmojiPicker uses — else
+                  // the blur-before-click would collapse the active mention range.
+                  onMouseDown={(e) => e.preventDefault()}
+                  onMouseEnter={() => mention.setActiveIndex(i)}
+                  onClick={() => mention.select(it.handle)}
+                >
+                  <span
+                    className="mentionsuggest-handle"
+                    style={it.color ? { '--hc': it.color } : undefined}
+                  >
+                    @{it.handle}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
       {isQuote ? <QuotedEmbed post={quotedPost} interactive={false} /> : null}
 
       {pollActive ? (
