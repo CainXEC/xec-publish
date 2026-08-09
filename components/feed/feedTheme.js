@@ -303,6 +303,16 @@ html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation-name:pocke
   font:inherit;font-size:15px;line-height:1.55;box-sizing:border-box;min-height:72px;max-height:360px;overflow-y:auto;
   display:block;}
 .pow-feed .compose textarea::placeholder{color:#37655a;}
+/* @mention autocomplete: anchored to the textarea's own wrapper (not the whole
+   panel) so it never collides with the poll-composer block below the text. */
+.pow-feed .composetextwrap{position:relative;}
+.pow-feed .mentionsuggest{position:absolute;top:100%;left:0;z-index:20;margin:4px 0 0;width:min(240px,100%);
+  max-height:220px;overflow-y:auto;list-style:none;padding:6px;background:var(--panel);
+  border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.4);}
+.pow-feed .mentionsuggest-item{display:block;width:100%;box-sizing:border-box;text-align:left;background:none;
+  border:none;border-radius:7px;padding:7px 9px;font:inherit;font-size:13.5px;cursor:pointer;color:var(--text);}
+.pow-feed .mentionsuggest-item.active,.pow-feed .mentionsuggest-item:hover{background:rgba(0,255,156,.1);}
+.pow-feed .mentionsuggest-handle{color:var(--hc,var(--cyan));}
 .pow-feed .composebar{display:flex;align-items:center;justify-content:space-between;gap:12px 10px;margin-top:12px;
   border-top:1px solid var(--line);padding-top:12px;flex-wrap:wrap;}
 .pow-feed .barleft{display:flex;align-items:center;gap:8px;}
@@ -1365,7 +1375,10 @@ html:not(.dark) .pow-feed .notif-agent-dot{box-shadow:none;}
 /* Floating menus / popovers: a soft ink shadow, not the dark theme's rgba(0,0,0,.5). */
 html:not(.dark) .pow-feed .hammenu,
 html:not(.dark) .pow-feed .menupop,
-html:not(.dark) .pow-feed .tipmenu{box-shadow:0 8px 24px rgba(26,28,23,.12);}
+html:not(.dark) .pow-feed .tipmenu,
+html:not(.dark) .pow-feed .mentionsuggest{box-shadow:0 8px 24px rgba(26,28,23,.12);}
+html:not(.dark) .pow-feed .mentionsuggest-item.active,
+html:not(.dark) .pow-feed .mentionsuggest-item:hover{background:var(--accent-tint);}
 
 /* Green/white hover washes -> a soft warm accent tint so they read on paper. */
 html:not(.dark) .pow-feed .hammenu-item:hover,
