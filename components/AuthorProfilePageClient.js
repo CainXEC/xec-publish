@@ -454,9 +454,13 @@ export default function AuthorProfilePageClient({
     }
   }, [holderAddress])
 
+  // A quote is a new top-level post, authored by the viewer — it doesn't
+  // belong in THIS page's `posts` list (the profile being viewed). Land back
+  // on the main feed (where it sorts to the top) rather than its own bare
+  // permalink page, same fix as the standalone thread page (FeedThreadClient).
   const handleQuoted = useCallback(
     (quote) => {
-      if (quote?.txid) router.push(`/feed/${quote.txid}`)
+      if (quote?.txid) router.push('/')
     },
     [router],
   )
