@@ -704,18 +704,20 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
   border:1px solid var(--neon);border-radius:12px;background:var(--panel2);
   transition:box-shadow .15s,background .15s;}
 .pow-feed .artcard:hover{box-shadow:0 0 20px rgba(0,255,156,.22);background:rgba(0,255,156,.06);}
-/* The base border is ALSO solid neon (unchanged from before this whole
-   project), so a highlight arc drawn in that same var(--neon) is invisible —
-   it can't stand out from a ring that's already that color everywhere. A
-   white leading edge (same trick the old one-shot trace used) is what
-   actually makes the orbit visible: a hot white point sweeping around,
-   trailed by a brighter-than-base neon tail, everywhere else transparent
-   (so the plain neon ring shows through unchanged in the arc's absence). */
+/* A point of LIGHT orbiting the border, not just a colored stripe. The base
+   border is solid neon everywhere, so the arc has to out-shine it: a white-hot
+   head with a neon tail trailing behind (a comet), and — the piece that sells
+   it as a light rather than a painted arc — a drop-shadow bloom that travels
+   WITH the head, spilling glow off the ring as it passes. Everywhere the comet
+   isn't, the gradient is transparent, so the plain neon ring shows through
+   unchanged. The bloom is a dark-theme device (see the paper override below,
+   which trades it for pure saturation). */
 .pow-feed .artcard::before{content:"";position:absolute;inset:-1px;border-radius:inherit;
   padding:1.5px;pointer-events:none;
-  background:conic-gradient(from var(--artcard-angle),transparent 0deg,#fff 8deg,var(--neon) 60deg,transparent 140deg,transparent 360deg);
+  background:conic-gradient(from var(--artcard-angle),transparent 0deg,transparent 28deg,rgba(0,255,156,.55) 55deg,var(--neon) 72deg,#a9ffd8 82deg,#fff 89deg,#fff 92deg,transparent 97deg,transparent 360deg);
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
   -webkit-mask-composite:xor;mask-composite:exclude;
+  filter:drop-shadow(0 0 5px #fff) drop-shadow(0 0 14px var(--neon));
   animation:artcard-orbit 4s linear infinite;}
 @keyframes artcard-orbit{to{--artcard-angle:360deg;}}
 @media (prefers-reduced-motion:reduce){
@@ -1420,12 +1422,25 @@ html:not(.dark) .pow-feed .newposts-pill{color:var(--neon);
 html:not(.dark) .pow-feed .newposts-pill:hover:not(:disabled){color:#fdfcf8;
   background:var(--accent-hover);border-color:var(--accent-hover);box-shadow:var(--paper-shadow);}
 
-/* Article link card: a hairline card that warms on hover — no neon border/glow,
-   and no orbiting ring (that's a dark-theme-only device, see feedTheme's
-   .artcard::before comment above). */
+/* Article link card: a hairline card that warms on hover — no neon border/glow. */
 html:not(.dark) .pow-feed .artcard{border-color:var(--line);background:var(--panel);box-shadow:var(--paper-shadow);}
 html:not(.dark) .pow-feed .artcard:hover{border-color:var(--neon);background:var(--accent-tint);box-shadow:var(--paper-shadow);}
-html:not(.dark) .pow-feed .artcard::before{content:none;display:none;}
+/* Paper's take on the orbit: a pen tracing the margin, not a light. Glow is a
+   dark-theme device, so instead of a blooming comet this is a crisp saturated
+   ink bead (bright --live green head → ink-green tail, no drop-shadow) drawing
+   itself around the border — the "ignite via saturation, not glow" swap the
+   AnimatedLogo makes. Slower than the dark comet (6s) so it reads as a calm
+   pen stroke fitting the manuscript theme, not a racing light. Re-enables the
+   ::before the base rule set up (content/mask/inset all inherit); only the
+   paint (background), the bloom (filter:none), and the pace change here. */
+html:not(.dark) .pow-feed .artcard::before{content:"";display:block;filter:none;
+  background:conic-gradient(from var(--artcard-angle),transparent 0deg,transparent 34deg,var(--live) 58deg,var(--neon) 67deg,transparent 79deg,transparent 360deg);
+  animation-duration:6s;}
+/* Paper reduced-motion: the base @media rule above is out-specificity'd by the
+   html:not(.dark) paper selector, so it needs its own paper-scoped kill. */
+@media (prefers-reduced-motion:reduce){
+  html:not(.dark) .pow-feed .artcard::before{animation:none;display:none;}
+}
 
 /* The neon green survives ONLY as a small solid fill: the live/thread dots. */
 html:not(.dark) .pow-feed .tdot,
