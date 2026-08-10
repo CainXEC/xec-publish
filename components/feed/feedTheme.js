@@ -704,9 +704,16 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
   border:1px solid var(--neon);border-radius:12px;background:var(--panel2);
   transition:box-shadow .15s,background .15s;}
 .pow-feed .artcard:hover{box-shadow:0 0 20px rgba(0,255,156,.22);background:rgba(0,255,156,.06);}
+/* The base border is ALSO solid neon (unchanged from before this whole
+   project), so a highlight arc drawn in that same var(--neon) is invisible —
+   it can't stand out from a ring that's already that color everywhere. A
+   white leading edge (same trick the old one-shot trace used) is what
+   actually makes the orbit visible: a hot white point sweeping around,
+   trailed by a brighter-than-base neon tail, everywhere else transparent
+   (so the plain neon ring shows through unchanged in the arc's absence). */
 .pow-feed .artcard::before{content:"";position:absolute;inset:-1px;border-radius:inherit;
-  padding:1.5px;pointer-events:none;opacity:.8;
-  background:conic-gradient(from var(--artcard-angle),transparent 0deg,var(--neon) 40deg,transparent 110deg,transparent 360deg);
+  padding:1.5px;pointer-events:none;
+  background:conic-gradient(from var(--artcard-angle),transparent 0deg,#fff 8deg,var(--neon) 60deg,transparent 140deg,transparent 360deg);
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
   -webkit-mask-composite:xor;mask-composite:exclude;
   animation:artcard-orbit 4s linear infinite;}
