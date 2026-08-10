@@ -9,6 +9,7 @@ import {
 } from "next/font/google";
 import { Suspense } from "react";
 import ScrollToTopOnRouteChange from "@/components/ScrollToTopOnRouteChange";
+import ThemeSync from "@/components/ThemeSync";
 import NavProgress from "@/components/NavProgress";
 import BottomNav from "@/components/feed/BottomNav";
 import PresenceHeartbeat from "@/components/PresenceHeartbeat";
@@ -76,7 +77,16 @@ export const metadata: Metadata = {
   },
 };
 
-const themeInitScript = `(function(){try{var t=localStorage.getItem("theme");if(!t){var m=document.cookie.match(/(?:^|; )theme=([^;]*)/);if(m)t=m[1];}var d;if(t==="light")d=false;else if(t==="dark")d=true;else d=window.matchMedia("(prefers-color-scheme: dark)").matches;document.documentElement.classList.toggle("dark",d);}catch(e){}})();`;
+// Runs before first paint. Precedence is COOKIE-FIRST — deliberately the same
+// source the server used to render <html> above — then localStorage, then the
+// OS. Matching the server's source is what prevents the "load in one theme,
+// then flip" jump: whenever a cookie exists (the normal case), the class this
+// computes equals what the server already rendered. It also re-persists BOTH
+// the cookie and localStorage from the resolved value, so (a) they can't drift
+// apart and (b) refreshing the cookie every visit dodges Safari's 7-day cap on
+// script-set cookies, which used to let the cookie silently expire while
+// localStorage survived. Cross-tab changes are handled live by ThemeSync.
+const themeInitScript = `(function(){try{var m=document.cookie.match(/(?:^|; )theme=([^;]*)/);var c=m?m[1]:null;var ls=null;try{ls=localStorage.getItem("theme")}catch(e){}var t=c||ls;var d;if(t==="light")d=false;else if(t==="dark")d=true;else d=window.matchMedia("(prefers-color-scheme: dark)").matches;document.documentElement.classList.toggle("dark",d);var v=d?"dark":"light";try{localStorage.setItem("theme",v)}catch(e){}document.cookie="theme="+v+"; path=/; max-age=31536000; samesite=lax";}catch(e){}})();`;
 
 export default async function RootLayout({
   children,
@@ -107,6 +117,7 @@ export default async function RootLayout({
       </head>
       <body className="min-h-[100dvh]">
         <ScrollToTopOnRouteChange />
+        <ThemeSync />
         <Suspense fallback={null}>
           <NavProgress />
         </Suspense>

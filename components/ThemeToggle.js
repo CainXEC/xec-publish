@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useLayoutEffect, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 
 // `feed` renders the toggle as a neon .toplink so it sits inside the feed
 // family's self-contained .pow-feed topbar; `bare` emits a plain `pow-toggle`
@@ -11,6 +11,19 @@ export default function ThemeToggle({ variant = 'default' }) {
 
   useLayoutEffect(() => {
     setIsDark(document.documentElement.classList.contains('dark'))
+  }, [])
+
+  // Keep the icon correct when ANOTHER tab changes the theme. ThemeSync (global)
+  // already flips the <html>.dark class on the same event; this just syncs this
+  // button's own label/icon so it doesn't show a stale sun/moon after a
+  // cross-tab change.
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key !== 'theme' || !e.newValue) return
+      setIsDark(e.newValue === 'dark')
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
   }, [])
 
   const toggle = useCallback(() => {
