@@ -131,7 +131,14 @@ export function useMentionSuggest(textareaRef, { onSelect } = {}) {
   // cancelled.
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (!query) return undefined
+    if (!query) {
+      // Mention context closed (deleted back past "@", or a bare "@" with no
+      // letters yet) — drop any stale items now, not just on the next fetch,
+      // or the OLD query's results flash back open the instant a fresh
+      // "@letter" starts a new mention before its own fetch resolves.
+      setItems([])
+      return undefined
+    }
     const myReqId = ++reqIdRef.current
     debounceRef.current = setTimeout(async () => {
       try {
