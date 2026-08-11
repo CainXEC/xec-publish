@@ -253,13 +253,18 @@ export default function ActivityRail({
     }
   }, [active, refresh])
 
-  // Hide rows from accounts the viewer has blocked. Rows with no resolvable
-  // account (mints, stray-wallet unlocks — actorAccountId null) always show.
+  // Hide rows from accounts the viewer has blocked — both the actor AND, for a
+  // row that surfaces another post's content (a repost of a blocked account's
+  // post), that target's author. Rows with no resolvable account (mints,
+  // stray-wallet unlocks — both ids null) always show.
   const visibleItems = useMemo(
     () =>
       items === null
         ? null
-        : items.filter((it) => !it.actorAccountId || !blockedIds.has(it.actorAccountId)),
+        : items.filter(
+            (it) =>
+              !blockedIds.has(it.actorAccountId) && !blockedIds.has(it.targetAccountId),
+          ),
     [items, blockedIds],
   )
 

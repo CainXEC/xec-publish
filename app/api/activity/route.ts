@@ -48,6 +48,11 @@ export type ActivityItem = {
    *  ActivityRail does it in an overlay, like the feed's viewer-state). Null for
    *  rows with no resolvable account (mints, stray-wallet unlocks). */
   actorAccountId: string | null;
+  /** For rows whose `target` quotes ANOTHER post's content (a repost/like/tip of
+   *  a post), the account that authored that target — so the client also hides a
+   *  row that surfaces a blocked account's content even when the actor isn't
+   *  blocked (e.g. a repost of a blocked account's post). Null otherwise. */
+  targetAccountId?: string | null;
   /** Who/what the action touched: a post author byline, article title, or handle. */
   target: string | null;
   amountXec: number | null;
@@ -527,6 +532,9 @@ async function buildActivity(req: NextRequest) {
       color: liveColor(e.actor_account_id),
       actorHref: profileHref(actorIdentity),
       actorAccountId: e.actor_account_id,
+      // The reposted/liked post's author — so a repost of a blocked account's
+      // post is hidden even though the reposter isn't blocked.
+      targetAccountId: info?.authorAccountId ?? null,
       target: targetText,
       amountXec: e.amount_sats == null ? null : e.amount_sats / 100,
       at: e.created_at,
