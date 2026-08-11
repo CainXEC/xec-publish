@@ -195,7 +195,25 @@ export default function FeedClient({
     // it has no author) — skip it; the server has no state to report for it.
     const realPosts = foryouPosts.filter((p) => !p.mintDigest)
     const txids = realPosts.map((p) => p.txid).filter(Boolean)
-    const authorIds = [...new Set(realPosts.map((p) => p.author_account_id).filter(Boolean))]
+    // Include every account whose content is visible ON each post, not just the
+    // post's own author: the cached feed is viewer-neutral, so a blocked account
+    // can be the author of a teaser reply (topReply), a quoted post, a linked-post
+    // embed, or the reply parent riding inside a NON-blocked post. Sending all of
+    // them lets the server flag which are blocked, so we can scrub each embed below
+    // (the outer post stays unless ITS author is blocked).
+    const authorIds = [
+      ...new Set(
+        realPosts
+          .flatMap((p) => [
+            p.author_account_id,
+            p.topReply?.author_account_id,
+            p.quoted?.author_account_id,
+            p.linkedPost?.author_account_id,
+            p.parent?.author_account_id,
+          ])
+          .filter(Boolean),
+      ),
+    ]
     ;(async () => {
       try {
         const res = await fetch('/api/feed/viewer-state', {
@@ -222,6 +240,13 @@ export default function FeedClient({
               likedByViewer: liked.has(p.txid),
               repostedByViewer: reposted.has(p.txid),
               followedByViewer: followed.has(p.author_account_id),
+              // The post stays (its own author isn't blocked), but scrub any
+              // embed authored by a blocked account — teaser reply, quoted post,
+              // linked-post embed, or reply parent.
+              topReply: blocked.has(p.topReply?.author_account_id) ? null : p.topReply,
+              quoted: blocked.has(p.quoted?.author_account_id) ? null : p.quoted,
+              linkedPost: blocked.has(p.linkedPost?.author_account_id) ? null : p.linkedPost,
+              parent: blocked.has(p.parent?.author_account_id) ? null : p.parent,
             })),
         }))
       } catch {

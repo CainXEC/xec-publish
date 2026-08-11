@@ -174,6 +174,12 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to block')
       setOpen(false)
+      // Tell any live surface that renders a viewer-neutral, cached payload it
+      // can't filter server-side (the ActivityRail firehose) to hide this account
+      // immediately, without waiting for a navigation.
+      window.dispatchEvent(
+        new CustomEvent('pow:block-changed', { detail: { accountId: authorAccountId, blocked: true } }),
+      )
       onBlocked?.(authorAccountId)
     } catch (e) {
       window.alert(e?.message || 'Failed to block')

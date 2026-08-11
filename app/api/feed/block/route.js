@@ -4,6 +4,34 @@ import { NextResponse } from 'next/server'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
+import { blockedAccountIds } from '@/lib/feedBlocks'
+
+/**
+ * The signed-in viewer's full block set — every account id in a block
+ * relationship with them in EITHER direction (accounts they blocked + accounts
+ * that blocked them). Not signed in → empty.
+ *
+ * Used by surfaces that render a viewer-NEUTRAL, cached payload the server can't
+ * filter per-viewer — the live ActivityRail — so the client can drop blocked
+ * accounts' rows locally. Fetched once (re-used across the rail's frequent polls
+ * and websocket nudges) rather than intersecting a fresh set on every refresh.
+ * Per-viewer, so never cached.
+ */
+export async function GET() {
+  const acct = await getAuthedAccount()
+  if (!acct) {
+    return NextResponse.json(
+      { ids: [] },
+      { headers: { 'Cache-Control': 'private, no-store' } },
+    )
+  }
+  const supabase = adminDb()
+  const ids = await blockedAccountIds(supabase, acct.accountId)
+  return NextResponse.json(
+    { ids: [...ids] },
+    { headers: { 'Cache-Control': 'private, no-store' } },
+  )
+}
 
 /**
  * Toggle a feed-native block: the signed-in account blocks/unblocks another
