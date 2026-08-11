@@ -77,4 +77,73 @@ describe('useMentionSuggest', () => {
     expect(result.current.items).toEqual([{ handle: 'b-match', color: '#fff' }])
     expect(result.current.open).toBe(true)
   })
+
+  it('does not flash the old letter when swapping letters WITHOUT passing through empty', async () => {
+    // The path the first fix missed: "@a" -> "@b" directly (select-and-replace,
+    // or backspace+type in one go). Query jumps "a" -> "b" without ever being
+    // empty, so the stale-clear-on-empty guard never fires — only prefix-matching
+    // the visible list against the live query hides "a-match" here.
+    const el = makeTextarea('@a')
+    const ref = { current: el }
+    const { result } = renderHook(() => useMentionSuggest(ref))
+
+    act(() => result.current.recompute())
+    await act(async () => {
+      vi.advanceTimersByTime(150)
+    })
+    act(() => pending.get('a')())
+    await act(async () => {})
+    expect(result.current.items).toEqual([{ handle: 'a-match', color: '#fff' }])
+
+    // Swap the letter in place: "@a" -> "@b", query goes straight from "a" to "b".
+    el.value = '@b'
+    el.selectionStart = el.selectionEnd = 2
+    act(() => result.current.recompute())
+
+    // "b"'s fetch hasn't resolved yet — the still-held "a-match" must NOT show,
+    // because it doesn't start with "b".
+    expect(result.current.items).toEqual([])
+    expect(result.current.open).toBe(false)
+
+    await act(async () => {
+      vi.advanceTimersByTime(150)
+    })
+    act(() => pending.get('b')())
+    await act(async () => {})
+    expect(result.current.items).toEqual([{ handle: 'b-match', color: '#fff' }])
+  })
+
+  it('keeps matching results visible while refining a prefix (no flicker)', async () => {
+    // Typing more letters of the SAME stem should keep showing the still-valid
+    // subset during the next fetch, not blank out. "@ca" -> "@cat": the cached
+    // "cat-…" style match still starts with "cat", so it stays visible.
+    global.fetch = vi.fn((url) => {
+      const q = decodeURIComponent(String(url).split('q=')[1])
+      return new Promise((resolve) => {
+        // Every query resolves with a handle under the "cat" stem so refinement
+        // keeps a match. (Real prefix search would; this mirrors it.)
+        pending.set(q, () => resolve({ json: async () => ({ items: [{ handle: 'cathy', color: '#fff' }] }) }))
+      })
+    })
+
+    const el = makeTextarea('@ca')
+    const ref = { current: el }
+    const { result } = renderHook(() => useMentionSuggest(ref))
+
+    act(() => result.current.recompute())
+    await act(async () => {
+      vi.advanceTimersByTime(150)
+    })
+    act(() => pending.get('ca')())
+    await act(async () => {})
+    expect(result.current.items).toEqual([{ handle: 'cathy', color: '#fff' }])
+
+    // Refine to "cat" — "cathy" still matches the new prefix, so it stays shown
+    // immediately (no blank flash) even before "cat"'s fetch resolves.
+    el.value = '@cat'
+    el.selectionStart = el.selectionEnd = 4
+    act(() => result.current.recompute())
+    expect(result.current.items).toEqual([{ handle: 'cathy', color: '#fff' }])
+    expect(result.current.open).toBe(true)
+  })
 })

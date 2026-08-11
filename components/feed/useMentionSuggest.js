@@ -28,7 +28,7 @@
 //  update inside React's normal batch, in the right order, every time.
 // =============================================================================
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 const HANDLE_CHARS = 'A-Za-z0-9_'
 // Boundary mirrors contentLinks.js: an '@' preceded by a handle char, another
@@ -131,14 +131,7 @@ export function useMentionSuggest(textareaRef, { onSelect } = {}) {
   // cancelled.
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (!query) {
-      // Mention context closed (deleted back past "@", or a bare "@" with no
-      // letters yet) — drop any stale items now, not just on the next fetch,
-      // or the OLD query's results flash back open the instant a fresh
-      // "@letter" starts a new mention before its own fetch resolves.
-      setItems([])
-      return undefined
-    }
+    if (!query) return undefined
     const myReqId = ++reqIdRef.current
     debounceRef.current = setTimeout(async () => {
       try {
@@ -156,10 +149,21 @@ export function useMentionSuggest(textareaRef, { onSelect } = {}) {
     return () => clearTimeout(debounceRef.current)
   }, [query])
 
-  // Boolean(query), not `query != null` — a bare "@" (query === '') must stay
-  // closed even if `items` still holds a PRIOR query's results (nothing here
-  // clears them synchronously; see the fetch effect above).
-  const open = Boolean(query) && items.length > 0
+  // The dropdown must only ever show handles that match what's typed RIGHT NOW.
+  // `items` is React state, so between keystrokes it still holds the PREVIOUS
+  // query's results until the new (debounced) fetch resolves ~150ms+ later —
+  // and query can jump straight from one word to another without passing through
+  // empty (delete-and-retype, select-and-replace, or backspacing to a different
+  // stem). Deriving the visible list by prefix-matching against the LIVE query
+  // makes stale results self-hide: they don't start with the new letters, so
+  // they're filtered out instantly instead of flashing before the fetch lands.
+  // A bare "@" (query === '') yields nothing, keeping the dropdown closed.
+  const visibleItems = useMemo(() => {
+    if (!query) return []
+    const q = query.toLowerCase()
+    return items.filter((it) => (it?.handle ?? '').toLowerCase().startsWith(q))
+  }, [items, query])
+  const open = visibleItems.length > 0
 
   const close = useCallback(() => {
     setQuery(null)
@@ -188,21 +192,24 @@ export function useMentionSuggest(textareaRef, { onSelect } = {}) {
       if (!open) return
       if (e.key === 'ArrowDown') {
         e.preventDefault()
-        setActiveIndex((i) => (i + 1) % items.length)
+        setActiveIndex((i) => (i + 1) % visibleItems.length)
       } else if (e.key === 'ArrowUp') {
         e.preventDefault()
-        setActiveIndex((i) => (i - 1 + items.length) % items.length)
+        setActiveIndex((i) => (i - 1 + visibleItems.length) % visibleItems.length)
       } else if (e.key === 'Enter' || e.key === 'Tab') {
         e.preventDefault()
-        const chosen = items[activeIndex]
+        // Clamp: the visible list can shrink under a stale activeIndex mid-typing.
+        const chosen = visibleItems[activeIndex] ?? visibleItems[0]
         if (chosen) select(chosen.handle)
       } else if (e.key === 'Escape') {
         e.preventDefault()
         close()
       }
     },
-    [open, items, activeIndex, select, close],
+    [open, visibleItems, activeIndex, select, close],
   )
 
-  return { items, activeIndex, setActiveIndex, open, onKeyDown, recompute, select, close, coords }
+  // Expose the prefix-filtered list as `items` so the host renders exactly what
+  // matches the live query (never a prior query's leftovers).
+  return { items: visibleItems, activeIndex, setActiveIndex, open, onKeyDown, recompute, select, close, coords }
 }
