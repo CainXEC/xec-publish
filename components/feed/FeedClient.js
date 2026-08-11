@@ -195,7 +195,17 @@ export default function FeedClient({
     // it has no author) — skip it; the server has no state to report for it.
     const realPosts = foryouPosts.filter((p) => !p.mintDigest)
     const txids = realPosts.map((p) => p.txid).filter(Boolean)
-    const authorIds = [...new Set(realPosts.map((p) => p.author_account_id).filter(Boolean))]
+    // Include each post's topReply author too: the teaser reply is baked into the
+    // viewer-neutral cache, so a blocked account can author the reply shown under
+    // a NON-blocked post. Sending its author id lets the server report it blocked,
+    // so we can drop that one teaser below (the post itself stays).
+    const authorIds = [
+      ...new Set(
+        realPosts
+          .flatMap((p) => [p.author_account_id, p.topReply?.author_account_id])
+          .filter(Boolean),
+      ),
+    ]
     ;(async () => {
       try {
         const res = await fetch('/api/feed/viewer-state', {
@@ -222,6 +232,12 @@ export default function FeedClient({
               likedByViewer: liked.has(p.txid),
               repostedByViewer: reposted.has(p.txid),
               followedByViewer: followed.has(p.author_account_id),
+              // Drop the conversation teaser when its author is blocked — the
+              // post stays, just without a reply from someone the viewer blocked.
+              topReply:
+                p.topReply && blocked.has(p.topReply.author_account_id)
+                  ? null
+                  : p.topReply,
             })),
         }))
       } catch {

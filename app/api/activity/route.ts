@@ -43,6 +43,11 @@ export type ActivityItem = {
   /** Link to the actor's profile ("/@handle" or "/a/<address>"), or null for
    *  placeholder bylines ("a reader", "an author") that have no profile. */
   actorHref: string | null;
+  /** The actor's ACCOUNT id, when known — lets the client drop rows from accounts
+   *  the viewer has blocked (the neutral, cached firehose can't filter per-viewer;
+   *  ActivityRail does it in an overlay, like the feed's viewer-state). Null for
+   *  rows with no resolvable account (mints, stray-wallet unlocks). */
+  actorAccountId: string | null;
   /** Who/what the action touched: a post author byline, article title, or handle. */
   target: string | null;
   amountXec: number | null;
@@ -494,6 +499,7 @@ async function buildActivity(req: NextRequest) {
       actor: displayIdentity(identity, "someone"),
       color: liveColor(p.author_account_id),
       actorHref: profileHref(identity),
+      actorAccountId: p.author_account_id,
       target: snippet(p.content),
       amountXec: p.amount_sats == null ? null : p.amount_sats / 100,
       at: p.created_at,
@@ -520,6 +526,7 @@ async function buildActivity(req: NextRequest) {
       actor: displayIdentity(actorIdentity, "someone"),
       color: liveColor(e.actor_account_id),
       actorHref: profileHref(actorIdentity),
+      actorAccountId: e.actor_account_id,
       target: targetText,
       amountXec: e.amount_sats == null ? null : e.amount_sats / 100,
       at: e.created_at,
@@ -547,6 +554,9 @@ async function buildActivity(req: NextRequest) {
   // unlock's payer is the linked, non-primary pocket address. Strays (no account)
   // are absent and fall back to the payer address in the loop below.
   const payerIdentity = new Map<string, string>();
+  // payer bare address -> reader ACCOUNT id, so an unlock row can be dropped when
+  // the viewer has blocked that reader (scoped profile rails show unlocks).
+  const payerAccountId = new Map<string, string>();
   if (payerBare.length > 0) {
     const forms = payerBare.flatMap((b) => [b, `ecash:${b}`]);
     const { data: links } = await supabase
@@ -559,6 +569,7 @@ async function buildActivity(req: NextRequest) {
         l.account_id,
       ])
     );
+    for (const [addr, accountId] of accountByAddr) payerAccountId.set(addr, accountId);
     const accountIds = [...new Set(accountByAddr.values())];
     if (accountIds.length > 0) {
       const [{ data: accounts }, { data: primaries }] = await Promise.all([
@@ -597,6 +608,7 @@ async function buildActivity(req: NextRequest) {
       kind: "unlock",
       actor: identity ? displayIdentity(identity, "a reader") : "a reader",
       actorHref: profileHref(identity),
+      actorAccountId: payer ? payerAccountId.get(payer) ?? null : null,
       target: u.posts.title ?? "an article",
       amountXec: u.posts.price_xec ?? null,
       at: u.unlocked_at,
@@ -619,9 +631,12 @@ async function buildActivity(req: NextRequest) {
   const authorRaw = new Map<string, string>();
   // Chosen handle color, keyed by author_id — only set for authors showing a handle.
   const authorColor = new Map<string, string>();
+  // author_id -> ACCOUNT id, so a publish row can be dropped when the viewer
+  // blocked that author (blocks are keyed by account, publishes by author_id).
+  const authorAccount = new Map<string, string>();
   if (authorIds.length > 0) {
     const [{ data: accounts }, { data: authors }] = await Promise.all([
-      supabase.from("accounts").select("author_id, display_handle, handle_color").in("author_id", authorIds),
+      supabase.from("accounts").select("id, author_id, display_handle, handle_color").in("author_id", authorIds),
       supabase.from("authors").select("id, xec_address").in("id", authorIds),
     ]);
     for (const a of (authors ?? []) as Array<{ id: string; xec_address: string | null }>) {
@@ -630,7 +645,8 @@ async function buildActivity(req: NextRequest) {
         authorRaw.set(a.id, bare(a.xec_address));
       }
     }
-    for (const a of (accounts ?? []) as Array<{ author_id: string; display_handle: string | null; handle_color: string | null }>) {
+    for (const a of (accounts ?? []) as Array<{ id: string; author_id: string; display_handle: string | null; handle_color: string | null }>) {
+      if (a.author_id) authorAccount.set(a.author_id, a.id);
       if (a.display_handle) {
         authorDisplay.set(a.author_id, `@${a.display_handle}`);
         authorRaw.set(a.author_id, `@${a.display_handle}`);
@@ -646,6 +662,7 @@ async function buildActivity(req: NextRequest) {
       actor: (p.author_id ? authorDisplay.get(p.author_id) : null) ?? "an author",
       color: (p.author_id ? authorColor.get(p.author_id) : null) ?? null,
       actorHref: profileHref(p.author_id ? authorRaw.get(p.author_id) : null),
+      actorAccountId: (p.author_id ? authorAccount.get(p.author_id) : null) ?? null,
       target: p.posts.title ?? "an article",
       amountXec: p.amount_sats == null ? null : p.amount_sats / 100,
       at: p.paid_at,
@@ -663,6 +680,8 @@ async function buildActivity(req: NextRequest) {
       kind: "mint",
       actor: `@${m.handle}`,
       actorHref: `/@${encodeURIComponent(m.handle)}`,
+      // A mint row names the handle, not an account — no owner to block against.
+      actorAccountId: null,
       target: null,
       amountXec: priceForHandle(m.handle).priceXec,
       at: m.created_at,
@@ -687,6 +706,7 @@ async function buildActivity(req: NextRequest) {
       kind: "mint",
       actor: `@${handle}`,
       actorHref: `/@${encodeURIComponent(handle)}`,
+      actorAccountId: null,
       target: null,
       amountXec: priceForHandle(handle).priceXec,
       at: m.created_at,
@@ -706,6 +726,7 @@ async function buildActivity(req: NextRequest) {
       actor: displayIdentity(identity, "someone"),
       color: liveColor(c.author_account_id),
       actorHref: profileHref(identity),
+      actorAccountId: c.author_account_id,
       // The article, not the (paywalled) comment text — see the query note.
       target: cp.title ?? "an article",
       amountXec: c.amount_sats == null ? null : c.amount_sats / 100,
@@ -727,6 +748,7 @@ async function buildActivity(req: NextRequest) {
       actor: displayIdentity(identity, "someone"),
       color: liveColor(e.actor_account_id),
       actorHref: profileHref(identity),
+      actorAccountId: e.actor_account_id,
       // The article, never the paywalled comment body.
       target: art.title ?? "an article",
       amountXec: e.amount_sats == null ? null : e.amount_sats / 100,
@@ -755,7 +777,11 @@ async function buildActivity(req: NextRequest) {
   return NextResponse.json(
     { ok: true, items: page },
     // Just enough CDN cache to absorb a crowd's polling without making a
-    // fresh action wait a poll cycle to appear (the old 30s SWR did).
+    // fresh action wait a poll cycle to appear (the old 30s SWR did). The
+    // stream is viewer-NEUTRAL and stays cacheable: blocked-account filtering
+    // is layered on per-viewer in the client (ActivityRail), exactly like the
+    // For You feed's viewer-state overlay — each item carries actorAccountId so
+    // the client can drop blocked authors after the shared payload paints.
     { headers: { "Cache-Control": "public, s-maxage=2, stale-while-revalidate=8" } }
   );
 }

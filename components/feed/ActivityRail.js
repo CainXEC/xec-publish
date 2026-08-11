@@ -17,7 +17,7 @@
 //  socket never opens, the rail still works on the poll alone.
 // =============================================================================
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { watchLokadId } from '@/lib/ecash/watchPaymentAddress'
 import { FEED_LOKAD_HEX } from '@/lib/feedProtocol'
@@ -97,6 +97,14 @@ export default function ActivityRail({
   onOpenArticle = null,
 }) {
   const [items, setItems] = useState(null)
+  // The viewer's block set (accounts they blocked + who blocked them). The
+  // /api/activity firehose is viewer-NEUTRAL and CDN-cached, so it can't filter
+  // per viewer; we hide blocked accounts' rows here, on top of the shared payload
+  // — the same overlay pattern the For You feed uses (viewer-state). Empty for
+  // signed-out viewers. Kept in STATE (not a ref) so a live block/unblock
+  // re-filters immediately; the raw `items` still hold every row, so an unblock
+  // re-shows them with no refetch.
+  const [blockedIds, setBlockedIds] = useState(() => new Set())
   // Live "on the site right now" count, broadcast by the site-wide
   // PresenceHeartbeat via a window event — no request of our own.
   const [online, setOnline] = useState(null)
@@ -132,6 +140,40 @@ export default function ActivityRail({
     mq.addEventListener('change', update)
     return () => mq.removeEventListener('change', update)
   }, [minWidth])
+
+  // Load the viewer's block set once the rail is live (signed-out → empty), and
+  // keep it current when they block/unblock someone in-session — FeedPost's menu
+  // broadcasts pow:block-changed on window, the same channel presence uses. One
+  // fetch, re-used across every poll/nudge; the block set changes rarely.
+  useEffect(() => {
+    if (!active) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/feed/block', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json()
+        if (!cancelled && Array.isArray(data?.ids)) setBlockedIds(new Set(data.ids))
+      } catch {
+        /* best-effort — the firehose still renders unfiltered without it */
+      }
+    })()
+    const onChange = (e) => {
+      const { accountId, blocked } = e.detail ?? {}
+      if (typeof accountId !== 'string' || !accountId) return
+      setBlockedIds((cur) => {
+        const next = new Set(cur)
+        if (blocked === false) next.delete(accountId)
+        else next.add(accountId)
+        return next
+      })
+    }
+    window.addEventListener('pow:block-changed', onChange)
+    return () => {
+      cancelled = true
+      window.removeEventListener('pow:block-changed', onChange)
+    }
+  }, [active])
 
   // Returns true on a clean load, false on any failure — the caller uses that to
   // retry a FAILED first load quickly instead of stranding the rail on
@@ -211,6 +253,16 @@ export default function ActivityRail({
     }
   }, [active, refresh])
 
+  // Hide rows from accounts the viewer has blocked. Rows with no resolvable
+  // account (mints, stray-wallet unlocks — actorAccountId null) always show.
+  const visibleItems = useMemo(
+    () =>
+      items === null
+        ? null
+        : items.filter((it) => !it.actorAccountId || !blockedIds.has(it.actorAccountId)),
+    [items, blockedIds],
+  )
+
   return (
     <div className="arail">
       <div className="arail-head">
@@ -224,13 +276,13 @@ export default function ActivityRail({
       </div>
       <p className="arail-sub">{sub}</p>
 
-      {items === null ? (
+      {visibleItems === null ? (
         <p className="arail-empty">Listening…</p>
-      ) : items.length === 0 ? (
+      ) : visibleItems.length === 0 ? (
         <p className="arail-empty">{emptyText}</p>
       ) : (
         <ul className="arail-list">
-          {items.map((it) => {
+          {visibleItems.map((it) => {
             // Rows open in the reading pane where the host provides one: feed
             // threads via onOpenThread, articles via onOpenArticle. A row is one
             // or the other, never both. Modifier / middle clicks fall through to

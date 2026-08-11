@@ -172,6 +172,10 @@ export default function ProfileSettingsForm({
       const data = await res.json().catch(() => ({}))
       if (res.ok && data.ok && data.blocked === false) {
         setBlockedList((prev) => prev.filter((b) => b.accountId !== accountId))
+        // Mirror the block broadcast so a live ActivityRail re-shows this account.
+        window.dispatchEvent(
+          new CustomEvent('pow:block-changed', { detail: { accountId, blocked: false } }),
+        )
       } else {
         setUnblockError(data.error || 'Could not unblock. Try again.')
       }
