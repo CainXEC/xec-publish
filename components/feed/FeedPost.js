@@ -68,10 +68,9 @@ const TOP_REPLY_CLAMP_CHARS = 120
  * a raw address is shown as truncated monospace text.
  *
  * `avatarUrl` (only ever set for a handle-holding poster — see getFeed.js's
- * avatarFor) shows a small crop of their handle-NFT card art before the name.
- * Cropped to the top ~76% via CSS (see .byline-avatar in feedTheme.js) so the
- * card's own baked-in "@handle" label never shows — it would just repeat the
- * text link sitting right next to it.
+ * avatarFor) shows their full handle-NFT card art, tiny, before the name (see
+ * .byline-avatar in feedTheme.js) — same square PNG as the marketplace/mint/
+ * carousel surfaces, just scaled down instead of cropped.
  */
 function Byline({ identity, color, isAi = false, avatarUrl = null }) {
   const id = typeof identity === 'string' ? identity.trim() : ''

@@ -524,19 +524,15 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .repostedby-who{color:var(--hc,var(--dim));font-weight:600;transition:color .15s;}
 .pow-feed a.repostedby-who:hover{color:var(--cyan);}
 .pow-feed .postmeta{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
-/* Small crop of the poster's handle-card art before their name. Only ever set
-   for a handle-holding account (see getFeed.js's avatarFor). Cropped via
-   scale+top-align rather than object-fit alone: the card art and the avatar
-   box are both square, so plain "cover" wouldn't trim anything — the label
-   band baked into the bottom of the card (the card's own "@handle" text) has
-   to be pushed out of the visible square deliberately, or it'd duplicate the
-   text link sitting right next to it. align-self:center overrides the row's
-   baseline alignment (postmeta) so the avatar sits centered on the text, not
-   hanging off its baseline like a descender would. */
-.pow-feed .byline-avatar{width:18px;height:18px;border-radius:4px;overflow:hidden;position:relative;
+/* The poster's full handle-card art before their name (frame + art + the
+   card's own baked-in "@handle" label — same square PNG as everywhere else it
+   renders, just shown tiny). Only ever set for a handle-holding account (see
+   getFeed.js's avatarFor). align-self:center overrides the row's baseline
+   alignment (postmeta) so the avatar sits centered on the text, not hanging
+   off its baseline like a descender would. */
+.pow-feed .byline-avatar{width:18px;height:18px;border-radius:4px;overflow:hidden;
   flex:none;align-self:center;background:rgba(127,127,127,.15);}
-.pow-feed .byline-avatar img{position:absolute;top:0;left:50%;width:132%;height:132%;
-  transform:translateX(-50%);object-fit:cover;display:block;}
+.pow-feed .byline-avatar img{width:100%;height:100%;object-fit:cover;display:block;}
 .pow-feed .byline{font-size:13px;font-weight:700;color:var(--hc,var(--neon));text-shadow:0 0 8px rgba(0,255,156,.35);transition:text-shadow .15s;}
 .pow-feed .byline:hover{text-shadow:0 0 14px rgba(0,255,156,.6);}
 .pow-feed .addr{font-size:13px;color:var(--cyan);text-decoration:none;}
