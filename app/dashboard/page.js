@@ -1,20 +1,40 @@
-import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { adminDb } from '@/lib/db'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { formatIdentity } from '@/lib/formatIdentity'
-import { getXecBalanceSats } from '@/lib/xecBalance'
+import { blockedAccountsForViewer } from '@/lib/feedBlocks'
 import { getCachedAccountFeedPage } from '@/lib/getFeed'
 
-/** Wallet balance, streamed OUTSIDE the critical path: it's a Chronik UTXO scan,
- *  so it renders behind Suspense and fills in when Chronik answers — the
- *  dashboard HTML streams immediately, nothing else waits on it. Formatting is
- *  identical to what DashboardClient used to compute from the raw prop. */
-async function WalletBalanceValue({ address }) {
-  const raw = await getXecBalanceSats(address) // never throws; 0 on error
-  const xec = typeof raw === 'number' ? raw / 100 : 0
-  return <span>{xec.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+// A bare eCash address (no ecash: prefix) — same check used elsewhere on the
+// site (e.g. the activity rail) to decide whether an identity string is safe
+// to route as a profile address rather than link-less plain text.
+const BARE_ADDRESS_RE = /^[a-z0-9]{42}$/
+
+/** blockedAccountsForViewer's [{ accountId, identity, color }] -> the same
+ *  { id, display, color, href } shape the followers/following lists use, so
+ *  the dashboard's Blocked panel renders through the identical <Link> markup.
+ *  identity is "@handle" (display as-is) or a raw address (truncate for
+ *  display, same convention as followers/following) or, in the vanishingly
+ *  rare case an account has no linked address at all, the bare account id —
+ *  that one shows as plain text (no href), same as followers/following do for
+ *  an unresolvable entry. */
+function toAccountCard(b) {
+  const identity = typeof b.identity === 'string' ? b.identity : ''
+  if (identity.startsWith('@')) {
+    const handle = identity.slice(1)
+    return { id: b.accountId, display: identity, color: b.color ?? null, href: `/@${encodeURIComponent(handle)}` }
+  }
+  const bare = identity.replace(/^ecash:/, '')
+  if (BARE_ADDRESS_RE.test(bare)) {
+    return {
+      id: b.accountId,
+      display: `${bare.slice(0, 10)}…${bare.slice(-4)}`,
+      color: null,
+      href: `/@${encodeURIComponent(bare)}`,
+    }
+  }
+  return { id: b.accountId, display: identity || b.accountId, color: null, href: null }
 }
 
 export default async function DashboardPage() {
@@ -44,7 +64,7 @@ export default async function DashboardPage() {
   // doesn't render them; the editor loads the body fresh from /dashboard/edit),
   // and the unlock total is a HEAD count (the page only shows the number,
   // fetching every row just to .length it was pure payload).
-  const [authorTriple, { data: addrRows }, followersQ, followingQ] = await Promise.all([
+  const [authorTriple, { data: addrRows }, followersQ, followingQ, blockedRaw] = await Promise.all([
     authorId
       ? Promise.all([
           supabase
@@ -83,9 +103,15 @@ export default async function DashboardPage() {
       .eq('follower_account_id', acct.accountId)
       .order('created_at', { ascending: false })
       .limit(500),
+    // Resolves display identity + card color itself (own account_addresses /
+    // handle lookups) — its own small wave of round trips, but independent of
+    // everything else here, so it rides in the same Promise.all rather than
+    // adding a sequential await.
+    blockedAccountsForViewer(supabase, acct.accountId),
   ])
   const [{ data: posts, error: postsError }, { data: author }, { count: unlockCount }] =
     authorTriple
+  const blocked = blockedRaw.map(toAccountCard)
 
   // ---- Library (articles this account has paid for), follower counts ----
   // Unlocks are keyed by payer_address; the account may have proven several
@@ -226,17 +252,13 @@ export default async function DashboardPage() {
       initialPosts={posts ?? []}
       loadError={postsError?.message ?? null}
       initialTotalUnlocks={unlockCount ?? 0}
-      walletBalanceSlot={
-        <Suspense fallback={<span>…</span>}>
-          <WalletBalanceValue address={acct.address} />
-        </Suspense>
-      }
       viewerAccountId={acct.accountId}
       initialFeedPosts={feedPage.posts}
       initialFeedNextCursor={feedPage.nextCursor ?? null}
       library={library}
       followers={followers}
       following={following}
+      blocked={blocked}
     />
   )
 }

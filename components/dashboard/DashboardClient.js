@@ -7,7 +7,6 @@ import { FEED_CSS } from '@/components/feed/feedTheme'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import FeedPost from '@/components/feed/FeedPost'
 import UnlockIcon from '@/components/UnlockIcon'
-import EcashIcon from '@/components/EcashIcon'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { supabase } from '@/lib/supabase-browser'
 import { fetchAllUnlockCountRows } from '@/lib/supabaseUnlockCounts'
@@ -259,8 +258,6 @@ export default function DashboardClient({
   initialPosts,
   loadError,
   initialTotalUnlocks,
-  initialWalletXecRaw,
-  walletBalanceSlot = null,
   viewerAccountId = null,
   initialFeedPosts = [],
   initialFeedNextCursor = null,
@@ -268,6 +265,7 @@ export default function DashboardClient({
   library = [],
   followers = [],
   following = [],
+  blocked = [],
 }) {
   const [posts, setPosts] = useState(initialPosts)
   // Articles opens on Drafts when there's unfinished writing to get back to —
@@ -280,8 +278,8 @@ export default function DashboardClient({
       : 'newest',
   )
   const [librarySort, setLibrarySort] = useState('recent')
-  // Which follow list is open under the stat band: null | 'followers' | 'following'
-  const [followsOpen, setFollowsOpen] = useState(null)
+  // Which list is open under the stat band: null | 'followers' | 'following' | 'blocked'
+  const [panelOpen, setPanelOpen] = useState(null)
   const sortedLibrary = useMemo(() => {
     const rows = [...library]
     if (librarySort === 'spent') {
@@ -390,7 +388,6 @@ export default function DashboardClient({
 
   // Stats come from the server — no loading state needed
   const totalUnlocks = typeof initialTotalUnlocks === 'number' ? initialTotalUnlocks : 0
-  const walletXec = typeof initialWalletXecRaw === 'number' ? initialWalletXecRaw / 100 : 0
 
   useEffect(() => {
     setPosts(initialPosts)
@@ -662,66 +659,72 @@ export default function DashboardClient({
                 <span>{totalUnlocks}</span>
               </p>
             </div>
-            <div className="dashstat">
-              <p className="dashstat-label">Wallet Balance</p>
-              <p
-                className="dashstat-value"
-                style={{ display: 'flex', alignItems: 'center', gap: '7px' }}
-              >
-                <EcashIcon size={14} />
-                {walletBalanceSlot ?? (
-                  <span>{walletXec.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-                )}
-              </p>
-            </div>
             <button
               type="button"
-              className={`dashstat dashstat-btn${followsOpen === 'followers' ? ' on' : ''}`}
-              aria-expanded={followsOpen === 'followers'}
-              onClick={() => setFollowsOpen((cur) => (cur === 'followers' ? null : 'followers'))}
+              className={`dashstat dashstat-btn${panelOpen === 'followers' ? ' on' : ''}`}
+              aria-expanded={panelOpen === 'followers'}
+              onClick={() => setPanelOpen((cur) => (cur === 'followers' ? null : 'followers'))}
             >
               <span className="dashstat-label">Followers</span>
               <span className="dashstat-value">{followers.length.toLocaleString()}</span>
             </button>
             <button
               type="button"
-              className={`dashstat dashstat-btn${followsOpen === 'following' ? ' on' : ''}`}
-              aria-expanded={followsOpen === 'following'}
-              onClick={() => setFollowsOpen((cur) => (cur === 'following' ? null : 'following'))}
+              className={`dashstat dashstat-btn${panelOpen === 'following' ? ' on' : ''}`}
+              aria-expanded={panelOpen === 'following'}
+              onClick={() => setPanelOpen((cur) => (cur === 'following' ? null : 'following'))}
             >
               <span className="dashstat-label">Following</span>
               <span className="dashstat-value">{following.length.toLocaleString()}</span>
             </button>
+            <button
+              type="button"
+              className={`dashstat dashstat-btn${panelOpen === 'blocked' ? ' on' : ''}`}
+              aria-expanded={panelOpen === 'blocked'}
+              onClick={() => setPanelOpen((cur) => (cur === 'blocked' ? null : 'blocked'))}
+            >
+              <span className="dashstat-label">Blocked</span>
+              <span className="dashstat-value">{blocked.length.toLocaleString()}</span>
+            </button>
           </div>
 
-          {followsOpen ? (
+          {panelOpen ? (
             <div className="dashfollows">
               <p className="dashfollows-title">
-                {followsOpen === 'followers' ? 'Followers' : 'Following'}
+                {panelOpen === 'followers' ? 'Followers' : panelOpen === 'following' ? 'Following' : 'Blocked'}
               </p>
-              {(followsOpen === 'followers' ? followers : following).length === 0 ? (
+              {(panelOpen === 'followers' ? followers : panelOpen === 'following' ? following : blocked)
+                .length === 0 ? (
                 <p className="dashfollows-empty">
-                  {followsOpen === 'followers'
+                  {panelOpen === 'followers'
                     ? 'No followers yet — post something worth following.'
-                    : 'Not following anyone yet.'}
+                    : panelOpen === 'following'
+                      ? 'Not following anyone yet.'
+                      : "You haven't blocked anyone."}
                 </p>
               ) : (
                 <ul className="dashfollows-list">
-                  {(followsOpen === 'followers' ? followers : following).map((a) => (
-                    <li key={a.id}>
-                      {a.href ? (
-                        <Link
-                          href={a.href}
-                          className="dashfollow"
-                          style={a.color ? { '--hc': a.color } : undefined}
-                        >
-                          {a.display}
-                        </Link>
-                      ) : (
-                        <span className="dashfollow">{a.display}</span>
-                      )}
-                    </li>
-                  ))}
+                  {/* Blocked accounts link straight to their profile, same as
+                      followers/following — the profile's own Block/Unblock button
+                      (only shown to the blocker) is where you'd undo it, so there's
+                      no separate inline "Unblock" here. */}
+                  {(panelOpen === 'followers' ? followers : panelOpen === 'following' ? following : blocked).map(
+                    (a) => (
+                      <li key={a.id}>
+                        {a.href ? (
+                          <Link
+                            href={a.href}
+                            className="dashfollow"
+                            style={a.color ? { '--hc': a.color } : undefined}
+                          >
+                            {a.display}
+                          </Link>
+                        ) : (
+                          <span className="dashfollow">{a.display}</span>
+                        )}
+                      </li>
+                    ),
+                  )}
                 </ul>
               )}
             </div>
