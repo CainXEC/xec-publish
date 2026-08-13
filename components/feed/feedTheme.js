@@ -530,7 +530,7 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
    getFeed.js's avatarFor). align-self:center overrides the row's baseline
    alignment (postmeta) so the avatar sits centered on the text, not hanging
    off its baseline like a descender would. */
-.pow-feed .byline-avatar{width:18px;height:18px;border-radius:4px;overflow:hidden;
+.pow-feed .byline-avatar{width:30px;height:30px;border-radius:4px;overflow:hidden;
   flex:none;align-self:center;background:rgba(127,127,127,.15);}
 .pow-feed .byline-avatar img{width:100%;height:100%;object-fit:cover;display:block;}
 .pow-feed .byline{font-size:13px;font-weight:700;color:var(--hc,var(--neon));text-shadow:0 0 8px rgba(0,255,156,.35);transition:text-shadow .15s;}
