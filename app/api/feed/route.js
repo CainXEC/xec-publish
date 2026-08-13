@@ -5,9 +5,12 @@ import { getCachedForYouPage, getFollowingFeedPage } from '@/lib/getFeed'
 import { getAuthedAccount } from '@/lib/authHelpers'
 
 /** Paginated newest-first feed of top-level posts (for client refresh / load more).
- *  For You is served from the shared, viewer-neutral cache (personalization is
- *  layered client-side via /api/feed/viewer-state). scope=following is inherently
- *  per-viewer and lower-traffic, so it stays personalized server-side. */
+ *  For You is served from the shared, viewer-neutral cache (per-viewer like/repost/
+ *  follow state is layered client-side via /api/feed/viewer-state) — but blocked
+ *  accounts are dropped server-side here, same as the initial SSR page, so a
+ *  "load more" page never flashes a blocked account's posts on screen either.
+ *  scope=following is inherently per-viewer and lower-traffic, so it stays fully
+ *  personalized server-side. */
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
   const cursor = searchParams.get('cursor') || null
@@ -25,7 +28,8 @@ export async function GET(request) {
       })
       return NextResponse.json({ posts, nextCursor })
     }
-    const { posts, nextCursor } = await getCachedForYouPage(cursor)
+    const acct = await getAuthedAccount()
+    const { posts, nextCursor } = await getCachedForYouPage(cursor, 25, acct?.accountId ?? null)
     return NextResponse.json({ posts, nextCursor })
   } catch (e) {
     return NextResponse.json({ error: e?.message || 'Failed to load feed' }, { status: 500 })

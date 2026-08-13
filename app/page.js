@@ -16,14 +16,16 @@ export default async function HomePage({ searchParams }) {
   // the compose box focused, ready to write — no pre-filled content.
   const focusCompose = params?.compose === '1'
 
-  // Auth is read only for page chrome (dashboard link) and for the client-side
-  // personalization/own-post logic — NOT for the feed query itself. The For You
-  // feed is served from a shared, viewer-neutral cache; per-viewer state (your
-  // likes/reposts/follows) is layered on the client via /api/feed/viewer-state.
+  // Auth is read for page chrome (dashboard link), for the client-side
+  // personalization/own-post logic, and to drop this viewer's blocked accounts
+  // out of the feed server-side (see getCachedForYouPage) — everything else
+  // per-viewer (your likes/reposts/follows) still layers on the client via
+  // /api/feed/viewer-state; only blocks need to be gone before the FIRST paint,
+  // or they'd flash on screen for a moment before that client effect resolves.
   const acct = await getAuthedAccount()
 
   try {
-    const result = await getCachedForYouPage()
+    const result = await getCachedForYouPage(null, 25, acct?.accountId ?? null)
     posts = result.posts
     nextCursor = result.nextCursor
   } catch (err) {
