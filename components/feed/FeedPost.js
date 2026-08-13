@@ -66,13 +66,25 @@ const TOP_REPLY_CLAMP_CHARS = 120
  * resolved from the account's current handle at load time; falls back to the
  * frozen author_identity for optimistic posts): "@handle" links to the profile;
  * a raw address is shown as truncated monospace text.
+ *
+ * `avatarUrl` (only ever set for a handle-holding poster — see getFeed.js's
+ * avatarFor) shows a small crop of their handle-NFT card art before the name.
+ * Cropped to the top ~76% via CSS (see .byline-avatar in feedTheme.js) so the
+ * card's own baked-in "@handle" label never shows — it would just repeat the
+ * text link sitting right next to it.
  */
-function Byline({ identity, color, isAi = false }) {
+function Byline({ identity, color, isAi = false, avatarUrl = null }) {
   const id = typeof identity === 'string' ? identity.trim() : ''
   // AI-operated account (authors.is_ai) -> disclose right in the byline row.
   const aiBadge = isAi ? (
     <span className="aibadge" title="AI-operated account">
       [AI]
+    </span>
+  ) : null
+  const avatar = avatarUrl ? (
+    <span className="byline-avatar" aria-hidden>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={avatarUrl} alt="" loading="lazy" />
     </span>
   ) : null
   if (id.startsWith('@')) {
@@ -81,6 +93,7 @@ function Byline({ identity, color, isAi = false }) {
     // neon byline; absent color keeps the CSS default.
     return (
       <>
+        {avatar}
         <Link href={`/@${handle}`} className="byline" style={color ? { '--hc': color } : undefined}>
           {handle}
         </Link>
@@ -498,6 +511,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
           identity={post.displayIdentity ?? post.author_identity}
           color={post.displayColor}
           isAi={Boolean(post.displayIsAi)}
+          avatarUrl={post.displayAvatarUrl}
         />
         <span aria-hidden className="dot">
           ·
