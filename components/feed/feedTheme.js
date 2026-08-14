@@ -1144,9 +1144,13 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 .pow-feed .np-lead{padding:13px 0 15px;border-bottom:1px solid var(--line);}
 .pow-feed .np-lead-hl{display:block;}
 /* Hero as rank #1 of the most-read list: a neon number, the big serif headline
-   taking the middle, and its 7-day read count at the right — the same
-   [rank] headline [reads] layout as the ranked rows below, sized up. */
-.pow-feed .np-lead-hrow{display:flex;align-items:baseline;gap:12px;}
+   taking the middle (byline inline at its end, wrapping with it), and its
+   7-day read count at the right — the same [rank] headline [reads] layout as
+   the ranked rows below, sized up. flex-start (not baseline): the headline
+   can wrap to 2+ lines once the byline is part of its own text, and baseline
+   alignment would anchor the number/count to just the FIRST line, stranding
+   them above what reads as blank space next to the rest of a wrapped title. */
+.pow-feed .np-lead-hrow{display:flex;align-items:flex-start;gap:12px;}
 /* The #1's rank number matches the 2–7 rows' number (.np-rank-n), not the big
    lead title — so all the most-read numbers read as one consistent column. */
 .pow-feed .np-lead-n{flex:none;min-width:13px;font-size:15px;font-weight:800;line-height:1.25;
@@ -1157,11 +1161,14 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
    that still fits an unbreakable token (e.g. a bare domain). */
 .pow-feed .np-lead-h{flex:1;min-width:0;font-size:14.5px;line-height:1.3;color:var(--text);overflow-wrap:anywhere;hyphens:auto;}
 .pow-feed .np-lead-c{flex:none;font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap;}
-/* Latest lens: the byline, below the headline row (matching .np-rank-by), left-
-   indented to align under the headline rather than the rank number. */
-.pow-feed .np-lead-by{display:block;margin:4px 0 0 25px;font-size:10.5px;color:var(--dim);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* Byline: inline at the end of the title text (every lens, not just Latest),
+   so it wraps as part of the same headline instead of needing its own line.
+   Reset off the headline's serif/bold/color so it still reads as dim metadata,
+   not more title. */
+.pow-feed .np-lead-by{font-family:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  font-size:11px;font-weight:400;color:var(--dim);}
 .pow-feed .np-lead-hl:hover .np-lead-h{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
+.pow-feed .np-lead-hl:hover .np-lead-by{text-decoration:none;}
 .pow-feed .np-lead-teaser-link{display:block;margin-top:9px;}
 .pow-feed .np-lead-teaser{font-size:12.5px;line-height:1.6;color:var(--dim);margin:0;
   display:-webkit-box;-webkit-line-clamp:7;-webkit-box-orient:vertical;overflow:hidden;}
@@ -1181,23 +1188,36 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 /* Most-read ranked list. These were referenced but never styled, so the rank
    number, headline and read-count ran together ("1Announcing…56"). Lay each row
    out as [rank] headline [reads]: neon tabular rank, serif headline (via
-   .np-serif) taking the middle, a dim read-count on the right. */
-.pow-feed .np-rank{display:flex;align-items:baseline;gap:11px;padding:9px 0;
+   .np-serif) taking the middle, a dim read-count on the right. flex-start (not
+   baseline): the headline now carries its byline inline and can wrap to 2+
+   lines, and a teaser sits below it — baseline alignment would anchor the
+   rank number to just the title's first line, stranding it above what reads
+   as blank space next to the rest of the (taller) row. */
+.pow-feed .np-rank{display:flex;align-items:flex-start;gap:11px;padding:9px 0;
   border-bottom:1px solid var(--line);text-decoration:none;}
 .pow-feed .np-rank:last-child{border-bottom:none;}
 .pow-feed .np-rank-n{flex:none;min-width:13px;font-size:15px;font-weight:800;line-height:1.25;
   color:var(--neon);font-variant-numeric:tabular-nums;}
-/* Wraps the headline (+ the Latest-lens byline, stacked beneath it) so the
+/* Wraps the headline (byline inline at its end) + the teaser below it, so the
    headline gets the row's full remaining width instead of sharing a line with
-   a read count/byline off to the side. */
-.pow-feed .np-rank-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+   the read count off to the side. */
+.pow-feed .np-rank-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
 .pow-feed .np-rank-h{font-size:14.5px;line-height:1.3;color:var(--text);overflow-wrap:anywhere;hyphens:auto;}
 .pow-feed .np-rank:hover .np-rank-h{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
 .pow-feed .np-rank-c{flex:none;font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap;}
-/* Latest lens: the byline sits BELOW the headline (not beside it), so the
-   headline itself spans the row's full width. */
-.pow-feed .np-rank-by{font-size:10.5px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;
-  white-space:nowrap;}
+/* Byline: inline at the end of the title text (every lens, not just Latest),
+   wrapping as part of the same headline rather than needing its own line.
+   Reset off the headline's serif/bold/color so it still reads as dim
+   metadata, not more title. */
+.pow-feed .np-rank-by{font-family:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  font-size:11px;font-weight:400;color:var(--dim);}
+.pow-feed .np-rank:hover .np-rank-by{text-decoration:none;}
+/* Preview snippet under every ranked row, not just the hero — same idea as
+   .np-lead-teaser, tighter (2 lines) since there can be up to a dozen of
+   these stacked on screen at once. */
+.pow-feed .np-rank-teaser{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;font-size:11.5px;line-height:1.5;color:var(--dim);}
+.pow-feed .np-rank:hover .np-rank-teaser{color:var(--text);}
 /* Entry (Latest) headline link wraps a block; teaser + button row when expanded. */
 .pow-feed .np-hl{display:block;text-decoration:none;}
 .pow-feed .np-teaser{font-size:12.5px;line-height:1.6;color:var(--dim);margin:8px 0 0;}
@@ -1227,6 +1247,15 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
   transition:transform .15s;}
 .pow-feed .np-more[open] .np-more-sum::after{transform:rotate(180deg);}
 .pow-feed .np-more-sum:hover{color:var(--text);}
+/* "Load more" — the non-compact rail's top-10 reveal (a real button, not the
+   <details> above: this list can run to 25, longer than the compact reflow's
+   handful, so a persistent disclosure widget felt like the wrong affordance). */
+.pow-feed .np-loadmore{display:flex;align-items:center;justify-content:center;gap:6px;
+  width:100%;margin-top:10px;padding:9px 0;background:transparent;border:1px solid var(--line);
+  border-radius:9px;color:var(--dim);font:inherit;font-size:12px;cursor:pointer;
+  transition:border-color .15s,color .15s;}
+.pow-feed .np-loadmore:hover{border-color:var(--cyan);color:var(--cyan);}
+.pow-feed .np-loadmore .np-more-n{color:inherit;}
 
 /* shown only on mobile (the bottom-bar shell), hidden where the topbar
    hamburger still carries the same action */
