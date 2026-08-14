@@ -58,6 +58,41 @@ export default function BottomNav() {
   // null = unknown (pre-fetch). Signed-out visitors get a "Login" tab instead
   // of "You"; re-checked on `sessionChanged` (paying doubles as login).
   const [authed, setAuthed] = useState(null)
+  // Hidden while any ComposeBox textarea is focused: this bar is
+  // position:fixed/bottom:0 with no awareness of the on-screen keyboard, so
+  // once a composer near the bottom of the page gets focus, the bar can end
+  // up floating on top of its Cancel/Pay buttons instead of below them.
+  // Counted (not a plain bool) so tabbing between fields — a blur immediately
+  // followed by another focus — doesn't flash the bar back on in between; the
+  // brief overlap is bridged with a short hide-delay instead of a hard toggle.
+  const [composerActive, setComposerActive] = useState(false)
+  useEffect(() => {
+    let count = 0
+    let hideTimer = null
+    const apply = (active) => {
+      if (hideTimer) {
+        clearTimeout(hideTimer)
+        hideTimer = null
+      }
+      if (active) setComposerActive(true)
+      else hideTimer = setTimeout(() => setComposerActive(false), 80)
+    }
+    const onFocus = () => {
+      count += 1
+      apply(true)
+    }
+    const onBlur = () => {
+      count = Math.max(0, count - 1)
+      if (count === 0) apply(false)
+    }
+    window.addEventListener('pow:composer-focus', onFocus)
+    window.addEventListener('pow:composer-blur', onBlur)
+    return () => {
+      window.removeEventListener('pow:composer-focus', onFocus)
+      window.removeEventListener('pow:composer-blur', onBlur)
+      if (hideTimer) clearTimeout(hideTimer)
+    }
+  }, [])
 
   useEffect(() => {
     let alive = true
@@ -89,7 +124,7 @@ export default function BottomNav() {
   )
 
   return (
-    <nav className="pow-bnav" aria-label="Primary">
+    <nav className={`pow-bnav${composerActive ? ' bn-hidden' : ''}`} aria-label="Primary">
       <style>{CSS}</style>
       {tabs.map((t) => {
         const on = t.match(pathname)
@@ -123,6 +158,10 @@ const CSS = `
     font-family:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;}
   /* clear the fixed bar so the last content is reachable */
   body{padding-bottom:calc(62px + env(safe-area-inset-bottom));}
+  /* A focused composer (see the effect above) hides the bar entirely — with
+     the keyboard open there's no space for it anyway, and it would otherwise
+     sit on top of the composer's own Cancel/Pay buttons. */
+  .pow-bnav.bn-hidden{display:none;}
 }
 .pow-bnav .bn-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
   text-decoration:none;color:#5f8a7e;font-size:10.5px;letter-spacing:.03em;

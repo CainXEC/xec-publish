@@ -501,6 +501,12 @@ export default function ComposeBox({
           onKeyDown={mention.onKeyDown}
           onKeyUp={mention.recompute}
           onClick={mention.recompute}
+          // Tells the mobile bottom nav bar to get out of the way while typing
+          // (see BottomNav.js) — the keyboard's visualViewport resize only
+          // scrolls the TEXTAREA into view, not the Cancel/Pay row below it, so
+          // the fixed bar could end up sitting right on top of those buttons.
+          onFocus={() => window.dispatchEvent(new Event('pow:composer-focus'))}
+          onBlur={() => window.dispatchEvent(new Event('pow:composer-blur'))}
           rows={isReply ? 2 : 3}
           placeholder={
             placeholder ||

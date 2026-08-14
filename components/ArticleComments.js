@@ -394,6 +394,12 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
         onChange={(e) => setContent(e.target.value)}
         className="commentarea"
         placeholder={isReply ? 'Post your reply…' : 'Share your thoughts…'}
+        // Tells the mobile bottom nav bar to get out of the way while typing
+        // (see BottomNav.js) — same fix as the feed's ComposeBox: the fixed
+        // bar has no awareness of the on-screen keyboard and can end up
+        // sitting on top of this composer's own Pay button.
+        onFocus={() => window.dispatchEvent(new Event('pow:composer-focus'))}
+        onBlur={() => window.dispatchEvent(new Event('pow:composer-blur'))}
       />
       <div className="commentbar">
         <div className="commentbar-left">
