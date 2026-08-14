@@ -49,6 +49,12 @@ export default function HomeReader({ slug, onClose, backLabel = '← Feed' }) {
   // Translated view ({ translated: html, title }); null = original. The parent
   // keys this component by slug, so it remounts per story — tr resets naturally.
   const [tr, setTr] = useState(null)
+  // Drives a "Translating…" caption while the post-unlock re-translate (below)
+  // is in flight — that path bypasses TranslateButton's own pending state
+  // entirely (it calls fetchTranslation directly), so without this the pane
+  // just silently reverted to the original language with no indication a
+  // fresh translation was even coming.
+  const [retranslating, setRetranslating] = useState(false)
   // Viewer session — needed so the comments section can show the Delete button
   // (own comments) and let an author moderate. The article page passes the same
   // `me` to ArticleComments; the pane was missing it, so delete never appeared.
@@ -135,6 +141,16 @@ export default function HomeReader({ slug, onClose, backLabel = '← Feed' }) {
                 onTranslated={setTr}
                 onShowOriginal={() => setTr(null)}
               />
+              {/* Re-translating the full body after an unlock (see onUnlocked below) —
+                  bypasses TranslateButton's own pending state, so without this the
+                  pane just silently reverted to the original language. Reuses
+                  TranslateButton's own .tb-loading/.tb-dots markup so it reads
+                  identically to the button's normal "Translating…" caption. */}
+              {retranslating ? (
+                <span className="tb-loading" role="status" aria-live="polite">
+                  Translating<span className="tb-dots" aria-hidden="true" />
+                </span>
+              ) : null}
               <button type="button" className="hr-open" onClick={shareToFeed}>
                 Share to feed
               </button>
@@ -251,11 +267,14 @@ export default function HomeReader({ slug, onClose, backLabel = '← Feed' }) {
                 if (tr?.lang) {
                   const lang = tr.lang
                   setTr(null)
+                  setRetranslating(true)
                   void fetchTranslation('article', slug, lang).then((d) => {
-                    if (!d) return
-                    setTr(d)
-                    setTranslation('article', slug, d)
-                    setArticleIntent(slug, { lang, title: d.title })
+                    if (d) {
+                      setTr(d)
+                      setTranslation('article', slug, d)
+                      setArticleIntent(slug, { lang, title: d.title })
+                    }
+                    setRetranslating(false)
                   })
                 }
                 void load({ quiet: true, fresh: true })

@@ -143,11 +143,15 @@ export default function PostPageClient({
   // preview, so `tr` covers only the public bytes; once the full body reveals, that
   // stale short translation would hide the rest and the unlock looks empty ("waiting
   // for the translation"). Show the untranslated full body immediately, then swap in
-  // a fresh full-scope translation when it lands.
+  // a fresh full-scope translation when it lands — `retranslating` drives a visible
+  // "Translating…" caption for that window (below), since this bypasses
+  // TranslateButton's own pending state entirely and the reveal-then-swap used to
+  // look like the article silently reverted to its original language.
   const trRef = useRef(tr)
   useEffect(() => {
     trRef.current = tr
   }, [tr])
+  const [retranslating, setRetranslating] = useState(false)
   const prevUnlockedRef = useRef(unlocked)
   useEffect(() => {
     const was = prevUnlockedRef.current
@@ -156,15 +160,20 @@ export default function PostPageClient({
     const lang = trRef.current?.lang
     if (!lang) return
     setTr(null) // reveal the full body now — no stale preview, no blank wait
+    setRetranslating(true)
     let cancelled = false
     void fetchTranslation('article', slug, lang).then((d) => {
-      if (cancelled || !d) return
-      setTr(d)
-      setTranslation('article', slug, d) // keep in-memory + durable stores in sync
-      setArticleIntent(slug, { lang, title: d.title }) // with the full-scope result
+      if (cancelled) return
+      if (d) {
+        setTr(d)
+        setTranslation('article', slug, d) // keep in-memory + durable stores in sync
+        setArticleIntent(slug, { lang, title: d.title }) // with the full-scope result
+      }
+      setRetranslating(false)
     })
     return () => {
       cancelled = true
+      setRetranslating(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unlocked, slug])
@@ -955,6 +964,17 @@ export default function PostPageClient({
               onShowOriginal={() => setTr(null)}
               className="metaitem"
             />
+            {/* Re-translating the full body after an unlock (see the effect above) —
+                TranslateButton's own "Translating…" caption doesn't cover this path
+                since it bypasses TranslateButton's interactive flow entirely; reuse
+                its exact markup/classes so it reads identically. No .metaitem here:
+                .artmeta's own flex gap already spaces it, and .metaitem's font:inherit
+                would otherwise fight .tb-loading's font-size via higher specificity. */}
+            {retranslating ? (
+              <span className="tb-loading" role="status" aria-live="polite">
+                Translating<span className="tb-dots" aria-hidden="true" />
+              </span>
+            ) : null}
           </div>
 
           {showPaywall && hasPaywallMarker ? (
