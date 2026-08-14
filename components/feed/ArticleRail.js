@@ -45,9 +45,6 @@ const RANGES = [
 // first view of the front page is what just got published, not what's popular.
 const DEFAULT_RANGE = 'latest'
 const RANGE_BY_KEY = Object.fromEntries(RANGES.map((r) => [r.key, r]))
-// Non-compact rendering shows the hero + this many ranked rows (10 total)
-// before "Load more" reveals the rest of the already-fetched list.
-const INITIAL_REST_N = 9
 
 // Live masthead dateline: the date plus a ticking clock (with seconds). Its own
 // component so only this line re-renders each second, not the whole rail.
@@ -98,19 +95,9 @@ function FrontPageClock() {
   )
 }
 
-// The #1 story as a hero: rank · big serif headline (byline inline at the end,
-// wrapping with it) · its read count to the right (most-read lenses) · a
-// teaser below. The byline shows in every lens now, not just Latest.
-//
-// The number and count are FLOATED, not flex siblings — a flex layout only
-// ever occupies its own single line, so once the headline wraps (now that it
-// carries the byline too) the number's own column sits empty for every line
-// after the first, reading as blank space next to the rest of the row. A
-// float lets the first line indent around it as usual, but once the wrapped
-// text (and the teaser below) passes the float's bottom edge, it goes back to
-// the FULL row width — text fills the space instead of leaving it blank
-// beside a lone number. .np-lead needs overflow:hidden to contain the floats
-// (else they'd bleed past the row's own bottom border).
+// The #1 story as a hero: rank · big serif headline · its read count to the RIGHT
+// (matching the rows below), then a teaser. For 'Latest' there's no count —
+// instead the byline sits below the headline, matching the ranked rows.
 function Lead({ story, rank, now, onOpen, showCount, countTitle }) {
   const href = articleRouteFor(story.slug, story.legacy)
   const open = onOpen ? (e) => onOpen(e, story.slug) : undefined
@@ -124,16 +111,16 @@ function Lead({ story, rank, now, onOpen, showCount, countTitle }) {
         {...(open ? warm(story.slug) : {})}
         data-no-navprogress={open ? '' : undefined}
       >
-        <span className="np-lead-n">{rank}</span>
-        {showCount ? (
-          <span className="np-lead-c" title={countTitle || undefined}>
-            {reads.toLocaleString()}
-          </span>
-        ) : null}
-        <span className="np-serif np-lead-h">
-          {story.title}
-          <span className="np-lead-by"> {story.author}</span>
+        <span className="np-lead-hrow">
+          <span className="np-lead-n">{rank}</span>
+          <span className="np-serif np-lead-h">{story.title}</span>
+          {showCount ? (
+            <span className="np-lead-c" title={countTitle || undefined}>
+              {reads.toLocaleString()}
+            </span>
+          ) : null}
         </span>
+        {showCount ? null : <span className="np-lead-by">{story.author}</span>}
       </Link>
       {story.teaser ? (
         <Link
@@ -150,11 +137,10 @@ function Lead({ story, rank, now, onOpen, showCount, countTitle }) {
   )
 }
 
-// A ranked row: rank · serif headline (byline inline at the end, wrapping
-// with it) · read count (most-read lenses) · a teaser below, same treatment
-// as the hero for every article, not just #1. Same float-based layout as
-// Lead, same reason (see its comment) — .np-rank needs overflow:hidden to
-// contain the floated number/count.
+// A ranked row: rank · serif headline · read count (most-read lenses), or —
+// Latest, where reads aren't the ranking basis — rank · headline spanning the
+// full width, with the byline stacked BELOW it instead of competing for room
+// beside it.
 function StoryRow({ story, rank, now, onOpen, showCount, countTitle }) {
   const reads = Number(story.count) || 0
   const href = articleRouteFor(story.slug, story.legacy)
@@ -168,18 +154,15 @@ function StoryRow({ story, rank, now, onOpen, showCount, countTitle }) {
       data-no-navprogress={open ? '' : undefined}
     >
       <span className="np-rank-n">{rank}</span>
+      <span className="np-rank-body">
+        <span className="np-serif np-rank-h">{story.title}</span>
+        {showCount ? null : <span className="np-rank-by">{story.author}</span>}
+      </span>
       {showCount ? (
         <span className="np-rank-c" title={countTitle || undefined}>
           {reads.toLocaleString()}
         </span>
       ) : null}
-      <span className="np-rank-body">
-        <span className="np-serif np-rank-h">
-          {story.title}
-          <span className="np-rank-by"> {story.author}</span>
-        </span>
-        {story.teaser ? <span className="np-rank-teaser">{story.teaser}</span> : null}
-      </span>
     </Link>
   )
 }
@@ -199,13 +182,6 @@ export default function ArticleRail({
   // The front page only fetches where it can actually show — the rail above its
   // breakpoint, the compact reflow in the gap band below it.
   const [active, setActive] = useState(false)
-  // Non-compact rendering (the wide rail, the mobile Paper tab — NOT the narrow
-  // 'top' reflow, which keeps its own 5-row/<details> truncation) starts at the
-  // top 10 (the hero + 9 ranked rows) and reveals the rest of the already-
-  // fetched list on click — no extra fetch, since the API already returns up
-  // to 25. Reset whenever the lens changes so switching filters doesn't carry
-  // over a stale expansion.
-  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     const query =
@@ -277,7 +253,6 @@ export default function ArticleRail({
   const onRangeChange = (e) => {
     setRange(e.target.value)
     setData(null) // show the skeleton instantly while the new lens loads
-    setExpanded(false) // a fresh lens starts back at the top 10, not mid-scroll
   }
 
   const Filter = (
@@ -292,20 +267,12 @@ export default function ArticleRail({
 
   // The list: hero (#1) + ranked rows. `compact` (the narrow reflow) shows a few
   // rows then tucks the rest behind a native <details> so it doesn't run long
-  // above the feed. Non-compact (the wide rail, the mobile Paper tab) starts at
-  // the top 10 and reveals the rest via a "Load more" button on click — same
-  // goal (don't dump 25 rows on screen at once), a real button instead of a
-  // disclosure since this list can run much longer than the compact reflow's.
+  // above the feed.
   const renderList = (onOpen, { compact = false } = {}) => {
     const head = stories[0]
     const rest = stories.slice(1)
-    const visibleRest = compact
-      ? rest.slice(0, 5)
-      : expanded
-        ? rest
-        : rest.slice(0, INITIAL_REST_N)
+    const visibleRest = compact ? rest.slice(0, 5) : rest
     const hiddenRest = compact ? rest.slice(5) : []
-    const moreToLoad = !compact && !expanded ? rest.length - visibleRest.length : 0
     return (
       <>
         <Lead
@@ -346,15 +313,6 @@ export default function ArticleRail({
               ))}
             </div>
           </details>
-        ) : null}
-        {moreToLoad > 0 ? (
-          <button
-            type="button"
-            className="np-loadmore"
-            onClick={() => setExpanded(true)}
-          >
-            Load more <span className="np-more-n">(+{moreToLoad})</span>
-          </button>
         ) : null}
       </>
     )
