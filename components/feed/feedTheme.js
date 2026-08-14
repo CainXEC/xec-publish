@@ -1141,32 +1141,38 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 }
 /* the lead: a full newspaper hero — headline, meta beneath it, then a generous
    preview. The whole thing opens the story (no buttons); unlock lives inside. */
-.pow-feed .np-lead{padding:13px 0 15px;border-bottom:1px solid var(--line);}
+/* overflow:hidden contains the floated number/count below (.np-lead-n/-c) —
+   without it they'd bleed past this row's own bottom border into the next. */
+.pow-feed .np-lead{padding:13px 0 15px;border-bottom:1px solid var(--line);overflow:hidden;}
 .pow-feed .np-lead-hl{display:block;}
-/* Hero as rank #1 of the most-read list: a neon number, the big serif headline
-   taking the middle (byline inline at its end, wrapping with it), and its
-   7-day read count at the right — the same [rank] headline [reads] layout as
-   the ranked rows below, sized up. flex-start (not baseline): the headline
-   can wrap to 2+ lines once the byline is part of its own text, and baseline
-   alignment would anchor the number/count to just the FIRST line, stranding
-   them above what reads as blank space next to the rest of a wrapped title. */
-.pow-feed .np-lead-hrow{display:flex;align-items:flex-start;gap:12px;}
-/* The #1's rank number matches the 2–7 rows' number (.np-rank-n), not the big
-   lead title — so all the most-read numbers read as one consistent column. */
-.pow-feed .np-lead-n{flex:none;min-width:13px;font-size:15px;font-weight:800;line-height:1.25;
-  color:var(--neon);font-variant-numeric:tabular-nums;}
+/* Hero as rank #1 of the most-read list: a neon number FLOATED left, the big
+   serif headline (byline inline at its end) flowing around it, its 7-day read
+   count FLOATED right — the same [rank] headline [reads] layout as the ranked
+   rows below, sized up. Floats, not flex: a flex row only ever occupies its
+   own single line, so once the headline wraps (now that it carries the byline
+   too) the number's own column would sit empty for every line after the
+   first — classic "blank space next to a lone number." A float lets the
+   first line indent around it as usual, but text (and the teaser below) goes
+   back to the FULL row width once it clears the float's bottom edge. */
+.pow-feed .np-lead-n{float:left;width:22px;margin-right:2px;font-size:15px;font-weight:800;
+  line-height:1.25;color:var(--neon);font-variant-numeric:tabular-nums;}
 /* The #1 headline matches the 2–7 rows' headline (.np-rank-h) — same size and
    weight; only the teaser preview below sets the lead apart. hyphens:auto puts a
    real hyphen at a wrap in a long word; overflow-wrap:anywhere is the fallback
    that still fits an unbreakable token (e.g. a bare domain). */
-.pow-feed .np-lead-h{flex:1;min-width:0;font-size:14.5px;line-height:1.3;color:var(--text);overflow-wrap:anywhere;hyphens:auto;}
-.pow-feed .np-lead-c{flex:none;font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.pow-feed .np-lead-h{font-size:14.5px;line-height:1.3;color:var(--text);overflow-wrap:anywhere;hyphens:auto;}
+.pow-feed .np-lead-c{float:right;margin-left:10px;font-size:10.5px;color:var(--dim);
+  font-variant-numeric:tabular-nums;white-space:nowrap;}
 /* Byline: inline at the end of the title text (every lens, not just Latest),
    so it wraps as part of the same headline instead of needing its own line.
    Reset off the headline's serif/bold/color so it still reads as dim metadata,
-   not more title. */
+   not more title — and explicitly OFF the title's own hyphens:auto/
+   overflow-wrap:anywhere (both inherit into a nested span otherwise), or a
+   handle name that doesn't fit the line break mid-word instead of wrapping
+   whole; nowrap means it either fits or moves entirely to the next line. */
 .pow-feed .np-lead-by{font-family:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
-  font-size:11px;font-weight:400;color:var(--dim);}
+  font-size:11px;font-weight:400;color:var(--dim);white-space:nowrap;hyphens:none;
+  overflow-wrap:normal;}
 .pow-feed .np-lead-hl:hover .np-lead-h{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
 .pow-feed .np-lead-hl:hover .np-lead-by{text-decoration:none;}
 .pow-feed .np-lead-teaser-link{display:block;margin-top:9px;}
@@ -1188,35 +1194,43 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 /* Most-read ranked list. These were referenced but never styled, so the rank
    number, headline and read-count ran together ("1Announcing…56"). Lay each row
    out as [rank] headline [reads]: neon tabular rank, serif headline (via
-   .np-serif) taking the middle, a dim read-count on the right. flex-start (not
-   baseline): the headline now carries its byline inline and can wrap to 2+
-   lines, and a teaser sits below it — baseline alignment would anchor the
-   rank number to just the title's first line, stranding it above what reads
-   as blank space next to the rest of the (taller) row. */
-.pow-feed .np-rank{display:flex;align-items:flex-start;gap:11px;padding:9px 0;
+   .np-serif) taking the middle, a dim read-count on the right. Floats, not
+   flex: the headline now carries its byline inline and can wrap to 2+ lines,
+   with a teaser below it — a flex row only ever occupies its own single line,
+   so a flex-aligned rank number would still span just the title's first
+   line, stranding it above blank space next to the rest of the (taller) row.
+   A float lets the rank number/count sit in the corner while the body text
+   flows around them, then reclaims the row's full width below their bottom
+   edge; overflow:hidden contains the floats within this row's own border. */
+.pow-feed .np-rank{display:block;overflow:hidden;padding:9px 0;
   border-bottom:1px solid var(--line);text-decoration:none;}
 .pow-feed .np-rank:last-child{border-bottom:none;}
-.pow-feed .np-rank-n{flex:none;min-width:13px;font-size:15px;font-weight:800;line-height:1.25;
-  color:var(--neon);font-variant-numeric:tabular-nums;}
-/* Wraps the headline (byline inline at its end) + the teaser below it, so the
-   headline gets the row's full remaining width instead of sharing a line with
-   the read count off to the side. */
-.pow-feed .np-rank-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
+.pow-feed .np-rank-n{float:left;width:22px;margin-right:2px;font-size:15px;font-weight:800;
+  line-height:1.25;color:var(--neon);font-variant-numeric:tabular-nums;}
+/* No longer a flex column — floats need normal block flow to wrap around
+   them, so the title/byline and the teaser below are plain stacked blocks. */
+.pow-feed .np-rank-body{display:block;}
 .pow-feed .np-rank-h{font-size:14.5px;line-height:1.3;color:var(--text);overflow-wrap:anywhere;hyphens:auto;}
 .pow-feed .np-rank:hover .np-rank-h{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
-.pow-feed .np-rank-c{flex:none;font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.pow-feed .np-rank-c{float:right;margin-left:10px;font-size:10.5px;color:var(--dim);
+  font-variant-numeric:tabular-nums;white-space:nowrap;}
 /* Byline: inline at the end of the title text (every lens, not just Latest),
    wrapping as part of the same headline rather than needing its own line.
    Reset off the headline's serif/bold/color so it still reads as dim
-   metadata, not more title. */
+   metadata, not more title — and explicitly OFF the title's own hyphens:auto/
+   overflow-wrap:anywhere (inherited into this nested span otherwise), so a
+   handle name either fits on the line or moves whole to the next one instead
+   of splitting mid-word. */
 .pow-feed .np-rank-by{font-family:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
-  font-size:11px;font-weight:400;color:var(--dim);}
+  font-size:11px;font-weight:400;color:var(--dim);white-space:nowrap;hyphens:none;
+  overflow-wrap:normal;}
 .pow-feed .np-rank:hover .np-rank-by{text-decoration:none;}
 /* Preview snippet under every ranked row, not just the hero — same idea as
    .np-lead-teaser, tighter (2 lines) since there can be up to a dozen of
-   these stacked on screen at once. */
+   these stacked on screen at once. margin-top replaces the flex column's
+   gap now that .np-rank-body is plain block flow. */
 .pow-feed .np-rank-teaser{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
-  overflow:hidden;font-size:11.5px;line-height:1.5;color:var(--dim);}
+  overflow:hidden;margin-top:3px;font-size:11.5px;line-height:1.5;color:var(--dim);}
 .pow-feed .np-rank:hover .np-rank-teaser{color:var(--text);}
 /* Entry (Latest) headline link wraps a block; teaser + button row when expanded. */
 .pow-feed .np-hl{display:block;text-decoration:none;}

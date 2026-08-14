@@ -100,10 +100,17 @@ function FrontPageClock() {
 
 // The #1 story as a hero: rank · big serif headline (byline inline at the end,
 // wrapping with it) · its read count to the right (most-read lenses) · a
-// teaser below. The byline shows in every lens now, not just Latest — it's
-// part of the headline's own text flow rather than a separate line, so a
-// wrapping title never leaves the rank number looking stranded above blank
-// space (see .np-lead-hrow's align-items:flex-start).
+// teaser below. The byline shows in every lens now, not just Latest.
+//
+// The number and count are FLOATED, not flex siblings — a flex layout only
+// ever occupies its own single line, so once the headline wraps (now that it
+// carries the byline too) the number's own column sits empty for every line
+// after the first, reading as blank space next to the rest of the row. A
+// float lets the first line indent around it as usual, but once the wrapped
+// text (and the teaser below) passes the float's bottom edge, it goes back to
+// the FULL row width — text fills the space instead of leaving it blank
+// beside a lone number. .np-lead needs overflow:hidden to contain the floats
+// (else they'd bleed past the row's own bottom border).
 function Lead({ story, rank, now, onOpen, showCount, countTitle }) {
   const href = articleRouteFor(story.slug, story.legacy)
   const open = onOpen ? (e) => onOpen(e, story.slug) : undefined
@@ -117,17 +124,15 @@ function Lead({ story, rank, now, onOpen, showCount, countTitle }) {
         {...(open ? warm(story.slug) : {})}
         data-no-navprogress={open ? '' : undefined}
       >
-        <span className="np-lead-hrow">
-          <span className="np-lead-n">{rank}</span>
-          <span className="np-serif np-lead-h">
-            {story.title}
-            <span className="np-lead-by"> · {story.author}</span>
+        <span className="np-lead-n">{rank}</span>
+        {showCount ? (
+          <span className="np-lead-c" title={countTitle || undefined}>
+            {reads.toLocaleString()}
           </span>
-          {showCount ? (
-            <span className="np-lead-c" title={countTitle || undefined}>
-              {reads.toLocaleString()}
-            </span>
-          ) : null}
+        ) : null}
+        <span className="np-serif np-lead-h">
+          {story.title}
+          <span className="np-lead-by"> · {story.author}</span>
         </span>
       </Link>
       {story.teaser ? (
@@ -147,7 +152,9 @@ function Lead({ story, rank, now, onOpen, showCount, countTitle }) {
 
 // A ranked row: rank · serif headline (byline inline at the end, wrapping
 // with it) · read count (most-read lenses) · a teaser below, same treatment
-// as the hero for every article, not just #1.
+// as the hero for every article, not just #1. Same float-based layout as
+// Lead, same reason (see its comment) — .np-rank needs overflow:hidden to
+// contain the floated number/count.
 function StoryRow({ story, rank, now, onOpen, showCount, countTitle }) {
   const reads = Number(story.count) || 0
   const href = articleRouteFor(story.slug, story.legacy)
@@ -161,6 +168,11 @@ function StoryRow({ story, rank, now, onOpen, showCount, countTitle }) {
       data-no-navprogress={open ? '' : undefined}
     >
       <span className="np-rank-n">{rank}</span>
+      {showCount ? (
+        <span className="np-rank-c" title={countTitle || undefined}>
+          {reads.toLocaleString()}
+        </span>
+      ) : null}
       <span className="np-rank-body">
         <span className="np-serif np-rank-h">
           {story.title}
@@ -168,11 +180,6 @@ function StoryRow({ story, rank, now, onOpen, showCount, countTitle }) {
         </span>
         {story.teaser ? <span className="np-rank-teaser">{story.teaser}</span> : null}
       </span>
-      {showCount ? (
-        <span className="np-rank-c" title={countTitle || undefined}>
-          {reads.toLocaleString()}
-        </span>
-      ) : null}
     </Link>
   )
 }
