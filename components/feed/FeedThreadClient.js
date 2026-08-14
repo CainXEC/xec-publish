@@ -28,6 +28,7 @@ import {
 } from '@/lib/pinnedStore'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
+import { useConfirmDialog } from '@/components/ConfirmDialog'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 
 /** Strip both on-site link kinds (article + feed post) from displayed text — each
@@ -200,6 +201,7 @@ export default function FeedThreadClient({
   const [viewerAccountId, setViewerAccountId] = useState(initialViewerAccountId)
   const [rootDeleted, setRootDeleted] = useState(Boolean(initialPost?.deleted))
   const [deletingRoot, setDeletingRoot] = useState(false)
+  const [confirmDialog, confirmDialogNode] = useConfirmDialog()
   // Open a reply-less thread with the composer already up: "No replies yet." was a
   // dead end, and being first to reply is the whole reason you opened it. Skipped
   // for a deleted root (nothing to reply to). The pane keys this component by txid,
@@ -261,7 +263,11 @@ export default function FeedThreadClient({
 
   const handleDeleteRoot = async () => {
     if (deletingRoot) return
-    if (!window.confirm('Delete this post? The on-chain record stays, but it will be removed from the feed.')) {
+    if (
+      !(await confirmDialog('Delete this post? The on-chain record stays, but it will be removed from the feed.', {
+        confirmLabel: 'Delete',
+      }))
+    ) {
       return
     }
     setDeletingRoot(true)
@@ -512,6 +518,7 @@ export default function FeedThreadClient({
             ))}
           </ul>
         )}
+      {confirmDialogNode}
     </>
   )
 

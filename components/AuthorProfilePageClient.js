@@ -10,6 +10,7 @@ import FeedPost from '@/components/feed/FeedPost'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import TipButton from '@/components/feed/TipButton'
 import HandleCarousel from '@/components/HandleCarousel'
+import { useConfirmDialog } from '@/components/ConfirmDialog'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 
@@ -50,6 +51,7 @@ function ProfileActionsMenu({
   const [busyBlock, setBusyBlock] = useState(false)
   const rootRef = useRef(null)
   const router = useRouter()
+  const [confirmDialog, confirmDialogNode] = useConfirmDialog()
 
   useEffect(() => {
     if (!open) return
@@ -91,7 +93,12 @@ function ProfileActionsMenu({
   const toggleBlock = useCallback(async () => {
     if (busyBlock) return
     const next = !blocked
-    if (next && !window.confirm("Block this account? You won't see each other's posts, and they can't reply to you.")) {
+    if (
+      next &&
+      !(await confirmDialog("Block this account? You won't see each other's posts, and they can't reply to you.", {
+        confirmLabel: 'Block',
+      }))
+    ) {
       return
     }
     setBusyBlock(true)
@@ -128,7 +135,7 @@ function ProfileActionsMenu({
     } finally {
       setBusyBlock(false)
     }
-  }, [busyBlock, blocked, following, accountId, onBlockedChange, router])
+  }, [busyBlock, blocked, following, accountId, onBlockedChange, router, confirmDialog])
 
   return (
     <div className="proffollow">
@@ -172,6 +179,7 @@ function ProfileActionsMenu({
           </div>
         ) : null}
       </span>
+      {confirmDialogNode}
     </div>
   )
 }

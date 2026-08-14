@@ -23,6 +23,7 @@ import {
 } from '@/lib/pinnedStore'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
+import { useConfirmDialog } from '@/components/ConfirmDialog'
 
 function timeAgo(iso) {
   if (!iso) return ''
@@ -114,6 +115,7 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
   const [busyFollow, setBusyFollow] = useState(false)
   const [busyBlock, setBusyBlock] = useState(false)
   const rootRef = useRef(null)
+  const [confirmDialog, confirmDialogNode] = useConfirmDialog()
 
   useEffect(() => {
     if (!open) return
@@ -161,7 +163,11 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
   const block = useCallback(async () => {
     if (busyBlock) return
     const who = authorLabel ? ` ${authorLabel}` : ''
-    if (!window.confirm(`Block${who}? You won't see each other's posts, and they can't reply to you.`)) {
+    if (
+      !(await confirmDialog(`Block${who}? You won't see each other's posts, and they can't reply to you.`, {
+        confirmLabel: 'Block',
+      }))
+    ) {
       return
     }
     setBusyBlock(true)
@@ -185,7 +191,7 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
       window.alert(e?.message || 'Failed to block')
       setBusyBlock(false)
     }
-  }, [busyBlock, authorAccountId, authorLabel, onBlocked])
+  }, [busyBlock, authorAccountId, authorLabel, onBlocked, confirmDialog])
 
   // Already following: show nothing at all. The feed isn't where you manage a
   // follow — no re-follow prompt, and unfollowing is a profile action.
@@ -226,6 +232,7 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
           </button>
         </div>
       ) : null}
+      {confirmDialogNode}
     </span>
   )
 }
@@ -244,6 +251,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   // Replies the viewer just posted, shown nested right here so they stay on the
   // feed instead of being navigated to the thread page.
   const [newReplies, setNewReplies] = useState([])
+  const [confirmDialog, confirmDialogNode] = useConfirmDialog()
 
   const body = typeof post.content === 'string' ? post.content : ''
   // On-site links render as an embed/card that IS the link, so strip the raw URL
@@ -311,7 +319,11 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
 
   const handleDelete = async () => {
     if (deleting) return
-    if (!window.confirm('Delete this post? The on-chain record stays, but it will be removed from the feed.')) {
+    if (
+      !(await confirmDialog('Delete this post? The on-chain record stays, but it will be removed from the feed.', {
+        confirmLabel: 'Delete',
+      }))
+    ) {
       return
     }
     setDeleting(true)
@@ -667,6 +679,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
           ))}
         </ul>
       ) : null}
+      {confirmDialogNode}
     </li>
   )
 }

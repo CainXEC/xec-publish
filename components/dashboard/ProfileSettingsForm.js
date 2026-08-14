@@ -10,6 +10,7 @@ import { FEED_CSS } from '@/components/feed/feedTheme'
 import HandleColorPicker from '@/components/dashboard/HandleColorPicker'
 import DashboardHandleCarousel from '@/components/dashboard/DashboardHandleCarousel'
 import ChangeAddressCard from '@/components/dashboard/ChangeAddressCard'
+import { useConfirmDialog } from '@/components/ConfirmDialog'
 
 // Unwraps the streamed held-handles promise (React 19 `use`) inside a Suspense
 // boundary so a slow Chronik lookup never blocks the whole settings page.
@@ -60,6 +61,8 @@ export default function ProfileSettingsForm({
   const [blockedList, setBlockedList] = useState(initialBlocked ?? [])
   const [unblockingId, setUnblockingId] = useState(null)
   const [unblockError, setUnblockError] = useState(null)
+
+  const [confirmDialog, confirmDialogNode] = useConfirmDialog()
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -122,8 +125,9 @@ export default function ProfileSettingsForm({
   }
 
   async function handleDeleteAccount() {
-    const confirmed = window.confirm(
-      'Are you sure? This will permanently delete your account and all your posts. This cannot be undone.',
+    const confirmed = await confirmDialog(
+      'Permanently delete your account and all your posts? This cannot be undone.',
+      { confirmLabel: 'Delete account' },
     )
     if (!confirmed) return
 
@@ -313,6 +317,7 @@ export default function ProfileSettingsForm({
           </button>
         </section>
       </main>
+      {confirmDialogNode}
     </div>
   )
 }

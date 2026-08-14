@@ -15,6 +15,7 @@ import {
   sumAmountRowsByPostId,
 } from '@/lib/supabaseUnlockEarnings'
 import { deletePost } from '@/app/dashboard/deletePost'
+import { useConfirmDialog } from '@/components/ConfirmDialog'
 
 const PAGE_SIZE = 25
 
@@ -45,8 +46,7 @@ function formatXec(amount) {
   return n.toFixed(8).replace(/\.?0+$/, '')
 }
 
-const DELETE_CONFIRM =
-  'Are you sure you want to delete this post? This cannot be undone.'
+const DELETE_CONFIRM = 'Delete this post? This cannot be undone.'
 
 const DASHBOARD_SORT_OPTIONS = [
   { value: 'earned', label: 'Most earned' },
@@ -268,6 +268,7 @@ export default function DashboardClient({
   blocked = [],
 }) {
   const [posts, setPosts] = useState(initialPosts)
+  const [confirmDialog, confirmDialogNode] = useConfirmDialog()
   // Articles opens on Drafts when there's unfinished writing to get back to —
   // the thing you most likely came for — and on Newest otherwise. Decided once
   // from the server-provided list (same non-legacy + unpublished test as
@@ -535,7 +536,7 @@ export default function DashboardClient({
   const hasNextPage = effectivePage < totalPages
 
   const handleDeletePost = useCallback(async (postId) => {
-    if (!window.confirm(DELETE_CONFIRM)) return
+    if (!(await confirmDialog(DELETE_CONFIRM, { confirmLabel: 'Delete' }))) return
 
     setDeleteError(null)
     setDeletingId(postId)
@@ -554,7 +555,7 @@ export default function DashboardClient({
     } finally {
       setDeletingId(null)
     }
-  }, [])
+  }, [confirmDialog])
 
   const handleCopyXecAddress = useCallback(async () => {
     const trimmed = typeof xecAddress === 'string' ? xecAddress.trim() : ''
@@ -1016,6 +1017,7 @@ export default function DashboardClient({
           </>
         )}
       </main>
+      {confirmDialogNode}
     </div>
   )
 }

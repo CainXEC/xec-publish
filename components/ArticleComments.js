@@ -16,6 +16,7 @@ import { pollUntil } from '@/lib/ecash/pollUntil'
 import { beginPayment, completePayment, abortPayment } from '@/lib/pocket/payGateway'
 import { getPocketSnapshot } from '@/lib/pocket/store'
 import { confirmCommentInBackground } from '@/lib/comments/confirmComment'
+import { useConfirmDialog } from '@/components/ConfirmDialog'
 
 // =============================================================================
 //  ArticleComments — paid, threaded comments on an article.
@@ -446,6 +447,7 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
   const [deletingId, setDeletingId] = useState(null)
   const [actionError, setActionError] = useState(null)
   const [translations, setTranslations] = useState({}) // { [commentId]: translatedText }
+  const [confirmDialog, confirmDialogNode] = useConfirmDialog()
 
   const fetchComments = useCallback(async () => {
     if (!postId) return
@@ -505,7 +507,7 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
   const handleDelete = useCallback(
     async (commentId) => {
       if (!postId || !commentId) return
-      if (!window.confirm('Are you sure you want to delete this comment?')) return
+      if (!(await confirmDialog('Delete this comment?', { confirmLabel: 'Delete' }))) return
       setDeletingId(commentId)
       setActionError(null)
       try {
@@ -528,7 +530,7 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
         setDeletingId(null)
       }
     },
-    [postId, onChanged],
+    [postId, onChanged, confirmDialog],
   )
 
   const ordered = useMemo(() => buildThreadOrder(comments), [comments])
@@ -725,6 +727,7 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
           })}
         </ul>
       )}
+      {confirmDialogNode}
     </section>
   )
 }
