@@ -66,27 +66,13 @@ const TOP_REPLY_CLAMP_CHARS = 120
  * resolved from the account's current handle at load time; falls back to the
  * frozen author_identity for optimistic posts): "@handle" links to the profile;
  * a raw address is shown as truncated monospace text.
- *
- * `avatarUrl` (only ever set for a handle-holding poster — see getFeed.js's
- * avatarFor) shows a centered RECTANGULAR crop of just their handle-NFT
- * card's ART before the name — no frame border, no baked-in "@handle" label
- * (see .byline-avatar in feedTheme.js for the crop geometry; rectangular
- * rather than square so the widest silhouette-tier art fits without clipping).
- * Same square source PNG as the marketplace/mint/carousel surfaces, cropped
- * down for a tiny avatar instead of shown whole.
  */
-function Byline({ identity, color, isAi = false, avatarUrl = null }) {
+function Byline({ identity, color, isAi = false }) {
   const id = typeof identity === 'string' ? identity.trim() : ''
   // AI-operated account (authors.is_ai) -> disclose right in the byline row.
   const aiBadge = isAi ? (
     <span className="aibadge" title="AI-operated account">
       [AI]
-    </span>
-  ) : null
-  const avatar = avatarUrl ? (
-    <span className="byline-avatar" aria-hidden>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={avatarUrl} alt="" loading="lazy" />
     </span>
   ) : null
   if (id.startsWith('@')) {
@@ -95,7 +81,6 @@ function Byline({ identity, color, isAi = false, avatarUrl = null }) {
     // neon byline; absent color keeps the CSS default.
     return (
       <>
-        {avatar}
         <Link href={`/@${handle}`} className="byline" style={color ? { '--hc': color } : undefined}>
           {handle}
         </Link>
@@ -513,7 +498,6 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
           identity={post.displayIdentity ?? post.author_identity}
           color={post.displayColor}
           isAi={Boolean(post.displayIsAi)}
-          avatarUrl={post.displayAvatarUrl}
         />
         <span aria-hidden className="dot">
           ·

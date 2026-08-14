@@ -524,37 +524,6 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .repostedby-who{color:var(--hc,var(--dim));font-weight:600;transition:color .15s;}
 .pow-feed a.repostedby-who:hover{color:var(--cyan);}
 .pow-feed .postmeta{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
-/* A centered RECTANGULAR crop of JUST the poster's handle-card ART before
-   their name — no frame border, no baked-in "@handle" label (only ever set
-   for a handle-holding account; see getFeed.js's avatarFor). align-self:center
-   overrides the row's baseline alignment (postmeta) so the avatar sits
-   centered on the text, not hanging off its baseline like a descender would.
-
-   Rectangular, not square: the art itself is wider than it is tall (every
-   tier centers at ART_CY = 0.39 of the canvas — lib/nft-art/render.ts — and
-   the base/silhouette tier's art can reach 74% of the canvas WIDTH but only
-   56% of its HEIGHT), so a square crop generous enough to clear the frame
-   (~4.3% inset — lib/renderHandleCard.ts's frame()) and the label (starts
-   ~y=0.77) could never be wide enough to contain the widest silhouettes
-   without also being too tall and hitting one of those two boundaries. A
-   0.80-wide x 0.62-tall window sidesteps that: verified empirically (real
-   cards across all three tiers, downloaded + cropped, each edge zoomed in)
-   that it (a) fully contains even the widest base-tier art with no clipping
-   and (b) still clears the frame and label on all four sides with margin.
-   Crop = [0.10,0.90] x [0.08,0.70] of the source, centered at (0.5, 0.39).
-   width/height/left/top % below depend only on the crop fractions, not the
-   container's pixel size — 36x28 approximates the crop's 0.80:0.62 aspect
-   closely enough (~0.4% off) that the stretch is imperceptible. */
-.pow-feed .byline-avatar{width:36px;height:28px;border-radius:4px;overflow:hidden;position:relative;
-  flex:none;align-self:center;background:rgba(127,127,127,.15);}
-/* max-width/max-height:none defeat Tailwind's preflight img{max-width:100%;
-   height:auto} reset — without them the reset's max-width:100% caps the crop
-   back down to the container size regardless of the explicit width below
-   (max-width always wins over width when they conflict), distorting the
-   crop. Same fix HandleCardImage.tsx already needed for its own card-art
-   <img>. */
-.pow-feed .byline-avatar img{position:absolute;width:125%;height:161.2903%;
-  max-width:none;max-height:none;left:-12.5%;top:-12.9032%;display:block;}
 .pow-feed .byline{font-size:13px;font-weight:700;color:var(--hc,var(--neon));text-shadow:0 0 8px rgba(0,255,156,.35);transition:text-shadow .15s;}
 .pow-feed .byline:hover{text-shadow:0 0 14px rgba(0,255,156,.6);}
 .pow-feed .addr{font-size:13px;color:var(--cyan);text-decoration:none;}

@@ -483,7 +483,6 @@ export default function AuthorProfilePageClient({
           uses; phones render the untouched single column. */}
       <div className="feed-cols">
       <aside className="feed-left" aria-label="This author's front page">
-        <AuthorFrontPage identity={identity} stories={initialArticles} onOpenStory={openStory} />
         {handleCardsSlot ? (
           <div className="prof-handles-rail">
             {handleCardsSlot}
@@ -499,6 +498,7 @@ export default function AuthorProfilePageClient({
             </Link>
           </div>
         ) : null}
+        <AuthorFrontPage identity={identity} stories={initialArticles} onOpenStory={openStory} />
       </aside>
       <main className="wrap" style={{ paddingTop: '28px' }}>
         {readerSlug ? (
