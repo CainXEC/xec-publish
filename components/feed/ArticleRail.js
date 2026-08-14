@@ -95,9 +95,10 @@ function FrontPageClock() {
   )
 }
 
-// The #1 story as a hero: rank · big serif headline · its read count to the RIGHT
-// (matching the rows below), then a teaser. For 'Latest' there's no count —
-// instead the byline sits below the headline, matching the ranked rows.
+// The #1 story as a hero: rank · big serif headline · its read count to the
+// RIGHT (matching the rows below, most-read lenses only), then the byline
+// below the headline row (every lens, including Latest which has no count),
+// then a teaser.
 function Lead({ story, rank, now, onOpen, showCount, countTitle }) {
   const href = articleRouteFor(story.slug, story.legacy)
   const open = onOpen ? (e) => onOpen(e, story.slug) : undefined
@@ -120,7 +121,7 @@ function Lead({ story, rank, now, onOpen, showCount, countTitle }) {
             </span>
           ) : null}
         </span>
-        {showCount ? null : <span className="np-lead-by">{story.author}</span>}
+        <span className="np-lead-by">{story.author}</span>
       </Link>
       {story.teaser ? (
         <Link
@@ -137,10 +138,9 @@ function Lead({ story, rank, now, onOpen, showCount, countTitle }) {
   )
 }
 
-// A ranked row: rank · serif headline · read count (most-read lenses), or —
-// Latest, where reads aren't the ranking basis — rank · headline spanning the
-// full width, with the byline stacked BELOW it instead of competing for room
-// beside it.
+// A ranked row: rank · serif headline · read count (most-read lenses only),
+// with the byline (every lens) stacked BELOW the headline instead of
+// competing for room beside it.
 function StoryRow({ story, rank, now, onOpen, showCount, countTitle }) {
   const reads = Number(story.count) || 0
   const href = articleRouteFor(story.slug, story.legacy)
@@ -156,7 +156,7 @@ function StoryRow({ story, rank, now, onOpen, showCount, countTitle }) {
       <span className="np-rank-n">{rank}</span>
       <span className="np-rank-body">
         <span className="np-serif np-rank-h">{story.title}</span>
-        {showCount ? null : <span className="np-rank-by">{story.author}</span>}
+        <span className="np-rank-by">{story.author}</span>
       </span>
       {showCount ? (
         <span className="np-rank-c" title={countTitle || undefined}>

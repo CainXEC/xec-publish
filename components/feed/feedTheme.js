@@ -1157,7 +1157,7 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
    that still fits an unbreakable token (e.g. a bare domain). */
 .pow-feed .np-lead-h{flex:1;min-width:0;font-size:14.5px;line-height:1.3;color:var(--text);overflow-wrap:anywhere;hyphens:auto;}
 .pow-feed .np-lead-c{flex:none;font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap;}
-/* Latest lens: the byline, below the headline row (matching .np-rank-by), left-
+/* Byline: below the headline row (every lens, matching .np-rank-by), left-
    indented to align under the headline rather than the rank number. */
 .pow-feed .np-lead-by{display:block;margin:4px 0 0 25px;font-size:10.5px;color:var(--dim);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -1187,14 +1187,14 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 .pow-feed .np-rank:last-child{border-bottom:none;}
 .pow-feed .np-rank-n{flex:none;min-width:13px;font-size:15px;font-weight:800;line-height:1.25;
   color:var(--neon);font-variant-numeric:tabular-nums;}
-/* Wraps the headline (+ the Latest-lens byline, stacked beneath it) so the
-   headline gets the row's full remaining width instead of sharing a line with
-   a read count/byline off to the side. */
+/* Wraps the headline (+ the byline, stacked beneath it) so the headline gets
+   the row's full remaining width instead of sharing a line with a read
+   count/byline off to the side. */
 .pow-feed .np-rank-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
 .pow-feed .np-rank-h{font-size:14.5px;line-height:1.3;color:var(--text);overflow-wrap:anywhere;hyphens:auto;}
 .pow-feed .np-rank:hover .np-rank-h{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
 .pow-feed .np-rank-c{flex:none;font-size:10.5px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap;}
-/* Latest lens: the byline sits BELOW the headline (not beside it), so the
+/* Byline sits BELOW the headline (not beside it, every lens), so the
    headline itself spans the row's full width. */
 .pow-feed .np-rank-by{font-size:10.5px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;
   white-space:nowrap;}
