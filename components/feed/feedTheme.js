@@ -1165,14 +1165,20 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
   font-variant-numeric:tabular-nums;white-space:nowrap;}
 /* Byline: inline at the end of the title text (every lens, not just Latest),
    so it wraps as part of the same headline instead of needing its own line.
-   Reset off the headline's serif/bold/color so it still reads as dim metadata,
-   not more title — and explicitly OFF the title's own hyphens:auto/
-   overflow-wrap:anywhere (both inherit into a nested span otherwise), or a
-   handle name that doesn't fit the line break mid-word instead of wrapping
-   whole; nowrap means it either fits or moves entirely to the next line. */
-.pow-feed .np-lead-by{font-family:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
-  font-size:11px;font-weight:400;color:var(--dim);white-space:nowrap;hyphens:none;
-  overflow-wrap:normal;}
+   Dimmed + lighter weight (not bold like the title) so it reads as metadata —
+   but deliberately NOT switched to the site's usual monospace for handles:
+   a nested span with a different font-family than its wrapped serif parent
+   makes this line's width computation come out badly short (line 1, beside
+   the floated rank number, stops using ~half its available width for no
+   reason) — reproduces with or without the float, so it's a text-shaping
+   quirk with mixed-font runs, not a float bug. Keeping the byline in the
+   inherited serif avoids it; only size/weight/color set it apart from the
+   title. hyphens:none/overflow-wrap:normal stay off the title's
+   hyphens:auto/overflow-wrap:anywhere (inherited into a nested span
+   otherwise), so a handle name that doesn't fit moves whole to the next
+   line instead of splitting mid-word; nowrap backs that up. */
+.pow-feed .np-lead-by{font-size:11px;font-weight:400;color:var(--dim);
+  white-space:nowrap;hyphens:none;overflow-wrap:normal;}
 .pow-feed .np-lead-hl:hover .np-lead-h{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;}
 .pow-feed .np-lead-hl:hover .np-lead-by{text-decoration:none;}
 .pow-feed .np-lead-teaser-link{display:block;margin-top:9px;}
@@ -1216,14 +1222,15 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
   font-variant-numeric:tabular-nums;white-space:nowrap;}
 /* Byline: inline at the end of the title text (every lens, not just Latest),
    wrapping as part of the same headline rather than needing its own line.
-   Reset off the headline's serif/bold/color so it still reads as dim
-   metadata, not more title — and explicitly OFF the title's own hyphens:auto/
-   overflow-wrap:anywhere (inherited into this nested span otherwise), so a
-   handle name either fits on the line or moves whole to the next one instead
-   of splitting mid-word. */
-.pow-feed .np-rank-by{font-family:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
-  font-size:11px;font-weight:400;color:var(--dim);white-space:nowrap;hyphens:none;
-  overflow-wrap:normal;}
+   Dimmed + lighter weight, but NOT switched to the site's usual monospace for
+   handles: see the matching note on .np-lead-by — a nested span with a
+   different font-family than its wrapped serif parent makes this line's
+   width computation come out badly short, float or no float. hyphens:none/
+   overflow-wrap:normal stay off the title's hyphens:auto/overflow-wrap:anywhere
+   (inherited into this nested span otherwise), so a handle name either fits
+   on the line or moves whole to the next one instead of splitting mid-word. */
+.pow-feed .np-rank-by{font-size:11px;font-weight:400;color:var(--dim);
+  white-space:nowrap;hyphens:none;overflow-wrap:normal;}
 .pow-feed .np-rank:hover .np-rank-by{text-decoration:none;}
 /* Preview snippet under every ranked row, not just the hero — same idea as
    .np-lead-teaser, tighter (2 lines) since there can be up to a dozen of

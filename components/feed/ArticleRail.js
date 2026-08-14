@@ -132,7 +132,7 @@ function Lead({ story, rank, now, onOpen, showCount, countTitle }) {
         ) : null}
         <span className="np-serif np-lead-h">
           {story.title}
-          <span className="np-lead-by"> · {story.author}</span>
+          <span className="np-lead-by"> {story.author}</span>
         </span>
       </Link>
       {story.teaser ? (
@@ -176,7 +176,7 @@ function StoryRow({ story, rank, now, onOpen, showCount, countTitle }) {
       <span className="np-rank-body">
         <span className="np-serif np-rank-h">
           {story.title}
-          <span className="np-rank-by"> · {story.author}</span>
+          <span className="np-rank-by"> {story.author}</span>
         </span>
         {story.teaser ? <span className="np-rank-teaser">{story.teaser}</span> : null}
       </span>
