@@ -206,11 +206,26 @@ html:not(.dark) .pow-article .hr-unlock:disabled{background:transparent;color:va
 .pow-article .commentbar-left{display:flex;align-items:center;gap:8px;}
 .pow-article .commentbar-left .charcount{margin:0;}
 .pow-article .commentbar-btns{display:flex;align-items:center;gap:10px;}
-/* .postcomment-btn carries a margin-top for its standalone use below a textarea;
-   inside the composer bar it sits in a flex row next to Cancel, so drop the
-   offset that would otherwise push Reply lower than Cancel. */
-.pow-article .commentbar .postcomment-btn{margin-top:0;}
 .pow-article .charcount.over{color:var(--no);}
+/* Pay control — byte-for-byte the same as the feed composer's .paybtn
+   (ComposeBox.js / feedTheme.js), so commenting on an article and replying in
+   the feed feel like the same control: icon-only until you type, then widens
+   to reveal the amount. Corners match the site's other buttons (9px, the
+   shared .btn radius). */
+.pow-article .paybtn{position:relative;display:flex;align-items:center;height:38px;width:40px;min-width:40px;
+  background:transparent;border:1.5px solid var(--line);border-radius:9px;cursor:pointer;overflow:hidden;
+  padding:0;flex:none;transition:min-width .32s cubic-bezier(.4,0,.2,1),border-color .25s,box-shadow .25s;}
+.pow-article .paybtn.active{width:auto;min-width:118px;}
+.pow-article .paybtn:disabled{cursor:not-allowed;opacity:.6;}
+.pow-article .paybtn-icon{position:absolute;top:50%;left:12px;transform:translate(0,-50%);line-height:1;
+  transition:left .32s cubic-bezier(.4,0,.2,1);}
+.pow-article .paybtn.active .paybtn-icon{left:11px;}
+.pow-article .paybtn-amt{position:absolute;top:50%;right:12px;transform:translate(6px,-50%);font-size:12.5px;
+  font-weight:700;letter-spacing:.02em;white-space:nowrap;opacity:0;color:var(--neon);
+  transition:opacity .22s .08s,transform .22s .08s;}
+.pow-article .paybtn.active .paybtn-amt{opacity:1;transform:translate(0,-50%);}
+.pow-article .paybtn.active:not(:disabled){border-color:var(--neon);box-shadow:0 0 14px rgba(0,255,156,.4);}
+.pow-article .paybtn.active:hover:not(:disabled){box-shadow:0 0 22px rgba(0,255,156,.55);}
 .pow-article .commentghost{background:transparent;border:1px solid var(--line);color:var(--dim);border-radius:9px;
   padding:9px 16px;font:inherit;font-size:12px;cursor:pointer;transition:border-color .15s,color .15s;}
 .pow-article .commentghost:hover{border-color:var(--cyan);color:var(--cyan);}
@@ -321,6 +336,12 @@ html:not(.dark) .pow-article .postcomment-btn:hover:not(:disabled){
 html:not(.dark) .pow-article .unlockbtn:disabled,
 html:not(.dark) .pow-article .postcomment-btn:disabled{
   background:transparent;color:var(--dim);border-color:var(--line);box-shadow:none;}
+/* Comment Pay button on paper: an ink-green ring, no glow — byte-for-byte the
+   same override the feed composer's .paybtn gets (glow is a dark-mode-only
+   trick; paper does emphasis with weight + a solid ring instead). */
+html:not(.dark) .pow-article .paybtn-amt{color:var(--neon);}
+html:not(.dark) .pow-article .paybtn.active:not(:disabled){border-color:var(--neon);box-shadow:0 0 0 1px var(--neon);}
+html:not(.dark) .pow-article .paybtn.active:hover:not(:disabled){box-shadow:0 0 0 1.5px var(--neon);}
 /* Not-following is an outline pill; following is a bare accent check in both
    themes (see .followbtn.on above), so no light-mode fill override is needed. */
 /* Elevation: recessed cards get a hairline + soft shadow, not a glow. */

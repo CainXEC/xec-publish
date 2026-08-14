@@ -7,6 +7,7 @@ import { tokenizeContent } from '@/lib/contentLinks'
 import TranslateButton from '@/components/TranslateButton'
 import CommentLike from '@/components/feed/CommentLike'
 import EmojiPicker from '@/components/EmojiPicker'
+import EcashIcon from '@/components/EcashIcon'
 import { prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 import { pollUntil } from '@/lib/ecash/pollUntil'
 // Pocket-aware gateway: identical contract to the cashtabPay trio. Pocket
@@ -143,6 +144,10 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
   const over = chars > FEED_MAX_CHARS
   const canSubmit = priced.ok && !submitting
   const isReply = Boolean(parentId)
+  // Matches the feed composer's Pay control exactly (ComposeBox.js): a plain
+  // icon-only square that lights up, widens, and reveals the amount the
+  // instant there's something to pay for — quiet until then.
+  const payActive = chars > 0
 
   useEffect(() => {
     if (autoFocus) textareaRef.current?.focus()
@@ -418,9 +423,13 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
             type="button"
             disabled={!canSubmit}
             onClick={() => void startPayment()}
-            className="postcomment-btn"
+            className={`paybtn${payActive ? ' active' : ''}`}
+            aria-label={priced.ok ? `Pay ${priced.costXec} XEC` : isReply ? 'Reply' : 'Comment'}
           >
-            {priced.ok ? `Pay · ${priced.costXec} XEC` : isReply ? 'Reply' : 'Comment'}
+            <span aria-hidden className="paybtn-icon">
+              <EcashIcon size={15} />
+            </span>
+            <span className="paybtn-amt">{priced.ok ? `${priced.costXec} XEC` : ''}</span>
           </button>
         </div>
       </div>
