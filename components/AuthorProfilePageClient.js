@@ -500,7 +500,10 @@ export default function AuthorProfilePageClient({
         ) : null}
         <AuthorFrontPage identity={identity} stories={initialArticles} onOpenStory={openStory} />
       </aside>
-      <main className="wrap" style={{ paddingTop: '28px' }}>
+      {/* data-middle-pane: lets the handle carousel's hover preview (in the
+          narrow left rail above) center itself here instead of popping up
+          over the rail — see HandleCarousel.js's showTip. */}
+      <main className="wrap" data-middle-pane style={{ paddingTop: '28px' }}>
         {readerSlug ? (
           <HomeReader slug={readerSlug} onClose={closeReader} backLabel="← Profile" />
         ) : null}

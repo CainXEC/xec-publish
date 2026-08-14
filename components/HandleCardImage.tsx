@@ -61,11 +61,17 @@ export function HandleCardPreview({
   src,
   label,
   size: rawSize = PREVIEW_SIZE,
+  center = null,
 }: {
   anchor: CardAnchor
   src?: string | null
   label?: string | null
   size?: number
+  /** When set, center the popup within this rect's on-screen portion instead of
+   *  anchoring to the hovered card — for a narrow host (e.g. the profile page's
+   *  desktop handle rail) where an anchor-positioned popup would spill over and
+   *  cover the very strip it's previewing. */
+  center?: { left: number; top: number; width: number; height: number } | null
 }) {
   if (typeof window === 'undefined') return null
 
@@ -74,25 +80,45 @@ export function HandleCardPreview({
   const vw = document.documentElement?.clientWidth || window.innerWidth || size
   const vh = document.documentElement?.clientHeight || window.innerHeight || height
 
-  // Prefer above the card, flip below when the card sits too near the top —
-  // but pick whichever side actually has more room when NEITHER fits, so a card
-  // in the middle of a short window doesn't get shoved off the bottom edge.
-  const roomAbove = anchor.top - GAP - MARGIN
-  const roomBelow = vh - anchor.bottom - GAP - MARGIN
-  const placeBelow = height <= roomAbove ? false : height <= roomBelow || roomBelow > roomAbove
-
-  // Then clamp into the viewport regardless: the popup is pointer-events:none,
-  // so overlapping the hovered card in a cramped window is harmless — being cut
-  // off by the window edge is not. Position from the real top (no vertical
-  // transform) so this clamp is exact.
-  const wanted = placeBelow ? anchor.bottom + GAP : anchor.top - GAP - height
-  const top = Math.min(Math.max(wanted, MARGIN), Math.max(MARGIN, vh - height - MARGIN))
-
   // Keep the horizontally-centered popup fully on screen. Pin the popup width
   // (image + 10px padding each side) so the centering math matches what renders.
   const popupWidth = (src ? size : 120) + CHROME
   const half = popupWidth / 2
-  const left = Math.min(Math.max(anchor.cx, half + MARGIN), Math.max(half + MARGIN, vw - half - MARGIN))
+
+  let left: number
+  let top: number
+  if (center) {
+    // Center within the rect's currently-VISIBLE slice — the target (e.g. the
+    // whole reading column) can be far taller than the viewport, so centering on
+    // its full height could park the popup off-screen once the page is scrolled.
+    const visLeft = Math.max(center.left, 0)
+    const visRight = Math.min(center.left + center.width, vw)
+    const visTop = Math.max(center.top, 0)
+    const visBottom = Math.min(center.top + center.height, vh)
+    left = Math.min(
+      Math.max((visLeft + visRight) / 2, half + MARGIN),
+      Math.max(half + MARGIN, vw - half - MARGIN),
+    )
+    top = Math.min(
+      Math.max((visTop + visBottom) / 2 - height / 2, MARGIN),
+      Math.max(MARGIN, vh - height - MARGIN),
+    )
+  } else {
+    // Prefer above the card, flip below when the card sits too near the top —
+    // but pick whichever side actually has more room when NEITHER fits, so a
+    // card in the middle of a short window doesn't get shoved off the bottom.
+    const roomAbove = anchor.top - GAP - MARGIN
+    const roomBelow = vh - anchor.bottom - GAP - MARGIN
+    const placeBelow = height <= roomAbove ? false : height <= roomBelow || roomBelow > roomAbove
+
+    // Then clamp into the viewport regardless: the popup is pointer-events:none,
+    // so overlapping the hovered card in a cramped window is harmless — being
+    // cut off by the window edge is not. Position from the real top (no
+    // vertical transform) so this clamp is exact.
+    const wanted = placeBelow ? anchor.bottom + GAP : anchor.top - GAP - height
+    top = Math.min(Math.max(wanted, MARGIN), Math.max(MARGIN, vh - height - MARGIN))
+    left = Math.min(Math.max(anchor.cx, half + MARGIN), Math.max(half + MARGIN, vw - half - MARGIN))
+  }
 
   return (
     <div

@@ -78,7 +78,24 @@ export default function HandleCarousel({
   // plain text chip.
   const showTip = useCallback((event, text, imageUrl = null) => {
     const rect = event.currentTarget.getBoundingClientRect()
-    setTip({ text, imageUrl, cx: rect.left + rect.width / 2, top: rect.top, bottom: rect.bottom })
+    // On the desktop profile page, this carousel sits in the narrow left rail
+    // (.prof-handles-rail) — a 420px popup anchored to the hovered card would
+    // spill out and cover the strip it's previewing. There (only), center the
+    // popup in the middle reading pane instead, where there's actual room.
+    // .prof-handles-rail only exists on that placement (not the dashboard
+    // picker or the narrower-viewport center placement), so no width/media
+    // check is needed — finding the ancestor is itself the signal.
+    const inDesktopRail = trackRef.current?.closest('.prof-handles-rail')
+    const middlePane = inDesktopRail ? document.querySelector('[data-middle-pane]') : null
+    const mp = middlePane?.getBoundingClientRect()
+    setTip({
+      text,
+      imageUrl,
+      cx: rect.left + rect.width / 2,
+      top: rect.top,
+      bottom: rect.bottom,
+      center: mp ? { left: mp.left, top: mp.top, width: mp.width, height: mp.height } : null,
+    })
   }, [])
   const hideTip = useCallback(() => setTip(null), [])
 
@@ -305,6 +322,7 @@ export default function HandleCarousel({
                 anchor={{ cx: tip.cx, top: tip.top, bottom: tip.bottom }}
                 src={tip.imageUrl}
                 label={tip.text}
+                center={tip.center}
               />
             ) : (
               <div className="dashhandle-tip" style={{ left: tip.cx, top: tip.top }}>
