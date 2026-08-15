@@ -9,7 +9,10 @@ import { getCachedProfileStats } from '@/lib/profileCache'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { adminDb } from '@/lib/db'
 import { viewerBlocksAccount } from '@/lib/feedBlocks'
-import { viewerFollowsAccount } from '@/lib/profileSocial'
+import { viewerFollowsAccount, followerCountForAccount } from '@/lib/profileSocial'
+import { profileOpenGraphMetadata } from '@/lib/profileOgMetadata'
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.proofofwriting.com'
 
 // Reached via the next.config rewrite:  /@<identifier>  ->  /profile/<identifier>
 // <identifier> is either a handle ("simon") or a bare eCash address ("qq703j…").
@@ -26,11 +29,21 @@ export async function generateMetadata({ params }) {
   // resolveProfileByIdentifier is wrapped in React cache(): this call and the
   // page component's share one resolution per request.
   const resolved = identifier ? await resolveProfileByIdentifier(identifier) : null
-  const title = resolved ? `${resolved.identity} — proofofwriting` : 'Profile — proofofwriting'
-  return {
-    title,
-    openGraph: { title, type: 'profile' },
+  if (!resolved) {
+    return {
+      title: 'Profile — proofofwriting',
+      openGraph: { title: 'Profile — proofofwriting', type: 'profile' },
+    }
   }
+
+  const followers = await followerCountForAccount(resolved.accountId)
+  return profileOpenGraphMetadata({
+    identity: resolved.identity,
+    color: resolved.handleColor,
+    bio: resolved.author?.bio ?? '',
+    followers,
+    pageUrl: `${siteUrl}/@${encodeURIComponent(identifier)}`,
+  })
 }
 
 /** The handle-card strip, streamed OUTSIDE the critical path: enumerating every
