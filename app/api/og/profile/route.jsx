@@ -29,7 +29,7 @@ export async function GET(request) {
   // Scale to length so a short handle fills the card and a long truncated
   // address still fits. (Mono runs wide, so sizes stay modest.)
   const len = identity.length
-  const identitySize = len > 32 ? 92 : len > 22 ? 116 : len > 12 ? 148 : 172
+  const identitySize = len > 32 ? 104 : len > 22 ? 132 : len > 12 ? 168 : 196
 
   let fonts = []
   try {
@@ -118,12 +118,12 @@ export async function GET(request) {
                   style={{
                     fontFamily: mono,
                     fontWeight: 400,
-                    fontSize: '42px',
+                    fontSize: '58px',
                     lineHeight: 1.5,
                     color: '#8fb3a8',
-                    marginTop: '38px',
-                    maxWidth: '1900px',
-                    maxHeight: '190px',
+                    marginTop: '44px',
+                    maxWidth: '1960px',
+                    maxHeight: '270px',
                     overflow: 'hidden',
                   }}
                 >
@@ -136,9 +136,9 @@ export async function GET(request) {
                   style={{
                     fontFamily: mono,
                     fontWeight: 400,
-                    fontSize: '38px',
+                    fontSize: '48px',
                     color: DIM,
-                    marginTop: '36px',
+                    marginTop: '40px',
                     flexShrink: 0,
                   }}
                 >
