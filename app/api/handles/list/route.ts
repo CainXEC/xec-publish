@@ -33,7 +33,11 @@ export async function GET(req: NextRequest) {
     .from("handles")
     .select("token_id, handle, tier, origin, created_at, image_url", { count: "exact" });
 
-  if (q) query = query.ilike("handle", `%${q.replace(/[%_\\]/g, "")}%`); // strip LIKE wildcards
+  // ESCAPE the LIKE specials (\ % _) rather than stripping them: handles very
+  // often contain underscores (e.g. "electronic_cash"), and deleting the "_"
+  // turned an exact search into a non-matching pattern. Backslash is Postgres
+  // ILIKE's default escape char, so "\_" matches a literal underscore.
+  if (q) query = query.ilike("handle", `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
   if (tier === "short" || tier === "mid" || tier === "base") query = query.eq("tier", tier);
   if (sort === "old") query = query.order("created_at", { ascending: true });
   else if (sort === "az") query = query.order("handle_skeleton", { ascending: true });
