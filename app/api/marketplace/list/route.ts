@@ -13,10 +13,10 @@
 //  not knowable without extra history, so we offer price + mint-date sorts only.
 // =============================================================================
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { adminDb } from "@/lib/db";
 import { fetchActiveHandleOffers } from "@/lib/agoraMarketplace";
-import { sellerHandleMap } from "@/lib/handleOffers";
+import { sellerHandleMap, reconcileListedOffers } from "@/lib/handleOffers";
 import { chronikBudget } from "@/lib/ecash/chronikBudget";
 
 export const runtime = "nodejs";
@@ -41,6 +41,20 @@ export async function GET(req: NextRequest) {
   if (offers.length === 0) {
     return NextResponse.json({ ok: true, items: [], total: 0 });
   }
+
+  // Post-response, best-effort: notify any bidder whose offered price now matches
+  // a live listing ("@holder listed @handle at your offer of N XEC"). Runs off
+  // the read we already did — no click to trust, no cron. Never blocks the grid.
+  after(() =>
+    reconcileListedOffers(
+      supabase,
+      offers.map((o) => ({
+        tokenId: o.tokenId,
+        priceSats: o.priceSats,
+        sellerAddress: o.sellerAddress,
+      }))
+    ).catch((e) => console.error("[marketplace] reconcile offers failed", e))
+  );
 
   const tokenIds = offers.map((o) => o.tokenId);
   const { data, error } = await supabase

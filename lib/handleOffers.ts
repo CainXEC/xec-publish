@@ -13,6 +13,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { currentTokenHolder } from "@/lib/resolveProfile";
 import { fetchListedSellerAddress } from "@/lib/agoraMarketplace";
+import { recordFeedNotification, resolveAccountByAddress } from "@/lib/feedNotifications";
 
 const bare = (address: string) => address.replace(/^ecash:/, "").toLowerCase();
 const addressForms = (address: string) => {
@@ -87,6 +88,94 @@ export async function offerRecipientForToken(
     .in("address", addressForms(sellerAddress))
     .limit(1);
   return { accountId: (links?.[0]?.account_id as string | undefined) ?? null, listed: true };
+}
+
+/** A currently-active listing, as much as the reconcile below needs. */
+export interface ListingForReconcile {
+  tokenId: string;
+  priceSats: bigint;
+  sellerAddress: string | null;
+}
+
+/**
+ * Notify bidders whose offered price now matches a live listing.
+ *
+ *  The "List at N" button only opens Cashtab — it can't confirm the holder
+ *  actually listed at that price (they might cancel or change the number). So we
+ *  don't notify on the click; we reconcile ACTUAL on-chain listings against open
+ *  offers here (called from the marketplace read, best-effort in the background):
+ *  when a handle is listed at a price that EXACTLY matches an open bid, that
+ *  bidder gets one 'offer_listed' bell.
+ *
+ *  `listed_notified_sats` records the price we last told a given bidder about, so
+ *  a bidder is notified once per matching price — not on every gallery load, and
+ *  again only if the listing later re-matches a (changed) offer price. A
+ *  conditional update is the lock: only the reconcile that flips that column
+ *  sends the bell, so concurrent gallery loads can't double-ring it.
+ *
+ *  Requires sql/handle_offer_listed_notify.sql (the column + notif type). Never
+ *  throws — a reconcile failure just means no bell this pass.
+ */
+export async function reconcileListedOffers(
+  supabase: SupabaseClient,
+  listings: ListingForReconcile[]
+): Promise<void> {
+  if (listings.length === 0) return;
+  const byToken = new Map(listings.map((l) => [l.tokenId, l]));
+
+  const { data: offers } = await supabase
+    .from("handle_offers")
+    .select("id, token_id, bidder_account_id, amount_sats, listed_notified_sats")
+    .in("token_id", [...byToken.keys()])
+    .eq("status", "open")
+    .not("amount_sats", "is", null);
+  if (!offers || offers.length === 0) return;
+
+  // Resolve the lister once per token (one seller per oneshot listing).
+  const sellerCache = new Map<string, { accountId: string; identity: string } | null>();
+
+  for (const o of offers as Array<{
+    id: string;
+    token_id: string;
+    bidder_account_id: string;
+    amount_sats: number;
+    listed_notified_sats: number | null;
+  }>) {
+    const listing = byToken.get(o.token_id);
+    if (!listing) continue;
+    if (o.amount_sats !== Number(listing.priceSats)) continue; // not listed at THIS bid's price
+    if (o.listed_notified_sats === o.amount_sats) continue; // already told this bidder
+
+    let seller = sellerCache.get(o.token_id);
+    if (seller === undefined) {
+      seller = listing.sellerAddress
+        ? await resolveAccountByAddress(supabase, listing.sellerAddress)
+        : null;
+      sellerCache.set(o.token_id, seller);
+    }
+    // No account behind the lister (pure-Cashtab seller) → nothing to attribute
+    // the bell to; skip. Can't happen for our own button (seller is logged in).
+    if (!seller?.accountId || seller.accountId === o.bidder_account_id) continue;
+
+    // Claim-before-notify: only the writer that flips listed_notified_sats rings
+    // the bell (concurrent reconciles serialize on the row and see it already set).
+    const { data: claimed } = await supabase
+      .from("handle_offers")
+      .update({ listed_notified_sats: o.amount_sats })
+      .eq("id", o.id)
+      .or(`listed_notified_sats.is.null,listed_notified_sats.neq.${o.amount_sats}`)
+      .select("id");
+    if (!claimed || claimed.length === 0) continue;
+
+    await recordFeedNotification(supabase, {
+      recipientAccountId: o.bidder_account_id,
+      actorAccountId: seller.accountId,
+      actorIdentity: seller.identity,
+      type: "offer_listed",
+      postTxid: o.token_id,
+      amountSats: o.amount_sats,
+    });
+  }
 }
 
 /** Display bylines for a set of accounts: "@handle" when one is displayed,
