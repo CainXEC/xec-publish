@@ -583,9 +583,16 @@ function Card({
             </button>
           </>
         ) : held ? (
-          <a className="mkact" href={cashtabHref} target="_blank" rel="noreferrer">
-            List on Cashtab →
-          </a>
+          // A handle you hold: list it at your own price, OR review the offers
+          // on it (the panel shows each bid with a one-tap "List at N").
+          <>
+            <a className="mkact" href={cashtabHref} target="_blank" rel="noreferrer">
+              List →
+            </a>
+            <button className={`mkact offerbtn${offerOpen ? " on" : ""}`} onClick={onToggleOffer}>
+              {offerCount > 0 ? `Offers · ${offerCount}` : "Offers"}
+            </button>
+          </>
         ) : (
           <>
             <Link className="mkact" href={`/@${item.handle}`}>Profile →</Link>
@@ -595,7 +602,7 @@ function Card({
           </>
         )}
       </div>
-      {offerOpen && !held ? (
+      {offerOpen ? (
         <OfferPanel
           tokenId={item.tokenId}
           handle={item.handle}
