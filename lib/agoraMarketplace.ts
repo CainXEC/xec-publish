@@ -15,6 +15,8 @@
 
 import { ChronikClient } from "chronik-client";
 import { Agora } from "ecash-agora";
+import { shaRmd160, toHex } from "ecash-lib";
+import { encodeCashAddress } from "ecashaddrjs";
 import { CHRONIK_AGORA_URLS } from "@/lib/ecash/chronikEndpoints";
 
 // Agora needs a Chronik instance with the "agora" plugin loaded. The public
@@ -34,6 +36,12 @@ export interface HandleOffer {
   priceSats: bigint;
   /** Asked price in XEC (priceSats / 100), for display. */
   priceXec: number;
+  /** The seller's eCash address, derived from the oneshot's cancel pubkey
+   *  (only that key can cancel/relist → it IS the lister). Used to route an
+   *  offer/bell to whoever listed the handle, even while the NFT sits in the
+   *  Agora escrow covenant (so the on-chain "holder" is the covenant, not them).
+   *  null only if the pubkey couldn't be encoded (shouldn't happen). */
+  sellerAddress: string | null;
 }
 
 /** satoshis (bigint) -> XEC number, keeping 2dp (1 XEC = 100 sats). */
@@ -41,6 +49,16 @@ function satsToXec(sats: bigint): number {
   const whole = sats / SATS_PER_XEC;
   const frac = sats % SATS_PER_XEC;
   return Number(whole) + Number(frac) / 100;
+}
+
+/** The lister's P2PKH eCash address from a oneshot's cancel pubkey. Same
+ *  hash160→cashaddr path used across the app (lib/pocket/derive.js, walletAuth). */
+function sellerAddressFromCancelPk(cancelPk: Uint8Array): string | null {
+  try {
+    return encodeCashAddress("ecash", "p2pkh", toHex(shaRmd160(cancelPk)));
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -57,11 +75,34 @@ export async function fetchActiveHandleOffers(): Promise<HandleOffer[]> {
   const out: HandleOffer[] = [];
   for (const offer of offers) {
     // Handles are one-of-one NFTs → oneshot offers. Skip anything else.
-    if (offer.variant.type !== "ONESHOT") continue;
+    const variant = offer.variant;
+    if (variant.type !== "ONESHOT") continue;
     const tokenId = offer.token?.tokenId;
     if (!tokenId) continue;
     const priceSats = offer.askedSats();
-    out.push({ tokenId, priceSats, priceXec: satsToXec(priceSats) });
+    out.push({
+      tokenId,
+      priceSats,
+      priceXec: satsToXec(priceSats),
+      sellerAddress: sellerAddressFromCancelPk(variant.params.cancelPk),
+    });
   }
   return out;
+}
+
+/**
+ * The seller's eCash address for ONE listed handle, or null if it isn't
+ * currently listed. One targeted Agora query (activeOffersByTokenId) — used by
+ * the offer routes to route a bid/bell to whoever listed the handle. Throws if
+ * Chronik/Agora is unreachable (callers treat that as "couldn't resolve").
+ */
+export async function fetchListedSellerAddress(tokenId: string): Promise<string | null> {
+  const offers = await agora().activeOffersByTokenId(tokenId);
+  for (const offer of offers) {
+    const variant = offer.variant;
+    if (variant.type !== "ONESHOT") continue;
+    if (offer.token?.tokenId !== tokenId) continue;
+    return sellerAddressFromCancelPk(variant.params.cancelPk);
+  }
+  return null;
 }

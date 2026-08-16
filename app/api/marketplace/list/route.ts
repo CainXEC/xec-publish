@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/db";
 import { fetchActiveHandleOffers } from "@/lib/agoraMarketplace";
+import { sellerHandleMap } from "@/lib/handleOffers";
 import { chronikBudget } from "@/lib/ecash/chronikBudget";
 
 export const runtime = "nodejs";
@@ -70,10 +71,22 @@ export async function GET(req: NextRequest) {
     ])
   );
 
+  // Decorate each listing with WHO listed it (@handle) when the lister has an
+  // account here — so a buyer can see the seller and reach out. Best-effort:
+  // sellers with no account / no handle just carry no byline.
+  const sellerBare = (a: string) => a.replace(/^ecash:/, "").toLowerCase();
+  const sellerHandles = await sellerHandleMap(
+    supabase,
+    offers.map((o) => o.sellerAddress).filter((a): a is string => Boolean(a))
+  );
+
   const items = offers
     .map((o) => {
       const m = meta.get(o.tokenId);
       if (!m) return null; // listed token we don't have metadata for — skip
+      const sellerHandle = o.sellerAddress
+        ? sellerHandles.get(sellerBare(o.sellerAddress)) ?? null
+        : null;
       return {
         tokenId: o.tokenId,
         handle: m.handle,
@@ -82,6 +95,7 @@ export async function GET(req: NextRequest) {
         imageUrl: m.imageUrl,
         priceXec: o.priceXec,
         priceSats: o.priceSats.toString(), // bigint → string for JSON
+        sellerHandle, // @handle of the lister, or null
       };
     })
     .filter(Boolean) as Array<{
@@ -92,6 +106,7 @@ export async function GET(req: NextRequest) {
       imageUrl: string | null;
       priceXec: number;
       priceSats: string;
+      sellerHandle: string | null;
     }>;
 
   if (sort === "price-desc") items.sort((a, b) => b.priceXec - a.priceXec);

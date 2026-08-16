@@ -37,6 +37,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import Link from "next/link";
 import { priceForHandle, type Tier } from "@/lib/handlePricing";
 import HandleCardImage from "@/components/HandleCardImage";
+import { agoraListLink, agoraBuyLink } from "@/lib/ecash/agoraDeepLink";
 
 export type GalleryView = "forsale" | "all";
 export type TierFilter = "all" | Tier;
@@ -50,6 +51,7 @@ type Listing = {
   imageUrl: string | null;
   priceXec: number;
   priceSats: string;
+  sellerHandle: string | null;
 };
 
 type MintedRow = {
@@ -68,6 +70,8 @@ type CardItem = {
   imageUrl: string | null;
   /** Live Agora ask when listed, else null. */
   priceXec: number | null;
+  /** @handle of whoever listed it (when listed and they have an account), else null. */
+  sellerHandle: string | null;
 };
 
 type Provenance = {
@@ -193,8 +197,9 @@ export function MarketFilters({
   );
 }
 
-// Cashtab shows the Agora sell offer + a Buy control on the token page.
-const cashtabTokenUrl = (tokenId: string) => `https://cashtab.com/#/token/${tokenId}`;
+// The plain token page in Cashtab — where the owner of a LISTED handle sees the
+// cancel control (D20335 has no cancel deep link, so this is the manage entry).
+const cashtabManageUrl = (tokenId: string) => `https://cashtab.com/#/token/${tokenId}`;
 
 const fmtXec = (n: number) =>
   n.toLocaleString(
@@ -250,12 +255,19 @@ function OfferPanel({
   handle,
   count,
   signedIn,
+  listed,
+  listedPriceXec,
   onChanged,
 }: {
   tokenId: string;
   handle: string;
   count: number;
   signedIn: boolean;
+  /** The handle is currently listed on Agora (in escrow) — changes the seller's
+   *  flow from one-tap list to cancel-then-relist, and the buyer copy. */
+  listed: boolean;
+  /** The live ask, shown to the seller so they can see it vs the offers. */
+  listedPriceXec: number | null;
   onChanged: () => void;
 }) {
   const [detail, setDetail] = useState<OffersDetail | "error" | null>(
@@ -340,27 +352,54 @@ function OfferPanel({
   }
 
   if (detail.holder) {
+    const hasOffers = Boolean(detail.offers && detail.offers.length > 0);
     return (
       <div className="mkoffer">
         <p className="oh">Offers on @{handle}</p>
-        {detail.offers && detail.offers.length > 0 ? (
-          detail.offers.map((o, i) => (
+        {listed ? (
+          <p className="onote">
+            Listed at {listedPriceXec != null ? fmtXec(listedPriceXec) : "your ask"}.
+          </p>
+        ) : null}
+        {hasOffers ? (
+          detail.offers!.map((o, i) => (
             <div className="orow" key={i}>
               <span className="obidder">{o.bidder}</span>
               <span className="oamt">{o.amountXec != null ? fmtXec(o.amountXec) : "no price named"}</span>
+              {/* Unlisted → one tap lists at the offered price. Already listed →
+                  you must cancel first (the NFT is in escrow), so this "relist"
+                  link only works AFTER the cancel step below; label it as step 2. */}
+              <a
+                className="olistbtn"
+                href={agoraListLink(tokenId, o.amountXec)}
+                target="_blank"
+                rel="noreferrer"
+                title={o.amountXec != null
+                  ? `List @${handle} on Agora at ${fmtXec(o.amountXec)}`
+                  : `List @${handle} on Agora`}
+              >
+                {listed
+                  ? (o.amountXec != null ? `Relist at ${fmtXec(o.amountXec)} →` : "Relist →")
+                  : (o.amountXec != null ? `List at ${fmtXec(o.amountXec)} →` : "List →")}
+              </a>
             </div>
           ))
         ) : (
           <p className="onote">No offers yet.</p>
         )}
-        {detail.offers && detail.offers.length > 0 ? (
+        {hasOffers && listed ? (
           <p className="onote">
-            Like one? <a
-              className="inlink"
-              href="https://cashtab.com/#/token"
-              target="_blank"
-              rel="noreferrer"
-            >List on Agora</a> at that price — the buyer completes it in Cashtab.
+            To take an offer, first{" "}
+            <a className="inlink" href={cashtabManageUrl(tokenId)} target="_blank" rel="noreferrer">
+              cancel your listing in Cashtab
+            </a>{" "}
+            (the NFT returns to your wallet), then tap Relist — it opens Cashtab
+            with that price prefilled, and the buyer completes the purchase.
+          </p>
+        ) : hasOffers ? (
+          <p className="onote">
+            One tap opens Cashtab with the price prefilled — the buyer completes
+            the purchase from your listing.
           </p>
         ) : null}
       </div>
@@ -369,11 +408,17 @@ function OfferPanel({
 
   return (
     <div className="mkoffer">
-      <p className="oh">{detail.mine ? "Your offer" : "Make an offer"}</p>
+      <p className="oh">{detail.mine ? "Your offer" : listed ? "Offer below the ask" : "Make an offer"}</p>
+      {listed ? (
+        <p className="onote">
+          Listed at {listedPriceXec != null ? fmtXec(listedPriceXec) : "the ask"}. Buy it now
+          on Cashtab, or name a lower price — the seller gets your offer.
+        </p>
+      ) : null}
       <input
         className="oamount"
         inputMode="decimal"
-        placeholder="Amount in XEC (optional)"
+        placeholder={listed ? "Your price in XEC (optional)" : "Amount in XEC (optional)"}
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
         aria-label="Offer amount in XEC"
@@ -388,7 +433,7 @@ function OfferPanel({
           </button>
         ) : null}
       </div>
-      <p className="onote">{note ?? "Only the current holder sees your offer."}</p>
+      <p className="onote">{note ?? (listed ? "Only the seller sees your offer." : "Only the current holder sees your offer.")}</p>
     </div>
   );
 }
@@ -491,6 +536,9 @@ function Card({
         ) : (
           <div className="mknoprice">not listed</div>
         )}
+        {listed && item.sellerHandle ? (
+          <div className="mkseller">listed by @{item.sellerHandle}</div>
+        ) : null}
         <div className="mkminted">minted {fmtDate(item.createdAt)}</div>
       </div>
     </>
@@ -501,12 +549,15 @@ function Card({
   // on-chain offer is accepted); a card the viewer HOLDS goes to Cashtab too, to
   // list it for sale; every other unlisted card goes to the handle's profile.
   const toCashtab = listed || held;
+  // A listed card buys in one tap (Agora BUY); a card you HOLD lists in one tap
+  // (Agora LIST). Deep links (D20335) open Cashtab straight into the action.
+  const cashtabHref = listed ? agoraBuyLink(item.tokenId) : agoraListLink(item.tokenId);
   return (
     <div className="mkcard">
       {toCashtab ? (
         <a
           className="mklink"
-          href={cashtabTokenUrl(item.tokenId)}
+          href={cashtabHref}
           target="_blank"
           rel="noreferrer"
           onMouseEnter={onEnter}
@@ -520,11 +571,17 @@ function Card({
       )}
       <div className="mkactions">
         {listed ? (
-          <a className="mkact" href={cashtabTokenUrl(item.tokenId)} target="_blank" rel="noreferrer">
-            Buy on Cashtab →
-          </a>
+          // Listed: buy at the ask in one tap, OR make a lower offer the seller sees.
+          <>
+            <a className="mkact" href={cashtabHref} target="_blank" rel="noreferrer">
+              Buy →
+            </a>
+            <button className={`mkact offerbtn${offerOpen ? " on" : ""}`} onClick={onToggleOffer}>
+              {offerCount > 0 ? `Offers · ${offerCount}` : "Make offer"}
+            </button>
+          </>
         ) : held ? (
-          <a className="mkact" href={cashtabTokenUrl(item.tokenId)} target="_blank" rel="noreferrer">
+          <a className="mkact" href={cashtabHref} target="_blank" rel="noreferrer">
             List on Cashtab →
           </a>
         ) : (
@@ -536,12 +593,14 @@ function Card({
           </>
         )}
       </div>
-      {offerOpen && !listed && !held ? (
+      {offerOpen && !held ? (
         <OfferPanel
           tokenId={item.tokenId}
           handle={item.handle}
           count={offerCount}
           signedIn={signedIn}
+          listed={listed}
+          listedPriceXec={item.priceXec}
           onChanged={onOfferChanged}
         />
       ) : null}
@@ -596,6 +655,13 @@ export default function MarketplaceClient({
   const listedPrice = useMemo(() => {
     const m = new Map<string, number>();
     for (const l of listings ?? []) m.set(l.tokenId, l.priceXec);
+    return m;
+  }, [listings]);
+
+  // Seller @handle per listed token (for the "listed by" byline on the all view).
+  const listedSeller = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const l of listings ?? []) if (l.sellerHandle) m.set(l.tokenId, l.sellerHandle);
     return m;
   }, [listings]);
 
@@ -687,6 +753,7 @@ export default function MarketplaceClient({
           createdAt: l.createdAt,
           imageUrl: l.imageUrl,
           priceXec: l.priceXec,
+          sellerHandle: l.sellerHandle,
         }))
         .filter((it) => (tier === "all" || it.tier === tier) && (!q || it.handle.toLowerCase().includes(q)));
       const s = [...filtered];
@@ -705,8 +772,9 @@ export default function MarketplaceClient({
       createdAt: m.createdAt,
       imageUrl: m.imageUrl,
       priceXec: listedPrice.get(m.tokenId) ?? null,
+      sellerHandle: listedSeller.get(m.tokenId) ?? null,
     }));
-  }, [view, listings, minted, listedPrice, tier, q, sort]);
+  }, [view, listings, minted, listedPrice, listedSeller, tier, q, sort]);
 
   // ---- offer interest counts (public, batched per page of cards) ----
   const [offerCounts, setOfferCounts] = useState<Record<string, number>>({});
@@ -733,7 +801,9 @@ export default function MarketplaceClient({
   }, []);
 
   useEffect(() => {
-    const ids = (items ?? []).filter((it) => it.priceXec == null).map((it) => it.tokenId);
+    // Both unlisted AND listed cards can carry offers now (a listed handle takes
+    // "offer below the ask"), so fetch interest counts for every card on the page.
+    const ids = (items ?? []).map((it) => it.tokenId);
     void refreshCounts(ids);
   }, [items, refreshCounts]);
 
@@ -870,6 +940,7 @@ const CSS = `
 .pow-market .mkprice{font-size:15px;font-weight:700;color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.35);white-space:nowrap;}
 .pow-market .mknoprice{font-size:13px;font-weight:700;color:var(--dim);letter-spacing:.04em;}
 .pow-market .mkyours{color:var(--cyan);}
+.pow-market .mkseller{font-size:11.5px;color:var(--cyan);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pow-market .mkminted{font-size:11.5px;color:var(--dim);}
 
 /* Action strip: link zones and buttons live OUTSIDE the card's main anchor. */
@@ -896,9 +967,17 @@ const CSS = `
 .pow-market .mkoffer .obtn.ghost:hover{background:none;border-color:var(--no);color:var(--no);}
 .pow-market .mkoffer .olink{display:block;}
 .pow-market .mkoffer .onote{font-size:11.5px;color:var(--dim);line-height:1.5;margin:0;}
-.pow-market .mkoffer .orow{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12.5px;}
-.pow-market .mkoffer .obidder{color:var(--text);word-break:break-all;}
+.pow-market .mkoffer .orow{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12.5px;}
+.pow-market .mkoffer .obidder{color:var(--text);word-break:break-all;flex:1;min-width:0;}
 .pow-market .mkoffer .oamt{color:var(--neon);font-weight:700;white-space:nowrap;}
+/* One-tap "list at this offer" — deep-links into Cashtab's Agora LIST flow with
+   the price prefilled (D20335). Compact so the bidder + amount + button fit a row. */
+.pow-market .mkoffer .olistbtn{flex:none;white-space:nowrap;text-decoration:none;
+  background:transparent;border:1px solid var(--neon);color:var(--neon);border-radius:7px;
+  padding:5px 9px;font:inherit;font-size:11px;font-weight:700;letter-spacing:.02em;
+  cursor:pointer;transition:background .15s,color .15s;}
+.pow-market .mkoffer .olistbtn:hover{background:var(--neon);color:#04120c;}
+html:not(.dark) .pow-market .mkoffer .olistbtn:hover{color:#fdfcf8;}
 
 /* On-chain provenance panel — slides up over the art on hover-capable desktop. */
 .pow-market .mkprov{position:absolute;left:0;right:0;bottom:0;display:none;flex-direction:column;gap:3px;

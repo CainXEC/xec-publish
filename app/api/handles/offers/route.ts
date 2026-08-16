@@ -14,7 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/db";
 import { getAuthedAccount } from "@/lib/authHelpers";
-import { bidderDisplayMap, holderAccountIdForToken } from "@/lib/handleOffers";
+import { bidderDisplayMap, offerRecipientForToken } from "@/lib/handleOffers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,12 +54,15 @@ export async function GET(req: NextRequest) {
     ? { amountXec: mineRow.amount_sats == null ? null : mineRow.amount_sats / 100 }
     : null;
 
-  // Holder view: amounts + bidder bylines, newest first.
+  // Holder view: amounts + bidder bylines, newest first. The current holder OR
+  // (for a listed handle) the account that listed it counts as "holder" here.
   let holder = false;
+  let listed = false;
   let offers: Array<{ bidder: string; amountXec: number | null; at: string }> | undefined;
   if (acct) {
-    const holderAccountId = await holderAccountIdForToken(supabase, tokenId);
-    if (holderAccountId && holderAccountId === acct.accountId) {
+    const recipient = await offerRecipientForToken(supabase, tokenId);
+    listed = recipient.listed;
+    if (recipient.accountId && recipient.accountId === acct.accountId) {
       holder = true;
       const displays = await bidderDisplayMap(
         supabase,
@@ -73,5 +76,5 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, count: rows.length, mine, holder, offers });
+  return NextResponse.json({ ok: true, count: rows.length, mine, holder, listed, offers });
 }

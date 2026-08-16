@@ -15,7 +15,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/db";
 import { getAuthedAccount } from "@/lib/authHelpers";
-import { holderAccountIdForToken } from "@/lib/handleOffers";
+import { offerRecipientForToken } from "@/lib/handleOffers";
 import { recordFeedNotification } from "@/lib/feedNotifications";
 
 export const runtime = "nodejs";
@@ -83,10 +83,13 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // You can't court your own handle.
-  const holderAccountId = await holderAccountIdForToken(supabase, tokenId);
+  // You can't court your own handle — whether you hold it or you listed it.
+  const { accountId: holderAccountId, listed } = await offerRecipientForToken(supabase, tokenId);
   if (holderAccountId && holderAccountId === acct.accountId) {
-    return NextResponse.json({ ok: false, error: "you hold this handle" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: listed ? "you listed this handle" : "you hold this handle" },
+      { status: 400 }
+    );
   }
 
   // Ring the holder's bell only when something changed: a fresh offer, a
