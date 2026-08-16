@@ -619,21 +619,27 @@ export default function MarketplaceClient({
   tier = "all",
   query = "",
   sort = "price-asc",
+  holder = null,
   signedIn = false,
   onViewChange,
   onTierChange,
   onQueryChange,
   onSortChange,
+  onClearHolder,
 }: {
   view?: GalleryView;
   tier?: TierFilter;
   query?: string;
   sort?: GallerySort;
+  /** When set, scope the grid to the handles this identity currently HOLDS
+   *  (the profile "Make an offer on a handle →" link). Overrides view/listings. */
+  holder?: string | null;
   signedIn?: boolean;
   onViewChange?: (v: GalleryView) => void;
   onTierChange?: (t: TierFilter) => void;
   onQueryChange?: (q: string) => void;
   onSortChange?: (s: GallerySort) => void;
+  onClearHolder?: () => void;
 }) {
   // ---- listings (Agora) — one live fetch; small set, sorted/filtered here ----
   const [listings, setListings] = useState<Listing[] | null>(null);
@@ -737,14 +743,63 @@ export default function MarketplaceClient({
   );
 
   useEffect(() => {
-    if (view !== "all") return;
+    if (view !== "all" || holder) return; // holder scope has its own fetch
     setMinted(null);
     void fetchMinted(0, true);
-  }, [view, fetchMinted]);
+  }, [view, holder, fetchMinted]);
+
+  // ---- holder scope — the handles one identity currently HOLDS (on-chain) ----
+  const [heldItems, setHeldItems] = useState<MintedRow[] | null>(null);
+  const [heldHolder, setHeldHolder] = useState<string | null>(null);
+  useEffect(() => {
+    if (!holder) {
+      setHeldItems(null);
+      setHeldHolder(null);
+      return;
+    }
+    let alive = true;
+    setHeldItems(null);
+    setHeldHolder(null);
+    fetch(`/api/handles/held?identity=${encodeURIComponent(holder)}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (!alive || !j.ok) return;
+        setHeldItems(j.items as MintedRow[]);
+        setHeldHolder((j.holder as string) ?? holder);
+      })
+      .catch(() => {
+        if (alive) setHeldItems([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [holder]);
 
   // ---- the items the grid shows ----
   const q = query.trim().toLowerCase();
   const items: CardItem[] | null = useMemo(() => {
+    // Holder scope wins over the browse views: show exactly what this owner
+    // holds, decorated with any live ask, filtered/sorted client-side.
+    if (holder) {
+      if (!heldItems) return null;
+      const mapped = heldItems
+        .map((m) => ({
+          tokenId: m.tokenId,
+          handle: m.handle,
+          tier: tierOf(m.handle, m.tier),
+          createdAt: m.createdAt,
+          imageUrl: m.imageUrl,
+          priceXec: listedPrice.get(m.tokenId) ?? null,
+          sellerHandle: listedSeller.get(m.tokenId) ?? null,
+        }))
+        .filter((it) => (tier === "all" || it.tier === tier) && (!q || it.handle.toLowerCase().includes(q)));
+      if (sort === "price-desc") mapped.sort((a, b) => (b.priceXec ?? 0) - (a.priceXec ?? 0));
+      else if (sort === "price-asc") mapped.sort((a, b) => (a.priceXec ?? 0) - (b.priceXec ?? 0));
+      else if (sort === "old") mapped.sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1));
+      else if (sort === "az") mapped.sort((a, b) => a.handle.localeCompare(b.handle));
+      else mapped.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)); // newest
+      return mapped;
+    }
     if (view === "forsale") {
       if (!listings) return null;
       const filtered = listings
@@ -776,7 +831,7 @@ export default function MarketplaceClient({
       priceXec: listedPrice.get(m.tokenId) ?? null,
       sellerHandle: listedSeller.get(m.tokenId) ?? null,
     }));
-  }, [view, listings, minted, listedPrice, listedSeller, tier, q, sort]);
+  }, [holder, heldItems, view, listings, minted, listedPrice, listedSeller, tier, q, sort]);
 
   // ---- offer interest counts (public, batched per page of cards) ----
   const [offerCounts, setOfferCounts] = useState<Record<string, number>>({});
@@ -809,27 +864,46 @@ export default function MarketplaceClient({
     void refreshCounts(ids);
   }, [items, refreshCounts]);
 
-  const loading = view === "forsale" ? listings === null && !listErr : minted === null;
-  const error = view === "forsale" ? listErr : null;
+  const loading = holder
+    ? heldItems === null
+    : view === "forsale"
+      ? listings === null && !listErr
+      : minted === null;
+  const error = holder ? null : view === "forsale" ? listErr : null;
+  const holderLabel = holder ? (heldHolder ?? holder).replace(/^@/, "") : "";
 
   return (
     <div className="pow-market" id="marketplace">
       <style>{CSS}</style>
 
       <header className="mkhead">
-        <h1 className="title">Gallery</h1>
-        <p className="sub sublist">
-          Hold a handle you want to sell?{" "}
-          <a
-            className="inlink"
-            href="https://cashtab.com/#/token"
-            target="_blank"
-            rel="noreferrer"
-          >
-            List it on Agora in Cashtab
-          </a>
-          .
-        </p>
+        <h1 className="title">{holder ? "Their handles" : "Gallery"}</h1>
+        {holder ? (
+          <p className="sub sublist">
+            Handles held by <span className="mono">@{holderLabel}</span> — make an
+            offer on any, or buy one that’s listed.{" "}
+            <button
+              type="button"
+              className="inlink asbtn"
+              onClick={() => (onClearHolder ? onClearHolder() : onViewChange?.("all"))}
+            >
+              Browse all handles →
+            </button>
+          </p>
+        ) : (
+          <p className="sub sublist">
+            Hold a handle you want to sell?{" "}
+            <a
+              className="inlink"
+              href="https://cashtab.com/#/token"
+              target="_blank"
+              rel="noreferrer"
+            >
+              List it on Agora in Cashtab
+            </a>
+            .
+          </p>
+        )}
       </header>
 
       {/* Phone-width filter panel — the desktop rail renders the same
@@ -849,12 +923,17 @@ export default function MarketplaceClient({
       ) : null}
 
       {loading ? (
-        <p className="state">{view === "forsale" ? "Loading listings…" : "Loading the collection…"}</p>
+        <p className="state">
+          {holder ? "Loading their handles…" : view === "forsale" ? "Loading listings…" : "Loading the collection…"}
+        </p>
       ) : error ? (
         <p className="state err">{error}</p>
       ) : !items || items.length === 0 ? (
         <p className="state">
-          {view === "forsale" && !q && tier === "all" ? (
+          {holder && !q && tier === "all" ? (
+            <>@{holderLabel} doesn’t hold any handles right now.{" "}
+              <button type="button" className="inlink asbtn" onClick={() => (onClearHolder ? onClearHolder() : onViewChange?.("all"))}>Browse all handles →</button></>
+          ) : view === "forsale" && !q && tier === "all" ? (
             <>No handles are listed for sale right now.{" "}
               <Link href="/marketplace" className="inlink">Mint one</Link> or check back soon.</>
           ) : (
@@ -879,7 +958,7 @@ export default function MarketplaceClient({
               />
             ))}
           </div>
-          {view === "all" && hasMore ? (
+          {view === "all" && !holder && hasMore ? (
             <button
               className="mkmore"
               disabled={mintedLoading}
@@ -911,6 +990,8 @@ const CSS = `
 .pow-market .sublist{margin-top:0;color:var(--dim);font-size:13.5px;}
 .pow-market .inlink,.pow-market .sublist .inlink{color:var(--cyan);text-decoration:none;border-bottom:1px solid transparent;transition:border-color .15s;}
 .pow-market .inlink:hover{border-color:var(--cyan);}
+/* A link-styled button (clears the holder scope without a page nav). */
+.pow-market .inlink.asbtn{background:none;border:none;border-bottom:1px solid transparent;padding:0;font:inherit;cursor:pointer;}
 
 /* Phone placement of the shared filter panel: a compact card between the
    gallery header and the grid. Hidden on desktop, where the rail instance

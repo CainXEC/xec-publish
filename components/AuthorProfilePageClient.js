@@ -496,11 +496,7 @@ export default function AuthorProfilePageClient({
             {handleCardsSlot}
             <Link
               className="prof-offerlink"
-              href={
-                !isAddressIdentity
-                  ? `/marketplace?view=all&q=${encodeURIComponent(String(identity).replace(/^@/, ''))}`
-                  : '/marketplace?view=all'
-              }
+              href={`/marketplace?holder=${encodeURIComponent(String(identity).replace(/^@/, ''))}`}
             >
               Make an offer on a handle →
             </Link>

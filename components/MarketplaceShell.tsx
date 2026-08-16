@@ -40,11 +40,16 @@ export default function MarketplaceShell({
   const [tier, setTier] = useState<TierFilter>("all");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<GallerySort>("price-asc");
+  // When set, the gallery is scoped to one owner's handles (the profile's
+  // "Make an offer on a handle →" link → ?holder=<identity>). Picking a browse
+  // view (For sale / All minted) exits the scope.
+  const [holder, setHolder] = useState<string | null>(null);
 
   // Keep the sort valid for the view it applies to (ask-price sorts only
   // exist for listed handles).
   const switchView = (v: GalleryView) => {
     setView(v);
+    setHolder(null);
     if (!sortOptionsFor(v).some((o) => o.value === sort)) {
       setSort(v === "forsale" ? "price-asc" : "new");
     }
@@ -58,10 +63,13 @@ export default function MarketplaceShell({
     const v = sp.get("view");
     const t = sp.get("tier");
     const q = sp.get("q");
+    const h = sp.get("holder");
     if (v === "all") { setView("all"); setSort("new"); }
     else if (v === "forsale") setView("forsale");
     if (t === "short" || t === "mid" || t === "base") setTier(t);
     if (q) setQuery(q);
+    // A holder scope ("@who's handles") reads over the all-minted machinery.
+    if (h) { setHolder(h); setView("all"); setSort("new"); }
   }, []);
 
   return (
@@ -99,11 +107,13 @@ export default function MarketplaceShell({
             tier={tier}
             query={query}
             sort={sort}
+            holder={holder}
             signedIn={signedIn}
             onViewChange={switchView}
             onTierChange={setTier}
             onQueryChange={setQuery}
             onSortChange={setSort}
+            onClearHolder={() => setHolder(null)}
           />
         </main>
       </div>
