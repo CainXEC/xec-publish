@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/db";
+import { offerFreshnessCutoffIso } from "@/lib/offerFreshness";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,7 +38,8 @@ export async function POST(req: NextRequest) {
     .from("handle_offers")
     .select("token_id")
     .in("token_id", tokenIds)
-    .eq("status", "open");
+    .eq("status", "open")
+    .gte("updated_at", offerFreshnessCutoffIso()); // exclude stale (>90d) bids
 
   if (error) {
     // Table not applied yet — the gallery just shows no interest chips.

@@ -14,7 +14,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/db";
 import { getAuthedAccount } from "@/lib/authHelpers";
-import { bidderDisplayMap, offerRecipientForToken } from "@/lib/handleOffers";
+import {
+  bidderDisplayMap,
+  offerRecipientForToken,
+  closeOffersHeldByBidder,
+} from "@/lib/handleOffers";
+import { offerFreshnessCutoffIso } from "@/lib/offerFreshness";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,6 +43,7 @@ export async function GET(req: NextRequest) {
     .select("bidder_account_id, amount_sats, updated_at")
     .eq("token_id", tokenId)
     .eq("status", "open")
+    .gte("updated_at", offerFreshnessCutoffIso()) // hide bids gone stale (>90d)
     .order("updated_at", { ascending: false });
 
   if (error) {
@@ -46,13 +52,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "offers aren't available yet" }, { status: 503 });
   }
 
-  const rows = (data ?? []) as OfferRow[];
+  let rows = (data ?? []) as OfferRow[];
   const acct = await getAuthedAccount();
-
-  const mineRow = acct ? rows.find((r) => r.bidder_account_id === acct.accountId) : null;
-  const mine = mineRow
-    ? { amountXec: mineRow.amount_sats == null ? null : mineRow.amount_sats / 100 }
-    : null;
 
   // Holder view: amounts + bidder bylines, newest first. The current holder OR
   // (for a listed handle) the account that listed it counts as "holder" here.
@@ -62,6 +63,13 @@ export async function GET(req: NextRequest) {
   if (acct) {
     const recipient = await offerRecipientForToken(supabase, tokenId);
     listed = recipient.listed;
+    // Drop the holder's OWN standing bid — you can't bid on a handle you hold
+    // (you bought it, or won it via list-at-your-price). Close it too, so the
+    // public count stops including it on the next read.
+    if (recipient.accountId && rows.some((r) => r.bidder_account_id === recipient.accountId)) {
+      rows = rows.filter((r) => r.bidder_account_id !== recipient.accountId);
+      await closeOffersHeldByBidder(supabase, tokenId, recipient.accountId);
+    }
     if (recipient.accountId && recipient.accountId === acct.accountId) {
       holder = true;
       const displays = await bidderDisplayMap(
@@ -75,6 +83,11 @@ export async function GET(req: NextRequest) {
       }));
     }
   }
+
+  const mineRow = acct ? rows.find((r) => r.bidder_account_id === acct.accountId) : null;
+  const mine = mineRow
+    ? { amountXec: mineRow.amount_sats == null ? null : mineRow.amount_sats / 100 }
+    : null;
 
   return NextResponse.json({ ok: true, count: rows.length, mine, holder, listed, offers });
 }

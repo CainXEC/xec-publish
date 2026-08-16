@@ -14,12 +14,37 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { currentTokenHolder } from "@/lib/resolveProfile";
 import { fetchListedSellerAddress } from "@/lib/agoraMarketplace";
 import { recordFeedNotification, resolveAccountByAddress } from "@/lib/feedNotifications";
+import { offerFreshnessCutoffIso } from "@/lib/offerFreshness";
 
 const bare = (address: string) => address.replace(/^ecash:/, "").toLowerCase();
 const addressForms = (address: string) => {
   const b = bare(address);
   return [b, `ecash:${b}`];
 };
+
+/** Close any OPEN offer whose bidder is now the token's holder — you can't hold
+ *  a standing bid on a handle you own (you bought it, or won it via the
+ *  list-at-your-price flow). Marked 'withdrawn' (the only "closed" status; not
+ *  user-visible, and the upsert revives it to 'open' if they ever re-offer after
+ *  selling). Best-effort: a failure just leaves the stale row for the next pass.
+ *  Other bidders' offers are untouched — they follow the token to the new owner. */
+export async function closeOffersHeldByBidder(
+  supabase: SupabaseClient,
+  tokenId: string,
+  holderAccountId: string | null
+): Promise<void> {
+  if (!holderAccountId) return;
+  try {
+    await supabase
+      .from("handle_offers")
+      .update({ status: "withdrawn", updated_at: new Date().toISOString() })
+      .eq("token_id", tokenId)
+      .eq("bidder_account_id", holderAccountId)
+      .eq("status", "open");
+  } catch {
+    /* best-effort cleanup */
+  }
+}
 
 export const shortAddress = (address: string) => {
   const b = bare(address);
@@ -128,6 +153,7 @@ export async function reconcileListedOffers(
     .select("id, token_id, bidder_account_id, amount_sats, listed_notified_sats")
     .in("token_id", [...byToken.keys()])
     .eq("status", "open")
+    .gte("updated_at", offerFreshnessCutoffIso()) // don't ping a stale (>90d) bid
     .not("amount_sats", "is", null);
   if (!offers || offers.length === 0) return;
 
