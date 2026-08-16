@@ -364,8 +364,10 @@ function OfferPanel({
         {hasOffers ? (
           detail.offers!.map((o, i) => (
             <div className="orow" key={i}>
-              <span className="obidder">{o.bidder}</span>
-              <span className="oamt">{o.amountXec != null ? fmtXec(o.amountXec) : "no price named"}</span>
+              <div className="orowhead">
+                <span className="obidder">{o.bidder}</span>
+                <span className="oamt">{o.amountXec != null ? fmtXec(o.amountXec) : "no price named"}</span>
+              </div>
               {/* Unlisted → one tap lists at the offered price. Already listed →
                   you must cancel first (the NFT is in escrow), so this "relist"
                   link only works AFTER the cancel step below; label it as step 2. */}
@@ -967,14 +969,21 @@ const CSS = `
 .pow-market .mkoffer .obtn.ghost:hover{background:none;border-color:var(--no);color:var(--no);}
 .pow-market .mkoffer .olink{display:block;}
 .pow-market .mkoffer .onote{font-size:11.5px;color:var(--dim);line-height:1.5;margin:0;}
-.pow-market .mkoffer .orow{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12.5px;}
-.pow-market .mkoffer .obidder{color:var(--text);word-break:break-all;flex:1;min-width:0;}
-.pow-market .mkoffer .oamt{color:var(--neon);font-weight:700;white-space:nowrap;}
-/* One-tap "list at this offer" — deep-links into Cashtab's Agora LIST flow with
-   the price prefilled (D20335). Compact so the bidder + amount + button fit a row. */
-.pow-market .mkoffer .olistbtn{flex:none;white-space:nowrap;text-decoration:none;
+/* Each offer stacks: a byline+amount header line, then a full-width action
+   button under it. Cramming all three across one narrow row made a long-ish
+   byline (e.g. "@cain") collapse to one character per line — hence the column. */
+.pow-market .mkoffer .orow{display:flex;flex-direction:column;gap:7px;font-size:12.5px;
+  padding-bottom:10px;border-bottom:1px solid var(--line);}
+.pow-market .mkoffer .orow:last-of-type{border-bottom:none;padding-bottom:0;}
+.pow-market .mkoffer .orowhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
+.pow-market .mkoffer .obidder{color:var(--text);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pow-market .mkoffer .oamt{color:var(--neon);font-weight:700;white-space:nowrap;flex:none;}
+/* "List at this offer" — deep-links into Cashtab's Agora LIST flow with the
+   price prefilled (D20335). Full-width block so it never overflows the card. */
+.pow-market .mkoffer .olistbtn{display:block;width:100%;box-sizing:border-box;text-align:center;
+  white-space:nowrap;text-decoration:none;
   background:transparent;border:1px solid var(--neon);color:var(--neon);border-radius:7px;
-  padding:5px 9px;font:inherit;font-size:11px;font-weight:700;letter-spacing:.02em;
+  padding:7px 9px;font:inherit;font-size:11.5px;font-weight:700;letter-spacing:.02em;
   cursor:pointer;transition:background .15s,color .15s;}
 .pow-market .mkoffer .olistbtn:hover{background:var(--neon);color:#04120c;}
 html:not(.dark) .pow-market .mkoffer .olistbtn:hover{color:#fdfcf8;}
