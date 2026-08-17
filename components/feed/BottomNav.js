@@ -66,9 +66,19 @@ export default function BottomNav() {
   // followed by another focus — doesn't flash the bar back on in between; the
   // brief overlap is bridged with a short hide-delay instead of a hard toggle.
   const [composerActive, setComposerActive] = useState(false)
+  // The keyboard is actually up. iOS's "hide keyboard" button dismisses the
+  // keyboard WITHOUT blurring the textarea, so composer focus alone can't tell
+  // us to bring the bar back — the visual viewport can (it grows again when the
+  // keyboard closes). We only HIDE the bar when a composer is focused AND the
+  // keyboard is up; dismissing the keyboard restores the bar even if focus
+  // lingers. Optimistically true on focus so the bar still hides instantly
+  // (before the keyboard animates in), and browsers without visualViewport just
+  // keep the old focus/blur behavior (it stays true until blur).
+  const [keyboardOpen, setKeyboardOpen] = useState(false)
   useEffect(() => {
     let count = 0
     let hideTimer = null
+    let sawKeyboard = false // the keyboard has actually been up this focus session
     const apply = (active) => {
       if (hideTimer) {
         clearTimeout(hideTimer)
@@ -80,6 +90,8 @@ export default function BottomNav() {
     const onFocus = () => {
       count += 1
       apply(true)
+      sawKeyboard = false
+      setKeyboardOpen(true) // optimistic hide; the viewport confirms/dismisses
     }
     const onBlur = () => {
       count = Math.max(0, count - 1)
@@ -87,9 +99,29 @@ export default function BottomNav() {
     }
     window.addEventListener('pow:composer-focus', onFocus)
     window.addEventListener('pow:composer-blur', onBlur)
+
+    // Keyboard up = the visual viewport is well short of the layout viewport.
+    // We only bring the bar back once the keyboard has been UP and then goes
+    // DOWN (a real dismissal — iOS's "hide keyboard" button doesn't fire blur).
+    // The full-height viewport right after focus (keyboard not open yet) is NOT
+    // a dismissal, so it can't flash the bar back on.
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null
+    const onViewport = () => {
+      if (!vv) return
+      const keyboardUp = window.innerHeight - vv.height > 120
+      if (keyboardUp) {
+        sawKeyboard = true
+        setKeyboardOpen(true)
+      } else if (sawKeyboard) {
+        setKeyboardOpen(false)
+      }
+    }
+    vv?.addEventListener('resize', onViewport)
+
     return () => {
       window.removeEventListener('pow:composer-focus', onFocus)
       window.removeEventListener('pow:composer-blur', onBlur)
+      vv?.removeEventListener('resize', onViewport)
       if (hideTimer) clearTimeout(hideTimer)
     }
   }, [])
@@ -124,7 +156,7 @@ export default function BottomNav() {
   )
 
   return (
-    <nav className={`pow-bnav${composerActive ? ' bn-hidden' : ''}`} aria-label="Primary">
+    <nav className={`pow-bnav${composerActive && keyboardOpen ? ' bn-hidden' : ''}`} aria-label="Primary">
       <style>{CSS}</style>
       {tabs.map((t) => {
         const on = t.match(pathname)
