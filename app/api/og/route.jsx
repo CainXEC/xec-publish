@@ -31,7 +31,9 @@ export async function GET(request) {
   // Scale the headline to its length so short titles fill the card and long
   // ones still fit. (Mono runs wide, so sizes stay modest.)
   const tLen = title.length
-  const titleSize = tLen > 90 ? 92 : tLen > 60 ? 116 : tLen > 30 ? 144 : 172
+  // Sizes are for the 1200x630 canvas (half the old 2400x1260 — the 2x card
+  // took ~4s to render and overran social crawlers' timeout, so X dropped it).
+  const titleSize = tLen > 90 ? 46 : tLen > 60 ? 58 : tLen > 30 ? 72 : 86
 
   let fonts = []
   try {
@@ -57,10 +59,10 @@ export async function GET(request) {
         // with the site's neon bloom + inset glow.
         <div
           style={{
-            width: '2400px',
-            height: '1260px',
+            width: '1200px',
+            height: '630px',
             display: 'flex',
-            padding: '30px',
+            padding: '15px',
             backgroundColor: NEON,
           }}
         >
@@ -69,22 +71,22 @@ export async function GET(request) {
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
-              padding: '96px 112px',
+              padding: '48px 56px',
               backgroundColor: BG,
               backgroundImage:
-                'radial-gradient(1500px 820px at 50% 0%, rgba(0,255,156,0.10), rgba(7,11,10,0) 68%)',
-              boxShadow: 'inset 0 0 120px rgba(0,255,156,0.12)',
+                'radial-gradient(750px 410px at 50% 0%, rgba(0,255,156,0.10), rgba(7,11,10,0) 68%)',
+              boxShadow: 'inset 0 0 60px rgba(0,255,156,0.12)',
             }}
           >
             <div
               style={{
                 fontFamily: mono,
                 fontWeight: 800,
-                fontSize: '50px',
+                fontSize: '25px',
                 letterSpacing: '0.18em',
                 textTransform: 'uppercase',
                 color: NEON,
-                textShadow: '0 0 26px rgba(0,255,156,0.55)',
+                textShadow: '0 0 13px rgba(0,255,156,0.55)',
                 flexShrink: 0,
               }}
             >
@@ -107,8 +109,8 @@ export async function GET(request) {
                   fontSize: `${titleSize}px`,
                   lineHeight: 1.15,
                   color: NEON,
-                  textShadow: '0 0 28px rgba(0,255,156,0.40)',
-                  maxWidth: '2040px',
+                  textShadow: '0 0 14px rgba(0,255,156,0.40)',
+                  maxWidth: '1020px',
                   overflow: 'hidden',
                 }}
               >
@@ -123,10 +125,10 @@ export async function GET(request) {
                   display: 'flex',
                   flexWrap: 'wrap',
                   alignItems: 'center',
-                  gap: '22px',
-                  marginTop: '44px',
+                  gap: '11px',
+                  marginTop: '22px',
                   fontFamily: mono,
-                  fontSize: '44px',
+                  fontSize: '22px',
                   flexShrink: 0,
                 }}
               >
@@ -137,9 +139,9 @@ export async function GET(request) {
                       fontWeight: 800,
                       letterSpacing: '0.14em',
                       textTransform: 'uppercase',
-                      border: `3px solid ${NEON}`,
-                      borderRadius: '12px',
-                      padding: '4px 24px',
+                      border: `2px solid ${NEON}`,
+                      borderRadius: '6px',
+                      padding: '2px 12px',
                     }}
                   >
                     AI simulation
@@ -159,8 +161,8 @@ export async function GET(request) {
         </div>
       ),
       {
-        width: 2400,
-        height: 1260,
+        width: 1200,
+        height: 630,
         fonts: fonts.length > 0 ? fonts : undefined,
         emoji: 'twemoji',
       },

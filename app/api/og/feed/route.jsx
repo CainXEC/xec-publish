@@ -37,9 +37,11 @@ export async function GET(request) {
 
   // Scale the body to the amount of text: short posts fill the card, long ones
   // shrink to fit without overflowing. (Mono runs wide, so sizes stay modest.)
+  // Sizes are for the 1200x630 canvas (half the old 2400x1260 — the 2x card
+  // took ~4s to render and overran social crawlers' timeout, so X dropped it).
   const len = text.length
   const bodySize =
-    len > 220 ? 54 : len > 140 ? 68 : len > 70 ? 88 : len > 30 ? 108 : 132
+    len > 220 ? 27 : len > 140 ? 34 : len > 70 ? 44 : len > 30 ? 54 : 66
 
   let fonts = []
   try {
@@ -68,10 +70,10 @@ export async function GET(request) {
         // panel with a soft neon bloom + inset glow, matching the site banner.
         <div
           style={{
-            width: '2400px',
-            height: '1260px',
+            width: '1200px',
+            height: '630px',
             display: 'flex',
-            padding: '30px',
+            padding: '15px',
             backgroundColor: NEON,
           }}
         >
@@ -80,29 +82,29 @@ export async function GET(request) {
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
-              padding: '96px 112px',
+              padding: '48px 56px',
               backgroundColor: BG,
               backgroundImage:
-                'radial-gradient(1500px 820px at 50% 0%, rgba(0,255,156,0.10), rgba(7,11,10,0) 68%)',
-              boxShadow: 'inset 0 0 120px rgba(0,255,156,0.12)',
+                'radial-gradient(750px 410px at 50% 0%, rgba(0,255,156,0.10), rgba(7,11,10,0) 68%)',
+              boxShadow: 'inset 0 0 60px rgba(0,255,156,0.12)',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '26px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '13px', flexShrink: 0 }}>
               <div
                 style={{
                   fontFamily: mono,
                   fontWeight: 800,
-                  fontSize: '50px',
+                  fontSize: '25px',
                   letterSpacing: '0.18em',
                   textTransform: 'uppercase',
                   color: NEON,
-                  textShadow: '0 0 26px rgba(0,255,156,0.55)',
+                  textShadow: '0 0 13px rgba(0,255,156,0.55)',
                 }}
               >
                 proofofwriting
               </div>
               {tag ? (
-                <div style={{ fontFamily: mono, fontWeight: 400, fontSize: '38px', color: DIM }}>
+                <div style={{ fontFamily: mono, fontWeight: 400, fontSize: '19px', color: DIM }}>
                   {`· ${tag}`}
                 </div>
               ) : null}
@@ -118,15 +120,15 @@ export async function GET(request) {
               }}
             >
               {author || isAi ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '28px', marginBottom: '40px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px' }}>
                   {author ? (
                     <div
                       style={{
                         fontFamily: mono,
                         fontWeight: 800,
-                        fontSize: '54px',
+                        fontSize: '27px',
                         color: NEON,
-                        textShadow: '0 0 12px rgba(0,255,156,0.35)',
+                        textShadow: '0 0 6px rgba(0,255,156,0.35)',
                       }}
                     >
                       {author}
@@ -137,13 +139,13 @@ export async function GET(request) {
                       style={{
                         fontFamily: mono,
                         fontWeight: 800,
-                        fontSize: '38px',
+                        fontSize: '19px',
                         color: NEON,
                         letterSpacing: '0.14em',
                         textTransform: 'uppercase',
-                        border: `3px solid ${NEON}`,
-                        borderRadius: '12px',
-                        padding: '4px 22px',
+                        border: `2px solid ${NEON}`,
+                        borderRadius: '6px',
+                        padding: '2px 11px',
                       }}
                     >
                       AI simulation
@@ -158,7 +160,7 @@ export async function GET(request) {
                   fontSize: `${bodySize}px`,
                   lineHeight: 1.4,
                   color: TEXT,
-                  maxWidth: '2040px',
+                  maxWidth: '1020px',
                   overflow: 'hidden',
                 }}
               >
@@ -170,7 +172,7 @@ export async function GET(request) {
               style={{
                 fontFamily: mono,
                 fontWeight: 400,
-                fontSize: '32px',
+                fontSize: '16px',
                 color: DIM,
                 letterSpacing: '0.08em',
                 flexShrink: 0,
@@ -181,7 +183,7 @@ export async function GET(request) {
           </div>
         </div>
       ),
-      { width: 2400, height: 1260, fonts: fonts.length > 0 ? fonts : undefined, emoji: 'twemoji' },
+      { width: 1200, height: 630, fonts: fonts.length > 0 ? fonts : undefined, emoji: 'twemoji' },
     )
 
     // Build headers via Headers.set (case-INSENSITIVE) so our immutable cache
