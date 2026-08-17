@@ -660,10 +660,14 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
   cursor:pointer;padding:0 2px;letter-spacing:-.05em;transition:color .15s;}
 .pow-feed .reactbtn:hover,.pow-feed .reactbtn.on{color:var(--neon);}
 .pow-feed .reactbtn:disabled{cursor:default;opacity:.7;}
-/* Picker: a fixed 2 rows of 4 (8 emoji), not free-wrapping. */
-.pow-feed .reactpicker{position:absolute;bottom:calc(100% + 6px);left:0;z-index:20;display:grid;
+/* Picker: a fixed 2 rows of 4 (8 emoji), revealed on hover/focus of .reactwrap
+   (like the old tip menu). Hidden by default; a transparent ::after bridges the
+   6px gap so the pointer can travel from the button into the picker. */
+.pow-feed .reactpicker{display:none;position:absolute;bottom:calc(100% + 6px);left:0;z-index:20;
   grid-template-columns:repeat(4,auto);gap:2px;background:var(--panel);border:1px solid var(--line);
   border-radius:12px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);}
+.pow-feed .reactwrap:hover .reactpicker,.pow-feed .reactwrap:focus-within .reactpicker{display:grid;}
+.pow-feed .reactpicker::after{content:"";position:absolute;top:100%;left:0;right:0;height:8px;}
 .pow-feed .reactopt{background:none;border:none;font-size:22px;line-height:1;padding:4px;border-radius:8px;
   cursor:pointer;transition:background .12s,transform .12s;}
 .pow-feed .reactopt:hover{background:var(--panel2);transform:scale(1.15);}

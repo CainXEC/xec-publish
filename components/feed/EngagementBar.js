@@ -63,12 +63,9 @@ export default function EngagementBar({
     onReactFailed: (emoji) => bump(emoji, -1), // payment cancelled/failed → undo
   })
 
-  const [pickerOpen, setPickerOpen] = useState(false)
-
   const react = (emoji) => {
     if (pending) return
     bump(emoji, +1) // optimistic
-    setPickerOpen(false)
     void startReaction('like', undefined, emoji)
   }
 
@@ -84,20 +81,21 @@ export default function EngagementBar({
   return (
     <div className="engage">
       <div className="engagebar">
+        {/* The picker reveals on hover / focus of this wrap (CSS), like the old
+            tip menu — a transparent bridge spans the gap so the pointer can
+            travel from the button up into the picker without the hover dropping. */}
         <span className="reactwrap">
           <button
             type="button"
-            className={`reactbtn${pickerOpen ? ' on' : ''}`}
+            className="reactbtn"
             disabled={Boolean(pending) && !inPagePay}
             aria-haspopup="menu"
-            aria-expanded={pickerOpen}
-            aria-label="Add a reaction"
+            aria-label="React · 100 XEC"
             title="React · 100 XEC"
-            onClick={() => setPickerOpen((s) => !s)}
           >
             ☺+
           </button>
-          {pickerOpen ? (
+          {!pending ? (
             <div className="reactpicker" role="menu">
               {REACTIONS.map((emoji) => (
                 <button
