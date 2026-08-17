@@ -54,8 +54,10 @@ const hrefOf = (p) =>
 
 function Meta({ story }) {
   const readers = readersOf(story)
+  // The fallback (no readers yet) is a Date.now()-based relative time, so
+  // SSR/hydration can disagree at a boundary — suppressHydrationWarning covers it.
   return (
-    <div className="np-meta">
+    <div className="np-meta" suppressHydrationWarning>
       <span className="np-price">{fmtPrice(story.price_xec)}</span>
       {' · '}
       {readers > 0 ? `${readers} reader${readers === 1 ? '' : 's'}` : timeAgo(storyAt(story))}

@@ -221,7 +221,7 @@ export default function NotificationsPageClient({ initialItems, initialCursor, a
                     <EarnedChip items={g.items} type={g.type} />
                     <ActorList items={g.items} verbSuffix={notifText(head)} />
                   </span>
-                  <span className="notiftime">{timeAgo(head.created_at)}</span>
+                  <span className="notiftime" suppressHydrationWarning>{timeAgo(head.created_at)}</span>
                 </div>
                 {g.items.length === 1 ? <NotifBody n={head} /> : null}
                 {/* A like/repost carries no action text of its own, so show the
@@ -262,7 +262,7 @@ export default function NotificationsPageClient({ initialItems, initialCursor, a
                         })()}{' '}
                         followed you
                       </span>
-                      <span className="notiftime">{timeAgo(head.created_at)}</span>
+                      <span className="notiftime" suppressHydrationWarning>{timeAgo(head.created_at)}</span>
                     </div>
                   </div>
                 </li>

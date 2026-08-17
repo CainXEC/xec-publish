@@ -148,7 +148,9 @@ function AncestorNode({ post, top = false, onOpenThread = null }) {
           <span aria-hidden className="dot">
             ·
           </span>
-          <span className="time">{timeAgo(post.created_at)}</span>
+          {/* Relative time is Date.now()-based → SSR/hydration can disagree at a
+              boundary; suppress that mismatch (same as FeedPost). */}
+          <span className="time" suppressHydrationWarning>{timeAgo(post.created_at)}</span>
         </div>
         <p ref={textRef} className={`ttext${expanded ? ' expanded' : ''}`}>
           {post.deleted ? (
