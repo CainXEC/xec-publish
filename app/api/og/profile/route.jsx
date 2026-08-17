@@ -27,9 +27,11 @@ export async function GET(request) {
   identity = truncateAtWord(identity, 44)
 
   // Scale to length so a short handle fills the card and a long truncated
-  // address still fits. (Mono runs wide, so sizes stay modest.)
+  // address still fits. (Mono runs wide, so sizes stay modest.) Sizes are for
+  // the 1200x630 canvas — half the old 2400x1260, which rendered too slowly for
+  // social crawlers (see the ImageResponse note below).
   const len = identity.length
-  const identitySize = len > 32 ? 104 : len > 22 ? 132 : len > 12 ? 168 : 196
+  const identitySize = len > 32 ? 52 : len > 22 ? 66 : len > 12 ? 84 : 98
 
   let fonts = []
   try {
@@ -55,10 +57,10 @@ export async function GET(request) {
         // site's neon bloom + inset glow — same rig as /api/og and /api/og/feed.
         <div
           style={{
-            width: '2400px',
-            height: '1260px',
+            width: '1200px',
+            height: '630px',
             display: 'flex',
-            padding: '30px',
+            padding: '15px',
             backgroundColor: NEON,
           }}
         >
@@ -67,22 +69,22 @@ export async function GET(request) {
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
-              padding: '96px 112px',
+              padding: '48px 56px',
               backgroundColor: BG,
               backgroundImage:
-                'radial-gradient(1500px 820px at 50% 0%, rgba(0,255,156,0.10), rgba(7,11,10,0) 68%)',
-              boxShadow: 'inset 0 0 120px rgba(0,255,156,0.12)',
+                'radial-gradient(750px 410px at 50% 0%, rgba(0,255,156,0.10), rgba(7,11,10,0) 68%)',
+              boxShadow: 'inset 0 0 60px rgba(0,255,156,0.12)',
             }}
           >
             <div
               style={{
                 fontFamily: mono,
                 fontWeight: 800,
-                fontSize: '50px',
+                fontSize: '25px',
                 letterSpacing: '0.18em',
                 textTransform: 'uppercase',
                 color: NEON,
-                textShadow: '0 0 26px rgba(0,255,156,0.55)',
+                textShadow: '0 0 13px rgba(0,255,156,0.55)',
                 flexShrink: 0,
               }}
             >
@@ -105,8 +107,8 @@ export async function GET(request) {
                   fontSize: `${identitySize}px`,
                   lineHeight: 1.1,
                   color,
-                  textShadow: `0 0 28px ${color}66`,
-                  maxWidth: '2040px',
+                  textShadow: `0 0 14px ${color}66`,
+                  maxWidth: '1020px',
                   overflow: 'hidden',
                 }}
               >
@@ -118,12 +120,12 @@ export async function GET(request) {
                   style={{
                     fontFamily: mono,
                     fontWeight: 400,
-                    fontSize: '58px',
+                    fontSize: '29px',
                     lineHeight: 1.5,
                     color: '#8fb3a8',
-                    marginTop: '44px',
-                    maxWidth: '1960px',
-                    maxHeight: '270px',
+                    marginTop: '22px',
+                    maxWidth: '980px',
+                    maxHeight: '135px',
                     overflow: 'hidden',
                   }}
                 >
@@ -136,9 +138,9 @@ export async function GET(request) {
                   style={{
                     fontFamily: mono,
                     fontWeight: 400,
-                    fontSize: '48px',
+                    fontSize: '24px',
                     color: DIM,
-                    marginTop: '40px',
+                    marginTop: '20px',
                     flexShrink: 0,
                   }}
                 >
@@ -151,7 +153,7 @@ export async function GET(request) {
               style={{
                 fontFamily: mono,
                 fontWeight: 400,
-                fontSize: '32px',
+                fontSize: '16px',
                 color: DIM,
                 letterSpacing: '0.08em',
                 flexShrink: 0,
@@ -163,8 +165,13 @@ export async function GET(request) {
         </div>
       ),
       {
-        width: 2400,
-        height: 1260,
+        // Rasterize at 1200x630 (standard OG size) even though the layout is
+        // authored at 2400x1260 — a 2x-size PNG took ~4s to generate, which
+        // overran social crawlers' fetch timeout (X dropped the card). Half the
+        // linear size = 1/4 the pixels = a much faster raster, and 1200x630 is
+        // exactly what X/Facebook display anyway.
+        width: 1200,
+        height: 630,
         fonts: fonts.length > 0 ? fonts : undefined,
         emoji: 'twemoji',
       },
