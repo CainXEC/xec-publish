@@ -420,10 +420,9 @@ export default function FeedThreadClient({
                 {!rootDeleted ? (
                   <EngagementBar
                     targetTxid={post.txid}
-                    likeCount={post.likeCount ?? 0}
+                    reactionCounts={post.reactionCounts ?? {}}
                     repostCount={post.repostCount ?? 0}
                     quoteCount={post.quoteCount ?? 0}
-                    likedByViewer={Boolean(post.likedByViewer)}
                     repostedByViewer={Boolean(post.repostedByViewer)}
                     onQuote={() => setShowQuote((s) => !s)}
                   />

@@ -10,11 +10,12 @@ import { resolveOrCreateAccount, primaryAddressForAccount } from '@/lib/walletAu
 import { formatIdentity } from '@/lib/formatIdentity'
 import { recordFeedNotification } from '@/lib/feedNotifications'
 import { mintPaySession } from '@/lib/paySession'
+import { isReaction, payeeFor } from '@/lib/reactions'
 
 const REACT_COST_XEC = FEED_MIN_XEC
 
 const FEED_EVENT_COLUMNS =
-  'id, txid, action, target_txid, actor_account_id, actor_identity, payer_address, payout_address, amount_sats, created_at'
+  'id, txid, action, target_txid, actor_account_id, actor_identity, payer_address, payout_address, amount_sats, emoji, created_at'
 
 function normalizeReaction(action) {
   if (action === 5 || action === 'like') return FEED_ACTION.LIKE
@@ -56,6 +57,15 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Invalid target post' }, { status: 400 })
   }
 
+  const isLike = action === FEED_ACTION.LIKE
+  // A like carries an emoji (repost doesn't). Validate against the palette; the
+  // emoji decides polarity, which must match the on-chain split (below).
+  const emoji = isLike ? body?.emoji : null
+  if (isLike && !isReaction(emoji)) {
+    return NextResponse.json({ error: 'Unknown reaction' }, { status: 400 })
+  }
+  const platformPaid = isLike && payeeFor(emoji) === 'platform'
+
   const supabase = adminDb()
   const { data: target, error: targetErr } = await supabase
     .from('feed_posts')
@@ -74,6 +84,9 @@ export async function POST(request) {
     platformAddress,
     payoutAddress: target.payout_address,
     costXec: REACT_COST_XEC,
+    // 👎 must have paid the platform 100% — verification requires that exact
+    // split, so a downvote can't secretly pay the author (or vice versa).
+    platformOnly: platformPaid,
   }
 
   // Don't re-match a reaction tx we already recorded for this (action, target).
@@ -121,19 +134,20 @@ export async function POST(request) {
   const displayAddress = await primaryAddressForAccount(resolved.accountId, match.payerAddress)
   const actorIdentity = formatIdentity(resolved.handle, displayAddress)
 
-  // The DB unique key is (action, target, payer_address) — per WALLET. An
-  // account with a Pocket has two wallets, so also dedupe per ACCOUNT here:
-  // a wallet like + a pocket like on the same post must not double-record
-  // (the payment already happened either way; we just don't double-count).
-  const { data: sameAccountRows } = await supabase
-    .from('feed_events')
-    .select(FEED_EVENT_COLUMNS)
-    .eq('action', action)
-    .eq('target_txid', targetTxid)
-    .eq('actor_account_id', resolved.accountId)
-    .limit(1)
-  if (sameAccountRows?.[0]) {
-    return NextResponse.json({ ok: true, status: 'reacted', event: sameAccountRows[0] })
+  // Reposts are still ONE per account (a wallet + its Pocket are two wallets, so
+  // dedupe per account too). LIKES/emoji reactions are now multi — you can react
+  // as many times as you pay — so they skip this and are deduped on txid alone.
+  if (!isLike) {
+    const { data: sameAccountRows } = await supabase
+      .from('feed_events')
+      .select(FEED_EVENT_COLUMNS)
+      .eq('action', action)
+      .eq('target_txid', targetTxid)
+      .eq('actor_account_id', resolved.accountId)
+      .limit(1)
+    if (sameAccountRows?.[0]) {
+      return NextResponse.json({ ok: true, status: 'reacted', event: sameAccountRows[0] })
+    }
   }
 
   const row = {
@@ -143,8 +157,11 @@ export async function POST(request) {
     actor_account_id: resolved.accountId,
     actor_identity: actorIdentity,
     payer_address: match.payerAddress,
-    payout_address: target.payout_address,
+    // A 👎 paid the platform, not the author — record the platform as the payee
+    // so it's naturally excluded from the author-supporter ranking signal.
+    payout_address: platformPaid ? platformAddress : target.payout_address,
     amount_sats: match.sats,
+    emoji,
     finalized_at: finalizedAt,
   }
 
@@ -155,27 +172,36 @@ export async function POST(request) {
     .single()
 
   if (insertError) {
-    // 23505: either this txid raced in, or this wallet already reacted (the
-    // (action, target, payer) unique key). Either way the reaction stands.
+    // 23505: the txid raced in (idempotency), or — for a repost — this wallet
+    // already reposted (the action=4 partial unique key). Either way it stands.
     if (insertError.code === '23505') {
-      const { data: existing } = await supabase
+      const { data: byTxid } = await supabase
         .from('feed_events')
         .select(FEED_EVENT_COLUMNS)
-        .eq('action', action)
-        .eq('target_txid', targetTxid)
-        .eq('payer_address', match.payerAddress)
+        .eq('txid', match.txid)
         .maybeSingle()
-      if (existing) {
-        return NextResponse.json({ ok: true, status: 'reacted', event: existing })
+      if (byTxid) {
+        return NextResponse.json({ ok: true, status: 'reacted', event: byTxid })
+      }
+      if (!isLike) {
+        const { data: existing } = await supabase
+          .from('feed_events')
+          .select(FEED_EVENT_COLUMNS)
+          .eq('action', action)
+          .eq('target_txid', targetTxid)
+          .eq('payer_address', match.payerAddress)
+          .maybeSingle()
+        if (existing) {
+          return NextResponse.json({ ok: true, status: 'reacted', event: existing })
+        }
       }
     }
     return NextResponse.json({ error: insertError.message }, { status: 500 })
   }
 
-  // Notify the post's owner that it was liked/reposted (best-effort). Both pay
-  // the author (payout_address above), so carry the amount actually paid
-  // (match.sats, which can exceed the flat floor) for the bell to show "· N XEC".
-  const isLike = action === FEED_ACTION.LIKE
+  // Notify the post's owner (best-effort). A reaction carries its emoji so the
+  // bell reads "reacted 🔥"; a 👎 still notifies (the author asked to be told).
+  // amountSats is what was actually paid, for the bell's "· N XEC".
   await recordFeedNotification(supabase, {
     recipientAccountId: target.author_account_id,
     actorAccountId: resolved.accountId,
@@ -183,6 +209,7 @@ export async function POST(request) {
     type: isLike ? 'like' : 'repost',
     postTxid: targetTxid,
     amountSats: match.sats,
+    emoji,
   })
 
   const response = NextResponse.json({ ok: true, status: 'reacted', event: inserted })

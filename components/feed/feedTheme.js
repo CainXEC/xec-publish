@@ -649,6 +649,24 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .reactpay .manual{margin-top:14px;}
 .pow-feed .engage .notice{flex-basis:100%;width:100%;}
 
+/* Emoji reactions: per-emoji pills + the picker popover (replaces like/tip menu). */
+.pow-feed .reactpill{background:var(--panel2);border:1px solid var(--line);color:var(--text);font:inherit;
+  font-size:12px;padding:3px 9px;border-radius:999px;cursor:pointer;font-variant-numeric:tabular-nums;
+  display:inline-flex;align-items:center;gap:4px;transition:border-color .12s;}
+.pow-feed .reactpill:hover{border-color:var(--neon);}
+.pow-feed .reactpill:disabled{cursor:default;opacity:.6;}
+.pow-feed .reactwrap{position:relative;display:inline-flex;}
+.pow-feed .reactbtn{background:none;border:none;color:var(--dim);font:inherit;font-size:14px;cursor:pointer;
+  padding:2px 2px;letter-spacing:-.05em;transition:color .15s;}
+.pow-feed .reactbtn:hover,.pow-feed .reactbtn.on{color:var(--neon);}
+.pow-feed .reactbtn:disabled{cursor:default;opacity:.7;}
+.pow-feed .reactpicker{position:absolute;bottom:calc(100% + 6px);left:0;z-index:20;display:flex;flex-wrap:wrap;
+  gap:2px;width:200px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px;
+  box-shadow:0 8px 24px rgba(0,0,0,.5);}
+.pow-feed .reactopt{background:none;border:none;font-size:22px;line-height:1;padding:4px;border-radius:8px;
+  cursor:pointer;transition:background .12s,transform .12s;}
+.pow-feed .reactopt:hover{background:var(--panel2);transform:scale(1.15);}
+
 /* like → tip menu: quick presets + a custom amount, floating above the button.
    Revealed on hover (or keyboard focus) of the Like button; a transparent bridge
    spans the gap so the pointer can travel from button up into the menu without

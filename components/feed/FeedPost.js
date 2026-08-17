@@ -606,10 +606,9 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
         {!post.deleted ? (
           <EngagementBar
             targetTxid={post.txid}
-            likeCount={post.likeCount ?? 0}
+            reactionCounts={post.reactionCounts ?? {}}
             repostCount={post.repostCount ?? 0}
             quoteCount={quoteCount}
-            likedByViewer={Boolean(post.likedByViewer)}
             repostedByViewer={Boolean(post.repostedByViewer)}
             onQuote={() => setShowQuote((s) => !s)}
           />

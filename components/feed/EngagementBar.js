@@ -1,44 +1,48 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useReactionPayment } from '@/components/feed/useReactionPayment'
-
-// Quick-pick tip amounts (XEC) shown in the like menu; the field takes any custom
-// amount. Labels abbreviate the thousands.
-const TIP_PRESETS = [
-  { xec: 100, label: '100' },
-  { xec: 1000, label: '1K' },
-  { xec: 10000, label: '10K' },
-  { xec: 100000, label: '100K' },
-  { xec: 1000000, label: '1M' },
-]
+import { REACTIONS } from '@/lib/reactions'
 
 /**
- * Like / Repost / Quote controls for a feed post. Likes and reposts are on-chain
- * paid actions (94/6 to the post's author/platform), so tapping one opens Cashtab
- * and then polls /api/feed/react/confirm until the payment is detected. The Like
- * button doubles as a tip: it opens a small menu to pick a preset or type any
- * amount (100 XEC minimum), so a like can send the author more than the floor.
- * Repost stays a flat 100 XEC. There is no undo in v1: once you've liked or
- * reposted, the button is shown as "on" and further taps are no-ops. Quote is
- * delegated to the parent (which opens a composer) via onQuote.
+ * Reaction / Repost / Quote controls for a feed post. Reactions are on-chain paid
+ * actions: tapping an emoji sends a flat 100 XEC (94/6 to the author, or 100% to
+ * the platform for 👎), opens Cashtab/Pocket, and polls /api/feed/react/confirm.
+ * Unlike the old ♥ like, you can react as MANY times as you like (paying each) —
+ * so there's no "already reacted" lock; the post carries per-emoji pill counts.
+ * Repost stays a flat one-per-wallet 100 XEC. Quote is delegated via onQuote.
  *
- * The reaction flow itself lives in useReactionPayment (shared with CommentLike);
- * this component is just the feed-post presentation of it.
+ * The payment flow lives in useReactionPayment (shared with repost + article
+ * comments); this component owns the picker, the pills, and their optimism.
  */
 export default function EngagementBar({
   targetTxid,
-  likeCount = 0,
+  reactionCounts = {},
   repostCount = 0,
   quoteCount = 0,
-  likedByViewer = false,
   repostedByViewer = false,
   canQuote = true,
   onQuote,
 }) {
+  // Per-emoji counts shown as pills. Seeded from the server truth and re-seeded
+  // when it changes; an optimistic tap bumps locally until the next feed read
+  // catches up (same pattern the like counter used). Key the re-seed on the
+  // VALUE — the prop is a fresh object each render, so depending on its identity
+  // would loop forever.
+  const rcKey = JSON.stringify(reactionCounts || {})
+  const [counts, setCounts] = useState(reactionCounts || {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    setCounts(reactionCounts || {})
+  }, [rcKey])
+  const bump = (emoji, delta) =>
+    setCounts((c) => {
+      const next = { ...c, [emoji]: Math.max(0, (c[emoji] || 0) + delta) }
+      if (next[emoji] === 0) delete next[emoji]
+      return next
+    })
+
   const {
-    likes,
-    liked,
     reposts,
     reposted,
     pending,
@@ -47,78 +51,79 @@ export default function EngagementBar({
     notice,
     txidInput,
     setTxidInput,
-    tipError,
     startReaction,
     verifyManual,
     cancel,
   } = useReactionPayment({
     endpointBase: '/api/feed/react',
     targetTxid,
-    likeCount,
     repostCount,
-    likedByViewer,
     repostedByViewer,
+    onReacted: () => {}, // pill already bumped optimistically; server reconciles
+    onReactFailed: (emoji) => bump(emoji, -1), // payment cancelled/failed → undo
   })
 
-  // Controlled value of the custom-tip field — pure UI state, kept local.
-  const [tipAmount, setTipAmount] = useState('')
-  const isLike = pending === 'like'
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  const react = (emoji) => {
+    if (pending) return
+    bump(emoji, +1) // optimistic
+    setPickerOpen(false)
+    void startReaction('like', undefined, emoji)
+  }
+
+  // Pills: emojis with a count, most-used first.
+  const pills = useMemo(
+    () =>
+      Object.entries(counts)
+        .filter(([, n]) => n > 0)
+        .sort((a, b) => b[1] - a[1]),
+    [counts],
+  )
 
   return (
     <div className="engage">
       <div className="engagebar">
-        <span className="likewrap">
+        {pills.map(([emoji, n]) => (
+          <button
+            key={emoji}
+            type="button"
+            className="reactpill"
+            disabled={Boolean(pending) && !inPagePay}
+            onClick={() => react(emoji)}
+            title={`React ${emoji} · 100 XEC`}
+          >
+            <span aria-hidden>{emoji}</span> {n}
+          </button>
+        ))}
+
+        <span className="reactwrap">
           <button
             type="button"
-            className={`likebtn${liked ? ' on' : ''}`}
+            className={`reactbtn${pickerOpen ? ' on' : ''}`}
             disabled={Boolean(pending) && !inPagePay}
-            aria-pressed={liked}
             aria-haspopup="menu"
-            aria-label={liked ? 'Liked' : 'Like'}
-            title={liked ? 'You liked this' : 'Tip the author'}
+            aria-expanded={pickerOpen}
+            aria-label="Add a reaction"
+            title="React · 100 XEC"
+            onClick={() => setPickerOpen((s) => !s)}
           >
-            <span aria-hidden className="likeico">{liked ? '♥' : '♡'}</span> {likes > 0 ? likes : ''}
+            ☺+
           </button>
-          {!liked && !pending ? (
-            <div className="tipmenu" role="menu">
-              <p className="tiptitle">Tip the author</p>
-              <div className="tippresets">
-                {TIP_PRESETS.map(({ xec, label }) => (
-                  <button
-                    key={xec}
-                    type="button"
-                    className="tippreset"
-                    onClick={() => void startReaction('like', xec)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <div className="tiprow">
-                <div className="tipfield">
-                  <input
-                    className="tipinput"
-                    value={tipAmount}
-                    onChange={(e) => setTipAmount(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') void startReaction('like', tipAmount)
-                    }}
-                    placeholder="Custom"
-                    inputMode="numeric"
-                    spellCheck={false}
-                    aria-label="Custom tip amount in XEC"
-                  />
-                  <span className="tipunit">XEC</span>
-                </div>
+          {pickerOpen ? (
+            <div className="reactpicker" role="menu">
+              {REACTIONS.map((emoji) => (
                 <button
+                  key={emoji}
                   type="button"
-                  className="tipgo"
-                  onClick={() => void startReaction('like', tipAmount)}
+                  className="reactopt"
+                  role="menuitem"
+                  onClick={() => react(emoji)}
+                  title={`${emoji} · 100 XEC`}
                 >
-                  Tip
+                  {emoji}
                 </button>
-              </div>
-              {tipError ? <p className="notice">{tipError}</p> : null}
+              ))}
             </div>
           ) : null}
         </span>
@@ -152,7 +157,7 @@ export default function EngagementBar({
         <div className="reactpay">
           <p className="poll">
             Confirm <strong>{intent.amountXec} XEC</strong> in Cashtab to{' '}
-            {isLike ? 'like' : 'repost'} this post…
+            {intent.emoji ? `react ${intent.emoji}` : pending === 'repost' ? 'repost' : 'react'}…
           </p>
           <details className="manual">
             <summary>Cashtab didn&apos;t open, or already paid?</summary>

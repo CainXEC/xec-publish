@@ -3,13 +3,14 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { adminDb } from '@/lib/db'
-import { FEED_MIN_XEC, normalizeTipXec } from '@/lib/feedPricing'
-import { computePaymentSplit, buildPaywallBip21 } from '@/lib/paymentSplit'
+import { FEED_MIN_XEC } from '@/lib/feedPricing'
+import { computePaymentSplit, buildPaywallBip21, buildPublishFeeBip21 } from '@/lib/paymentSplit'
 import { encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
+import { isReaction, payeeFor } from '@/lib/reactions'
 
-// Likes and reposts carry no content of their own — just a payment split 94/6 to
-// the reacted-to post's author and the platform. Reposts (and a like with no
-// amount) use the flat 100 XEC floor; a like can carry a larger custom tip.
+// Reactions carry no content — just a flat 100 XEC payment. A like/emoji reaction
+// normally splits 94/6 to the reacted-to post's author + platform; a 👎 (a
+// "platform-paid" emoji) pays the platform 100% instead. Reposts stay 94/6.
 const REACT_COST_XEC = FEED_MIN_XEC
 
 function normalizeReaction(action) {
@@ -52,15 +53,15 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Invalid target post' }, { status: 400 })
   }
 
-  // A like can carry a custom tip; no amount → the flat 100 XEC floor. Any tip
-  // must be a whole number of at least 100 XEC.
-  const amountXec = body?.amountXec == null ? REACT_COST_XEC : normalizeTipXec(body.amountXec)
-  if (amountXec == null) {
-    return NextResponse.json(
-      { error: 'Enter a whole number of at least 100 XEC.' },
-      { status: 400 },
-    )
+  // A like now carries WHICH emoji (repost carries none). Validate against the
+  // fixed palette; the emoji decides who gets paid (author vs platform for 👎).
+  const emoji = action === FEED_ACTION.LIKE ? body?.emoji : null
+  if (action === FEED_ACTION.LIKE && !isReaction(emoji)) {
+    return NextResponse.json({ error: 'Unknown reaction' }, { status: 400 })
   }
+  const platformPaid = action === FEED_ACTION.LIKE && payeeFor(emoji) === 'platform'
+
+  const amountXec = REACT_COST_XEC // flat 100 XEC — the tip amount menu is gone
 
   const supabase = adminDb()
   const { data: target, error } = await supabase
@@ -73,11 +74,6 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
   }
 
-  const split = computePaymentSplit(amountXec)
-  if (!split) {
-    return NextResponse.json({ error: 'Invalid price' }, { status: 500 })
-  }
-
   let opReturnRaw
   try {
     opReturnRaw = encodeFeedOpReturnRaw({ action, targetTxid })
@@ -85,25 +81,40 @@ export async function POST(request) {
     return NextResponse.json({ error: e?.message || 'Failed to build commitment' }, { status: 500 })
   }
 
-  const bip21Url = buildPaywallBip21(
-    target.payout_address,
-    platformAddress,
-    split.authorAmount,
-    split.platformAmount,
-    opReturnRaw,
-  )
+  // 👎 (platform-paid) → single 100%-platform output, same builder posts use.
+  // Everything else → the 94/6 author split.
+  let bip21Url
+  let payAddress
+  if (platformPaid) {
+    bip21Url = buildPublishFeeBip21(platformAddress, amountXec, opReturnRaw)
+    payAddress = platformAddress
+  } else {
+    const split = computePaymentSplit(amountXec)
+    if (!split) {
+      return NextResponse.json({ error: 'Invalid price' }, { status: 500 })
+    }
+    bip21Url = buildPaywallBip21(
+      target.payout_address,
+      platformAddress,
+      split.authorAmount,
+      split.platformAmount,
+      opReturnRaw,
+    )
+    payAddress = target.payout_address
+  }
 
   return NextResponse.json({
     ok: true,
     action,
     targetTxid,
+    emoji,
     costXec: amountXec,
     amountXec,
     bip21Url,
-    // Author's address (the reaction's primary output) — the client watches it on
-    // a Chronik websocket to confirm the moment the payment lands, rather than
-    // waiting for the next 2.5s poll tick. Server still gates on finality.
-    payAddress: target.payout_address,
+    // The payment's primary output — the client watches it on a Chronik websocket
+    // to confirm the moment the payment lands (platform for 👎, else the author).
+    // Server still gates on finality.
+    payAddress,
     cashtabUrl: `https://cashtab.com/#/send?bip21=${bip21Url}`,
     preparedAt: Math.floor(Date.now() / 1000),
   })

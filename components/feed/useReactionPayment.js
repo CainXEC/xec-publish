@@ -61,6 +61,13 @@ export function useReactionPayment({
   repostCount = 0,
   likedByViewer = false,
   repostedByViewer = false,
+  // Emoji reactions (feed posts) are MULTI — you can react any number of times,
+  // paying each. They pass an `emoji` to startReaction and don't touch the binary
+  // liked/likes state; the parent owns the per-emoji pill counts. These fire on a
+  // confirmed reaction / on a cancel-or-fail so the parent can bump / revert its
+  // optimistic pill. Binary like (comments) + repost pass no emoji and ignore these.
+  onReacted = null,
+  onReactFailed = null,
 }) {
   const [likes, setLikes] = useState(likeCount)
   const [reposts, setReposts] = useState(repostCount)
@@ -78,6 +85,8 @@ export function useReactionPayment({
   const [txidInput, setTxidInput] = useState('')
   const [tipError, setTipError] = useState('')
   const startingRef = useRef(false)
+  // The emoji of the reaction mid-payment (null for a binary like/repost).
+  const pendingEmojiRef = useRef(null)
 
   // Viewer state is patched in AFTER mount (feed viewer-state / comments GET), so
   // re-sync when the prop flips. Safe against the optimistic tap: these only ever
@@ -115,18 +124,21 @@ export function useReactionPayment({
     setInPagePay(false)
     setTxidInput('')
     setNotice('')
+    pendingEmojiRef.current = null
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('sessionChanged'))
     }
   }, [])
 
   const startReaction = useCallback(
-    async (action, amountXec) => {
+    async (action, amountXec, emoji = null) => {
       if (startingRef.current || pending) return
-      if (action === 'like' && liked) return
+      // Emoji reactions are multi — no binary "already liked" lock. Only the
+      // binary like/repost paths block a repeat.
+      if (!emoji && action === 'like' && liked) return
       if (action === 'repost' && reposted) return
-      // A like can carry a custom tip; validate it before opening the wallet so a
-      // bad amount never reaches Cashtab. No amount → the server's 100 XEC floor.
+      // A binary like (article comment) can carry a custom tip; validate it before
+      // opening the wallet. Emoji reactions are flat 100 XEC (no amount).
       let amount
       if (amountXec != null) {
         amount = normalizeTipXec(amountXec)
@@ -136,13 +148,16 @@ export function useReactionPayment({
         }
       }
       startingRef.current = true
+      pendingEmojiRef.current = emoji
       setNotice('')
       setTipError('')
       // Decide pocket-vs-Cashtab AT the click gesture (never both).
       const handle = beginPayment({ kind: action, amountXec: amount ?? 100 })
       setInPagePay(handle.mode === 'pocket' || Boolean(handle.gesture?.hasExtension))
       prewarmPaymentWatch()
-      applyReaction(action)
+      // Binary like/repost flip their own optimistic state here; an emoji
+      // reaction leaves that alone (the parent owns the per-emoji pill).
+      if (!emoji) applyReaction(action)
       try {
         const res = await fetch(`${endpointBase}/prepare`, {
           method: 'POST',
@@ -151,12 +166,14 @@ export function useReactionPayment({
             action,
             targetTxid,
             ...(amount != null ? { amountXec: amount } : {}),
+            ...(emoji ? { emoji } : {}),
           }),
         })
         const data = await res.json()
         if (!res.ok || !data.ok) {
           abortPayment(handle)
-          revertReaction(action)
+          if (emoji) onReactFailed?.(emoji)
+          else revertReaction(action)
           setInPagePay(false)
           setNotice(data.error || 'Could not start the payment. Try again.')
           return
@@ -168,7 +185,8 @@ export function useReactionPayment({
           if (r.ok && r.txid) {
             setIntent((prev) => (prev ? { ...prev, knownTxid: r.txid } : prev))
           } else if (!r.ok && r.reason === 'denied') {
-            revertReaction(action)
+            if (emoji) onReactFailed?.(emoji)
+            else revertReaction(action)
             setPending(null)
             setIntent(null)
             setInPagePay(false)
@@ -178,18 +196,19 @@ export function useReactionPayment({
             setNotice(r.message || 'Pocket couldn’t send — use Open Cashtab below.')
           }
         })
-        setIntent(data)
+        setIntent({ ...data, emoji })
         setPending(action)
       } catch {
         abortPayment(handle)
-        revertReaction(action)
+        if (emoji) onReactFailed?.(emoji)
+        else revertReaction(action)
         setInPagePay(false)
         setNotice('Network hiccup — try again.')
       } finally {
         startingRef.current = false
       }
     },
-    [pending, liked, reposted, targetTxid, endpointBase, applyReaction, revertReaction],
+    [pending, liked, reposted, targetTxid, endpointBase, applyReaction, revertReaction, onReactFailed],
   )
 
   // Poll for the on-chain reaction while a payment is pending, via the shared
@@ -211,14 +230,21 @@ export function useReactionPayment({
             targetTxid,
             since: intent.preparedAt,
             ...(knownTxid ? { txid: knownTxid } : {}),
+            ...(intent.emoji ? { emoji: intent.emoji } : {}),
           }),
         })
         if (res.status === 429) return { backoff: true }
         const data = await res.json()
         if (data.status === 'reacted') {
-          // Remember it on THIS device before anything else, so a later visit
-          // where the server doesn't recognize us can't re-charge this reaction.
-          rememberReacted(pending, targetTxid)
+          if (intent.emoji) {
+            // Multi-react: no localStorage guard (it exists to PREVENT re-paying);
+            // just tell the parent to solidify this emoji's pill.
+            onReacted?.(intent.emoji)
+          } else {
+            // Remember a binary like/repost on THIS device so a later visit where
+            // the server doesn't recognize us can't re-charge it.
+            rememberReacted(pending, targetTxid)
+          }
           finalizeReacted()
           return { done: true }
         }
@@ -227,7 +253,7 @@ export function useReactionPayment({
       },
       { onWsAddress: intent.payAddress, maxLifetimeMs: 90_000 },
     )
-  }, [pending, intent, targetTxid, endpointBase, finalizeReacted])
+  }, [pending, intent, targetTxid, endpointBase, finalizeReacted, onReacted])
 
   const verifyManual = useCallback(async () => {
     const t = txidInput.trim()
@@ -236,15 +262,17 @@ export function useReactionPayment({
       return
     }
     setNotice('Checking that transaction…')
+    const emoji = pendingEmojiRef.current
     try {
       const res = await fetch(`${endpointBase}/confirm`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action: pending, targetTxid, txid: t }),
+        body: JSON.stringify({ action: pending, targetTxid, txid: t, ...(emoji ? { emoji } : {}) }),
       })
       const data = await res.json()
       if (data.status === 'reacted') {
-        rememberReacted(pending, targetTxid)
+        if (emoji) onReacted?.(emoji)
+        else rememberReacted(pending, targetTxid)
         finalizeReacted()
       } else if (data.status === 'awaiting_payment') {
         setNotice("That transaction doesn't match this reaction yet.")
@@ -254,16 +282,18 @@ export function useReactionPayment({
     } catch {
       setNotice('Network hiccup — try again.')
     }
-  }, [txidInput, pending, targetTxid, endpointBase, finalizeReacted])
+  }, [txidInput, pending, targetTxid, endpointBase, finalizeReacted, onReacted])
 
   const cancel = useCallback(() => {
-    if (pending) revertReaction(pending) // undo the optimistic flip
+    const emoji = pendingEmojiRef.current
+    if (emoji) onReactFailed?.(emoji) // undo the parent's optimistic pill
+    else if (pending) revertReaction(pending) // undo the binary optimistic flip
     setPending(null)
     setIntent(null)
     setInPagePay(false)
     setTxidInput('')
     setNotice('')
-  }, [pending, revertReaction])
+  }, [pending, revertReaction, onReactFailed])
 
   return {
     likes, liked, reposts, reposted,
