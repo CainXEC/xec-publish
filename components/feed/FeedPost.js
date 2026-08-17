@@ -514,7 +514,12 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
         <span aria-hidden className="dot">
           ·
         </span>
-        <Link href={`/feed/${post.txid}`} className="time">
+        {/* Relative time is Date.now()-based, so SSR and the (slightly later)
+            client hydration can disagree near a boundary ("59m" -> "1h"). That
+            mismatch was throwing a hydration error and forcing a full client
+            re-render (which also surfaced the head <script> warning). Timestamps
+            are exactly what suppressHydrationWarning is for. */}
+        <Link href={`/feed/${post.txid}`} className="time" suppressHydrationWarning>
           {timeAgo(post.created_at)}
         </Link>
         <span className="postactions">
@@ -735,7 +740,7 @@ export function MintDigestRow({ digest }) {
       <span aria-hidden className="dot">
         ·
       </span>
-      <span className="time">{timeAgo(digest?.created_at)}</span>
+      <span className="time" suppressHydrationWarning>{timeAgo(digest?.created_at)}</span>
     </li>
   )
 }
