@@ -346,20 +346,46 @@ describe('POST /api/feed/confirm', () => {
 })
 
 describe('POST /api/feed/react/prepare', () => {
-  it('builds a 94/6 split like against a live post', async () => {
+  it('builds a 94/6 split emoji reaction against a live post (author is paid)', async () => {
     useSupabase(() => ({
       data: { payout_address: 'ecash:qauthor', deleted_at: null },
       error: null,
     }))
     const { POST } = await import('@/app/api/feed/react/prepare/route')
-    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A }))
+    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A, emoji: '🔥' }))
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.ok).toBe(true)
     expect(json.action).toBe(5)
     expect(json.costXec).toBe(100)
-    expect(json.targetTxid).toBe(TXID_A)
-    expect(json.bip21Url).toContain('amount=')
+    expect(json.emoji).toBe('🔥')
+    // 94/6 split → the author's output is the pay address, and both legs appear.
+    expect(json.payAddress).toBe('ecash:qauthor')
+    expect(json.bip21Url).toContain('amount=94')
+    expect(json.bip21Url).toContain('amount=6')
+  })
+
+  it('builds a 100%-platform payment for a 👎 (author is NOT paid)', async () => {
+    useSupabase(() => ({
+      data: { payout_address: 'ecash:qauthor', deleted_at: null },
+      error: null,
+    }))
+    const { POST } = await import('@/app/api/feed/react/prepare/route')
+    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A, emoji: '👎' }))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.ok).toBe(true)
+    // The whole 100 XEC goes to the platform; the author's address never appears.
+    expect(json.payAddress).toBe(process.env.PLATFORM_XEC_ADDRESS)
+    expect(json.bip21Url).toContain('amount=100')
+    expect(json.bip21Url).not.toContain('qauthor')
+  })
+
+  it('400s an unknown reaction emoji', async () => {
+    const { POST } = await import('@/app/api/feed/react/prepare/route')
+    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A, emoji: '🍕' }))
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toBe('Unknown reaction')
   })
 
   it('404s a reaction on a missing or deleted post', async () => {
@@ -395,10 +421,17 @@ describe('POST /api/feed/react/confirm', () => {
       return { data: null, error: null }
     })
     const { POST } = await import('@/app/api/feed/react/confirm/route')
-    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A }))
+    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A, emoji: '🔥' }))
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ ok: true, status: 'awaiting_payment' })
     expect(mocks.resolveOrCreateAccount).not.toHaveBeenCalled()
+  })
+
+  it('400s an unknown reaction emoji', async () => {
+    const { POST } = await import('@/app/api/feed/react/confirm/route')
+    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A, emoji: '🍕', txid: PAY_TXID }))
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toBe('Unknown reaction')
   })
 
   it('publishes a not-yet-final reaction at 0-conf as provisional (finalized_at null)', async () => {
@@ -422,11 +455,13 @@ describe('POST /api/feed/react/confirm', () => {
       return { data: null, error: null }
     })
     const { POST } = await import('@/app/api/feed/react/confirm/route')
-    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A, txid: PAY_TXID }))
+    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A, txid: PAY_TXID, emoji: '🔥' }))
     expect(res.status).toBe(200)
     expect((await res.json()).status).toBe('reacted')
     // The 0-conf reaction is recorded provisionally; the reconcile sweep finalizes it.
     expect(insertedRow.finalized_at).toBeNull()
+    // The emoji is stored on the row.
+    expect(insertedRow.emoji).toBe('🔥')
     expect(mocks.resolveOrCreateAccount).toHaveBeenCalledWith('ecash:qfan')
   })
 
@@ -455,7 +490,7 @@ describe('POST /api/feed/react/confirm', () => {
       return { data: null, error: null } // idempotent lookup: not yet recorded
     })
     const { POST } = await import('@/app/api/feed/react/confirm/route')
-    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A, txid: PAY_TXID }))
+    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A, txid: PAY_TXID, emoji: '🔥' }))
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.status).toBe('reacted')
@@ -465,29 +500,90 @@ describe('POST /api/feed/react/confirm', () => {
     expect(mocks.resolveOrCreateAccount).toHaveBeenCalledWith('ecash:qfan')
   })
 
-  it('dedupes a reaction per ACCOUNT across wallets (pocket like + wallet like = one record)', async () => {
-    // The DB unique key is per payer WALLET; an account with a Pocket has two.
-    // A like paid from the pocket when the account already liked from its main
-    // wallet must return the existing record, never insert a second one.
+  it('records a 👎 with the platform as payout (ranking-neutral)', async () => {
+    mocks.verifyFeedTxid.mockResolvedValue({
+      txid: PAY_TXID,
+      payerAddress: 'ecash:qfan',
+      sats: 10000,
+      isFinal: true,
+    })
+    let captured = null
+    let expectedSeen = null
+    mocks.verifyFeedTxid.mockImplementation(async (_txid, expected) => {
+      expectedSeen = expected
+      return { txid: PAY_TXID, payerAddress: 'ecash:qfan', sats: 10000, isFinal: true }
+    })
+    useSupabase((state) => {
+      if (state.op === 'insert') {
+        captured = state.insertRow
+        return { data: { id: 'evt-1', txid: PAY_TXID, action: 5, target_txid: TXID_A }, error: null }
+      }
+      if (state.table === 'feed_posts') return { data: liveTarget, error: null }
+      return { data: null, error: null }
+    })
+    const { POST } = await import('@/app/api/feed/react/confirm/route')
+    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A, txid: PAY_TXID, emoji: '👎' }))
+    expect(res.status).toBe(200)
+    expect((await res.json()).status).toBe('reacted')
+    // Verification required the platform-only split; the row's payout is the platform.
+    expect(expectedSeen.platformOnly).toBe(true)
+    expect(captured.emoji).toBe('👎')
+    expect(captured.payout_address).toBe(process.env.PLATFORM_XEC_ADDRESS)
+  })
+
+  it('allows MULTI-react — a second like from the same account inserts again', async () => {
+    mocks.verifyFeedTxid.mockResolvedValue({
+      txid: PAY_TXID,
+      payerAddress: 'ecash:qfan',
+      sats: 10000,
+      isFinal: true,
+    })
+    let inserted = false
+    useSupabase((state, term) => {
+      if (state.op === 'insert') {
+        inserted = true
+        return { data: { id: 'evt-2', txid: PAY_TXID, action: 5, target_txid: TXID_A }, error: null }
+      }
+      if (state.table === 'feed_posts') return { data: liveTarget, error: null }
+      // Even though this account already reacted, a like must NOT be deduped —
+      // if the per-account query ran it would return a prior row and block the
+      // insert; assert the route never consults it for a like.
+      if (state.table === 'feed_events' && term === 'list' && state.filters.actor_account_id) {
+        throw new Error('likes must not run the per-account dedup query (multi-react)')
+      }
+      return { data: null, error: null } // txid idempotency: not recorded
+    })
+    const { POST } = await import('@/app/api/feed/react/confirm/route')
+    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A, txid: PAY_TXID, emoji: '❤️' }))
+    expect(res.status).toBe(200)
+    expect((await res.json()).status).toBe('reacted')
+    expect(inserted).toBe(true)
+  })
+
+  it('dedupes a REPOST per ACCOUNT across wallets (pocket repost + wallet repost = one record)', async () => {
+    // Reposts stay one-per-wallet; an account with a Pocket has two wallets. A
+    // repost from the pocket when the account already reposted from its main
+    // wallet must return the existing record, never insert a second one. (Likes
+    // are multi-react and skip this — see the multi-react test above.)
     mocks.verifyFeedTxid.mockResolvedValue({
       txid: PAY_TXID,
       payerAddress: 'ecash:qpocket',
       sats: 10000,
       isFinal: true,
     })
-    const walletLike = { id: 'evt-0', txid: 'b'.repeat(64), action: 5, target_txid: TXID_A, actor_account_id: 'acct-1' }
+    const walletRepost = { id: 'evt-0', txid: 'b'.repeat(64), action: 4, target_txid: TXID_A, actor_account_id: 'acct-1' }
     useSupabase((state, term) => {
-      if (state.op === 'insert') throw new Error('should not insert a second like for the same account')
+      if (state.op === 'insert') throw new Error('should not insert a second repost for the same account')
       if (state.table === 'feed_posts') return { data: liveTarget, error: null }
       if (state.table === 'feed_events' && term === 'list') {
         // The account-level dedupe query filters on actor_account_id.
-        if (state.filters.actor_account_id) return { data: [walletLike], error: null }
+        if (state.filters.actor_account_id) return { data: [walletRepost], error: null }
         return { data: [], error: null } // exclude-txids scan
       }
       return { data: null, error: null } // txid idempotency lookup: not recorded
     })
     const { POST } = await import('@/app/api/feed/react/confirm/route')
-    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A, txid: PAY_TXID }))
+    const res = await POST(makeReq({ action: 'repost', targetTxid: TXID_A, txid: PAY_TXID }))
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.status).toBe('reacted')
@@ -509,7 +605,7 @@ describe('POST /api/feed/react/confirm', () => {
       return { data: existing, error: null } // idempotent lookup hits
     })
     const { POST } = await import('@/app/api/feed/react/confirm/route')
-    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A, txid: PAY_TXID }))
+    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A, txid: PAY_TXID, emoji: '🔥' }))
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.status).toBe('reacted')
