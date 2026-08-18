@@ -22,6 +22,9 @@ export default function EngagementBar({
   quoteCount = 0,
   repostedByViewer = false,
   canQuote = true,
+  // Your own post: you can't react to yourself, so the reaction icon opens a
+  // "who reacted" list (author-only) instead of the emoji picker.
+  isOwnPost = false,
   onQuote,
 }) {
   // Per-emoji counts shown as pills. Seeded from the server truth and re-seeded
@@ -78,6 +81,32 @@ export default function EngagementBar({
     [counts],
   )
 
+  // "Who reacted" — own post only. `who`: null (unloaded) | 'loading' | 'error'
+  // | array of { identity, emoji }. Fetched fresh each time the panel opens.
+  const [whoOpen, setWhoOpen] = useState(false)
+  const [who, setWho] = useState(null)
+  const toggleWho = () => {
+    const opening = !whoOpen
+    setWhoOpen(opening)
+    if (opening) {
+      setWho('loading')
+      fetch(`/api/feed/reactions?txid=${targetTxid}`)
+        .then((r) => (r.ok ? r.json() : { ok: false }))
+        .then((j) => setWho(j.ok ? j.reactors : 'error'))
+        .catch(() => setWho('error'))
+    }
+  }
+  // Group the reactor list by emoji for display (bylines under each emoji).
+  const whoGroups = useMemo(() => {
+    if (!Array.isArray(who)) return null
+    const m = new Map()
+    for (const r of who) {
+      if (!m.has(r.emoji)) m.set(r.emoji, [])
+      m.get(r.emoji).push(r.identity)
+    }
+    return [...m.entries()].sort((a, b) => b[1].length - a[1].length)
+  }, [who])
+
   return (
     <div className="engage">
       <div className="engagebar">
@@ -87,15 +116,36 @@ export default function EngagementBar({
         <span className="reactwrap">
           <button
             type="button"
-            className="reactbtn"
-            disabled={Boolean(pending) && !inPagePay}
+            className={`reactbtn${isOwnPost && whoOpen ? ' on' : ''}`}
+            disabled={!isOwnPost && Boolean(pending) && !inPagePay}
             aria-haspopup="menu"
-            aria-label="React · 100 XEC"
-            title="React · 100 XEC"
+            aria-expanded={isOwnPost ? whoOpen : undefined}
+            aria-label={isOwnPost ? 'See who reacted' : 'React · 100 XEC'}
+            title={isOwnPost ? 'See who reacted' : 'React · 100 XEC'}
+            onClick={isOwnPost ? toggleWho : undefined}
           >
             ☺+
           </button>
-          {!pending ? (
+          {isOwnPost ? (
+            whoOpen ? (
+              <div className="whoreacted">
+                {who === 'loading' ? (
+                  <p className="whonote">Loading…</p>
+                ) : who === 'error' ? (
+                  <p className="whonote">Couldn’t load reactions.</p>
+                ) : whoGroups && whoGroups.length > 0 ? (
+                  whoGroups.map(([emoji, names]) => (
+                    <div className="whorow" key={emoji}>
+                      <span className="whoemoji" aria-hidden>{emoji}</span>
+                      <span className="whonames">{names.join(', ')}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="whonote">No reactions yet.</p>
+                )}
+              </div>
+            ) : null
+          ) : !pending ? (
             <div className="reactpicker" role="menu">
               {REACTIONS.map((emoji) => (
                 <button
@@ -147,10 +197,10 @@ export default function EngagementBar({
           key={emoji}
           type="button"
           className="reactpill"
-          disabled={Boolean(pending) && !inPagePay}
-          onClick={() => react(emoji)}
-          aria-label={`React ${emoji}`}
-          title={`React ${emoji} · 100 XEC`}
+          disabled={!isOwnPost && Boolean(pending) && !inPagePay}
+          onClick={() => (isOwnPost ? toggleWho() : react(emoji))}
+          aria-label={isOwnPost ? `${emoji} reactions — see who` : `React ${emoji}`}
+          title={isOwnPost ? 'See who reacted' : `React ${emoji} · 100 XEC`}
         >
           {emoji} {n}
         </button>

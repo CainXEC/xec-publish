@@ -610,6 +610,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
             repostCount={post.repostCount ?? 0}
             quoteCount={quoteCount}
             repostedByViewer={Boolean(post.repostedByViewer)}
+            isOwnPost={isOwn}
             onQuote={() => setShowQuote((s) => !s)}
           />
         ) : null}

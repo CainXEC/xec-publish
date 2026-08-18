@@ -673,6 +673,15 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .reactopt{background:none;border:none;font-size:22px;line-height:1;padding:4px;border-radius:8px;
   cursor:pointer;transition:background .12s,transform .12s;}
 .pow-feed .reactopt:hover{background:var(--panel2);transform:scale(1.15);}
+/* "Who reacted" popover — your own post only, opened by clicking the react icon. */
+.pow-feed .whoreacted{position:absolute;bottom:calc(100% + 6px);left:0;z-index:20;min-width:210px;max-width:300px;
+  max-height:280px;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:8px;}
+.pow-feed .whoreacted::after{content:"";position:absolute;top:100%;left:0;right:0;height:8px;}
+.pow-feed .whorow{display:flex;align-items:baseline;gap:8px;font-size:12.5px;}
+.pow-feed .whoemoji{font-size:15px;flex-shrink:0;line-height:1;}
+.pow-feed .whonames{color:var(--text);word-break:break-word;line-height:1.45;}
+.pow-feed .whonote{margin:0;font-size:12.5px;color:var(--dim);}
 
 /* like → tip menu: quick presets + a custom amount, floating above the button.
    Revealed on hover (or keyboard focus) of the Like button; a transparent bridge
