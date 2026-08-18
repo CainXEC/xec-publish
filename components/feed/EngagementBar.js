@@ -138,25 +138,23 @@ export default function EngagementBar({
         ) : null}
       </div>
 
-      {/* Pills live OUTSIDE .engagebar (at the .engage display:contents level) with
-          a high CSS order, so they sit to the RIGHT of the translate button rather
-          than embedded between the action icons. */}
-      {pills.length > 0 ? (
-        <span className="reactpills">
-          {pills.map(([emoji, n]) => (
-            <button
-              key={emoji}
-              type="button"
-              className="reactpill"
-              disabled={Boolean(pending) && !inPagePay}
-              onClick={() => react(emoji)}
-              title={`React ${emoji} · 100 XEC`}
-            >
-              <span aria-hidden>{emoji}</span> {n}
-            </button>
-          ))}
-        </span>
-      ) : null}
+      {/* Each pill is its OWN flex item at the .engage (display:contents) level
+          with a high CSS order, so they sit after the translate button and flow
+          inline with the action icons — wrapping one at a time when the row is
+          full, aligning left like the reply count (no circle grouping them). */}
+      {pills.map(([emoji, n]) => (
+        <button
+          key={emoji}
+          type="button"
+          className="reactpill"
+          disabled={Boolean(pending) && !inPagePay}
+          onClick={() => react(emoji)}
+          aria-label={`React ${emoji}`}
+          title={`React ${emoji} · 100 XEC`}
+        >
+          {emoji} {n}
+        </button>
+      ))}
 
       {pending && intent && !inPagePay ? (
         <div className="reactpay">

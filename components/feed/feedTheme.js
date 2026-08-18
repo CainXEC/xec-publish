@@ -649,11 +649,13 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .reactpay .manual{margin-top:14px;}
 .pow-feed .engage .notice{flex-basis:100%;width:100%;}
 
-/* Emoji reactions: per-emoji pills + the picker popover (replaces like/tip menu). */
-.pow-feed .reactpill{background:var(--panel2);border:1px solid var(--line);color:var(--text);font:inherit;
-  font-size:12px;padding:3px 9px;border-radius:999px;cursor:pointer;font-variant-numeric:tabular-nums;
-  display:inline-flex;align-items:center;gap:4px;transition:border-color .12s;}
-.pow-feed .reactpill:hover{border-color:var(--neon);}
+/* Emoji reactions: per-emoji counts + the picker popover (replaces like/tip menu).
+   A pill reads like the reply/repost counts — no circle — and each is its OWN
+   flex item (order:10) so they flow inline after the action icons and wrap one at
+   a time, aligning to the left edge like the reply count on the next row. */
+.pow-feed .reactpill{order:10;background:none;border:none;color:var(--dim);font:inherit;font-size:13px;
+  cursor:pointer;padding:2px 0;font-variant-numeric:tabular-nums;transition:color .15s;}
+.pow-feed .reactpill:hover{color:var(--neon);}
 .pow-feed .reactpill:disabled{cursor:default;opacity:.6;}
 .pow-feed .reactwrap{position:relative;display:inline-flex;}
 .pow-feed .reactbtn{background:none;border:none;color:var(--dim);font:inherit;font-size:18px;line-height:1;
@@ -671,8 +673,6 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .reactopt{background:none;border:none;font-size:22px;line-height:1;padding:4px;border-radius:8px;
   cursor:pointer;transition:background .12s,transform .12s;}
 .pow-feed .reactopt:hover{background:var(--panel2);transform:scale(1.15);}
-/* Pills sit to the RIGHT of the translate button (high order in the .actions row). */
-.pow-feed .reactpills{order:10;display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px;}
 
 /* like → tip menu: quick presets + a custom amount, floating above the button.
    Revealed on hover (or keyboard focus) of the Like button; a transparent bridge
