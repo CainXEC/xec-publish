@@ -424,6 +424,7 @@ export default function FeedThreadClient({
                     repostCount={post.repostCount ?? 0}
                     quoteCount={post.quoteCount ?? 0}
                     repostedByViewer={Boolean(post.repostedByViewer)}
+                    isOwnPost={isOwnRoot}
                     onQuote={() => setShowQuote((s) => !s)}
                   />
                 ) : null}
