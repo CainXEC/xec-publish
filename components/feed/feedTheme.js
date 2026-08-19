@@ -1091,7 +1091,7 @@ html:not(.dark) .pow-feed .forumcreate-pay:disabled{box-shadow:none;}
 .pow-feed .forumhead-youtag{color:var(--neon);}
 
 /* Forum sort tabs (New / Top) — a light pill row above the post list. */
-.pow-feed .forumsort{display:flex;gap:8px;margin:0 0 12px;}
+.pow-feed .forumsort{display:flex;gap:8px;margin:14px 0;}
 .pow-feed .forumsort-tab{background:transparent;border:1px solid var(--line);border-radius:999px;
   padding:5px 15px;font-family:inherit;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
   color:var(--dim);cursor:pointer;transition:border-color .15s,color .15s;}
