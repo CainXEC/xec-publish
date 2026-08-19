@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import ComposeBox from '@/components/feed/ComposeBox'
-import FeedPost from '@/components/feed/FeedPost'
+import ForumPostCard from '@/components/feed/ForumPostCard'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import ActivityRail from '@/components/feed/ActivityRail'
 import ArticleRail from '@/components/feed/ArticleRail'
@@ -26,6 +26,7 @@ export default function ForumPageClient({
 }) {
   const [posts, setPosts] = useState(initialPosts)
   const [nextCursor, setNextCursor] = useState(initialNextCursor)
+  const [sort, setSort] = useState('new') // 'new' (chronological) | 'top' (leaderboard)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [viewerAccountId, setViewerAccountId] = useState(initialViewerAccountId)
@@ -39,14 +40,30 @@ export default function ForumPageClient({
     setPosts((prev) => (prev.some((p) => p.txid === post.txid) ? prev : [post, ...prev]))
   }, [])
 
-  const removePost = useCallback((txid) => {
-    setPosts((prev) => prev.filter((p) => p.txid !== txid))
-  }, [])
-
-  const removeByAuthor = useCallback((accountId) => {
-    if (!accountId) return
-    setPosts((prev) => prev.filter((p) => p.author_account_id !== accountId))
-  }, [])
+  // Switch the New/Top ordering: refetch page 1 in that sort and replace the list.
+  const selectSort = useCallback(
+    async (next) => {
+      if (next === sort || loading) return
+      setSort(next)
+      setLoading(true)
+      setError(null)
+      try {
+        const res = await fetch(
+          `/api/forums/${encodeURIComponent(forum.slug)}/feed?sort=${next}`,
+          { cache: 'no-store' },
+        )
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Failed to load forum')
+        setPosts(data.posts ?? [])
+        setNextCursor(data.nextCursor ?? null)
+      } catch (e) {
+        setError(e?.message || 'Failed to load forum')
+      } finally {
+        setLoading(false)
+      }
+    },
+    [sort, loading, forum.slug],
+  )
 
   const loadMore = useCallback(async () => {
     if (loading || !nextCursor) return
@@ -54,7 +71,7 @@ export default function ForumPageClient({
     setError(null)
     try {
       const res = await fetch(
-        `/api/forums/${encodeURIComponent(forum.slug)}/feed?cursor=${encodeURIComponent(nextCursor)}`,
+        `/api/forums/${encodeURIComponent(forum.slug)}/feed?sort=${sort}&cursor=${encodeURIComponent(nextCursor)}`,
         { cache: 'no-store' },
       )
       const data = await res.json()
@@ -69,7 +86,7 @@ export default function ForumPageClient({
     } finally {
       setLoading(false)
     }
-  }, [loading, nextCursor, forum.slug])
+  }, [loading, nextCursor, forum.slug, sort])
 
   // Per-viewer like/repost/follow overlay — the SSR page is viewer-neutral for
   // these flags, same as the global Feed. Best-effort; the feed renders without it.
@@ -177,23 +194,39 @@ export default function ForumPageClient({
             <div className="empty">Post once to sign in, then post here.</div>
           )}
 
+          <div className="forumsort" role="tablist" aria-label="Sort forum posts">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={sort === 'new'}
+              className={`forumsort-tab${sort === 'new' ? ' on' : ''}`}
+              onClick={() => void selectSort('new')}
+            >
+              New
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={sort === 'top'}
+              className={`forumsort-tab${sort === 'top' ? ' on' : ''}`}
+              onClick={() => void selectSort('top')}
+            >
+              Top
+            </button>
+          </div>
+
           {error ? <div className="error">{error}</div> : null}
 
-          {posts.length === 0 ? (
+          {loading && posts.length === 0 ? (
+            <div className="empty">Loading…</div>
+          ) : posts.length === 0 ? (
             <div className="empty">No posts in this forum yet. Be the first.</div>
           ) : (
-            <ul className="panel posts">
+            <ul className="panel forumcards">
               {posts.map((post) => (
-                <FeedPost
-                  key={post.txid}
-                  post={post}
-                  viewerAccountId={viewerAccountId}
-                  onDeleted={removePost}
-                  onQuoted={prependPost}
-                  onBlocked={removeByAuthor}
-                  mintVariant="compact"
-                  allowOptimisticQuote
-                />
+                <li key={post.txid} className="forumcard-li">
+                  <ForumPostCard post={post} />
+                </li>
               ))}
             </ul>
           )}

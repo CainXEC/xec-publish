@@ -14,6 +14,7 @@ export async function GET(request, { params }) {
   const slug = typeof raw === 'string' ? raw.trim() : ''
   const { searchParams } = new URL(request.url)
   const cursor = searchParams.get('cursor') || null
+  const sort = searchParams.get('sort') === 'top' ? 'top' : 'new'
 
   try {
     const forum = await getForumBySlug(adminDb(), slug)
@@ -23,6 +24,7 @@ export async function GET(request, { params }) {
     const { posts, nextCursor } = await getForumFeedPage({
       forumId: forum.id,
       cursor,
+      sort,
       viewerAddress: acct?.address ?? '',
       viewerAccountId: acct?.accountId ?? null,
     })

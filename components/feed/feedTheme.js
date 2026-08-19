@@ -1086,6 +1086,36 @@ html:not(.dark) .pow-feed .forumcreate-pay:disabled{box-shadow:none;}
 .pow-feed .forumhead-runner{color:var(--cyan);}
 .pow-feed .forumhead-youtag{color:var(--neon);}
 
+/* Forum sort tabs (New / Top) — a light pill row above the post list. */
+.pow-feed .forumsort{display:flex;gap:8px;margin:0 0 12px;}
+.pow-feed .forumsort-tab{background:transparent;border:1px solid var(--line);border-radius:999px;
+  padding:5px 15px;font-family:inherit;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--dim);cursor:pointer;transition:border-color .15s,color .15s;}
+.pow-feed .forumsort-tab:hover{color:var(--text);}
+.pow-feed .forumsort-tab.on{color:var(--neon);border-color:var(--neon);}
+
+/* Forum post cards — Reddit-style discussion rows: a clamped body preview led by
+   a loud engagement footer. The whole card opens the thread page. */
+.pow-feed .forumcards{list-style:none;margin:0;padding:0;}
+.pow-feed .forumcard-li{border-bottom:1px solid var(--line);}
+.pow-feed .forumcard-li:last-child{border-bottom:none;}
+.pow-feed .forumcard{display:block;padding:14px 16px;cursor:pointer;transition:background .12s;}
+.pow-feed .forumcard:hover{background:var(--panel2);}
+.pow-feed .forumcard:focus-visible{outline:2px solid var(--neon);outline-offset:-2px;}
+.pow-feed .forumcard-meta{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--dim);}
+.pow-feed .forumcard-meta .dot{color:var(--dim);}
+.pow-feed .forumcard-meta .time{color:var(--dim);}
+/* Clamp the preview to a few lines; the full body lives on the thread page. */
+.pow-feed .forumcard-body{margin:6px 0 0;font-size:14.5px;line-height:1.5;color:var(--text);
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:break-word;}
+.pow-feed .forumcard-foot{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin-top:11px;
+  font-size:12.5px;color:var(--dim);}
+/* The comment count is the row's primary invitation — give it the accent. */
+.pow-feed .forumcard-comments{color:var(--neon);font-weight:700;font-variant-numeric:tabular-nums;}
+.pow-feed .forumcard-reactions{display:inline-flex;align-items:center;gap:10px;}
+.pow-feed .forumcard-react{display:inline-flex;align-items:center;gap:3px;font-variant-numeric:tabular-nums;}
+.pow-feed .forumcard-rep{font-variant-numeric:tabular-nums;}
+
 /* =========================================================================
    PAPER (light mode) — dark mode is a terminal; light mode is the page.
    Not the neon sign at a different brightness: a different metaphor. The feed
