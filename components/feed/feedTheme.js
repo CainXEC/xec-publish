@@ -1026,8 +1026,12 @@ html:not(.dark) .dashhandle-tip{background:#fdfcf8;border-color:#e3dfd2;color:#1
    All colors go through the shared tokens (--panel/--line/--text/--dim/--neon/
    --cyan), so these theme automatically in both the terminal and paper lenses. */
 .pow-feed .forumdir{display:flex;flex-direction:column;gap:14px;}
-.pow-feed .forumdir-head{display:flex;align-items:center;justify-content:space-between;gap:16px;}
+/* Two equal columns mirroring the Feed|Forums tabs above, so the copy sits under
+   the Feed half (left) and the create button centers under the Forums half
+   (right). margin-top drops the row off the tab underline for some breathing room. */
+.pow-feed .forumdir-head{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:16px;margin-top:18px;}
 .pow-feed .forumdir-sub{font-size:12.5px;line-height:1.5;color:var(--dim);margin:0;max-width:44ch;}
+.pow-feed .forumdir-create{display:flex;justify-content:center;}
 .pow-feed .forumlist{list-style:none;margin:0;padding:0;}
 .pow-feed .forumrow{border-bottom:1px solid var(--line);}
 .pow-feed .forumrow:last-child{border-bottom:none;}
