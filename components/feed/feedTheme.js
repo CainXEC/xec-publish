@@ -1026,9 +1026,9 @@ html:not(.dark) .dashhandle-tip{background:#fdfcf8;border-color:#e3dfd2;color:#1
    All colors go through the shared tokens (--panel/--line/--text/--dim/--neon/
    --cyan), so these theme automatically in both the terminal and paper lenses. */
 .pow-feed .forumdir{display:flex;flex-direction:column;gap:14px;}
-.pow-feed .forumdir-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;}
-.pow-feed .forumdir-title{font-size:18px;font-weight:800;letter-spacing:.04em;color:var(--text);margin:0;}
-.pow-feed .forumdir-sub{font-size:12.5px;line-height:1.5;color:var(--dim);margin:4px 0 0;max-width:44ch;}
+.pow-feed .forumdir-head{display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center;}
+.pow-feed .forumdir-sub{font-size:12.5px;line-height:1.5;color:var(--dim);margin:0;max-width:44ch;}
+.pow-feed .forumdir-createwrap{display:flex;justify-content:center;width:100%;}
 .pow-feed .forumlist{list-style:none;margin:0;padding:0;}
 .pow-feed .forumrow{border-bottom:1px solid var(--line);}
 .pow-feed .forumrow:last-child{border-bottom:none;}
@@ -1060,6 +1060,20 @@ html:not(.dark) .dashhandle-tip{background:#fdfcf8;border-color:#e3dfd2;color:#1
 .pow-feed .forumcreate-hint{font-size:11px;color:var(--dim);}
 .pow-feed .forumcreate-hint.over{color:var(--no);}
 .pow-feed .forumcreate-bar{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:2px;}
+/* The create-forum pay button: a normal flow-layout button (icon + label in a
+   flex row, no absolute positioning), so a long "Create · 10,000 XEC" label
+   never overflows/clips the way the compact .paybtn does. */
+.pow-feed .forumcreate-pay{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;
+  background:transparent;border:1.5px solid var(--neon);border-radius:9px;cursor:pointer;
+  color:var(--neon);font-family:inherit;font-size:12.5px;font-weight:700;letter-spacing:.02em;
+  white-space:nowrap;box-shadow:0 0 14px rgba(0,255,156,.4);transition:box-shadow .25s,opacity .2s;}
+.pow-feed .forumcreate-pay:hover:not(:disabled){box-shadow:0 0 22px rgba(0,255,156,.55);}
+.pow-feed .forumcreate-pay:disabled{cursor:not-allowed;opacity:.5;border-color:var(--line);
+  color:var(--dim);box-shadow:none;}
+.pow-feed .forumcreate-pay-icon{display:inline-flex;align-items:center;line-height:1;}
+html:not(.dark) .pow-feed .forumcreate-pay{box-shadow:0 0 0 1px var(--neon);}
+html:not(.dark) .pow-feed .forumcreate-pay:hover:not(:disabled){box-shadow:0 0 0 1.5px var(--neon);}
+html:not(.dark) .pow-feed .forumcreate-pay:disabled{box-shadow:none;}
 
 /* A forum's header on /f/<slug> */
 .pow-feed .forumhead{padding:0 4px 18px;border-bottom:1px solid var(--line);margin-bottom:16px;}

@@ -263,13 +263,13 @@ export default function CreateForum({ onCreated, onCancel }) {
           type="button"
           disabled={!canSubmit}
           onClick={() => void startPayment()}
-          className={`paybtn${canSubmit ? ' active' : ''}`}
-          aria-label={`Pay ${FORUM_CREATE_FEE_XEC} XEC`}
+          className="forumcreate-pay"
+          aria-label={`Create forum for ${FORUM_CREATE_FEE_XEC} XEC`}
         >
-          <span aria-hidden className="paybtn-icon">
+          <span aria-hidden className="forumcreate-pay-icon">
             <EcashIcon size={15} />
           </span>
-          <span className="paybtn-amt">Create · {FORUM_CREATE_FEE_XEC.toLocaleString()} XEC</span>
+          <span>Create · {FORUM_CREATE_FEE_XEC.toLocaleString()} XEC</span>
         </button>
       </div>
       {notice ? <p className="notice">{notice}</p> : null}

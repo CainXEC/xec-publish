@@ -66,17 +66,16 @@ export default function ForumDirectory({ signedIn }) {
   return (
     <div className="forumdir">
       <div className="forumdir-head">
-        <div>
-          <h2 className="forumdir-title">Forums</h2>
-          <p className="forumdir-sub">
-            Topic communities. Post, reply, and react inside a forum — the runner earns the 6%
-            engagement fee.
-          </p>
-        </div>
+        <p className="forumdir-sub">
+          Topic communities. Post, reply, and react inside a forum — the runner earns the 6%
+          engagement fee.
+        </p>
         {signedIn ? (
-          <button type="button" className="btn" onClick={() => setCreating((v) => !v)}>
-            {creating ? 'Close' : 'Create forum'}
-          </button>
+          <div className="forumdir-createwrap">
+            <button type="button" className="btn" onClick={() => setCreating((v) => !v)}>
+              {creating ? 'Close' : 'Create forum'}
+            </button>
+          </div>
         ) : null}
       </div>
 
