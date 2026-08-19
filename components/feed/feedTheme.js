@@ -1026,9 +1026,8 @@ html:not(.dark) .dashhandle-tip{background:#fdfcf8;border-color:#e3dfd2;color:#1
    All colors go through the shared tokens (--panel/--line/--text/--dim/--neon/
    --cyan), so these theme automatically in both the terminal and paper lenses. */
 .pow-feed .forumdir{display:flex;flex-direction:column;gap:14px;}
-.pow-feed .forumdir-head{display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center;}
+.pow-feed .forumdir-head{display:flex;align-items:center;justify-content:space-between;gap:16px;}
 .pow-feed .forumdir-sub{font-size:12.5px;line-height:1.5;color:var(--dim);margin:0;max-width:44ch;}
-.pow-feed .forumdir-createwrap{display:flex;justify-content:center;width:100%;}
 .pow-feed .forumlist{list-style:none;margin:0;padding:0;}
 .pow-feed .forumrow{border-bottom:1px solid var(--line);}
 .pow-feed .forumrow:last-child{border-bottom:none;}

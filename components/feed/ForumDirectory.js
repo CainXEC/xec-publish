@@ -71,11 +71,9 @@ export default function ForumDirectory({ signedIn }) {
           engagement fee.
         </p>
         {signedIn ? (
-          <div className="forumdir-createwrap">
-            <button type="button" className="btn" onClick={() => setCreating((v) => !v)}>
-              {creating ? 'Close' : 'Create forum'}
-            </button>
-          </div>
+          <button type="button" className="btn" onClick={() => setCreating((v) => !v)}>
+            {creating ? 'Close' : 'Create forum'}
+          </button>
         ) : null}
       </div>
 
