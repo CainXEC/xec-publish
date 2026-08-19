@@ -7,6 +7,7 @@ import { FEED_MIN_XEC } from '@/lib/feedPricing'
 import { computePaymentSplit, buildPaywallBip21, buildPublishFeeBip21 } from '@/lib/paymentSplit'
 import { encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
 import { isReaction, payeeFor } from '@/lib/reactions'
+import { feeRecipientForTarget } from '@/lib/forums'
 
 // Reactions carry no content — just a flat 100 XEC payment. A like/emoji reaction
 // normally splits 94/6 to the reacted-to post's author + platform; a 👎 (a
@@ -81,13 +82,21 @@ export async function POST(request) {
     return NextResponse.json({ error: e?.message || 'Failed to build commitment' }, { status: 500 })
   }
 
+  // The fee leg (the "platform" 6%, or the 100% for 👎) goes to the FORUM RUNNER
+  // when the target post is in a forum and the reaction is positive — else the
+  // platform. Derived server-side from the target's forum_id (unspoofable).
+  const feeRecipient = await feeRecipientForTarget(supabase, targetTxid, {
+    platformOnly: platformPaid,
+    platformAddress,
+  })
+
   // 👎 (platform-paid) → single 100%-platform output, same builder posts use.
-  // Everything else → the 94/6 author split.
+  // Everything else → the 94/6 split (author + fee recipient).
   let bip21Url
   let payAddress
   if (platformPaid) {
-    bip21Url = buildPublishFeeBip21(platformAddress, amountXec, opReturnRaw)
-    payAddress = platformAddress
+    bip21Url = buildPublishFeeBip21(feeRecipient, amountXec, opReturnRaw)
+    payAddress = feeRecipient
   } else {
     const split = computePaymentSplit(amountXec)
     if (!split) {
@@ -95,7 +104,7 @@ export async function POST(request) {
     }
     bip21Url = buildPaywallBip21(
       target.payout_address,
-      platformAddress,
+      feeRecipient,
       split.authorAmount,
       split.platformAmount,
       opReturnRaw,

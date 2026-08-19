@@ -665,3 +665,96 @@ describe('GET /api/feed/article-card (byline follows the live handle)', () => {
     expect(json.card.author).toBe('founder')
   })
 })
+
+// The forum engagement-fee redirect: a reply or POSITIVE reaction whose target
+// post is in a forum pays the forum RUNNER the 6% (instead of the platform); a 👎
+// and every non-forum target still pay the platform. Derived server-side from the
+// target's forum_id, so it can't be spoofed by the client.
+describe('forum engagement fee → the runner', () => {
+  const FORUM_ID = 'forum-1'
+  const RUNNER_ACCT = 'acct-runner'
+
+  // feed_posts carries a forum_id; forums resolves to a runner account; the
+  // runner's live primary address is where the fee leg is redirected.
+  function forumResolver({ inForum }) {
+    return (state) => {
+      if (state.table === 'feed_posts') {
+        return {
+          data: {
+            payout_address: 'ecash:qauthor',
+            author_account_id: 'acct-author',
+            deleted_at: null,
+            forum_id: inForum ? FORUM_ID : null,
+          },
+          error: null,
+        }
+      }
+      if (state.table === 'forums') {
+        return {
+          data: {
+            id: FORUM_ID,
+            slug: 'bitcoin',
+            title: 'Bitcoin',
+            runner_account_id: RUNNER_ACCT,
+            post_count: 3,
+          },
+          error: null,
+        }
+      }
+      return { data: null, error: null }
+    }
+  }
+
+  it('sends a positive reaction fee leg to the runner, not the platform', async () => {
+    useSupabase(forumResolver({ inForum: true }))
+    mocks.primaryAddressForAccount.mockResolvedValue('ecash:qrunner')
+    const { POST } = await import('@/app/api/feed/react/prepare/route')
+    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A, emoji: '🔥' }))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    // The runner's live payout is resolved by account, from the target's forum.
+    expect(mocks.primaryAddressForAccount).toHaveBeenCalledWith(RUNNER_ACCT, process.env.PLATFORM_XEC_ADDRESS)
+    // 94/6 split unchanged; the 6% leg (the addr=... output) now goes to the runner.
+    expect(json.payAddress).toBe('ecash:qauthor')
+    expect(json.bip21Url).toContain('amount=94')
+    expect(json.bip21Url).toContain('addr=qrunner')
+  })
+
+  it('keeps a 👎 on a forum post paying the platform 100% (runner never profits)', async () => {
+    useSupabase(forumResolver({ inForum: true }))
+    mocks.primaryAddressForAccount.mockResolvedValue('ecash:qrunner')
+    const { POST } = await import('@/app/api/feed/react/prepare/route')
+    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A, emoji: '👎' }))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    // platformOnly short-circuits before any forum/runner lookup.
+    expect(mocks.primaryAddressForAccount).not.toHaveBeenCalled()
+    expect(json.payAddress).toBe(process.env.PLATFORM_XEC_ADDRESS)
+    expect(json.bip21Url).not.toContain('qrunner')
+  })
+
+  it('keeps a positive reaction on a NON-forum post paying the platform', async () => {
+    useSupabase(forumResolver({ inForum: false }))
+    mocks.primaryAddressForAccount.mockResolvedValue('ecash:qrunner')
+    const { POST } = await import('@/app/api/feed/react/prepare/route')
+    const res = await POST(makeReq({ action: 'like', targetTxid: TXID_A, emoji: '🔥' }))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    // No forum_id → the fee stays with the platform; no runner lookup.
+    expect(mocks.primaryAddressForAccount).not.toHaveBeenCalled()
+    expect(json.bip21Url).not.toContain('qrunner')
+  })
+
+  it('sends a forum REPLY fee leg to the runner', async () => {
+    useSupabase(forumResolver({ inForum: true }))
+    mocks.primaryAddressForAccount.mockResolvedValue('ecash:qrunner')
+    const { POST } = await import('@/app/api/feed/prepare/route')
+    const res = await POST(makeReq({ action: 'reply', content: 'great point', parentTxid: TXID_A }))
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.action).toBe(2)
+    expect(mocks.primaryAddressForAccount).toHaveBeenCalledWith(RUNNER_ACCT, process.env.PLATFORM_XEC_ADDRESS)
+    // The reply pays the parent author 94% with the 6% leg redirected to the runner.
+    expect(json.bip21Url).toContain('addr=qrunner')
+  })
+})

@@ -7,6 +7,7 @@ import { getAuthedAccount } from '@/lib/authHelpers'
 import { priceFeedPost } from '@/lib/feedPricing'
 import { computePaymentSplit, buildPaywallBip21, buildPublishFeeBip21 } from '@/lib/paymentSplit'
 import { contentHashHex, encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
+import { feeRecipientForTarget } from '@/lib/forums'
 
 function normalizeAction(action) {
   if (action === 2 || action === 'reply') return FEED_ACTION.REPLY
@@ -127,9 +128,15 @@ export async function POST(request) {
     if (!split) {
       return NextResponse.json({ error: 'Invalid price' }, { status: 500 })
     }
+    // If the parent post is in a forum, the 6% fee leg goes to the forum RUNNER
+    // instead of the platform (top-level posting fees are unaffected).
+    const feeRecipient = await feeRecipientForTarget(adminDb(), targetTxid, {
+      platformOnly: false,
+      platformAddress,
+    })
     bip21Url = buildPaywallBip21(
       payoutAddress,
-      platformAddress,
+      feeRecipient,
       split.authorAmount,
       split.platformAmount,
       opReturnRaw,

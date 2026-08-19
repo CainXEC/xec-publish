@@ -5,6 +5,7 @@ import ActivityRail from '@/components/feed/ActivityRail'
 import ArticleRail from '@/components/feed/ArticleRail'
 import ComposeBox from '@/components/feed/ComposeBox'
 import FeedPost, { MintDigestRow } from '@/components/feed/FeedPost'
+import ForumDirectory from '@/components/feed/ForumDirectory'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import HomeReader from '@/components/feed/HomeReader'
 import ThreadPane from '@/components/feed/ThreadPane'
@@ -19,7 +20,7 @@ export default function FeedClient({
   initialCompose = '',
   focusCompose = false,
 }) {
-  const [scope, setScope] = useState('foryou') // 'foryou' | 'following'
+  const [scope, setScope] = useState('foryou') // 'foryou' | 'forums'
   // The reading pane: a front-page story OR a feed thread open in the center
   // column, as pure client state — the URL stays put (no history games; the
   // App Router treats pushState as a navigation and fights the scroll
@@ -105,11 +106,13 @@ export default function FeedClient({
       error: initialLoadError,
       loaded: true,
     },
-    following: {
+    // The Forums tab renders a directory (not a post feed); this slot exists only
+    // so `tabs[scope]` is defined when the tab is active.
+    forums: {
       posts: [],
       nextCursor: null,
       error: null,
-      loaded: false,
+      loaded: true,
     },
   })
   const [loading, setLoading] = useState(false)
@@ -277,7 +280,8 @@ export default function FeedClient({
   const selectScope = useCallback(
     async (key) => {
       setScope(key)
-      if (key === 'following' && !signedIn) return
+      // Forums is a directory, not a post feed — nothing to fetch here.
+      if (key === 'forums') return
       if (tabs[key].loaded || loading) return
       setLoading(true)
       try {
@@ -294,7 +298,7 @@ export default function FeedClient({
         setLoading(false)
       }
     },
-    [signedIn, tabs, loading, fetchScope, patchTab],
+    [tabs, loading, fetchScope, patchTab],
   )
 
   const prependPost = useCallback(
@@ -426,13 +430,18 @@ export default function FeedClient({
         <div className="feed-topstories">
           <ArticleRail variant="top" />
         </div>
-        <ComposeBox
-          action="post"
-          onPosted={prependPost}
-          initialContent={initialCompose}
-          autoFocus={Boolean(initialCompose) || focusCompose}
-          allowOptimistic
-        />
+        {/* The site-wide composer posts to the global Feed; on the Forums tab
+            (a directory) there's no global post to make — you post inside a
+            forum, on its own page — so it's hidden there. */}
+        {scope !== 'forums' ? (
+          <ComposeBox
+            action="post"
+            onPosted={prependPost}
+            initialContent={initialCompose}
+            autoFocus={Boolean(initialCompose) || focusCompose}
+            allowOptimistic
+          />
+        ) : null}
 
         <div className="tabs" role="tablist">
           <button
@@ -442,83 +451,83 @@ export default function FeedClient({
             className={`tab${scope === 'foryou' ? ' on' : ''}`}
             onClick={() => void selectScope('foryou')}
           >
-            For you
+            Feed
           </button>
           <button
             type="button"
             role="tab"
-            aria-selected={scope === 'following'}
-            className={`tab${scope === 'following' ? ' on' : ''}`}
-            onClick={() => void selectScope('following')}
+            aria-selected={scope === 'forums'}
+            className={`tab${scope === 'forums' ? ' on' : ''}`}
+            onClick={() => void selectScope('forums')}
           >
-            Following
+            Forums
           </button>
         </div>
 
-        {scope === 'foryou' && newCount > 0 ? (
-          <div className="newposts">
-            <button
-              type="button"
-              className="newposts-pill"
-              onClick={() => void loadNewer()}
-              disabled={loadingNew}
-            >
-              {loadingNew ? (
-                <span className="newposts-label">Loading…</span>
-              ) : (
-                <>
-                  <span className="newposts-chev" aria-hidden="true">↑</span>
-                  <span className="newposts-label">
-                    {newCount}
-                    {newCount >= 50 ? '+' : ''} new post{newCount === 1 ? '' : 's'}
-                  </span>
-                </>
-              )}
-            </button>
-          </div>
-        ) : null}
-
-        {active.error ? <div className="error">{active.error}</div> : null}
-
-        {scope === 'following' && !signedIn ? (
-          <div className="empty">Post once to sign in, then follow writers to fill this tab.</div>
-        ) : loading && !active.loaded ? (
-          <div className="empty">Loading…</div>
-        ) : active.posts.length === 0 ? (
-          <div className="empty">
-            {scope === 'following'
-              ? 'No posts yet from people you follow.'
-              : 'No posts yet. Be the first to post.'}
-          </div>
+        {scope === 'forums' ? (
+          <ForumDirectory signedIn={signedIn} />
         ) : (
-          <ul className="panel posts">
-            {active.posts.map((post) =>
-              post.mintDigest ? (
-                <MintDigestRow key={post.txid} digest={post} />
-              ) : (
-                <FeedPost
-                  key={post.txid}
-                  post={post}
-                  viewerAccountId={viewerAccountId}
-                  onDeleted={removePost}
-                  onQuoted={prependPost}
-                  onBlocked={removeByAuthor}
-                  mintVariant="compact"
-                  onOpenThread={wideShell ? openThread : undefined}
-                  allowOptimisticQuote
-                />
-              ),
-            )}
-          </ul>
-        )}
+          <>
+            {newCount > 0 ? (
+              <div className="newposts">
+                <button
+                  type="button"
+                  className="newposts-pill"
+                  onClick={() => void loadNewer()}
+                  disabled={loadingNew}
+                >
+                  {loadingNew ? (
+                    <span className="newposts-label">Loading…</span>
+                  ) : (
+                    <>
+                      <span className="newposts-chev" aria-hidden="true">↑</span>
+                      <span className="newposts-label">
+                        {newCount}
+                        {newCount >= 50 ? '+' : ''} new post{newCount === 1 ? '' : 's'}
+                      </span>
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : null}
 
-        {active.nextCursor ? (
-          <div className="loadmore">
-            <button type="button" onClick={() => void loadMore()} disabled={loading} className="ghost">
-              {loading ? 'Loading…' : 'Load more'}
-            </button>
-          </div>
-        ) : null}
+            {active.error ? <div className="error">{active.error}</div> : null}
+
+            {loading && !active.loaded ? (
+              <div className="empty">Loading…</div>
+            ) : active.posts.length === 0 ? (
+              <div className="empty">No posts yet. Be the first to post.</div>
+            ) : (
+              <ul className="panel posts">
+                {active.posts.map((post) =>
+                  post.mintDigest ? (
+                    <MintDigestRow key={post.txid} digest={post} />
+                  ) : (
+                    <FeedPost
+                      key={post.txid}
+                      post={post}
+                      viewerAccountId={viewerAccountId}
+                      onDeleted={removePost}
+                      onQuoted={prependPost}
+                      onBlocked={removeByAuthor}
+                      mintVariant="compact"
+                      onOpenThread={wideShell ? openThread : undefined}
+                      allowOptimisticQuote
+                    />
+                  ),
+                )}
+              </ul>
+            )}
+
+            {active.nextCursor ? (
+              <div className="loadmore">
+                <button type="button" onClick={() => void loadMore()} disabled={loading} className="ghost">
+                  {loading ? 'Loading…' : 'Load more'}
+                </button>
+              </div>
+            ) : null}
+          </>
+        )}
         </div>
       </main>
 

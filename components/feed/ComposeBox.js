@@ -44,6 +44,10 @@ export default function ComposeBox({
   parentTxid = null,
   quotedTxid = null,
   quotedPost = null,
+  // When set, a top-level post/quote made here is tagged to this forum (recorded
+  // on the feed_posts row by /api/feed/confirm). Replies derive their forum from
+  // the parent server-side, so this only matters for top-level composes.
+  forumId = null,
   onPosted,
   onCancel,
   compact = false,
@@ -249,7 +253,7 @@ export default function ComposeBox({
       const res = await fetch('/api/feed/prepare', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ content, action, parentTxid, quotedTxid }),
+        body: JSON.stringify({ content, action, parentTxid, quotedTxid, forumId }),
       })
       const data = await res.json()
       if (!res.ok || !data.ok) {
@@ -288,6 +292,7 @@ export default function ComposeBox({
               action,
               parentTxid,
               quotedTxid,
+              forumId,
               poll: pollRef.current,
               preparedAt: data.preparedAt,
               payAddress: data.payAddress,
@@ -306,6 +311,7 @@ export default function ComposeBox({
                     : FEED_ACTION.POST,
               parent_txid: parentTxid ?? null,
               quoted_txid: quotedTxid ?? null,
+              forumId: forumId ?? null,
               content,
               content_hash: null,
               author_account_id: snap.accountId ?? null,
@@ -352,7 +358,7 @@ export default function ComposeBox({
     } finally {
       setSubmitting(false)
     }
-  }, [content, action, parentTxid, quotedTxid, quotedPost, priced.ok, priced.costXec, pollActive, pollEligibility, pollOptions, pollValid, resetToCompose, allowOptimistic, handlePosted])
+  }, [content, action, parentTxid, quotedTxid, forumId, quotedPost, priced.ok, priced.costXec, pollActive, pollEligibility, pollOptions, pollValid, resetToCompose, allowOptimistic, handlePosted])
 
   // Poll for the on-chain payment while paying (Cashtab + non-optimistic pocket;
   // the optimistic path hands recording to confirmFeedPostInBackground instead).
@@ -377,6 +383,7 @@ export default function ComposeBox({
             action,
             parentTxid,
             quotedTxid,
+            forumId,
             poll: pollRef.current,
             since: intent.preparedAt,
             ...(knownTxid ? { txid: knownTxid } : {}),
@@ -402,7 +409,7 @@ export default function ComposeBox({
           setNotice('Still confirming — refresh in a moment if your post doesn’t appear.'),
       },
     )
-  }, [phase, intent, content, action, parentTxid, quotedTxid, handlePosted])
+  }, [phase, intent, content, action, parentTxid, quotedTxid, forumId, handlePosted])
 
   const verifyManual = useCallback(async () => {
     const t = txidInput.trim()
@@ -415,7 +422,7 @@ export default function ComposeBox({
       const res = await fetch('/api/feed/confirm', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ content, action, parentTxid, quotedTxid, poll: pollRef.current, txid: t }),
+        body: JSON.stringify({ content, action, parentTxid, quotedTxid, forumId, poll: pollRef.current, txid: t }),
       })
       const data = await res.json()
       if (data.status === 'posted' && data.post) {
@@ -428,7 +435,7 @@ export default function ComposeBox({
     } catch {
       setNotice('Network hiccup — try again.')
     }
-  }, [txidInput, content, action, parentTxid, quotedTxid, handlePosted])
+  }, [txidInput, content, action, parentTxid, quotedTxid, forumId, handlePosted])
 
   const isReply = action === 'reply'
   const isQuote = action === 'quote'

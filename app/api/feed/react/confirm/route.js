@@ -11,6 +11,7 @@ import { formatIdentity } from '@/lib/formatIdentity'
 import { recordFeedNotification } from '@/lib/feedNotifications'
 import { mintPaySession } from '@/lib/paySession'
 import { isReaction, payeeFor } from '@/lib/reactions'
+import { feeRecipientForTarget } from '@/lib/forums'
 
 const REACT_COST_XEC = FEED_MIN_XEC
 
@@ -77,11 +78,19 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
   }
 
+  // The fee leg goes to the FORUM RUNNER for a positive reaction on a forum post,
+  // else the platform (and always the platform for 👎). Verification requires the
+  // payment landed on this exact recipient.
+  const feeRecipient = await feeRecipientForTarget(supabase, targetTxid, {
+    platformOnly: platformPaid,
+    platformAddress,
+  })
+
   const expected = {
     action,
     parentTxid: targetTxid,
     contentHash: null,
-    platformAddress,
+    platformAddress: feeRecipient,
     payoutAddress: target.payout_address,
     costXec: REACT_COST_XEC,
     // 👎 must have paid the platform 100% — verification requires that exact

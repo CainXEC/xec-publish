@@ -1022,6 +1022,57 @@ html:not(.dark) .dashhandle-tip{background:#fdfcf8;border-color:#e3dfd2;color:#1
 @media (prefers-reduced-motion:reduce){.pow-feed *{transition:none!important;animation:none!important;}}
 @media (max-width:480px){.pow-feed .head{padding-top:20px;}}
 
+/* ---- Forums: directory (the Forums tab) + create form + a forum's header ----
+   All colors go through the shared tokens (--panel/--line/--text/--dim/--neon/
+   --cyan), so these theme automatically in both the terminal and paper lenses. */
+.pow-feed .forumdir{display:flex;flex-direction:column;gap:14px;}
+.pow-feed .forumdir-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;}
+.pow-feed .forumdir-title{font-size:18px;font-weight:800;letter-spacing:.04em;color:var(--text);margin:0;}
+.pow-feed .forumdir-sub{font-size:12.5px;line-height:1.5;color:var(--dim);margin:4px 0 0;max-width:44ch;}
+.pow-feed .forumlist{list-style:none;margin:0;padding:0;}
+.pow-feed .forumrow{border-bottom:1px solid var(--line);}
+.pow-feed .forumrow:last-child{border-bottom:none;}
+.pow-feed .forumrow-link{display:block;padding:14px 16px;transition:background .12s;}
+.pow-feed .forumrow-link:hover{background:var(--panel2);}
+.pow-feed .forumrow-main{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+.pow-feed .forumrow-name{font-size:15px;font-weight:700;color:var(--neon);}
+.pow-feed .forumrow-titletext{font-size:14px;color:var(--text);}
+.pow-feed .forumrow-desc{font-size:12.5px;line-height:1.5;color:var(--dim);margin:5px 0 0;overflow-wrap:anywhere;}
+.pow-feed .forumrow-meta{display:flex;gap:14px;font-size:11px;color:var(--dim);margin-top:8px;
+  font-variant-numeric:tabular-nums;}
+.pow-feed .forumrow-runner{color:var(--cyan);}
+
+/* Create-forum panel */
+.pow-feed .forumcreate{padding:18px 18px 16px;display:flex;flex-direction:column;gap:14px;}
+.pow-feed .forumcreate-head{font-size:16px;font-weight:800;color:var(--text);margin:0;}
+.pow-feed .forumcreate-sub{font-size:12px;line-height:1.55;color:var(--dim);margin:-6px 0 0;}
+.pow-feed .forumcreate-field{display:flex;flex-direction:column;gap:6px;}
+.pow-feed .forumcreate-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);}
+.pow-feed .forumcreate-opt{text-transform:none;letter-spacing:0;opacity:.7;}
+.pow-feed .forumcreate-input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+  padding:9px 11px;color:var(--text);font-family:inherit;font-size:14px;}
+.pow-feed .forumcreate-input:focus{outline:none;border-color:var(--cyan);}
+.pow-feed .forumcreate-slugwrap{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:8px;
+  overflow:hidden;background:var(--panel2);}
+.pow-feed .forumcreate-slugwrap:focus-within{border-color:var(--cyan);}
+.pow-feed .forumcreate-slugpre{display:flex;align-items:center;padding:0 4px 0 11px;color:var(--dim);font-size:14px;}
+.pow-feed .forumcreate-slugwrap .forumcreate-input{border:none;border-radius:0;background:transparent;padding-left:2px;}
+.pow-feed .forumcreate-hint{font-size:11px;color:var(--dim);}
+.pow-feed .forumcreate-hint.over{color:var(--no);}
+.pow-feed .forumcreate-bar{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:2px;}
+
+/* A forum's header on /f/<slug> */
+.pow-feed .forumhead{padding:0 4px 18px;border-bottom:1px solid var(--line);margin-bottom:16px;}
+.pow-feed .forumhead-back{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--cyan);margin-bottom:12px;}
+.pow-feed .forumhead-name{font-size:22px;font-weight:800;color:var(--neon);margin:0;}
+.pow-feed .forumhead-title{font-size:15px;color:var(--text);margin:6px 0 0;}
+.pow-feed .forumhead-desc{font-size:13px;line-height:1.55;color:var(--dim);margin:8px 0 0;overflow-wrap:anywhere;}
+.pow-feed .forumhead-meta{display:flex;flex-wrap:wrap;gap:14px;font-size:11.5px;color:var(--dim);margin-top:12px;
+  font-variant-numeric:tabular-nums;}
+.pow-feed .forumhead-runner{color:var(--cyan);}
+.pow-feed .forumhead-youtag{color:var(--neon);}
+
 /* =========================================================================
    PAPER (light mode) — dark mode is a terminal; light mode is the page.
    Not the neon sign at a different brightness: a different metaphor. The feed

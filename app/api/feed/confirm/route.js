@@ -17,9 +17,10 @@ import { displayHandlesByAccountId } from '@/lib/authorDisplayHandles'
 import { isBlockedPair } from '@/lib/feedBlocks'
 import { recordFeedNotification, recordFeedMentionNotifications } from '@/lib/feedNotifications'
 import { mintPaySession } from '@/lib/paySession'
+import { feeRecipientForTarget, getForumById } from '@/lib/forums'
 
 const FEED_POST_COLUMNS =
-  'id, txid, action, parent_txid, quoted_txid, content, content_hash, author_account_id, author_identity, payer_address, payout_address, amount_sats, created_at, card_kind, card_meta'
+  'id, txid, action, parent_txid, quoted_txid, content, content_hash, author_account_id, author_identity, payer_address, payout_address, amount_sats, forum_id, created_at, card_kind, card_meta'
 
 function normalizeAction(action) {
   if (action === 2 || action === 'reply') return FEED_ACTION.REPLY
@@ -112,6 +113,10 @@ export async function POST(request) {
   let payoutAddress = null
   let parentAuthorAccountId = null
   let quotedAuthorAccountId = null
+  // Which forum this post belongs to (NULL = the global Feed). A reply INHERITS
+  // its parent's forum (so a thread stays in the forum); a top-level post takes
+  // the client's forumId, validated below.
+  let forumId = null
   if (action === FEED_ACTION.REPLY) {
     targetTxid = typeof body?.parentTxid === 'string' ? body.parentTxid.trim().toLowerCase() : ''
     if (!/^[0-9a-f]{64}$/.test(targetTxid)) {
@@ -119,7 +124,7 @@ export async function POST(request) {
     }
     const { data: parent, error } = await supabase
       .from('feed_posts')
-      .select('payout_address, author_account_id')
+      .select('payout_address, author_account_id, forum_id')
       .eq('txid', targetTxid)
       .maybeSingle()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -128,6 +133,7 @@ export async function POST(request) {
     }
     payoutAddress = parent.payout_address
     parentAuthorAccountId = parent.author_account_id
+    forumId = parent.forum_id ?? null
   } else if (action === FEED_ACTION.QUOTE) {
     targetTxid = typeof body?.quotedTxid === 'string' ? body.quotedTxid.trim().toLowerCase() : ''
     if (!/^[0-9a-f]{64}$/.test(targetTxid)) {
@@ -141,6 +147,14 @@ export async function POST(request) {
       .eq('txid', quotedTxid)
       .maybeSingle()
     quotedAuthorAccountId = quoted?.author_account_id ?? null
+  }
+
+  // A top-level post/quote can belong to a forum (the composer on a forum page
+  // sends its id). Validate it exists; the post fee is unchanged (100% platform).
+  if ((action === FEED_ACTION.POST || action === FEED_ACTION.QUOTE) && body?.forumId) {
+    const forum = await getForumById(supabase, String(body.forumId))
+    if (!forum) return NextResponse.json({ error: 'Forum not found' }, { status: 404 })
+    forumId = forum.id
   }
 
   // A self-reply (you reply to your OWN post) is forced 100% platform — no 94%
@@ -160,11 +174,19 @@ export async function POST(request) {
     selfReply = Boolean(acct?.accountId && acct.accountId === parentAuthorAccountId)
   }
 
+  // A reply to a post in a forum sends the 6% fee leg to the forum RUNNER, not
+  // the platform — verification requires the payment landed there. (Self-reply
+  // and top-level posts are 100% platform, so the recipient stays the platform.)
+  const feeRecipient =
+    action === FEED_ACTION.REPLY && !selfReply
+      ? await feeRecipientForTarget(supabase, targetTxid, { platformOnly: false, platformAddress })
+      : platformAddress
+
   const expected = {
     action,
     parentTxid: targetTxid,
     contentHash,
-    platformAddress,
+    platformAddress: feeRecipient,
     payoutAddress: selfReply ? null : payoutAddress,
     costXec,
     platformOnly: selfReply,
@@ -244,6 +266,7 @@ export async function POST(request) {
     payer_address: match.payerAddress,
     payout_address: displayAddress, // snapshot: replies to this post pay the poster's account
     amount_sats: match.sats,
+    forum_id: forumId, // NULL = global Feed; a forum id keeps it contained to that forum
     finalized_at: finalizedAt,
     card_kind: cardKind,
     card_meta: cardMeta,
