@@ -18,9 +18,10 @@ import { isBlockedPair } from '@/lib/feedBlocks'
 import { recordFeedNotification, recordFeedMentionNotifications } from '@/lib/feedNotifications'
 import { mintPaySession } from '@/lib/paySession'
 import { feeRecipientForTarget, getForumById } from '@/lib/forums'
+import { splitForumContent } from '@/lib/forumPost'
 
 const FEED_POST_COLUMNS =
-  'id, txid, action, parent_txid, quoted_txid, content, content_hash, author_account_id, author_identity, payer_address, payout_address, amount_sats, forum_id, created_at, card_kind, card_meta'
+  'id, txid, action, parent_txid, quoted_txid, content, content_hash, title, author_account_id, author_identity, payer_address, payout_address, amount_sats, forum_id, created_at, card_kind, card_meta'
 
 function normalizeAction(action) {
   if (action === 2 || action === 'reply') return FEED_ACTION.REPLY
@@ -267,6 +268,11 @@ export async function POST(request) {
     payout_address: displayAddress, // snapshot: replies to this post pay the poster's account
     amount_sats: match.sats,
     forum_id: forumId, // NULL = global Feed; a forum id keeps it contained to that forum
+    // A top-level forum post carries a title: content is `title \n\n body`, so
+    // derive the title from the (already hash-verified) content — never trust a
+    // client-sent title, since only the content is covered by the proof hash.
+    title:
+      action === FEED_ACTION.POST && forumId ? splitForumContent(content).title : null,
     finalized_at: finalizedAt,
     card_kind: cardKind,
     card_meta: cardMeta,
@@ -353,10 +359,15 @@ export async function POST(request) {
   if (quotedAuthorAccountId) revalidateTag(profileCacheTag(quotedAuthorAccountId))
 
   const display = await liveDisplayFields(supabase, inserted)
+  // A titled forum post stores `title \n\n body` in content; hand the client the
+  // split form (title separate, content = body) so it renders like getFeed's rows.
+  const clientContent = inserted.title
+    ? splitForumContent(inserted.content).body
+    : inserted.content
   const response = NextResponse.json({
     ok: true,
     status: 'posted',
-    post: { ...inserted, replyCount: 0, ...display },
+    post: { ...inserted, content: clientContent, replyCount: 0, ...display },
   })
 
   // Pay doubles as login: mint a 'pay'-scope session for the payer (never

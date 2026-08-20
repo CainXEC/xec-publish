@@ -299,6 +299,12 @@ html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation-name:pocke
 /* ---- compose ---- */
 .pow-feed .compose{padding:16px;}
 .pow-feed .compose.compact{padding:12px;}
+/* Forum-post title field: a prominent single line above the body textarea. */
+.pow-feed .composetitle{width:100%;background:transparent;border:none;border-bottom:1px solid var(--line);
+  color:var(--text);font-family:inherit;font-size:18px;font-weight:700;padding:2px 0 10px;margin-bottom:10px;
+  outline:none;}
+.pow-feed .composetitle::placeholder{color:var(--dim);font-weight:700;}
+.pow-feed .composetitle:focus{border-bottom-color:var(--cyan);}
 .pow-feed .compose textarea{width:100%;resize:none;background:transparent;border:none;outline:none;color:var(--text);
   font:inherit;font-size:15px;line-height:1.55;box-sizing:border-box;min-height:72px;max-height:360px;overflow-y:auto;
   display:block;}
@@ -1014,6 +1020,9 @@ html:not(.dark) .dashhandle-tip{background:#fdfcf8;border-color:#e3dfd2;color:#1
 .pow-feed .tnode.focused .tdot{position:static;flex:none;width:11px;height:11px;
   background:var(--cyan);box-shadow:0 0 10px rgba(61,240,255,.6);}
 .pow-feed .tnode.focused.lineup::before{left:14px;top:0;height:22px;}
+/* A forum post opens like a Reddit thread: big title heading, then the body. */
+.pow-feed .focustitle{margin:12px 0 0;font-size:26px;font-weight:800;line-height:1.25;color:var(--text);word-break:break-word;}
+.pow-feed .focustitle + .focusbody{font-size:16px;}
 .pow-feed .focusbody{margin:10px 0 0;white-space:pre-wrap;word-break:break-word;font-size:18px;line-height:1.6;color:var(--text);}
 .pow-feed .onchain{font-size:12px;color:var(--dim);}
 .pow-feed .onchain:hover{color:var(--cyan);}
@@ -1109,9 +1118,13 @@ html:not(.dark) .pow-feed .forumcreate-pay:disabled{box-shadow:none;}
 .pow-feed .forumcard-meta{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--dim);}
 .pow-feed .forumcard-meta .dot{color:var(--dim);}
 .pow-feed .forumcard-meta .time{color:var(--dim);}
+/* Reddit-style: the TITLE is the loud line, the body a muted preview beneath it. */
+.pow-feed .forumcard-title{margin:6px 0 0;font-size:18px;font-weight:700;line-height:1.3;
+  color:var(--text);word-break:break-word;}
 /* Clamp the preview to a few lines; the full body lives on the thread page. */
 .pow-feed .forumcard-body{margin:6px 0 0;font-size:14.5px;line-height:1.5;color:var(--text);
   overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:break-word;}
+.pow-feed .forumcard-body.has-title{margin-top:4px;color:var(--dim);-webkit-line-clamp:2;}
 .pow-feed .forumcard-foot{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin-top:11px;
   font-size:12.5px;color:var(--dim);}
 /* The comment count is the row's primary invitation — give it the accent. */

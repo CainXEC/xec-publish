@@ -186,9 +186,9 @@ export default function ForumPageClient({
             <ComposeBox
               action="post"
               forumId={forumId}
+              withTitle
               onPosted={prependPost}
               allowOptimistic
-              placeholder={`Post in /f/${forum.slug}…`}
             />
           ) : (
             <div className="empty">Post once to sign in, then post here.</div>

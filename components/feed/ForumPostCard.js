@@ -100,8 +100,10 @@ export default function ForumPostCard({ post }) {
         <span className="time" suppressHydrationWarning>{timeAgo(post.created_at)}</span>
       </div>
 
+      {post.title ? <h3 className="forumcard-title">{post.title}</h3> : null}
+
       {previewText ? (
-        <div className="forumcard-body">
+        <div className={`forumcard-body${post.title ? ' has-title' : ''}`}>
           <FeedBody text={previewText} />
         </div>
       ) : null}

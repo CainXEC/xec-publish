@@ -380,6 +380,7 @@ export default function FeedThreadClient({
                 <MintCard post={post} />
               ) : (
                 <>
+                  {post.title ? <h1 className="focustitle">{post.title}</h1> : null}
                   {(() => {
                     const focusText = displayTextFor(post.content)
                     return focusText ? (

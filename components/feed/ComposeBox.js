@@ -15,6 +15,7 @@ import { beginPayment, completePayment, abortPayment } from '@/lib/pocket/payGat
 import { getPocketSnapshot } from '@/lib/pocket/store'
 import { FEED_ACTION } from '@/lib/feedProtocol'
 import { confirmFeedPostInBackground } from '@/lib/feed/confirmFeedPost'
+import { combineForumContent, FORUM_TITLE_MAX } from '@/lib/forumPost'
 
 // Top-of-feed placeholders: posting here costs real XEC, so the prompts lean
 // into "make it worth it" and the proof-of-writing name instead of a generic
@@ -48,6 +49,10 @@ export default function ComposeBox({
   // on the feed_posts row by /api/feed/confirm). Replies derive their forum from
   // the parent server-side, so this only matters for top-level composes.
   forumId = null,
+  // Reddit-style forum post: show a Title field above the body and send the two
+  // combined as `title \n\n body` (the whole blob is what's hashed + priced).
+  // Title required, body optional.
+  withTitle = false,
   onPosted,
   onCancel,
   compact = false,
@@ -64,6 +69,9 @@ export default function ComposeBox({
   allowOptimistic = false,
 }) {
   const [content, setContent] = useState(initialContent)
+  // Forum-post title (withTitle only). The body stays in `content`; what gets
+  // sent/hashed/priced is the two combined into `title \n\n body`.
+  const [title, setTitle] = useState('')
   // Rotating main-composer placeholder. Seed with a STABLE default so SSR and the
   // first client render agree (no hydration mismatch), then pick a random line on
   // mount. Placeholders only show on an empty field, so the swap is invisible.
@@ -91,16 +99,22 @@ export default function ComposeBox({
   const [submitting, setSubmitting] = useState(false)
   const textareaRef = useRef(null)
 
-  const priced = priceFeedPost(content)
+  // What actually goes on chain: for a forum post, title + body combined; else
+  // just the body. Priced + hashed + sent as one blob.
+  const titleClean = title.trim()
+  const outgoingContent = withTitle ? combineForumContent(titleClean, content) : content
+
+  const priced = priceFeedPost(outgoingContent)
   const chars = priced.chars
   const overCap = chars > FEED_MAX_CHARS
+  const titleValid = !withTitle || titleClean.length > 0
 
   // Polls are top-level posts only. Need 2+ non-empty options to be valid.
-  const pollAllowed = action === 'post'
+  const pollAllowed = action === 'post' && !withTitle
   const pollActive = pollAllowed && pollMode
   const pollCleanOptions = pollOptions.map((o) => o.trim()).filter(Boolean)
   const pollValid = !pollActive || pollCleanOptions.length >= 2
-  const canSubmit = priced.ok && pollValid && !submitting
+  const canSubmit = priced.ok && pollValid && titleValid && !submitting
   // The Pay control starts as a plain icon-only square; the instant you start
   // typing it lights up, widens, and reveals the amount — so it stays quiet
   // until there's actually something to pay for.
@@ -212,6 +226,7 @@ export default function ComposeBox({
         action === 'quote' && quotedPost ? { ...post, quoted: quotedPost } : post,
       )
       setContent('')
+      setTitle('')
       setPollMode(false)
       setPollOptions(['', ''])
       setPollEligibility('account')
@@ -253,7 +268,7 @@ export default function ComposeBox({
       const res = await fetch('/api/feed/prepare', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ content, action, parentTxid, quotedTxid, forumId }),
+        body: JSON.stringify({ content: outgoingContent, action, parentTxid, quotedTxid, forumId }),
       })
       const data = await res.json()
       if (!res.ok || !data.ok) {
@@ -288,7 +303,7 @@ export default function ComposeBox({
             // the optimistic post below is what stays on screen.
             confirmFeedPostInBackground({
               txid: r.txid,
-              content,
+              content: outgoingContent,
               action,
               parentTxid,
               quotedTxid,
@@ -312,6 +327,7 @@ export default function ComposeBox({
               parent_txid: parentTxid ?? null,
               quoted_txid: quotedTxid ?? null,
               forumId: forumId ?? null,
+              title: withTitle ? titleClean : null,
               content,
               content_hash: null,
               author_account_id: snap.accountId ?? null,
@@ -358,7 +374,7 @@ export default function ComposeBox({
     } finally {
       setSubmitting(false)
     }
-  }, [content, action, parentTxid, quotedTxid, forumId, quotedPost, priced.ok, priced.costXec, pollActive, pollEligibility, pollOptions, pollValid, resetToCompose, allowOptimistic, handlePosted])
+  }, [content, outgoingContent, titleClean, withTitle, action, parentTxid, quotedTxid, forumId, quotedPost, priced.ok, priced.costXec, pollActive, pollEligibility, pollOptions, pollValid, resetToCompose, allowOptimistic, handlePosted])
 
   // Poll for the on-chain payment while paying (Cashtab + non-optimistic pocket;
   // the optimistic path hands recording to confirmFeedPostInBackground instead).
@@ -379,7 +395,7 @@ export default function ComposeBox({
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            content,
+            content: outgoingContent,
             action,
             parentTxid,
             quotedTxid,
@@ -409,7 +425,7 @@ export default function ComposeBox({
           setNotice('Still confirming — refresh in a moment if your post doesn’t appear.'),
       },
     )
-  }, [phase, intent, content, action, parentTxid, quotedTxid, forumId, handlePosted])
+  }, [phase, intent, outgoingContent, action, parentTxid, quotedTxid, forumId, handlePosted])
 
   const verifyManual = useCallback(async () => {
     const t = txidInput.trim()
@@ -422,7 +438,7 @@ export default function ComposeBox({
       const res = await fetch('/api/feed/confirm', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ content, action, parentTxid, quotedTxid, forumId, poll: pollRef.current, txid: t }),
+        body: JSON.stringify({ content: outgoingContent, action, parentTxid, quotedTxid, forumId, poll: pollRef.current, txid: t }),
       })
       const data = await res.json()
       if (data.status === 'posted' && data.post) {
@@ -435,7 +451,7 @@ export default function ComposeBox({
     } catch {
       setNotice('Network hiccup — try again.')
     }
-  }, [txidInput, content, action, parentTxid, quotedTxid, forumId, handlePosted])
+  }, [txidInput, outgoingContent, action, parentTxid, quotedTxid, forumId, handlePosted])
 
   const isReply = action === 'reply'
   const isQuote = action === 'quote'
@@ -492,6 +508,16 @@ export default function ComposeBox({
 
   return (
     <div className={`panel compose${compact ? ' compact' : ''}`}>
+      {withTitle ? (
+        <input
+          className="composetitle"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Title"
+          maxLength={FORUM_TITLE_MAX}
+          aria-label="Post title"
+        />
+      ) : null}
       <div className="composetextwrap">
         <textarea
           ref={textareaRef}
@@ -516,14 +542,16 @@ export default function ComposeBox({
           onBlur={() => window.dispatchEvent(new Event('pow:composer-blur'))}
           rows={isReply ? 2 : 3}
           placeholder={
-            placeholder ||
-            (isReply
-              ? 'Post your reply…'
-              : isQuote
-                ? 'Add a comment…'
-                : pollActive
-                  ? 'Ask a question…'
-                  : feedPlaceholder)
+            withTitle
+              ? 'Text (optional)…'
+              : placeholder ||
+                (isReply
+                  ? 'Post your reply…'
+                  : isQuote
+                    ? 'Add a comment…'
+                    : pollActive
+                      ? 'Ask a question…'
+                      : feedPlaceholder)
           }
         />
         {mention.open ? (
