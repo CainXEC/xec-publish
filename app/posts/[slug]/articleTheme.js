@@ -276,6 +276,26 @@ html:not(.dark) .pow-article .hr-unlock:disabled{background:transparent;color:va
 .pow-article .clike-cancel{background:none;border:none;color:var(--dim);font:inherit;font-size:12px;cursor:pointer;
   margin-top:8px;text-decoration:underline;}
 .pow-article .clike-notice{margin:8px 0 0;font-size:12px;color:var(--no);}
+
+/* Emoji reactions on a comment (CommentReactions) — the comment analogue of the
+   feed EngagementBar picker + pills, styled for the article/paper scope. */
+.pow-article .creact{position:relative;display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.pow-article .creactwrap{position:relative;display:inline-flex;}
+.pow-article .creactbtn{background:none;border:none;color:var(--dim);font:inherit;font-size:15px;line-height:1;
+  cursor:pointer;padding:0;transition:color .12s;}
+.pow-article .creactbtn:hover{color:var(--cyan);}
+.pow-article .creactbtn:disabled{opacity:.6;cursor:default;}
+.pow-article .creactpicker{position:absolute;bottom:calc(100% + 8px);left:0;z-index:30;display:flex;gap:2px;
+  background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 8px;
+  box-shadow:0 8px 24px rgba(0,0,0,.28);}
+.pow-article .creactopt{background:none;border:none;font-size:19px;line-height:1;cursor:pointer;padding:3px;
+  border-radius:8px;transition:transform .1s,background .12s;}
+.pow-article .creactopt:hover{transform:scale(1.25);background:var(--panel2);}
+.pow-article .creactpill{display:inline-flex;align-items:center;gap:4px;background:var(--panel2);
+  border:1px solid var(--line);border-radius:999px;color:var(--text);font:inherit;font-size:12.5px;
+  padding:2px 9px;cursor:pointer;font-variant-numeric:tabular-nums;transition:border-color .12s;}
+.pow-article .creactpill:hover:not(:disabled){border-color:var(--cyan);}
+.pow-article .creactpill:disabled{cursor:default;}
 .pow-article .comment-replyingto{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);margin:0 0 8px;}
 .pow-article .comment-replyarrow{color:var(--dim);}
 .pow-article .comment-replyingto-who{color:var(--hc,var(--cyan));font-weight:600;}

@@ -93,59 +93,26 @@ export async function GET(request, { params }) {
     return (accountId && primaryByAccount.get(accountId)) || frozen || payer || null
   }
 
-  // Paid like counts + whether the viewer already liked, per on-chain comment.
-  // Likes live in comment_events (target_txid = the comment's txid); counts are
-  // computed live from the rows. "Me" for the liked check = the session account
-  // (if any) PLUS — critically — the address proven by this article's UNLOCK
-  // COOKIE, mirroring the DELETE handler below. A reader who unlocked via Cashtab
-  // (no wallet login) or whose like never minted a session is otherwise invisible
-  // here, so every heart renders empty and they can re-PAY a like they already
-  // made — the double-tip bug. Matching their unlock-wallet payer_address fixes it.
-  const likeCountByTxid = new Map()
-  const likedTxids = new Set()
+  // Paid emoji-reaction counts per on-chain comment. Reactions live in
+  // comment_events (target_txid = the comment's txid); per-emoji counts are
+  // computed live from the rows (NULL emoji = a legacy ♥ like → ❤️). Reactions
+  // are MULTI now, so there's no per-viewer "already reacted" state to resolve.
+  const reactionCountsByTxid = new Map()
   const commentTxids = [...new Set((data ?? []).map((c) => c.txid).filter(Boolean))]
   if (commentTxids.length > 0) {
-    const [{ data: likeRows }, viewer] = await Promise.all([
-      supabase
-        .from('comment_events')
-        .select('target_txid, actor_account_id, payer_address')
-        .eq('action', 5)
-        .in('target_txid', commentTxids),
-      getAuthedAccount(),
-    ])
-    for (const r of likeRows ?? []) {
-      likeCountByTxid.set(r.target_txid, (likeCountByTxid.get(r.target_txid) ?? 0) + 1)
-    }
-
-    // Every address that counts as "mine" — the session wallet + the unlock-cookie
-    // wallet — plus my account id.
-    const myAccountId = viewer?.accountId ?? null
-    const myAddrForms = new Set(viewer ? addressForms(viewer.address) : [])
-    try {
-      const rawCookie = request.cookies.get(`unlock_${postId}`)?.value
-      const { valid, txid } = verifyCookieValue(postId, rawCookie)
-      if (valid && String(txid).trim()) {
-        const { data: unlockRow } = await supabase
-          .from('unlocks')
-          .select('payer_address')
-          .eq('post_id', postId)
-          .eq('txid', String(txid).trim())
-          .maybeSingle()
-        if (unlockRow?.payer_address) {
-          for (const f of addressForms(unlockRow.payer_address)) myAddrForms.add(f)
-        }
+    const { data: reactRows } = await supabase
+      .from('comment_events')
+      .select('target_txid, emoji')
+      .eq('action', 5)
+      .in('target_txid', commentTxids)
+    for (const r of reactRows ?? []) {
+      const k = r.emoji || '❤️'
+      let m = reactionCountsByTxid.get(r.target_txid)
+      if (!m) {
+        m = {}
+        reactionCountsByTxid.set(r.target_txid, m)
       }
-    } catch {
-      /* best-effort; a missing/invalid cookie just falls back to the session */
-    }
-
-    if (myAccountId || myAddrForms.size > 0) {
-      for (const r of likeRows ?? []) {
-        const mine =
-          (myAccountId && r.actor_account_id === myAccountId) ||
-          (r.payer_address && myAddrForms.has(r.payer_address))
-        if (mine) likedTxids.add(r.target_txid)
-      }
+      m[k] = (m[k] ?? 0) + 1
     }
   }
 
@@ -159,11 +126,10 @@ export async function GET(request, { params }) {
     const hasHandle = author_account_id ? handleByAccount.has(author_account_id) : false
     const color = hasHandle ? colorByAccount.get(author_account_id) ?? null : null
     const author_identity = liveByline(author_account_id, c.author_identity, c.payer_address)
-    const likeCount = c.txid ? likeCountByTxid.get(c.txid) ?? 0 : 0
-    const likedByViewer = c.txid ? likedTxids.has(c.txid) : false
+    const reactionCounts = c.txid ? reactionCountsByTxid.get(c.txid) ?? {} : {}
     return c.deleted_at
-      ? { ...rest, isAi, color: null, likeCount: 0, likedByViewer: false, content: '', deleted: true }
-      : { ...rest, isAi, color, author_identity, likeCount, likedByViewer, deleted: false }
+      ? { ...rest, isAi, color: null, reactionCounts: {}, content: '', deleted: true }
+      : { ...rest, isAi, color, author_identity, reactionCounts, deleted: false }
   })
 
   return NextResponse.json({ comments })

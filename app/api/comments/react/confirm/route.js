@@ -10,17 +10,19 @@ import { resolveOrCreateAccount, primaryAddressForAccount } from '@/lib/walletAu
 import { formatIdentity } from '@/lib/formatIdentity'
 import { recordFeedNotification } from '@/lib/feedNotifications'
 import { mintPaySession } from '@/lib/paySession'
+import { isReaction, payeeFor } from '@/lib/reactions'
 
 const REACT_COST_XEC = FEED_MIN_XEC
 
 const COMMENT_EVENT_COLUMNS =
-  'id, txid, action, target_txid, actor_account_id, actor_identity, payer_address, payout_address, amount_sats, created_at'
+  'id, txid, action, target_txid, actor_account_id, actor_identity, payer_address, payout_address, amount_sats, emoji, created_at'
 
 /**
- * Detect and record the on-chain payment for a comment LIKE. Idempotent on txid,
- * and deduped on (action, target, payer) AND per account so a wallet liking twice
- * is a no-op. Mirrors /api/feed/react/confirm, but the target is a COMMENT
- * (resolved from `comments`) and the like is written to `comment_events`.
+ * Detect and record the on-chain payment for a comment REACTION (emoji). Multi-
+ * react: idempotent on txid only (a wallet may react as many times as it pays).
+ * Mirrors /api/feed/react/confirm, but the target is a COMMENT (resolved from
+ * `comments`) and the reaction is written to `comment_events`. A positive emoji
+ * pays the commenter 94/6; a 👎 pays the platform 100% (verified via the split).
  * Returns `awaiting_payment` while the tx hasn't been seen yet.
  */
 export async function POST(request) {
@@ -41,7 +43,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
-  // Comments only ever get liked.
+  // Comments only ever get liked/reacted (no repost/quote).
   if (body?.action != null && body.action !== 5 && body.action !== 'like') {
     return NextResponse.json({ error: 'Unsupported reaction' }, { status: 400 })
   }
@@ -52,6 +54,13 @@ export async function POST(request) {
   if (!/^[0-9a-f]{64}$/.test(targetTxid)) {
     return NextResponse.json({ error: 'Invalid target comment' }, { status: 400 })
   }
+
+  // The reaction's emoji decides polarity, which must match the on-chain split.
+  const emoji = body?.emoji
+  if (!isReaction(emoji)) {
+    return NextResponse.json({ error: 'Unknown reaction' }, { status: 400 })
+  }
+  const platformPaid = payeeFor(emoji) === 'platform'
 
   const supabase = adminDb()
   const { data: target, error: targetErr } = await supabase
@@ -71,9 +80,12 @@ export async function POST(request) {
     platformAddress,
     payoutAddress: target.payout_address,
     costXec: REACT_COST_XEC,
+    // 👎 must have paid the platform 100% — verification requires that exact
+    // split, so a downvote can't secretly pay the commenter (or vice versa).
+    platformOnly: platformPaid,
   }
 
-  // Don't re-match a like tx we already recorded for this (action, target).
+  // Don't re-match a reaction tx we already recorded for this (action, target).
   const { data: recordedRows } = await supabase
     .from('comment_events')
     .select('txid')
@@ -116,20 +128,9 @@ export async function POST(request) {
   const displayAddress = await primaryAddressForAccount(resolved.accountId, match.payerAddress)
   const actorIdentity = formatIdentity(resolved.handle, displayAddress)
 
-  // The DB unique key is (action, target, payer_address) — per WALLET. An account
-  // with a Pocket has two wallets, so also dedupe per ACCOUNT here: a wallet like
-  // + a pocket like on the same comment must not double-record.
-  const { data: sameAccountRows } = await supabase
-    .from('comment_events')
-    .select(COMMENT_EVENT_COLUMNS)
-    .eq('action', action)
-    .eq('target_txid', targetTxid)
-    .eq('actor_account_id', resolved.accountId)
-    .limit(1)
-  if (sameAccountRows?.[0]) {
-    return NextResponse.json({ ok: true, status: 'reacted', event: sameAccountRows[0] })
-  }
-
+  // Emoji reactions are MULTI — you can react as many times as you pay — so there
+  // is no per-wallet/per-account dedup; a reaction is deduped on txid alone (the
+  // idempotency check above).
   const row = {
     txid: match.txid,
     action,
@@ -139,6 +140,7 @@ export async function POST(request) {
     payer_address: match.payerAddress,
     payout_address: target.payout_address,
     amount_sats: match.sats,
+    emoji,
     finalized_at: finalizedAt,
   }
 
@@ -149,15 +151,13 @@ export async function POST(request) {
     .single()
 
   if (insertError) {
-    // 23505: either this txid raced in, or this wallet already liked (the
-    // (action, target, payer) unique key). Either way the like stands.
+    // 23505: this txid raced in between our idempotency check and the insert —
+    // the reaction already stands.
     if (insertError.code === '23505') {
       const { data: existing } = await supabase
         .from('comment_events')
         .select(COMMENT_EVENT_COLUMNS)
-        .eq('action', action)
-        .eq('target_txid', targetTxid)
-        .eq('payer_address', match.payerAddress)
+        .eq('txid', match.txid)
         .maybeSingle()
       if (existing) {
         return NextResponse.json({ ok: true, status: 'reacted', event: existing })

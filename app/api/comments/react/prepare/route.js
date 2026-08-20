@@ -3,21 +3,22 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { adminDb } from '@/lib/db'
-import { FEED_MIN_XEC, normalizeTipXec } from '@/lib/feedPricing'
-import { computePaymentSplit, buildPaywallBip21 } from '@/lib/paymentSplit'
+import { FEED_MIN_XEC } from '@/lib/feedPricing'
+import { computePaymentSplit, buildPaywallBip21, buildPublishFeeBip21 } from '@/lib/paymentSplit'
 import { encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
+import { isReaction, payeeFor } from '@/lib/reactions'
 
-// Liking a COMMENT is the same paid reaction as liking a feed post — a POWR
-// `like` (OP_5) whose targetTxid is the comment's on-chain txid, paying the
-// comment's author 94/6. Mirrors /api/feed/react/prepare, but the target is
-// resolved from `comments`, not `feed_posts`. A like carries the flat 100 XEC
-// floor by default, or any larger whole-XEC custom tip.
+// Reacting to a COMMENT is the same paid reaction as reacting to a feed post — a
+// POWR `like` (OP_5) whose targetTxid is the comment's on-chain txid, carrying
+// WHICH emoji, a flat 100 XEC. A positive emoji pays the commenter 94/6; a 👎
+// pays the platform 100%. Mirrors /api/feed/react/prepare, but the target is
+// resolved from `comments`, not `feed_posts`.
 const REACT_COST_XEC = FEED_MIN_XEC
 
 /**
- * Build the payment request (BIP21 + OP_RETURN) for liking a comment. Pure — no
- * DB write. The client pays this exact request; /api/comments/react/confirm
- * detects the tx and records the like (deduped, one per wallet per comment).
+ * Build the payment request (BIP21 + OP_RETURN) for reacting to a comment. Pure —
+ * no DB write. The client pays this exact request; /api/comments/react/confirm
+ * detects the tx and records the reaction. Multi-react: no per-wallet lock.
  */
 export async function POST(request) {
   const ip = getClientIp(request)
@@ -49,15 +50,14 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Invalid target comment' }, { status: 400 })
   }
 
-  // A like can carry a custom tip; no amount → the flat 100 XEC floor. Any tip
-  // must be a whole number of at least 100 XEC.
-  const amountXec = body?.amountXec == null ? REACT_COST_XEC : normalizeTipXec(body.amountXec)
-  if (amountXec == null) {
-    return NextResponse.json(
-      { error: 'Enter a whole number of at least 100 XEC.' },
-      { status: 400 },
-    )
+  // The reaction carries WHICH emoji, validated against the fixed palette; the
+  // emoji decides who gets paid (commenter 94/6 vs platform 100% for 👎).
+  const emoji = body?.emoji
+  if (!isReaction(emoji)) {
+    return NextResponse.json({ error: 'Unknown reaction' }, { status: 400 })
   }
+  const platformPaid = payeeFor(emoji) === 'platform'
+  const amountXec = REACT_COST_XEC // flat 100 XEC
 
   const supabase = adminDb()
   const { data: target, error } = await supabase
@@ -70,11 +70,6 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Comment not found' }, { status: 404 })
   }
 
-  const split = computePaymentSplit(amountXec)
-  if (!split) {
-    return NextResponse.json({ error: 'Invalid price' }, { status: 500 })
-  }
-
   let opReturnRaw
   try {
     opReturnRaw = encodeFeedOpReturnRaw({ action, targetTxid })
@@ -82,25 +77,40 @@ export async function POST(request) {
     return NextResponse.json({ error: e?.message || 'Failed to build commitment' }, { status: 500 })
   }
 
-  const bip21Url = buildPaywallBip21(
-    target.payout_address,
-    platformAddress,
-    split.authorAmount,
-    split.platformAmount,
-    opReturnRaw,
-  )
+  // 👎 (platform-paid) → a single 100%-platform output; every other emoji → the
+  // 94/6 split (commenter + platform).
+  let bip21Url
+  let payAddress
+  if (platformPaid) {
+    bip21Url = buildPublishFeeBip21(platformAddress, amountXec, opReturnRaw)
+    payAddress = platformAddress
+  } else {
+    const split = computePaymentSplit(amountXec)
+    if (!split) {
+      return NextResponse.json({ error: 'Invalid price' }, { status: 500 })
+    }
+    bip21Url = buildPaywallBip21(
+      target.payout_address,
+      platformAddress,
+      split.authorAmount,
+      split.platformAmount,
+      opReturnRaw,
+    )
+    payAddress = target.payout_address
+  }
 
   return NextResponse.json({
     ok: true,
     action,
     targetTxid,
+    emoji,
     costXec: amountXec,
     amountXec,
     bip21Url,
-    // The comment author's address (the like's primary output) — the client
-    // watches it on a Chronik websocket to confirm the moment the payment lands.
-    // Server still gates on finality via the reconcile sweep.
-    payAddress: target.payout_address,
+    // The payment's primary output — the client watches it on a Chronik
+    // websocket to confirm the moment the payment lands (platform for 👎, else
+    // the commenter). Server still gates on finality via the reconcile sweep.
+    payAddress,
     cashtabUrl: `https://cashtab.com/#/send?bip21=${bip21Url}`,
     preparedAt: Math.floor(Date.now() / 1000),
   })

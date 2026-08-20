@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { priceFeedPost, FEED_MAX_CHARS } from '@/lib/feedPricing'
 import { tokenizeContent } from '@/lib/contentLinks'
 import TranslateButton from '@/components/TranslateButton'
-import CommentLike from '@/components/feed/CommentLike'
+import CommentReactions from '@/components/feed/CommentReactions'
 import EmojiPicker from '@/components/EmojiPicker'
 import EcashIcon from '@/components/EcashIcon'
 import { prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
@@ -679,10 +679,10 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
                 {!comment.deleted ? (
                   <div className="commentactions">
                     {comment.txid && !comment.optimistic ? (
-                      <CommentLike
+                      <CommentReactions
                         targetTxid={comment.txid}
-                        likeCount={comment.likeCount ?? 0}
-                        likedByViewer={Boolean(comment.likedByViewer)}
+                        reactionCounts={comment.reactionCounts ?? {}}
+                        isOwn={canDelete}
                       />
                     ) : null}
                     {canReply && replyingTo !== comment.id ? (
