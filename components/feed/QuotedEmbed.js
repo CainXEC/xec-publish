@@ -74,13 +74,14 @@ export default function QuotedEmbed({ post, interactive = true, onOpenThread = n
       <div className="qmeta">
         <QuotedByline identity={post.displayIdentity ?? post.author_identity} color={post.displayColor} />
       </div>
-      <p className="qbody">
-        {post.deleted ? (
-          <span className="tombstone">This post was deleted.</span>
-        ) : (
-          shown
-        )}
-      </p>
+      {/* Forum topics carry a title — lead with it so the embed reads like a
+          Reddit link preview (title, then a taste of the body). */}
+      {!post.deleted && post.title ? <p className="qtitle">{post.title}</p> : null}
+      {shown || post.deleted ? (
+        <p className="qbody">
+          {post.deleted ? <span className="tombstone">This post was deleted.</span> : shown}
+        </p>
+      ) : null}
       {/* Quoting a mint announcement is the buyer's "that's me!" moment — the
           card art shows here (and on the thread page) even though timeline
           rows render announcements as compact text. */}

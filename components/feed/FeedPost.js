@@ -8,6 +8,7 @@ import EngagementBar from '@/components/feed/EngagementBar'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import LinkedPostEmbed from '@/components/feed/LinkedPostEmbed'
 import ArticleCard from '@/components/feed/ArticleCard'
+import ForumCard from '@/components/feed/ForumCard'
 import MintCard from '@/components/feed/MintCard'
 import PollCard from '@/components/feed/PollCard'
 import FeedBody from '@/components/feed/FeedBody'
@@ -23,6 +24,7 @@ import {
 } from '@/lib/pinnedStore'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
+import { extractForumSlug, stripForumLink } from '@/lib/forumLinks'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
 
 function timeAgo(iso) {
@@ -259,6 +261,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   // QuotedEmbed). Keep `body` intact for the card's slug/txid detection.
   let displayBody = extractArticleSlug(body) ? stripArticleLink(body) : body
   displayBody = extractFeedPostTxid(displayBody) ? stripFeedPostLink(displayBody) : displayBody
+  displayBody = extractForumSlug(displayBody) ? stripForumLink(displayBody) : displayBody
   const isLong = displayBody.length > FEED_CLAMP_CHARS
   const shownBody =
     !isLong || expanded ? displayBody : `${displayBody.slice(0, FEED_CLAMP_CHARS).trimEnd()}…`
@@ -416,6 +419,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
     const raw = typeof post.parent.content === 'string' ? post.parent.content : ''
     let t = extractArticleSlug(raw) ? stripArticleLink(raw) : raw
     t = extractFeedPostTxid(t) ? stripFeedPostLink(t) : t
+    t = extractForumSlug(t) ? stripForumLink(t) : t
     t = t.trim()
     return t.length > PARENT_CLAMP_CHARS ? `${t.slice(0, PARENT_CLAMP_CHARS).trimEnd()}…` : t
   })()
@@ -449,6 +453,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
     const raw = typeof topReply.content === 'string' ? topReply.content : ''
     let t = extractArticleSlug(raw) ? stripArticleLink(raw) : raw
     t = extractFeedPostTxid(t) ? stripFeedPostLink(t) : t
+    t = extractForumSlug(t) ? stripForumLink(t) : t
     t = t.trim()
     return t.length > TOP_REPLY_CLAMP_CHARS ? `${t.slice(0, TOP_REPLY_CLAMP_CHARS).trimEnd()}…` : t
   })()
@@ -573,6 +578,10 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
 
           {!post.deleted ? (
             <ArticleCard card={post.articleCard ?? null} content={body} />
+          ) : null}
+
+          {!post.deleted ? (
+            <ForumCard card={post.forumCard ?? null} content={body} />
           ) : null}
         </>
       )}

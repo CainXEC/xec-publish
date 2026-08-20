@@ -3,6 +3,7 @@ export const runtime = 'nodejs'
 import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/db'
 import { displayHandlesByAccountId } from '@/lib/authorDisplayHandles'
+import { splitForumContent } from '@/lib/forumPost'
 
 /**
  * Resolve an on-site feed-post txid to the shallow preview QuotedEmbed renders.
@@ -22,7 +23,7 @@ export async function GET(request) {
   const supabase = adminDb()
   const { data: row } = await supabase
     .from('feed_posts')
-    .select('txid, content, deleted_at, author_account_id, author_identity, payer_address')
+    .select('txid, content, title, deleted_at, author_account_id, author_identity, payer_address')
     .eq('txid', txid)
     .maybeSingle()
 
@@ -39,11 +40,15 @@ export async function GET(request) {
     : row.payer_address || row.author_identity
 
   const deleted = row.deleted_at != null
+  // A titled forum post stores `title \n\n body`; split so the embed leads with
+  // the title and shows just the body beneath it (matches getFeed's toClientPost).
+  const body = row.title != null ? splitForumContent(row.content).body : row.content
   return NextResponse.json({
     ok: true,
     post: {
       txid: row.txid,
-      content: deleted ? null : row.content,
+      title: deleted ? null : (row.title ?? null),
+      content: deleted ? null : body,
       deleted,
       author_identity: row.author_identity,
       displayIdentity,

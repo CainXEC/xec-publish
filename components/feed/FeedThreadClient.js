@@ -28,6 +28,8 @@ import {
 } from '@/lib/pinnedStore'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
+import { extractForumSlug, stripForumLink } from '@/lib/forumLinks'
+import ForumCard from '@/components/feed/ForumCard'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 
@@ -36,6 +38,7 @@ import { FEED_CSS } from '@/components/feed/feedTheme'
 function displayTextFor(content) {
   let text = extractArticleSlug(content) ? stripArticleLink(content) : content
   text = extractFeedPostTxid(text) ? stripFeedPostLink(text) : text
+  text = extractForumSlug(text) ? stripForumLink(text) : text
   return text
 }
 
@@ -180,6 +183,9 @@ function AncestorNode({ post, top = false, onOpenThread = null }) {
         ) : null}
         {!post.deleted ? (
           <ArticleCard card={post.articleCard ?? null} content={post.content} />
+        ) : null}
+        {!post.deleted ? (
+          <ForumCard card={post.forumCard ?? null} content={post.content} />
         ) : null}
       </div>
     </div>
@@ -403,6 +409,7 @@ export default function FeedThreadClient({
                     />
                   ) : null}
                   <ArticleCard card={post.articleCard ?? null} content={post.content} />
+                  <ForumCard card={post.forumCard ?? null} content={post.content} />
                 </>
               )}
               <div className="actions">

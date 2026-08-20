@@ -726,6 +726,7 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .qbyline{font-weight:700;color:var(--hc,var(--neon));font-size:12px;text-shadow:0 0 8px rgba(0,255,156,.3);}
 .pow-feed .qaddr{font-size:12px;color:var(--cyan);text-decoration:none;}
 .pow-feed a.qaddr:hover{text-decoration:underline;}
+.pow-feed .qtitle{margin:6px 0 0;font-size:15px;font-weight:700;line-height:1.3;color:var(--text);word-break:break-word;}
 .pow-feed .qbody{margin:6px 0 0;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.5;color:#b9e6d8;}
 .pow-feed .quoted-gone{color:var(--dim);font-style:italic;font-size:13px;}
 
@@ -765,6 +766,10 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 }
 .pow-feed .artcard-tag{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--neon);
   text-shadow:0 0 8px rgba(0,255,156,.4);}
+/* A forum link card reuses the article-card shell but tags in cyan, so Forum vs
+   Article reads at a glance. */
+.pow-feed .forumembed .artcard-tag{color:var(--cyan);text-shadow:0 0 8px rgba(61,240,255,.4);}
+.pow-feed .forumembed:hover{box-shadow:0 0 20px rgba(61,240,255,.22);background:rgba(61,240,255,.06);}
 .pow-feed .artcard-title{font-size:16px;font-weight:700;line-height:1.35;color:var(--text);}
 .pow-feed .artcard-teaser{font-size:13px;line-height:1.5;color:#b9e6d8;}
 .pow-feed .artcard-meta{margin-top:2px;font-size:12px;letter-spacing:.02em;color:var(--dim);}
