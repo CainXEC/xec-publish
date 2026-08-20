@@ -160,7 +160,7 @@ export default function ForumPageClient({
         </aside>
         <main className="wrap" style={{ paddingTop: '28px' }}>
           <div className="forumhead">
-            <Link href="/" className="forumhead-back">
+            <Link href="/?tab=forums" className="forumhead-back">
               ← Forums
             </Link>
             <h1 className="forumhead-name">/f/{forum.slug}</h1>

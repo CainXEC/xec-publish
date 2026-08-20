@@ -19,8 +19,9 @@ export default function FeedClient({
   isAuthor = false,
   initialCompose = '',
   focusCompose = false,
+  initialScope = 'foryou',
 }) {
-  const [scope, setScope] = useState('foryou') // 'foryou' | 'forums'
+  const [scope, setScope] = useState(initialScope) // 'foryou' | 'forums'
   // The reading pane: a front-page story OR a feed thread open in the center
   // column, as pure client state — the URL stays put (no history games; the
   // App Router treats pushState as a navigation and fights the scroll

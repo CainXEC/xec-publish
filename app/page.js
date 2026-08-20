@@ -15,6 +15,9 @@ export default async function HomePage({ searchParams }) {
   // `?compose=1` (from the dashboard "Write New Post" button) opens the feed with
   // the compose box focused, ready to write — no pre-filled content.
   const focusCompose = params?.compose === '1'
+  // `?tab=forums` opens straight to the Forums directory (e.g. the "← Forums"
+  // back link from a forum page), instead of the default Feed tab.
+  const initialScope = params?.tab === 'forums' ? 'forums' : 'foryou'
 
   // Auth is read for page chrome (dashboard link), for the client-side
   // personalization/own-post logic, and to drop this viewer's blocked accounts
@@ -41,6 +44,7 @@ export default async function HomePage({ searchParams }) {
       isAuthor={acct?.authorId != null}
       initialCompose={initialCompose}
       focusCompose={focusCompose}
+      initialScope={initialScope}
     />
   )
 }
