@@ -1,7 +1,7 @@
 'use client'
 
 // =============================================================================
-//  TranslateButton — shared "🌐 Translate" control for feed posts and articles.
+//  TranslateButton — shared "文A" (translate) control for feed posts and articles.
 //  Posts { kind, id, lang } to /api/translate (which fetches + translates the
 //  content server-side, gated by the same paywall check the reader uses) and
 //  hands the result to the parent, which swaps it in for the original. Defaults
@@ -194,7 +194,8 @@ export default function TranslateButton({
           aria-label="Translate"
           title="Translate"
         >
-          {busy ? '🌐…' : '🌐'}
+          <span className="tb-glyph" aria-hidden="true">文A</span>
+          {busy ? <span className="tb-dots" aria-hidden="true" /> : null}
         </button>
       )}
 
@@ -231,6 +232,10 @@ const TB_CSS = `
   cursor:pointer;opacity:.72;padding:2px 0;white-space:nowrap;transition:opacity .12s;line-height:1.2;}
 .tb-btn:hover{opacity:1;}
 .tb-btn:disabled{opacity:.5;cursor:default;}
+/* The "文A" translate mark: the international translate glyph (CJK + Latin).
+   JetBrains Mono has no CJK, so 文 falls back to a system CJK face — a touch
+   tighter + bolder so the two scripts read as one small icon, not two letters. */
+.tb-glyph{font-weight:700;letter-spacing:-.01em;font-size:14px;line-height:1;}
 .tb-on{opacity:.85;}
 .tb-note{font-size:11px;opacity:.55;font-style:italic;}
 /* The "Translating…" caption: a plainly readable pending state (NOT the faded
