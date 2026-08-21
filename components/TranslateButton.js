@@ -235,7 +235,7 @@ const TB_CSS = `
 /* The "文A" translate mark: the international translate glyph (CJK + Latin).
    JetBrains Mono has no CJK, so 文 falls back to a system CJK face — a touch
    tighter + bolder so the two scripts read as one small icon, not two letters. */
-.tb-glyph{font-weight:700;letter-spacing:-.01em;font-size:14px;line-height:1;}
+.tb-glyph{font-weight:700;letter-spacing:-.01em;font-size:11.5px;line-height:1;}
 .tb-on{opacity:.85;}
 .tb-note{font-size:11px;opacity:.55;font-style:italic;}
 /* The "Translating…" caption: a plainly readable pending state (NOT the faded
