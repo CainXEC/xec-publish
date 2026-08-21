@@ -11,6 +11,8 @@
 import { NextResponse } from 'next/server'
 import { getFeedThread } from '@/lib/getFeed'
 import { getAuthedAccount } from '@/lib/authHelpers'
+import { adminDb } from '@/lib/db'
+import { getForumById } from '@/lib/forums'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,9 +24,27 @@ export async function GET(_req, { params }) {
   }
 
   const acct = await getAuthedAccount()
+
+  // Same forum pre-check as the standalone thread page (app/feed/[txid]/page.js):
+  // a forum post (or a reply inside one) gets the "← /f/<slug>" back link AND the
+  // deep fetch for the nested comment view — otherwise the pane renders a forum
+  // thread as a plain feed thread.
+  const { data: bare } = await adminDb()
+    .from('feed_posts')
+    .select('forum_id')
+    .eq('txid', txid)
+    .maybeSingle()
+  const forumId = bare?.forum_id ?? null
+  let forumSlug = null
+  if (forumId) {
+    const forum = await getForumById(adminDb(), forumId)
+    forumSlug = forum?.slug ?? null
+  }
+
   const thread = await getFeedThread(txid, {
     viewerAddress: acct?.address,
     viewerAccountId: acct?.accountId ?? null,
+    deep: Boolean(forumId),
   })
   if (!thread) {
     return NextResponse.json({ ok: false, error: 'Post not found' }, { status: 404 })
@@ -38,6 +58,7 @@ export async function GET(_req, { params }) {
       replies: thread.replies,
       viewerAccountId: acct?.accountId ?? null,
       isAuthor: acct?.authorId != null,
+      forumSlug,
     },
     { headers: { 'Cache-Control': 'no-store' } }
   )

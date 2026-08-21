@@ -68,6 +68,7 @@ export default function ThreadPane({ txid, onClose, onOpenThread }) {
           initialReplies={d.replies}
           viewerAccountId={d.viewerAccountId}
           isAuthor={d.isAuthor}
+          forumSlug={d.forumSlug ?? null}
           onOpenThread={onOpenThread}
         />
       )}
