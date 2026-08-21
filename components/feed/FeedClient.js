@@ -22,6 +22,22 @@ export default function FeedClient({
   initialScope = 'foryou',
 }) {
   const [scope, setScope] = useState(initialScope) // 'foryou' | 'forums'
+
+  // `?tab=forums` is a ONE-SHOT deep link (the "← Forums" back link) that opens
+  // the Forums tab. Strip it from the address bar right after it's read, so the
+  // URL never sticks in history/bookmarks/session-restore — otherwise the browser
+  // keeps reopening the site at /?tab=forums instead of the default Feed.
+  useEffect(() => {
+    if (
+      initialScope === 'forums' &&
+      typeof window !== 'undefined' &&
+      window.location.search.includes('tab=forums')
+    ) {
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+    // Runs once on mount; initialScope is fixed for the page's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   // The reading pane: a front-page story OR a feed thread open in the center
   // column, as pure client state — the URL stays put (no history games; the
   // App Router treats pushState as a navigation and fights the scroll
