@@ -456,21 +456,13 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
    halo; fills solid neon on hover. */
 .pow-feed .newposts{margin:16px 0 4px;display:flex;justify-content:center;
   animation:newposts-in .34s cubic-bezier(.2,.7,.3,1) both;}
+/* Rectangular, neon-outlined — matches the forum New/Top/Create buttons. */
 .pow-feed .newposts-pill{display:inline-flex;align-items:center;gap:8px;
-  padding:8px 18px 8px 14px;border-radius:999px;cursor:pointer;font:inherit;
-  font-size:11.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
-  color:var(--neon);
-  background:linear-gradient(180deg,rgba(0,255,156,.12),rgba(0,255,156,.04));
-  border:1px solid color-mix(in oklab,var(--neon) 55%,transparent);
-  box-shadow:0 0 0 1px rgba(0,255,156,.08),0 6px 20px rgba(0,0,0,.35),
-    0 0 16px rgba(0,255,156,.18),inset 0 1px 0 rgba(255,255,255,.06);
-  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  transition:background .16s,box-shadow .16s,color .16s,transform .08s;}
-.pow-feed .newposts-pill:hover:not(:disabled){color:#04140d;
-  background:linear-gradient(180deg,var(--neon),#00d97f);
-  border-color:var(--neon);transform:translateY(-1px);
-  box-shadow:0 8px 26px rgba(0,0,0,.4),0 0 26px rgba(0,255,156,.5);}
-.pow-feed .newposts-pill:active:not(:disabled){transform:translateY(0);}
+  padding:6px 16px;border-radius:6px;cursor:pointer;font:inherit;
+  font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--neon);background:transparent;border:1px solid var(--neon);
+  transition:box-shadow .15s,color .15s;}
+.pow-feed .newposts-pill:hover:not(:disabled){box-shadow:0 0 12px rgba(0,255,156,.25);}
 .pow-feed .newposts-pill:disabled{opacity:.6;cursor:default;}
 /* Chevron nudges up once on entrance, then rests — a single directed cue. */
 .pow-feed .newposts-chev{font-size:13px;line-height:1;font-weight:800;
@@ -1610,13 +1602,9 @@ html:not(.dark) .pow-feed .paybtn.active:hover:not(:disabled){box-shadow:0 0 0 1
 /* Secondary/ghost dashbtn stays an outline, not a fill. */
 html:not(.dark) .pow-feed .dashbtn.sec{background:transparent;color:var(--neon);border-color:var(--border-strong,#cfc9b8);}
 html:not(.dark) .pow-feed .dashbtn.sec:hover{background:var(--accent-tint);color:var(--accent-hover);border-color:var(--neon);box-shadow:none;}
-/* New-posts pill on paper: no neon halo — ink-green on a soft tint, filling to
-   solid ink-green on hover. Glass blur stays; the global rule kills text-shadow. */
-html:not(.dark) .pow-feed .newposts-pill{color:var(--neon);
-  background:var(--accent-tint);border-color:var(--neon);
-  box-shadow:var(--paper-shadow);backdrop-filter:none;-webkit-backdrop-filter:none;}
-html:not(.dark) .pow-feed .newposts-pill:hover:not(:disabled){color:#fdfcf8;
-  background:var(--accent-hover);border-color:var(--accent-hover);box-shadow:var(--paper-shadow);}
+/* New-posts button on paper: rectangular ink-green outline, hairline on hover —
+   matches the forum New/Top/Create buttons. */
+html:not(.dark) .pow-feed .newposts-pill:hover:not(:disabled){box-shadow:0 0 0 1px var(--neon);}
 
 /* Article link card: a hairline card that warms on hover — no neon border/glow. */
 html:not(.dark) .pow-feed .artcard{border-color:var(--line);background:var(--panel);box-shadow:var(--paper-shadow);}
