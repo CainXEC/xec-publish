@@ -9,6 +9,7 @@ import ForumDirectory from '@/components/feed/ForumDirectory'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import HomeReader from '@/components/feed/HomeReader'
 import ThreadPane from '@/components/feed/ThreadPane'
+import { getSeenMap, reorderBySeen } from '@/lib/feedSeenStore'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 
 export default function FeedClient({
@@ -200,6 +201,21 @@ export default function FeedClient({
     }))
   }, [])
 
+  // Freshness: float posts you've already SEEN (scrolled past on a prior visit)
+  // below the unseen ones, so a return visit doesn't lead with the same post. The
+  // seen map is snapshotted ONCE on mount (so the list can't reshuffle under you
+  // as you scroll and mark new posts) and reused for load-more pages. Runs after
+  // hydration (localStorage is client-only), so the SSR order paints first, then
+  // the unseen-first reorder settles in — same as the viewer-state overlay.
+  const seenSnapshotRef = useRef(null)
+  useEffect(() => {
+    const snap = getSeenMap()
+    seenSnapshotRef.current = snap
+    if (Object.keys(snap).length === 0) return
+    patchTab('foryou', (t) => ({ ...t, posts: reorderBySeen(t.posts, snap) }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // The For You feed is served from a shared, viewer-neutral cache, so its posts
   // arrive with like/repost/follow states blanked out. Once mounted (and whenever
   // the visible set changes), a signed-in viewer fetches just their own slice —
@@ -378,8 +394,12 @@ export default function FeedClient({
     try {
       const data = await fetchScope(scope, active.nextCursor)
       patchTab(scope, (t) => {
-        const seen = new Set(t.posts.map((p) => p.txid))
-        const fresh = (data.posts ?? []).filter((p) => p?.txid && !seen.has(p.txid))
+        const loaded = new Set(t.posts.map((p) => p.txid))
+        let fresh = (data.posts ?? []).filter((p) => p?.txid && !loaded.has(p.txid))
+        // Keep the unseen-first ordering going for load-more pages too (For You).
+        if (scope === 'foryou' && seenSnapshotRef.current) {
+          fresh = reorderBySeen(fresh, seenSnapshotRef.current)
+        }
         return {
           ...t,
           posts: [...t.posts, ...fresh],
@@ -530,6 +550,7 @@ export default function FeedClient({
                       mintVariant="compact"
                       onOpenThread={wideShell ? openThread : undefined}
                       allowOptimisticQuote
+                      markSeenOnView={scope === 'foryou'}
                     />
                   ),
                 )}

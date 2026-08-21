@@ -28,6 +28,7 @@ import { extractForumSlug, stripForumLink } from '@/lib/forumLinks'
 import { extractYouTubeId, stripYouTubeLink } from '@/lib/youtubeLinks'
 import YouTubeEmbed from '@/components/feed/YouTubeEmbed'
 import { FEED_ACTION } from '@/lib/feedProtocol'
+import { markSeen } from '@/lib/feedSeenStore'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
 
 function timeAgo(iso) {
@@ -242,8 +243,29 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
   )
 }
 
-export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = null, onDeleted, onBlocked, mintVariant = 'full', onOpenThread = null, allowOptimisticQuote = false }) {
+export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = null, onDeleted, onBlocked, mintVariant = 'full', onOpenThread = null, allowOptimisticQuote = false, markSeenOnView = false }) {
   const router = useRouter()
+  // For You only: mark this post SEEN once it scrolls into view, so a return
+  // visit floats unseen posts above it (lib/feedSeenStore). Best-effort.
+  const seenElRef = useRef(null)
+  useEffect(() => {
+    if (!markSeenOnView || !post?.txid || post.deleted) return undefined
+    const el = seenElRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return undefined
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          markSeen(post.txid)
+          io.disconnect()
+        }
+      },
+      // Any meaningful sliver counts as "seen" — a tall post never reaches a high
+      // threshold in a short viewport, so a small margin is what actually fires.
+      { threshold: 0.01 },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [markSeenOnView, post?.txid, post?.deleted])
   const [translated, setTranslated] = useState(null)
   // Poll option labels from a translation ([{id,text}]); null = show originals.
   const [translatedOptions, setTranslatedOptions] = useState(null)
@@ -467,7 +489,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   })()
 
   return (
-    <li className={`post${compactMint ? ' mintline' : ''}`} onClick={openThread} style={{ cursor: 'pointer' }}>
+    <li ref={seenElRef} className={`post${compactMint ? ' mintline' : ''}`} onClick={openThread} style={{ cursor: 'pointer' }}>
       {pinned ? (
         <div className="pinnedtag"><span aria-hidden>📌</span> Pinned</div>
       ) : null}
