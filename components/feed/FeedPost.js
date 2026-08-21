@@ -25,6 +25,9 @@ import {
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
 import { extractForumSlug, stripForumLink } from '@/lib/forumLinks'
+import { extractYouTubeId, stripYouTubeLink } from '@/lib/youtubeLinks'
+import YouTubeEmbed from '@/components/feed/YouTubeEmbed'
+import { FEED_ACTION } from '@/lib/feedProtocol'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
 
 function timeAgo(iso) {
@@ -256,12 +259,17 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   const [confirmDialog, confirmDialogNode] = useConfirmDialog()
 
   const body = typeof post.content === 'string' ? post.content : ''
+  // A YouTube link embeds a player — but ONLY on top-level posts (feed posts +
+  // forum posts), never replies/comments (action 2). On a reply, ytId stays null
+  // so the URL is left as plain text and no player renders.
+  const ytId = post.action !== FEED_ACTION.REPLY ? extractYouTubeId(body) : null
   // On-site links render as an embed/card that IS the link, so strip the raw URL
   // from the displayed text (an article link → ArticleCard; a feed-post link →
   // QuotedEmbed). Keep `body` intact for the card's slug/txid detection.
   let displayBody = extractArticleSlug(body) ? stripArticleLink(body) : body
   displayBody = extractFeedPostTxid(displayBody) ? stripFeedPostLink(displayBody) : displayBody
   displayBody = extractForumSlug(displayBody) ? stripForumLink(displayBody) : displayBody
+  displayBody = ytId ? stripYouTubeLink(displayBody) : displayBody
   const isLong = displayBody.length > FEED_CLAMP_CHARS
   const shownBody =
     !isLong || expanded ? displayBody : `${displayBody.slice(0, FEED_CLAMP_CHARS).trimEnd()}…`
@@ -583,6 +591,8 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
           {!post.deleted ? (
             <ForumCard card={post.forumCard ?? null} content={body} />
           ) : null}
+
+          {!post.deleted && ytId ? <YouTubeEmbed id={ytId} /> : null}
         </>
       )}
 

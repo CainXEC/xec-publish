@@ -7,6 +7,7 @@ import { REACTIONS } from '@/lib/reactions'
 import { isSelectingWithin } from '@/lib/selectionGuard'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
+import { extractYouTubeId, stripYouTubeLink } from '@/lib/youtubeLinks'
 
 function timeAgo(iso) {
   if (!iso) return ''
@@ -30,11 +31,12 @@ function truncateAddress(addr) {
   return `${t.slice(0, 10)}…${t.slice(-4)}`
 }
 
-// Strip both on-site link kinds from the preview text — on the thread page they
-// render as their own embed/card, but the card is just a taste, so drop the raw URL.
+// Strip link kinds from the preview text — on the thread page they render as
+// their own embed/card, but the card is just a taste, so drop the raw URL.
 function previewTextFor(content) {
   let text = extractArticleSlug(content) ? stripArticleLink(content) : content
   text = extractFeedPostTxid(text) ? stripFeedPostLink(text) : text
+  text = extractYouTubeId(text) ? stripYouTubeLink(text) : text
   return text
 }
 
@@ -83,6 +85,9 @@ export default function ForumPostCard({ post }) {
   }
 
   const previewText = previewTextFor(post.content ?? '')
+  // A video is shown as a compact chip on the card (the full player is on the
+  // post's page) so the directory list stays scannable, not a wall of players.
+  const hasVideo = extractYouTubeId(post.content ?? '') != null
 
   return (
     <article
@@ -107,6 +112,8 @@ export default function ForumPostCard({ post }) {
           <FeedBody text={previewText} />
         </div>
       ) : null}
+
+      {hasVideo ? <span className="forumcard-video">▶ Video</span> : null}
 
       <div className="forumcard-foot">
         <span className="forumcard-comments">

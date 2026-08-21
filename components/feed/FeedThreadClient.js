@@ -29,8 +29,11 @@ import {
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
 import { extractForumSlug, stripForumLink } from '@/lib/forumLinks'
+import { extractYouTubeId, stripYouTubeLink } from '@/lib/youtubeLinks'
 import ForumCard from '@/components/feed/ForumCard'
 import ForumComments from '@/components/feed/ForumComments'
+import YouTubeEmbed from '@/components/feed/YouTubeEmbed'
+import { FEED_ACTION } from '@/lib/feedProtocol'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 
@@ -421,7 +424,12 @@ export default function FeedThreadClient({
                 <>
                   {post.title ? <h1 className="focustitle">{post.title}</h1> : null}
                   {(() => {
-                    const focusText = displayTextFor(post.content)
+                    // A YouTube link embeds a player on a top-level post (never a
+                    // reply/comment) — strip its URL from the body when it does.
+                    const ytId =
+                      post.action !== FEED_ACTION.REPLY ? extractYouTubeId(post.content) : null
+                    let focusText = displayTextFor(post.content)
+                    if (ytId) focusText = stripYouTubeLink(focusText)
                     return focusText ? (
                       <p className="focusbody">
                         <FeedBody text={translated ?? focusText} />
@@ -443,6 +451,9 @@ export default function FeedThreadClient({
                   ) : null}
                   <ArticleCard card={post.articleCard ?? null} content={post.content} />
                   <ForumCard card={post.forumCard ?? null} content={post.content} />
+                  {post.action !== FEED_ACTION.REPLY ? (
+                    <YouTubeEmbed id={extractYouTubeId(post.content)} />
+                  ) : null}
                 </>
               )}
               <div className="actions">

@@ -23,6 +23,11 @@ const CSP_REPORT_ONLY = [
     'https://*.supabase.co wss://*.supabase.co',
     'https://va.vercel-scripts.com https://vitals.vercel-insights.com',
   ].join(' '),
+  // Embedded YouTube players (feed posts + top-level forum posts) — the only
+  // external frame source. Privacy-enhanced host; youtube.com allowed for the
+  // player's own redirects. No frame-src otherwise falls back to default-src
+  // 'self', which would block the embed when this CSP is enforced.
+  "frame-src https://www.youtube-nocookie.com https://www.youtube.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

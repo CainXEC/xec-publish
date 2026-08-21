@@ -1151,6 +1151,14 @@ html:not(.dark) .pow-feed .forumcreate-pay:disabled{box-shadow:none;}
 .pow-feed .forumcard-body{margin:6px 0 0;font-size:14.5px;line-height:1.5;color:var(--text);
   overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:break-word;}
 .pow-feed .forumcard-body.has-title{margin-top:4px;color:var(--dim);-webkit-line-clamp:2;}
+/* Compact "has a video" chip on a forum card (the full player is on the post page). */
+.pow-feed .forumcard-video{display:inline-flex;align-items:center;gap:4px;margin-top:8px;font-size:11.5px;
+  font-weight:700;letter-spacing:.04em;color:var(--cyan);}
+
+/* Embedded YouTube player (feed posts + top-level forum posts). Responsive 16:9. */
+.pow-feed .ytembed{position:relative;margin:12px 0 0;width:100%;aspect-ratio:16/9;border-radius:12px;
+  overflow:hidden;border:1px solid var(--line);background:#000;}
+.pow-feed .ytembed iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
 .pow-feed .forumcard-foot{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin-top:11px;
   font-size:12.5px;color:var(--dim);}
 /* The comment count is the row's primary invitation — give it the accent. */
