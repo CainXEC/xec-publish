@@ -101,6 +101,7 @@ function CommentNode({ comment, childrenByParent, viewerAccountId, onReplyAdded,
               repostCount={comment.repostCount ?? 0}
               repostedByViewer={Boolean(comment.repostedByViewer)}
               canQuote={false}
+              canRepost={false}
               isOwnPost={isOwn}
             />
             {isOwn ? (

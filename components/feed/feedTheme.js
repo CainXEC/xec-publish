@@ -1019,7 +1019,10 @@ html:not(.dark) .dashhandle-tip{background:#fdfcf8;border-color:#e3dfd2;color:#1
 /* A focused FORUM post reads as a post inside a community: a distinct card
    surface with a "Posted in /f/<slug>" tag, not a feed row. */
 .pow-feed .tnode.focused.forumpost{padding:16px 18px;background:var(--panel);border:1px solid var(--line);
-  border-radius:14px;}
+  border-radius:14px;margin-top:14px;}
+/* The card is its own surface — the ancestor thread rail leads down TO it, but the
+   connecting stub must not pierce the card's rounded border. */
+.pow-feed .tnode.focused.forumpost.lineup::before{display:none;}
 .pow-feed .forumpost-tag{display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
   color:var(--cyan);font-weight:700;margin:0 0 8px;}
 .pow-feed .forumpost-tag:hover{text-decoration:underline;text-underline-offset:2px;}
