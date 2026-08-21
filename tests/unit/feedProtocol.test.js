@@ -168,8 +168,8 @@ describe('decodeFeedOpReturn', () => {
   })
 
   it('returns null for an out-of-range action opcode', () => {
-    // OP_14 (0x5e) is beyond the defined POWR actions (OP_1..OP_13).
-    const bad = `6a04${LOKAD_HEX}005e` + `20${TARGET}`
+    // OP_15 (0x5f) is beyond the defined POWR actions (OP_1..OP_14, FORUM=14).
+    const bad = `6a04${LOKAD_HEX}005f` + `20${TARGET}`
     expect(decodeFeedOpReturn(bad)).toBeNull()
   })
 
