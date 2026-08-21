@@ -30,6 +30,9 @@ export default function ForumPageClient({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [viewerAccountId, setViewerAccountId] = useState(initialViewerAccountId)
+  // The composer is hidden until "Create Post" is clicked — the forum leads with
+  // its discussion, not an empty text field.
+  const [showComposer, setShowComposer] = useState(false)
   const signedIn = viewerAccountId != null
 
   const prependPost = useCallback((post) => {
@@ -38,6 +41,7 @@ export default function ForumPageClient({
       setViewerAccountId((cur) => cur ?? post.author_account_id)
     }
     setPosts((prev) => (prev.some((p) => p.txid === post.txid) ? prev : [post, ...prev]))
+    setShowComposer(false)
   }, [])
 
   // Switch the New/Top ordering: refetch page 1 in that sort and replace the list.
@@ -182,38 +186,49 @@ export default function ForumPageClient({
             </div>
           </div>
 
-          {signedIn ? (
+          <div className="forumsort">
+            <div className="forumsort-tabs" role="tablist" aria-label="Sort forum posts">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={sort === 'new'}
+                className={`forumsort-tab${sort === 'new' ? ' on' : ''}`}
+                onClick={() => void selectSort('new')}
+              >
+                New
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={sort === 'top'}
+                className={`forumsort-tab${sort === 'top' ? ' on' : ''}`}
+                onClick={() => void selectSort('top')}
+              >
+                Top
+              </button>
+            </div>
+            {signedIn ? (
+              <button
+                type="button"
+                className={`forumsort-create${showComposer ? ' on' : ''}`}
+                onClick={() => setShowComposer((v) => !v)}
+              >
+                {showComposer ? 'Close' : 'Create Post'}
+              </button>
+            ) : null}
+          </div>
+
+          {signedIn && showComposer ? (
             <ComposeBox
               action="post"
               forumId={forumId}
               withTitle
+              autoFocus
               onPosted={prependPost}
+              onCancel={() => setShowComposer(false)}
               allowOptimistic
             />
-          ) : (
-            <div className="empty">Post once to sign in, then post here.</div>
-          )}
-
-          <div className="forumsort" role="tablist" aria-label="Sort forum posts">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={sort === 'new'}
-              className={`forumsort-tab${sort === 'new' ? ' on' : ''}`}
-              onClick={() => void selectSort('new')}
-            >
-              New
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={sort === 'top'}
-              className={`forumsort-tab${sort === 'top' ? ' on' : ''}`}
-              onClick={() => void selectSort('top')}
-            >
-              Top
-            </button>
-          </div>
+          ) : null}
 
           {error ? <div className="error">{error}</div> : null}
 

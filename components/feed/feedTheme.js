@@ -1125,13 +1125,23 @@ html:not(.dark) .pow-feed .forumcreate-pay:disabled{box-shadow:none;}
 .pow-feed .forumhead-runner{color:var(--cyan);}
 .pow-feed .forumhead-youtag{color:var(--neon);}
 
-/* Forum sort tabs (New / Top) — a light pill row above the post list. */
-.pow-feed .forumsort{display:flex;gap:8px;margin:14px 0;}
-.pow-feed .forumsort-tab{background:transparent;border:1px solid var(--line);border-radius:999px;
-  padding:5px 15px;font-family:inherit;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+/* Forum controls row: New/Top sort tabs on the left, "Create Post" on the right.
+   Rectangular buttons (small radius), not pills. */
+.pow-feed .forumsort{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:14px 0;}
+.pow-feed .forumsort-tabs{display:flex;gap:8px;}
+.pow-feed .forumsort-tab{background:transparent;border:1px solid var(--line);border-radius:6px;
+  padding:6px 15px;font-family:inherit;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
   color:var(--dim);cursor:pointer;transition:border-color .15s,color .15s;}
 .pow-feed .forumsort-tab:hover{color:var(--text);}
 .pow-feed .forumsort-tab.on{color:var(--neon);border-color:var(--neon);}
+/* Create Post: rectangular, neon-outlined action; flips to a quiet "Close" when
+   the composer is open. */
+.pow-feed .forumsort-create{background:transparent;border:1px solid var(--neon);border-radius:6px;
+  padding:6px 16px;font-family:inherit;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--neon);cursor:pointer;transition:border-color .15s,color .15s,box-shadow .15s;}
+.pow-feed .forumsort-create:hover{box-shadow:0 0 12px rgba(0,255,156,.25);}
+.pow-feed .forumsort-create.on{color:var(--dim);border-color:var(--line);box-shadow:none;}
+html:not(.dark) .pow-feed .forumsort-create:hover{box-shadow:0 0 0 1px var(--neon);}
 
 /* Forum post cards — Reddit-style discussion rows: a clamped body preview led by
    a loud engagement footer. The whole card opens the thread page. */
