@@ -17,7 +17,7 @@ import { displayHandlesByAccountId } from '@/lib/authorDisplayHandles'
 import { isBlockedPair } from '@/lib/feedBlocks'
 import { recordFeedNotification, recordFeedMentionNotifications } from '@/lib/feedNotifications'
 import { mintPaySession } from '@/lib/paySession'
-import { feeRecipientForTarget, getForumById, forumFeeContext } from '@/lib/forums'
+import { feeRecipientForForumId, getForumById, forumFeeContext } from '@/lib/forums'
 import { splitForumContent } from '@/lib/forumPost'
 
 const FEED_POST_COLUMNS =
@@ -118,16 +118,27 @@ export async function POST(request) {
   // its parent's forum (so a thread stays in the forum); a top-level post takes
   // the client's forumId, validated below.
   let forumId = null
+  // A self-reply (you reply to your OWN post) is forced 100% platform — no 94%
+  // rebate to yourself. Detected the SAME way prepare did (the logged-in session
+  // matching the parent's author), so both agree on the split.
+  let selfReply = false
   if (action === FEED_ACTION.REPLY) {
     targetTxid = typeof body?.parentTxid === 'string' ? body.parentTxid.trim().toLowerCase() : ''
     if (!/^[0-9a-f]{64}$/.test(targetTxid)) {
       return NextResponse.json({ error: 'Invalid parent post' }, { status: 400 })
     }
-    const { data: parent, error } = await supabase
-      .from('feed_posts')
-      .select('payout_address, author_account_id, forum_id')
-      .eq('txid', targetTxid)
-      .maybeSingle()
+    // The parent lookup and the viewer session are independent — fetch them at
+    // once instead of back-to-back (this path is on the reply's critical latency).
+    const [{ data: parent, error }, acct] = await Promise.all([
+      supabase
+        .from('feed_posts')
+        .select('payout_address, author_account_id, forum_id')
+        .eq('txid', targetTxid)
+        .maybeSingle(),
+      // Best-effort session read. Deferred into a promise so a SYNCHRONOUS throw
+      // (no request scope, e.g. tests) becomes a rejection this .catch swallows.
+      Promise.resolve().then(() => getAuthedAccount()).catch(() => null),
+    ])
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     if (!parent?.payout_address) {
       return NextResponse.json({ error: 'Parent post not found' }, { status: 404 })
@@ -135,6 +146,7 @@ export async function POST(request) {
     payoutAddress = parent.payout_address
     parentAuthorAccountId = parent.author_account_id
     forumId = parent.forum_id ?? null
+    selfReply = Boolean(acct?.accountId && acct.accountId === parentAuthorAccountId)
   } else if (action === FEED_ACTION.QUOTE) {
     targetTxid = typeof body?.quotedTxid === 'string' ? body.quotedTxid.trim().toLowerCase() : ''
     if (!/^[0-9a-f]{64}$/.test(targetTxid)) {
@@ -158,29 +170,13 @@ export async function POST(request) {
     forumId = forum.id
   }
 
-  // A self-reply (you reply to your OWN post) is forced 100% platform — no 94%
-  // rebate to yourself. Detected the SAME way prepare did (the logged-in session
-  // matching the parent's author), so both agree on the split and the paid tx
-  // always matches what we verify.
-  let selfReply = false
-  if (action === FEED_ACTION.REPLY && parentAuthorAccountId) {
-    // Best-effort session read (throws outside a request scope, e.g. in tests);
-    // no session → not a self-reply (falls back to the normal 94/6 split).
-    let acct = null
-    try {
-      acct = await getAuthedAccount()
-    } catch {
-      /* no request scope / no session */
-    }
-    selfReply = Boolean(acct?.accountId && acct.accountId === parentAuthorAccountId)
-  }
-
   // A reply to a post in a forum sends the 6% fee leg to the forum RUNNER, not
   // the platform — verification requires the payment landed there. (Self-reply
   // and top-level posts are 100% platform, so the recipient stays the platform.)
+  // Uses the parent's already-known forum_id, so no extra lookup on the hot path.
   const feeRecipient =
     action === FEED_ACTION.REPLY && !selfReply
-      ? await feeRecipientForTarget(supabase, targetTxid, { platformOnly: false, platformAddress })
+      ? await feeRecipientForForumId(supabase, forumId, platformAddress)
       : platformAddress
 
   const expected = {

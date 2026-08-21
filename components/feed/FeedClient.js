@@ -549,7 +549,6 @@ export default function FeedClient({
                       onBlocked={removeByAuthor}
                       mintVariant="compact"
                       onOpenThread={wideShell ? openThread : undefined}
-                      allowOptimisticQuote
                       markSeenOnView={scope === 'foryou'}
                     />
                   ),

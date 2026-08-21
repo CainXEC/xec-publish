@@ -243,7 +243,7 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
   )
 }
 
-export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = null, onDeleted, onBlocked, mintVariant = 'full', onOpenThread = null, allowOptimisticQuote = false, markSeenOnView = false }) {
+export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = null, onDeleted, onBlocked, mintVariant = 'full', onOpenThread = null, markSeenOnView = false }) {
   const router = useRouter()
   // For You only: mark this post SEEN once it scrolls into view, so a return
   // visit floats unseen posts above it (lib/feedSeenStore). Best-effort.
@@ -703,7 +703,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
             quotedPost={post}
             autoFocus
             compact
-            allowOptimistic={allowOptimisticQuote}
+            allowOptimistic
             onPosted={handleQuoted}
             onCancel={() => setShowQuote(false)}
           />

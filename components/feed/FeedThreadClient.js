@@ -565,6 +565,7 @@ export default function FeedThreadClient({
                     quotedPost={post}
                     autoFocus
                     compact
+                    allowOptimistic
                     onPosted={handleQuoted}
                     onCancel={() => setShowQuote(false)}
                   />

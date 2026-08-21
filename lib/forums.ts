@@ -101,6 +101,19 @@ export async function feeRecipientForTarget(
     .eq("txid", targetTxid)
     .maybeSingle();
   const forumId = (post as { forum_id: string | null } | null)?.forum_id ?? null;
+  return feeRecipientForForumId(supabase, forumId, platformAddress);
+}
+
+/**
+ * The fee-leg recipient given a KNOWN forum id (or null) — the runner's live
+ * payout, else the platform. Lets a caller that already has the target's forum_id
+ * (e.g. a reply confirm that fetched the parent) skip re-querying it.
+ */
+export async function feeRecipientForForumId(
+  supabase: SupabaseClient,
+  forumId: string | null,
+  platformAddress: string
+): Promise<string> {
   if (!forumId) return platformAddress;
 
   const forum = await getForumById(supabase, forumId);
