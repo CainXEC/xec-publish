@@ -23,6 +23,7 @@ import { adminDb } from '@/lib/db'
 import { getPublishedPostBySlug } from '@/lib/getPublishedPostBySlug'
 import { preparePublicPostPageData } from '@/lib/preparePublicPostPageData'
 import { contentHashHex } from '@/lib/feedProtocol'
+import { splitForumContent } from '@/lib/forumPost'
 import { getClientIp, rateLimit, getRedis } from '@/lib/rateLimit'
 import { normalizeLang, langName } from '@/lib/translateLangs'
 import { resolveCommenter } from '@/lib/commentGate'
@@ -32,7 +33,7 @@ const CACHE_TTL_SECS = 7 * 24 * 60 * 60 // 7 days
 // v2: harden the translate prompt (treat input as data, delimit the snippet) so a
 // short instruction-like phrase — e.g. a poll option "use English" — is translated
 // rather than answered conversationally. Bump discards the old cached (garbage) ones.
-const CACHE_VERSION = 'v2'
+const CACHE_VERSION = 'v3'
 
 const anthropic = new Anthropic() // reads ANTHROPIC_API_KEY
 
@@ -144,14 +145,23 @@ export async function POST(request) {
       const supabase = adminDb()
       const { data: post } = await supabase
         .from('feed_posts')
-        .select('content, content_hash, deleted_at, card_kind, card_meta')
+        .select('content, content_hash, title, deleted_at, card_kind, card_meta')
         .eq('txid', id)
         .maybeSingle()
       if (!post || post.deleted_at) {
         return NextResponse.json({ ok: false, error: 'not found' }, { status: 404 })
       }
-      sourceText = typeof post.content === 'string' ? post.content : ''
-      hash = post.content_hash || contentHashHex(sourceText)
+      // A forum post stores `title \n\n body` in content; translate the TITLE and
+      // BODY separately (like an article) so the client localizes both — otherwise
+      // the whole combined blob lands in the body and the heading stays untranslated.
+      const rawContent = typeof post.content === 'string' ? post.content : ''
+      hash = post.content_hash || contentHashHex(rawContent)
+      if (post.title != null) {
+        title = post.title
+        sourceText = splitForumContent(rawContent).body
+      } else {
+        sourceText = rawContent
+      }
       // A poll's options live in card_meta, not the body — carry them so the
       // whole card localizes, not just the question. (Options are immutable, so
       // caching them under the question's content hash is safe.)
@@ -197,7 +207,7 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: 'lookup failed' }, { status: 500 })
   }
 
-  if (!sourceText && !sourceHtml) {
+  if (!sourceText && !sourceHtml && !title) {
     return NextResponse.json({ ok: false, error: 'nothing to translate' }, { status: 400 })
   }
 
@@ -230,7 +240,16 @@ export async function POST(request) {
           options: pollOptions.map((o, i) => ({ id: o.id, text: optTexts[i] || o.text })),
         }
       } else {
-        payload = { translated: await translatePlain(sourceText, targetName) }
+        // Forum posts carry a title — translate it alongside the body so the
+        // heading localizes too. A plain feed post/comment has no title.
+        const [translatedBody, translatedTitle] = await Promise.all([
+          sourceText ? translatePlain(sourceText, targetName) : Promise.resolve(''),
+          title ? translatePlain(title, targetName) : Promise.resolve(''),
+        ])
+        payload = {
+          translated: translatedBody,
+          ...(title ? { title: translatedTitle || title } : {}),
+        }
       }
     } else {
       const { sanitizePostBodyHtml } = await import('@/lib/sanitizePostBodyHtml')
@@ -244,7 +263,7 @@ export async function POST(request) {
         title: translatedTitle || title,
       }
     }
-    if (!payload.translated) {
+    if (!payload.translated && !payload.title) {
       return NextResponse.json({ ok: false, error: 'empty translation' }, { status: 502 })
     }
     await cacheSet(cacheKey, payload)

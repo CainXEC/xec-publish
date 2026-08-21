@@ -241,6 +241,8 @@ export default function FeedThreadClient({
   const [replyFocus, setReplyFocus] = useState(false)
   const [showQuote, setShowQuote] = useState(false)
   const [translated, setTranslated] = useState(null)
+  // A forum post's translated TITLE (null = show the original title).
+  const [translatedTitle, setTranslatedTitle] = useState(null)
   // Poll option labels from a translation ([{id,text}]); null = show originals.
   const [translatedOptions, setTranslatedOptions] = useState(null)
 
@@ -440,7 +442,9 @@ export default function FeedThreadClient({
                 <MintCard post={post} />
               ) : (
                 <>
-                  {post.title ? <h1 className="focustitle">{post.title}</h1> : null}
+                  {post.title ? (
+                    <h1 className="focustitle">{translatedTitle ?? post.title}</h1>
+                  ) : null}
                   {(() => {
                     // A YouTube link embeds a player on a top-level post (never a
                     // reply/comment) — strip its URL from the body when it does.
@@ -502,16 +506,18 @@ export default function FeedThreadClient({
                 ) : null}
                 {!rootDeleted &&
                 post.card_kind !== 'handle_mint' &&
-                displayTextFor(post.content) ? (
+                (post.title || displayTextFor(post.content)) ? (
                   <TranslateButton
                     kind="feed"
                     id={post.txid}
                     onTranslated={(d) => {
                       setTranslated(d.translated)
+                      setTranslatedTitle(d.title ?? null)
                       setTranslatedOptions(Array.isArray(d.options) ? d.options : null)
                     }}
                     onShowOriginal={() => {
                       setTranslated(null)
+                      setTranslatedTitle(null)
                       setTranslatedOptions(null)
                     }}
                   />
