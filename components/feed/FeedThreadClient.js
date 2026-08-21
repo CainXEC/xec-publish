@@ -155,6 +155,7 @@ function AncestorNode({ post, top = false, onOpenThread = null }) {
               boundary; suppress that mismatch (same as FeedPost). */}
           <span className="time" suppressHydrationWarning>{timeAgo(post.created_at)}</span>
         </div>
+        {!post.deleted && post.title ? <p className="tnode-title">{post.title}</p> : null}
         <p ref={textRef} className={`ttext${expanded ? ' expanded' : ''}`}>
           {post.deleted ? (
             <span className="tombstone">This post was deleted.</span>
@@ -198,6 +199,9 @@ export default function FeedThreadClient({
   initialReplies = [],
   viewerAccountId: initialViewerAccountId = null,
   isAuthor = false,
+  // Set when this thread is a forum post (or a reply within one): renders a
+  // "← /f/<slug>" back link so the thread returns to its forum, not the feed.
+  forumSlug = null,
   // Reading-pane hosting: embedded=true renders just the thread (no page
   // chrome — the host owns the shell), and onOpenThread swaps the pane to
   // another thread instead of navigating (ancestors, replies, quote-jumps).
@@ -343,6 +347,11 @@ export default function FeedThreadClient({
 
   const content = (
     <>
+        {forumSlug ? (
+          <Link href={`/f/${forumSlug}`} className="forumhead-back">
+            ← /f/{forumSlug}
+          </Link>
+        ) : null}
         <div className="thread">
           {ancestors.map((a, i) => (
             <AncestorNode key={a.txid} post={a} top={i === 0} onOpenThread={onOpenThread} />

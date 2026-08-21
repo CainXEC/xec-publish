@@ -1027,6 +1027,9 @@ html:not(.dark) .dashhandle-tip{background:#fdfcf8;border-color:#e3dfd2;color:#1
 .pow-feed .tnode.focused.lineup::before{left:14px;top:0;height:22px;}
 /* A forum post opens like a Reddit thread: big title heading, then the body. */
 .pow-feed .focustitle{margin:12px 0 0;font-size:26px;font-weight:800;line-height:1.25;color:var(--text);word-break:break-word;}
+/* The forum title on an ANCESTOR node (a titled forum post shown above the
+   focused reply) — smaller than the focused heading, but still bold. */
+.pow-feed .tnode-title{margin:2px 0 0;font-size:16px;font-weight:700;line-height:1.3;color:var(--text);word-break:break-word;}
 .pow-feed .focustitle + .focusbody{font-size:16px;}
 .pow-feed .focusbody{margin:10px 0 0;white-space:pre-wrap;word-break:break-word;font-size:18px;line-height:1.6;color:var(--text);}
 .pow-feed .onchain{font-size:12px;color:var(--dim);}

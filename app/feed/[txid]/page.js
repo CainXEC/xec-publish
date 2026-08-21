@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation'
 import FeedThreadClient from '@/components/feed/FeedThreadClient'
 import { getFeedThread } from '@/lib/getFeed'
 import { getAuthedAccount } from '@/lib/authHelpers'
+import { adminDb } from '@/lib/db'
+import { getForumById } from '@/lib/forums'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +24,16 @@ export default async function FeedThreadPage({ params }) {
     notFound()
   }
 
+  // A forum post (or a reply inside one — replies inherit forum_id) gets a
+  // "← /f/<slug>" back link to its forum, so the thread doesn't dead-end on the
+  // global feed.
+  const forumId = thread.post?.forum_id ?? null
+  let forumSlug = null
+  if (forumId) {
+    const forum = await getForumById(adminDb(), forumId)
+    forumSlug = forum?.slug ?? null
+  }
+
   return (
     <FeedThreadClient
       initialPost={thread.post}
@@ -29,6 +41,7 @@ export default async function FeedThreadPage({ params }) {
       initialReplies={thread.replies}
       viewerAccountId={acct?.accountId ?? null}
       isAuthor={acct?.authorId != null}
+      forumSlug={forumSlug}
     />
   )
 }
