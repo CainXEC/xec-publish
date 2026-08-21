@@ -16,22 +16,28 @@ export default async function FeedThreadPage({ params }) {
 
   const acct = await getAuthedAccount()
 
-  const thread = await getFeedThread(txid, {
-    viewerAddress: acct?.address,
-    viewerAccountId: acct?.accountId ?? null,
-  })
-  if (!thread) {
-    notFound()
-  }
-
-  // A forum post (or a reply inside one — replies inherit forum_id) gets a
-  // "← /f/<slug>" back link to its forum, so the thread doesn't dead-end on the
-  // global feed.
-  const forumId = thread.post?.forum_id ?? null
+  // Cheap pre-check: is this post in a forum? Decides BOTH the "← /f/<slug>" back
+  // link AND the deep fetch — a forum thread pulls its WHOLE descendant tree for
+  // the Reddit-style nested comment view; a feed thread keeps direct replies only.
+  const { data: bare } = await adminDb()
+    .from('feed_posts')
+    .select('forum_id')
+    .eq('txid', txid)
+    .maybeSingle()
+  const forumId = bare?.forum_id ?? null
   let forumSlug = null
   if (forumId) {
     const forum = await getForumById(adminDb(), forumId)
     forumSlug = forum?.slug ?? null
+  }
+
+  const thread = await getFeedThread(txid, {
+    viewerAddress: acct?.address,
+    viewerAccountId: acct?.accountId ?? null,
+    deep: Boolean(forumId),
+  })
+  if (!thread) {
+    notFound()
   }
 
   return (

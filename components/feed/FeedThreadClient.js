@@ -30,6 +30,7 @@ import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
 import { extractForumSlug, stripForumLink } from '@/lib/forumLinks'
 import ForumCard from '@/components/feed/ForumCard'
+import ForumComments from '@/components/feed/ForumComments'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 
@@ -244,6 +245,29 @@ export default function FeedThreadClient({
   const removeReply = useCallback((txid) => {
     setReplies((prev) => prev.filter((r) => r.txid !== txid))
   }, [])
+
+  // Delete one's own forum comment: confirm, soft-delete on the server, then drop
+  // it from the tree (its children orphan-promote to keep the discussion intact).
+  const deleteComment = useCallback(
+    async (txid) => {
+      if (
+        !(await confirmDialog('Delete this comment? The on-chain record stays, but it will be removed here.', {
+          confirmLabel: 'Delete',
+        }))
+      ) {
+        return
+      }
+      try {
+        const res = await fetch(`/api/feed/${txid}`, { method: 'DELETE' })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data.error || 'Failed to delete')
+        removeReply(txid)
+      } catch (e) {
+        window.alert(e?.message || 'Failed to delete')
+      }
+    },
+    [confirmDialog, removeReply],
+  )
 
   // Blocking a replier drops all of their replies from the thread at once.
   const removeReplyAuthor = useCallback((accountId) => {
@@ -514,14 +538,28 @@ export default function FeedThreadClient({
         </div>
 
         <h2 className="replieshead">
-          {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
+          {forumSlug
+            ? `${replies.length} ${replies.length === 1 ? 'comment' : 'comments'}`
+            : `${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}`}
         </h2>
 
         {replies.length === 0 ? (
           // The open composer above IS the call to action — "No replies yet."
           // under it just restates the "0 replies" heading. Show it only when the
           // reader has closed the box.
-          showReply ? null : <p className="empty">No replies yet.</p>
+          showReply ? null : (
+            <p className="empty">{forumSlug ? 'No comments yet.' : 'No replies yet.'}</p>
+          )
+        ) : forumSlug ? (
+          // Forum thread: the WHOLE descendant tree, rendered as nested comments
+          // (Reddit-style) instead of one level of feed-post cards.
+          <ForumComments
+            replies={replies}
+            rootTxid={post.txid}
+            viewerAccountId={viewerAccountId}
+            onReplyAdded={addReply}
+            onDeleted={deleteComment}
+          />
         ) : (
           <ul className="panel posts">
             {replies.map((reply) => (

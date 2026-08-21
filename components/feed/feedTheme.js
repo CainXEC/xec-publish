@@ -1036,6 +1036,21 @@ html:not(.dark) .dashhandle-tip{background:#fdfcf8;border-color:#e3dfd2;color:#1
 .pow-feed .onchain:hover{color:var(--cyan);}
 .pow-feed .replieshead{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:24px 0 10px;}
 
+/* Forum thread comments — Reddit-style nested tree. Each comment is flat text
+   (byline · time, full body, compact actions); children indent under a thread
+   line so the whole discussion reads at once, not as feed-post cards. */
+.pow-feed .fcomments{display:flex;flex-direction:column;}
+.pow-feed .fcomment-main{padding:10px 0;border-top:1px solid var(--line);}
+.pow-feed .fcomments > .fcomment:first-child > .fcomment-main{border-top:none;}
+.pow-feed .fcomment-meta{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim);flex-wrap:wrap;}
+.pow-feed .fcomment-meta .time{color:var(--dim);}
+.pow-feed .fcomment-meta .onchain{font-size:12px;}
+.pow-feed .fcomment-body{margin:5px 0 0;white-space:pre-wrap;word-break:break-word;font-size:14.5px;
+  line-height:1.55;color:var(--text);}
+/* Nested children: a thread line on the left + indent, so depth reads at a glance. */
+.pow-feed .fcomment-children{margin-left:8px;padding-left:14px;border-left:2px solid var(--line);}
+.pow-feed .fcomment-reply{margin-top:8px;}
+
 @media (prefers-reduced-motion:reduce){.pow-feed *{transition:none!important;animation:none!important;}}
 @media (max-width:480px){.pow-feed .head{padding-top:20px;}}
 
