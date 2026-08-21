@@ -71,6 +71,15 @@ export default function QuotedEmbed({ post, interactive = true, onOpenThread = n
       tabIndex={interactive ? 0 : undefined}
       style={interactive ? { cursor: 'pointer' } : undefined}
     >
+      {/* A shared forum post/comment gets a label chip so it reads as forum
+          content, not a plain quote. */}
+      {post.forumSlug ? (
+        <div className="qforum">
+          <span aria-hidden>{post.isForumComment ? '💬' : '📌'}</span>{' '}
+          {post.isForumComment ? 'Comment in' : 'Post in'}{' '}
+          <span className="qforum-slug">/f/{post.forumSlug}</span>
+        </div>
+      ) : null}
       <div className="qmeta">
         <QuotedByline identity={post.displayIdentity ?? post.author_identity} color={post.displayColor} />
       </div>

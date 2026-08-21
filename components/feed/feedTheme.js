@@ -726,6 +726,9 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .qbyline{font-weight:700;color:var(--hc,var(--neon));font-size:12px;text-shadow:0 0 8px rgba(0,255,156,.3);}
 .pow-feed .qaddr{font-size:12px;color:var(--cyan);text-decoration:none;}
 .pow-feed a.qaddr:hover{text-decoration:underline;}
+/* Forum label on a shared forum post/comment embed — a small cyan kicker. */
+.pow-feed .qforum{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--cyan);margin:0 0 6px;font-weight:700;}
+.pow-feed .qforum-slug{color:var(--cyan);}
 .pow-feed .qtitle{margin:6px 0 0;font-size:15px;font-weight:700;line-height:1.3;color:var(--text);word-break:break-word;}
 .pow-feed .qbody{margin:6px 0 0;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.5;color:#b9e6d8;}
 .pow-feed .quoted-gone{color:var(--dim);font-style:italic;font-size:13px;}

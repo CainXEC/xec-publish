@@ -23,12 +23,19 @@ export async function GET(request) {
   const supabase = adminDb()
   const { data: row } = await supabase
     .from('feed_posts')
-    .select('txid, content, title, deleted_at, author_account_id, author_identity, payer_address')
+    .select('txid, action, content, title, forum_id, deleted_at, author_account_id, author_identity, payer_address')
     .eq('txid', txid)
     .maybeSingle()
 
   if (!row) {
     return NextResponse.json({ ok: false, error: 'Post not found.' }, { status: 404 })
+  }
+
+  // Forum context, so the embed can label a shared forum post/comment.
+  let forumSlug = null
+  if (row.forum_id) {
+    const { data: forum } = await supabase.from('forums').select('slug').eq('id', row.forum_id).maybeSingle()
+    forumSlug = forum?.slug ?? null
   }
 
   const handleMap = row.author_account_id
@@ -53,6 +60,8 @@ export async function GET(request) {
       author_identity: row.author_identity,
       displayIdentity,
       displayColor: entry?.color ?? null,
+      forumSlug,
+      isForumComment: forumSlug ? row.action === 2 : false,
     },
   })
 }
