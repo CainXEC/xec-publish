@@ -42,6 +42,7 @@ const VERB = {
   mint: 'minted',
   comment: 'commented on',
   comment_like: 'liked a comment on',
+  forum: 'created',
 }
 
 const fmtXec = (n) => `${Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 })} XEC`

@@ -100,6 +100,8 @@ export async function POST(request) {
       title,
       description,
       runner_account_id: acct.accountId,
+      // The on-chain creation tx — lets the Live rail link "@runner created /f/…".
+      genesis_txid: match.txid,
     })
     .select(FORUM_COLUMNS)
     .single()

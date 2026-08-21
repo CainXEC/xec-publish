@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/db";
 import { priceForHandle } from "@/lib/handlePricing";
 import { displayHandlesByAccountId } from "@/lib/authorDisplayHandles";
+import { FORUM_CREATE_FEE_XEC } from "@/lib/forums";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,7 +35,7 @@ export type ActivityItem = {
   kind:
     | "post" | "reply" | "quote"
     | "like" | "tip" | "repost"
-    | "unlock" | "publish" | "mint" | "comment" | "comment_like";
+    | "unlock" | "publish" | "mint" | "comment" | "comment_like" | "forum";
   /** Frozen display byline: "@handle" or a raw eCash address. */
   actor: string;
   /** The actor's chosen handle color (--hc), when they show a @handle. Null for
@@ -288,10 +289,24 @@ async function buildActivity(req: NextRequest) {
   const inboundCommentLikesQuery = Promise.resolve({ data: [] as Array<never> });
   const outboundCommentLikesQuery = Promise.resolve({ data: [] as Array<never> });
 
+  // Forum creations — a paid FORUM tx, recorded with its genesis_txid. Firehose
+  // shows all; a scoped (profile) view shows the ones that account runs.
+  const forumsBase = supabase
+    .from("forums")
+    .select("genesis_txid, slug, runner_account_id, created_at")
+    .not("genesis_txid", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(PER_SOURCE);
+  const forumsQuery = scoped
+    ? scopedAccountId
+      ? forumsBase.eq("runner_account_id", scopedAccountId)
+      : Promise.resolve({ data: [] as Array<never> })
+    : forumsBase;
+
   const [
     postsQ, eventsQ, unlocksQ, publishesQ, mintsQ, commentsQ, ownReactionsQ,
     outUnlocksQ, inCommentsQ, outCommentsQ, scopedMintsQ,
-    commentLikesQ, inCommentLikesQ, outCommentLikesQ,
+    commentLikesQ, inCommentLikesQ, outCommentLikesQ, forumsQ,
   ] = await Promise.all([
     postsQuery,
     eventsQuery,
@@ -341,6 +356,7 @@ async function buildActivity(req: NextRequest) {
     commentLikesQuery,
     inboundCommentLikesQuery,
     outboundCommentLikesQuery,
+    forumsQuery,
   ]);
 
   const items: ActivityItem[] = [];
@@ -449,12 +465,19 @@ async function buildActivity(req: NextRequest) {
   //      author_identity/actor_identity is only the last-resort fallback, so a
   //      handle an account has since sold or unbound stops appearing on its old
   //      activity here — otherwise the rail links to the wrong profile. ----
+  type ForumRow = {
+    genesis_txid: string | null; slug: string;
+    runner_account_id: string | null; created_at: string;
+  };
+  const forums = (forumsQ.data ?? []) as ForumRow[];
+
   const bylineAccountIds = [
     ...posts.map((p) => p.author_account_id),
     ...events.map((e) => e.actor_account_id),
     ...[...targetInfo.values()].map((t) => t.authorAccountId),
     ...comments.map((c) => c.author_account_id),
     ...commentLikes.map((e) => e.actor_account_id),
+    ...forums.map((f) => f.runner_account_id),
   ].filter(Boolean) as string[];
   const uniqueBylineIds = [...new Set(bylineAccountIds)];
   // Live handle + the account's CURRENT primary address. The no-handle byline is
@@ -510,6 +533,25 @@ async function buildActivity(req: NextRequest) {
       at: p.created_at,
       href: `/feed/${p.txid}`,
       txid: p.txid,
+    });
+  }
+
+  // ---- forum creations ("@runner created /f/<slug>") ----
+  for (const f of forums) {
+    if (!f.genesis_txid) continue;
+    const identity = liveIdentity(f.runner_account_id, null, null);
+    items.push({
+      id: `forum:${f.genesis_txid}`,
+      kind: "forum",
+      actor: displayIdentity(identity, "someone"),
+      color: liveColor(f.runner_account_id),
+      actorHref: profileHref(identity),
+      actorAccountId: f.runner_account_id,
+      target: `/f/${f.slug}`,
+      amountXec: FORUM_CREATE_FEE_XEC,
+      at: f.created_at,
+      href: `/f/${f.slug}`,
+      txid: f.genesis_txid,
     });
   }
 
