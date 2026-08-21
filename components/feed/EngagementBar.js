@@ -22,6 +22,9 @@ export default function EngagementBar({
   quoteCount = 0,
   repostedByViewer = false,
   canQuote = true,
+  // Repost is a FEED mechanic; forum posts hide it (canRepost=false) so their
+  // action row reads as a discussion (comments + reactions), not a feed row.
+  canRepost = true,
   // Your own post: you can't react to yourself, so the reaction icon opens a
   // "who reacted" list (author-only) instead of the emoji picker.
   isOwnPost = false,
@@ -163,17 +166,19 @@ export default function EngagementBar({
           ) : null}
         </span>
 
-        <button
-          type="button"
-          className={`repostbtn${reposted ? ' on' : ''}`}
-          onClick={() => void startReaction('repost')}
-          disabled={Boolean(pending)}
-          aria-pressed={reposted}
-          aria-label="Repost"
-          title={reposted ? 'You reposted this' : 'Repost · 100 XEC to the author'}
-        >
-          🔁 {reposts > 0 ? reposts : ''}
-        </button>
+        {canRepost ? (
+          <button
+            type="button"
+            className={`repostbtn${reposted ? ' on' : ''}`}
+            onClick={() => void startReaction('repost')}
+            disabled={Boolean(pending)}
+            aria-pressed={reposted}
+            aria-label="Repost"
+            title={reposted ? 'You reposted this' : 'Repost · 100 XEC to the author'}
+          >
+            🔁 {reposts > 0 ? reposts : ''}
+          </button>
+        ) : null}
 
         {canQuote ? (
           <button

@@ -387,8 +387,15 @@ export default function FeedThreadClient({
           {/* Focused post: emphasized, X-style — pulled out of the rail indent so
               it spans full width (content aligned to the dot), with the dot, byline
               and timestamp all on one line above the body. */}
-          <article className={`tnode focused${hasAncestors ? ' lineup' : ''}`}>
+          <article
+            className={`tnode focused${hasAncestors ? ' lineup' : ''}${forumSlug ? ' forumpost' : ''}`}
+          >
             <div className="tbody">
+              {forumSlug ? (
+                <Link href={`/f/${forumSlug}`} className="forumpost-tag">
+                  {post.action === FEED_ACTION.REPLY ? 'Comment in' : 'Posted in'} /f/{forumSlug}
+                </Link>
+              ) : null}
               <div className="tmeta">
                 <span aria-hidden className="tdot" />
                 <ThreadByline
@@ -478,6 +485,8 @@ export default function FeedThreadClient({
                     repostedByViewer={Boolean(post.repostedByViewer)}
                     isOwnPost={isOwnRoot}
                     onQuote={() => setShowQuote((s) => !s)}
+                    canQuote={!forumSlug}
+                    canRepost={!forumSlug}
                   />
                 ) : null}
                 {!rootDeleted &&

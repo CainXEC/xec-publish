@@ -1024,6 +1024,13 @@ html:not(.dark) .dashhandle-tip{background:#fdfcf8;border-color:#e3dfd2;color:#1
    flush-left with the dot), and its dot sits inline at the head of the byline row
    rather than out in the rail gutter. */
 .pow-feed .tnode.focused{padding-left:10px;}
+/* A focused FORUM post reads as a post inside a community: a distinct card
+   surface with a "Posted in /f/<slug>" tag, not a feed row. */
+.pow-feed .tnode.focused.forumpost{padding:16px 18px;background:var(--panel);border:1px solid var(--line);
+  border-radius:14px;}
+.pow-feed .forumpost-tag{display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--cyan);font-weight:700;margin:0 0 8px;}
+.pow-feed .forumpost-tag:hover{text-decoration:underline;text-underline-offset:2px;}
 .pow-feed .tnode.focused .tmeta{align-items:center;}
 .pow-feed .tnode.focused .tdot{position:static;flex:none;width:11px;height:11px;
   background:var(--cyan);box-shadow:0 0 10px rgba(61,240,255,.6);}
