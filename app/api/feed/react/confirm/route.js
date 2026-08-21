@@ -11,9 +11,12 @@ import { formatIdentity } from '@/lib/formatIdentity'
 import { recordFeedNotification } from '@/lib/feedNotifications'
 import { mintPaySession } from '@/lib/paySession'
 import { isReaction, payeeFor } from '@/lib/reactions'
-import { feeRecipientForTarget } from '@/lib/forums'
+import { feeRecipientForTarget, forumFeeContext } from '@/lib/forums'
 
 const REACT_COST_XEC = FEED_MIN_XEC
+// The runner's forum-engagement cut (the 6% leg) — used only for the runner's
+// earnings notification amount.
+const PLATFORM_FEE_FRACTION = 0.06
 
 const FEED_EVENT_COLUMNS =
   'id, txid, action, target_txid, actor_account_id, actor_identity, payer_address, payout_address, amount_sats, emoji, created_at'
@@ -220,6 +223,29 @@ export async function POST(request) {
     amountSats: match.sats,
     emoji,
   })
+
+  // A POSITIVE reaction on a forum post earns the forum RUNNER the 6% fee — tell
+  // them, so their earnings are visible (best-effort). Skipped for a 👎 (pays the
+  // platform), for the runner's own reaction (can't earn from self), and when the
+  // runner IS the post author (they already got the 'like' notification above).
+  if (isLike && !platformPaid) {
+    const forumCtx = await forumFeeContext(supabase, targetTxid)
+    if (
+      forumCtx &&
+      forumCtx.runnerAccountId !== resolved.accountId &&
+      forumCtx.runnerAccountId !== target.author_account_id
+    ) {
+      await recordFeedNotification(supabase, {
+        recipientAccountId: forumCtx.runnerAccountId,
+        actorAccountId: resolved.accountId,
+        actorIdentity,
+        type: 'forum_fee',
+        postTxid: targetTxid,
+        amountSats: Math.round(match.sats * PLATFORM_FEE_FRACTION),
+        emoji,
+      })
+    }
+  }
 
   const response = NextResponse.json({ ok: true, status: 'reacted', event: inserted })
 

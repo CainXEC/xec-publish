@@ -17,7 +17,7 @@ import { displayHandlesByAccountId } from '@/lib/authorDisplayHandles'
 import { isBlockedPair } from '@/lib/feedBlocks'
 import { recordFeedNotification, recordFeedMentionNotifications } from '@/lib/feedNotifications'
 import { mintPaySession } from '@/lib/paySession'
-import { feeRecipientForTarget, getForumById } from '@/lib/forums'
+import { feeRecipientForTarget, getForumById, forumFeeContext } from '@/lib/forums'
 import { splitForumContent } from '@/lib/forumPost'
 
 const FEED_POST_COLUMNS =
@@ -322,6 +322,29 @@ export async function POST(request) {
         // notifications page show the reply's actual text.
         actionTxid: inserted.txid,
       })
+      // A reply to a post in a forum earns the RUNNER the 6% fee — tell them, so
+      // their earnings are visible. Skipped for a self-reply (pays the platform),
+      // the runner's own reply, and when the runner IS the parent author (already
+      // notified above). `feeRecipient` !== platformAddress means the fee was
+      // redirected to the runner, so this only fires for a real forum reply.
+      if (!selfReply && feeRecipient !== platformAddress) {
+        const forumCtx = await forumFeeContext(supabase, targetTxid)
+        if (
+          forumCtx &&
+          forumCtx.runnerAccountId !== resolved.accountId &&
+          forumCtx.runnerAccountId !== parentAuthorAccountId
+        ) {
+          await recordFeedNotification(supabase, {
+            recipientAccountId: forumCtx.runnerAccountId,
+            actorAccountId: resolved.accountId,
+            actorIdentity: authorIdentity,
+            type: 'forum_fee',
+            postTxid: targetTxid,
+            amountSats: Math.round(match.sats * 0.06),
+            actionTxid: inserted.txid,
+          })
+        }
+      }
     } else if (action === FEED_ACTION.QUOTE && quotedAuthorAccountId) {
       await recordFeedNotification(supabase, {
         recipientAccountId: quotedAuthorAccountId,

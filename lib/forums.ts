@@ -110,3 +110,24 @@ export async function feeRecipientForTarget(
   // the platform if (somehow) the runner has no address, so a fee is never lost.
   return primaryAddressForAccount(forum.runner_account_id, platformAddress);
 }
+
+/**
+ * If `targetTxid` is a post in a forum, who runs it — so the confirm routes can
+ * NOTIFY the runner that they earned the engagement fee. Returns the runner's
+ * account id + the forum slug, or null when the target isn't in a forum.
+ */
+export async function forumFeeContext(
+  supabase: SupabaseClient,
+  targetTxid: string
+): Promise<{ runnerAccountId: string; forumSlug: string } | null> {
+  const { data: post } = await supabase
+    .from("feed_posts")
+    .select("forum_id")
+    .eq("txid", targetTxid)
+    .maybeSingle();
+  const forumId = (post as { forum_id: string | null } | null)?.forum_id ?? null;
+  if (!forumId) return null;
+  const forum = await getForumById(supabase, forumId);
+  if (!forum) return null;
+  return { runnerAccountId: forum.runner_account_id, forumSlug: forum.slug };
+}
