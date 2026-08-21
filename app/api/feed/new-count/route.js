@@ -47,6 +47,12 @@ export async function GET(request) {
     .select('author_account_id')
     .in('action', TOP_LEVEL_ACTIONS)
     .is('deleted_at', null)
+    // Forum posts are contained to their forum and NEVER enter the global Feed
+    // (getFeedPage filters the same way), so they must not light this banner —
+    // counting them made the pill re-fire the SAME forum post every poll, since
+    // a refresh never brings it in and the caller's boundary never advances past
+    // it.
+    .is('forum_id', null)
     .or('card_kind.is.null,card_kind.eq.poll')
     .or(`created_at.gt.${createdAt},and(created_at.eq.${createdAt},id.gt.${id})`)
     .limit(CANDIDATE_LIMIT)
