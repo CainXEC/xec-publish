@@ -604,9 +604,14 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
               parent && !parent.deleted && parent.color && parentWho.startsWith('@')
                 ? parent.color
                 : null
-            const canDelete =
+            // "This comment is MINE" — a strict authorship match (byline handle
+            // or payer address), NOT the broader delete power: the article author
+            // can DELETE any comment (moderation) but is still a stranger to it
+            // for reactions, so they must be able to react to it.
+            const isOwnComment =
               !comment.deleted &&
-              (isAuthorSession || (byline && ownedIds.includes(byline)) || (copyAddr && ownedIds.includes(copyAddr)))
+              ((byline && ownedIds.includes(byline)) || (copyAddr && ownedIds.includes(copyAddr)))
+            const canDelete = !comment.deleted && (isAuthorSession || isOwnComment)
             // Any comment can be replied to (threaded by id; the reply pays the
             // parent's author 94/6, paid or legacy). Tombstones can't — nor can a
             // still-optimistic comment (no real DB id yet; Reply returns the
@@ -682,7 +687,7 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
                       <CommentReactions
                         targetTxid={comment.txid}
                         reactionCounts={comment.reactionCounts ?? {}}
-                        isOwn={canDelete}
+                        isOwn={isOwnComment}
                       />
                     ) : null}
                     {canReply && replyingTo !== comment.id ? (
