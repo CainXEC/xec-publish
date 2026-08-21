@@ -285,9 +285,14 @@ html:not(.dark) .pow-article .hr-unlock:disabled{background:transparent;color:va
   cursor:pointer;padding:0;transition:color .12s;}
 .pow-article .creactbtn:hover{color:var(--cyan);}
 .pow-article .creactbtn:disabled{opacity:.6;cursor:default;}
-.pow-article .creactpicker{position:absolute;bottom:calc(100% + 8px);left:0;z-index:30;display:flex;gap:2px;
+/* Hidden by default; revealed on hover/focus of .creactwrap (like the feed). A
+   transparent ::after bridges the gap so the pointer can travel button→picker. */
+.pow-article .creactpicker{display:none;position:absolute;bottom:calc(100% + 8px);left:0;z-index:30;gap:2px;
   background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 8px;
   box-shadow:0 8px 24px rgba(0,0,0,.28);}
+.pow-article .creactwrap:hover .creactpicker,
+.pow-article .creactwrap:focus-within .creactpicker{display:flex;}
+.pow-article .creactpicker::after{content:"";position:absolute;top:100%;left:0;right:0;height:8px;}
 .pow-article .creactopt{background:none;border:none;font-size:19px;line-height:1;cursor:pointer;padding:3px;
   border-radius:8px;transition:transform .1s,background .12s;}
 .pow-article .creactopt:hover{transform:scale(1.25);background:var(--panel2);}

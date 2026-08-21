@@ -48,11 +48,8 @@ export default function CommentReactions({ targetTxid, reactionCounts = {}, isOw
     onReactFailed: (emoji) => bump(emoji, -1), // payment cancelled/failed → undo
   })
 
-  const [open, setOpen] = useState(false)
-
   const react = (emoji) => {
     if (pending || isOwn) return
-    setOpen(false)
     bump(emoji, +1) // optimistic
     void startReaction('like', undefined, emoji)
   }
@@ -68,22 +65,21 @@ export default function CommentReactions({ targetTxid, reactionCounts = {}, isOw
   return (
     <span className="creact">
       {!isOwn ? (
+        // The picker reveals on HOVER / focus of this wrap (CSS), like the feed —
+        // a transparent bridge spans the gap so the pointer can travel from the
+        // button up into the picker without the hover dropping.
         <span className="creactwrap">
           <button
             type="button"
             className="creactbtn"
             disabled={Boolean(pending) && !inPagePay}
             aria-haspopup="menu"
-            aria-expanded={open}
             aria-label="React · 100 XEC"
             title="React · 100 XEC"
-            onClick={() => {
-              if (!pending) setOpen((o) => !o)
-            }}
           >
             ☺+
           </button>
-          {open && !pending ? (
+          {!pending ? (
             <div className="creactpicker" role="menu">
               {REACTIONS.map((emoji) => (
                 <button
