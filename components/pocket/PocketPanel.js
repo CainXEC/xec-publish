@@ -48,7 +48,7 @@ import {
 import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 
 // Fixed quick-adds; the "top up to the cap" button is rendered separately below.
-const FUND_PRESETS = [1000, 5000, 10000]
+const FUND_PRESETS = [1000, 10000, 25000]
 
 export default function PocketPanel() {
   const pocket = usePocket()
@@ -597,7 +597,7 @@ function PocketDashboard({ pocket }) {
 
       <div className="panel">
         <h2 className="h2">
-          Top up from Cashtab <span className="h2note">(25K XEC max)</span>
+          Top up from Cashtab <span className="h2note">({POCKET_SOFT_CAP_XEC / 1000}K XEC max)</span>
         </h2>
         <TopUp />
       </div>
