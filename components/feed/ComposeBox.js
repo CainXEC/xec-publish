@@ -11,7 +11,7 @@ import { pollUntil } from '@/lib/ecash/pollUntil'
 // Pocket-aware gateway: identical contract to the cashtabPay trio. Pocket
 // eligible → local sign + instant broadcast (r.txid feeds the confirm poll);
 // otherwise the exact extension/web-tab behavior this file always had.
-import { beginPayment, completePayment, abortPayment } from '@/lib/pocket/payGateway'
+import { beginPayment, completePayment, abortPayment, prewarmPocketSpend } from '@/lib/pocket/payGateway'
 import { getPocketSnapshot } from '@/lib/pocket/store'
 import { FEED_ACTION } from '@/lib/feedProtocol'
 import { canBuildFeedPaymentLocally, buildFeedPaymentLocally } from '@/lib/feed/buildFeedPayment'
@@ -79,6 +79,15 @@ export default function ComposeBox({
   const [feedPlaceholder, setFeedPlaceholder] = useState(FEED_PLACEHOLDERS[0])
   useEffect(() => {
     setFeedPlaceholder(FEED_PLACEHOLDERS[Math.floor(Math.random() * FEED_PLACEHOLDERS.length)])
+  }, [])
+  // Warm the pocket signer the moment this composer opens (chunk load + UTXO
+  // sync), so the eventual Post click is broadcast-only. A post/quote builds its
+  // payment client-side and skips the /prepare hop the click warm-up used to
+  // overlap — so without this the sync would land ON the click. A freshly-opened
+  // quote/reply composer is exactly the cold case this covers; no-op when the
+  // viewer has no spendable pocket.
+  useEffect(() => {
+    prewarmPocketSpend()
   }, [])
   const [phase, setPhase] = useState('compose') // 'compose' | 'paying'
   const [intent, setIntent] = useState(null)
