@@ -18,6 +18,7 @@
 //  reason to CLEAR an existing valid choice.
 // =============================================================================
 
+import { unstable_cache } from "next/cache";
 import { adminDb } from "@/lib/db";
 import { ChronikClient } from "chronik-client";
 import { CHRONIK_URLS } from "@/lib/ecash/chronikEndpoints";
@@ -79,6 +80,44 @@ export async function heldHandlesForAddress(address: string): Promise<HeldHandle
     imageUrl: (h.image_url as string) ?? null,
     createdAt: (h.created_at as string) ?? null,
   }));
+}
+
+// How long the profile carousel may serve a cached held-handles enumeration
+// before re-checking on-chain. Matches the 5-minute display-holder cache in
+// resolveProfile — a cosmetic strip; the AUTHORITATIVE byline binding never
+// reads this.
+const HELD_HANDLES_DISPLAY_CACHE_S = 300;
+
+/** heldHandlesForAddress for the PROFILE CAROUSEL (display only), cached briefly
+ *  in the Next Data Cache so the handle strip pops in fast on repeat visits
+ *  instead of paying the ~2.5s Chronik enumeration every time — the single
+ *  longest streamed boundary left on a profile. Keyed by address.
+ *
+ *  An EMPTY result is treated as a miss/outage and NOT cached (we throw, and
+ *  errors aren't cached), so a Chronik hiccup can't blank a real holder's strip
+ *  for the window — the next visit retries live. A genuinely handle-less address
+ *  simply isn't sped up (same ~2.5s it pays today), which is fine: profiles are
+ *  reached via /@handle, so the common case holds ≥1 handle and gets cached.
+ *
+ *  The authoritative paths — login auto-bind, the display-handle picker, and
+ *  addressHoldsToken's binding check — keep calling the UNcached functions, so
+ *  a freshly minted/received handle is reflected there immediately. */
+export async function cachedHeldHandlesForDisplay(address: string): Promise<HeldHandle[]> {
+  const addr = (address ?? "").trim();
+  if (!addr) return [];
+  try {
+    return await unstable_cache(
+      async () => {
+        const held = await heldHandlesForAddress(addr);
+        if (held.length === 0) throw new Error("held-handles-unavailable");
+        return held;
+      },
+      ["held-handles-display", addr],
+      { revalidate: HELD_HANDLES_DISPLAY_CACHE_S },
+    )();
+  } catch {
+    return [];
+  }
 }
 
 /** Does this address currently hold this specific token? Authoritative check

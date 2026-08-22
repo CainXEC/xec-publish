@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import AuthorProfilePageClient from '@/components/AuthorProfilePageClient'
 import HandleCarousel from '@/components/HandleCarousel'
 import { resolveProfileByIdentifier } from '@/lib/resolveProfile'
-import { heldHandlesForAddress } from '@/lib/heldHandles'
+import { cachedHeldHandlesForDisplay } from '@/lib/heldHandles'
 import { getCachedAccountFeedPage } from '@/lib/getFeed'
 import { getCachedArticleData } from '@/lib/profileCache'
 import { getAuthedAccount } from '@/lib/authHelpers'
@@ -51,7 +51,7 @@ export async function generateMetadata({ params }) {
  *  pops in when Chronik answers — the rest of the profile streams immediately.
  *  Same data + same unshift rule the page used to compute inline. */
 async function ProfileHandleCards({ holderAddress, urlCard }) {
-  const heldHandles = holderAddress ? await heldHandlesForAddress(holderAddress) : []
+  const heldHandles = holderAddress ? await cachedHeldHandlesForDisplay(holderAddress) : []
   const handleCards = (heldHandles ?? []).map((h) => ({
     tokenId: h.tokenId,
     handle: h.handle,
