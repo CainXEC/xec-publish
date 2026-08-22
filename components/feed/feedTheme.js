@@ -619,6 +619,8 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
   transition:color .15s;}
 .pow-feed .delbtn:hover{color:var(--no);}
 .pow-feed .delbtn:disabled{opacity:.5;cursor:default;}
+.pow-feed .sharefeedbtn{background:none;border:none;color:var(--dim);font:inherit;font-size:13px;cursor:pointer;padding:2px 0;}
+.pow-feed .sharefeedbtn:hover{color:var(--cyan);}
 .pow-feed .pinbtn{background:none;border:none;color:var(--dim);font:inherit;font-size:13px;cursor:pointer;padding:2px 0;
   transition:color .15s;}
 .pow-feed .pinbtn:hover{color:var(--cyan);}

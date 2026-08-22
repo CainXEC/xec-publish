@@ -522,6 +522,25 @@ export default function FeedThreadClient({
                     }}
                   />
                 ) : null}
+                {/* Share a TOP-LEVEL forum post to the feed, mirroring an
+                    article's "Share to feed": pre-fill the composer with the
+                    post's title + its /feed/<txid> link (which renders as a
+                    forum-post embed). Comments/replies don't get it — only the
+                    post itself is shareable, like an article. */}
+                {!rootDeleted && forumSlug && post.action !== FEED_ACTION.REPLY ? (
+                  <button
+                    type="button"
+                    className="sharefeedbtn"
+                    onClick={() => {
+                      const url = `${window.location.origin}/feed/${post.txid}`
+                      const text = `${post.title ?? ''}\n\n${url}`.trim()
+                      window.location.href = `/?share=${encodeURIComponent(text)}`
+                    }}
+                    title="Share this forum post to the feed"
+                  >
+                    Share to feed
+                  </button>
+                ) : null}
                 {isOwnRoot ? (
                   <button
                     type="button"
