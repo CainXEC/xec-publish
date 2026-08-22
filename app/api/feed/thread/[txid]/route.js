@@ -9,7 +9,7 @@
 // =============================================================================
 
 import { NextResponse } from 'next/server'
-import { getFeedThread } from '@/lib/getFeed'
+import { getFeedThread, forumRootTxid } from '@/lib/getFeed'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { adminDb } from '@/lib/db'
 import { getForumById } from '@/lib/forums'
@@ -36,12 +36,16 @@ export async function GET(_req, { params }) {
     .maybeSingle()
   const forumId = bare?.forum_id ?? null
   let forumSlug = null
+  // A forum link always opens the ROOT thread (Reddit-style), never a deep
+  // comment with an ancestor chain — resolve up to the top-level post first.
+  let focusTxid = txid
   if (forumId) {
     const forum = await getForumById(adminDb(), forumId)
     forumSlug = forum?.slug ?? null
+    focusTxid = await forumRootTxid(txid)
   }
 
-  const thread = await getFeedThread(txid, {
+  const thread = await getFeedThread(focusTxid, {
     viewerAddress: acct?.address,
     viewerAccountId: acct?.accountId ?? null,
     deep: Boolean(forumId),
