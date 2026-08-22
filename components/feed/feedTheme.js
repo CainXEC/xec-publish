@@ -260,12 +260,21 @@ html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation-name:pocke
    (its own border-bottom); the ONLY boxed "harness" left is .notifpage-body,
    the actual quoted reply/comment text, same as a feed quote embed. */
 .pow-feed .notifpage-list{list-style:none;margin:16px 0 0;padding:0;}
-.pow-feed .notifpage-row{display:block;padding:14px 16px;margin:0 -16px;border-bottom:1px solid var(--line);
-  text-decoration:none;transition:background .12s;border-radius:10px;}
+.pow-feed .notifpage-row{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;margin:0 -16px;
+  border-bottom:1px solid var(--line);text-decoration:none;transition:background .12s;border-radius:10px;}
 .pow-feed .notifpage-list li:last-child .notifpage-row{border-bottom:none;}
 .pow-feed .notifpage-row:hover{background:rgba(0,255,156,.06);}
 .pow-feed .notifpage-row.unread{background:rgba(0,255,156,.08);}
 .pow-feed .notifpage-row.unread:hover{background:rgba(0,255,156,.12);}
+/* Type glyph gutter: a mono mark that lets the list scan at a glance. Dim by
+   default (a quiet "nod" for reactions/reposts); the conversational rows tint it. */
+.pow-feed .notifpage-glyph{flex:none;width:18px;text-align:center;font-size:15px;line-height:1.6;
+  color:var(--dim);user-select:none;}
+.pow-feed .notifpage-main{min-width:0;flex:1;}
+/* Conversational (reply/quote/mention/comment) — someone talking TO you — steps
+   forward: a cyan accent rail + a cyan glyph. Reactions/reposts stay a dim nod. */
+.pow-feed .notifpage-row.convo{box-shadow:inset 2px 0 0 var(--cyan);}
+.pow-feed .notifpage-row.convo .notifpage-glyph{color:var(--cyan);}
 .pow-feed .notifpage-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
 .pow-feed .notifpage-actors{display:flex;flex-wrap:wrap;gap:4px;font-size:13.5px;line-height:1.5;color:var(--text);}
 .pow-feed .notifpage-actors a{color:inherit;text-decoration:none;}

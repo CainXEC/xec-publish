@@ -9,6 +9,8 @@ import {
   notifText,
   targetHref,
   groupNotifications,
+  notifGlyph,
+  isConversationalNotif,
 } from '@/lib/notifFormat'
 import { broadcastNotificationsRead } from '@/lib/notifSync'
 
@@ -213,22 +215,29 @@ export default function NotificationsPageClient({ initialItems, initialCursor, a
         <ul className="notifpage-list">
           {groups.map((g) => {
             const head = g.items[0]
-            const rowCls = `notifpage-row${g.read ? '' : ' unread'}`
+            // Conversational notifications (reply/quote/mention/comment) — someone
+            // talking TO you — get a cyan accent + brighter text; reactions/reposts
+            // stay a dim nod. A leading glyph makes every row scan at a glance.
+            const convo = isConversationalNotif(g.type)
+            const rowCls = `notifpage-row${g.read ? '' : ' unread'}${convo ? ' convo' : ''}`
             const content = (
               <>
-                <div className="notifpage-top">
-                  <span className="notifpage-actors">
-                    <EarnedChip items={g.items} type={g.type} />
-                    <ActorList items={g.items} verbSuffix={notifText(head)} />
-                  </span>
-                  <span className="notiftime" suppressHydrationWarning>{timeAgo(head.created_at)}</span>
+                <span className="notifpage-glyph" aria-hidden>{notifGlyph(g.type)}</span>
+                <div className="notifpage-main">
+                  <div className="notifpage-top">
+                    <span className="notifpage-actors">
+                      <EarnedChip items={g.items} type={g.type} />
+                      <ActorList items={g.items} verbSuffix={notifText(head)} />
+                    </span>
+                    <span className="notiftime" suppressHydrationWarning>{timeAgo(head.created_at)}</span>
+                  </div>
+                  {g.items.length === 1 ? <NotifBody n={head} /> : null}
+                  {/* A like/repost carries no action text of its own, so show the
+                      post that was liked/reposted (targetContent) — for a single
+                      row or a grouped one. Other types set actionContent instead
+                      (rendered by NotifBody above) and never targetContent. */}
+                  {g.targetContent ? <ClampedBody text={g.targetContent} /> : null}
                 </div>
-                {g.items.length === 1 ? <NotifBody n={head} /> : null}
-                {/* A like/repost carries no action text of its own, so show the
-                    post that was liked/reposted (targetContent) — for a single
-                    row or a grouped one. Other types set actionContent instead
-                    (rendered by NotifBody above) and never targetContent. */}
-                {g.targetContent ? <ClampedBody text={g.targetContent} /> : null}
               </>
             )
             // A grouped 'follow' row has no single target — each name links to
@@ -237,6 +246,8 @@ export default function NotificationsPageClient({ initialItems, initialCursor, a
               return (
                 <li key={g.id}>
                   <div className={rowCls}>
+                    <span className="notifpage-glyph" aria-hidden>{notifGlyph(g.type)}</span>
+                    <div className="notifpage-main">
                     <div className="notifpage-top">
                       <span className="notifpage-actors">
                         {(() => {
@@ -263,6 +274,7 @@ export default function NotificationsPageClient({ initialItems, initialCursor, a
                         followed you
                       </span>
                       <span className="notiftime" suppressHydrationWarning>{timeAgo(head.created_at)}</span>
+                    </div>
                     </div>
                   </div>
                 </li>
