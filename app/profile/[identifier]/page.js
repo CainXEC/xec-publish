@@ -5,7 +5,7 @@ import HandleCarousel from '@/components/HandleCarousel'
 import { resolveProfileByIdentifier } from '@/lib/resolveProfile'
 import { heldHandlesForAddress } from '@/lib/heldHandles'
 import { getCachedAccountFeedPage } from '@/lib/getFeed'
-import { getCachedProfileStats } from '@/lib/profileCache'
+import { getCachedArticleData } from '@/lib/profileCache'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { adminDb } from '@/lib/db'
 import { viewerBlocksAccount } from '@/lib/feedBlocks'
@@ -92,13 +92,20 @@ export default async function ProfilePage({ params }) {
   // sequential account_addresses round trip here.
   const profileAccountId = resolved.accountId
 
-  // Viewer-NEUTRAL data (articles + stats, and the account's own-posts feed) comes
-  // from the shared per-account cache; the per-viewer bits (your follow/block
-  // state, and the feed's own reaction overlay applied inside the cached call)
-  // layer on top. Replies are NOT fetched here — the Replies tab loads on demand
-  // via /api/feed/account-replies the first time the user switches to it.
-  const [stats, feed, initialFollowing, initialBlocked] = await Promise.all([
-    getCachedProfileStats({ accountId: profileAccountId, author: resolved.author }),
+  // The account's own-posts feed + the cheap per-viewer bits (follow/block) and
+  // the follower COUNT stay on the critical path — all fast. The one expensive
+  // thing, the article data (a big posts query + 3 aggregate RPCs over the whole
+  // unlock/comment/earnings history, scaling with article count), is NOT awaited
+  // here: its promise is handed to the client, which streams the article sections
+  // in behind Suspense so a prolific author's shell + feed still render at once.
+  // Replies are NOT fetched here either — the Replies tab loads on demand via
+  // /api/feed/account-replies the first time the user switches to it.
+  const articlesPromise = getCachedArticleData({
+    accountId: profileAccountId,
+    author: resolved.author,
+  })
+  const [followerCount, feed, initialFollowing, initialBlocked] = await Promise.all([
+    followerCountForAccount(profileAccountId),
     profileAccountId
       ? getCachedAccountFeedPage({ accountId: profileAccountId, viewerAddress, viewerAccountId })
       : Promise.resolve({ posts: [], nextCursor: null }),
@@ -107,8 +114,6 @@ export default async function ProfilePage({ params }) {
       ? viewerBlocksAccount(adminDb(), viewerAccountId, profileAccountId)
       : Promise.resolve(false),
   ])
-  const articleData = stats.articleData
-  const followerCount = stats.followerCount
 
   // Byline = the account's LIVE identity: "@handle" if held, else the raw address.
   const isAddressIdentity = !resolved.identity.startsWith('@')
@@ -152,8 +157,7 @@ export default async function ProfilePage({ params }) {
       initialPosts={feed.posts}
       initialPostsCursor={feed.nextCursor ?? null}
       identifier={identifier}
-      initialArticles={articleData.posts ?? []}
-      postsErrorMessage={articleData.error || null}
+      articlesPromise={articlesPromise}
       viewerIsAuthor={viewerIsAuthor}
       authorId={resolved.author?.id ?? null}
     />

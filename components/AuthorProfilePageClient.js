@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Suspense, use, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ActivityRail from '@/components/feed/ActivityRail'
@@ -265,6 +265,59 @@ function ArticleRow({ post, onOpen }) {
   )
 }
 
+// ---- Streamed article sections ------------------------------------------------
+// The article data (a big posts query + 3 aggregate RPCs over the author's whole
+// unlock/comment/earnings history) is the profile's one expensive read and scales
+// with article count. The page hands it to us as a PROMISE instead of awaiting it,
+// so these two consumers `use()` it inside Suspense boundaries: the profile shell
+// and own-posts feed paint immediately, and the left-rail front page + the
+// Articles tab fill in when the query lands. use() dedupes the same promise, so
+// both sections share one resolution.
+
+/** The author's own "front page" (left rail), streamed. */
+function FrontPageArticles({ articlesPromise, identity, onOpenStory }) {
+  const data = articlesPromise ? use(articlesPromise) : null
+  return (
+    <AuthorFrontPage
+      identity={identity}
+      stories={data?.posts ?? []}
+      onOpenStory={onOpenStory}
+    />
+  )
+}
+
+/** The Articles tab body (current articles + a collapsed legacy list), streamed. */
+function ArticlesTabPanel({ articlesPromise, onOpen }) {
+  const data = articlesPromise ? use(articlesPromise) : null
+  const posts = data?.posts ?? []
+  const articleList = posts.filter((p) => !p.legacy)
+  const legacyList = posts.filter((p) => p.legacy)
+  if (articleList.length === 0 && legacyList.length === 0) {
+    return <p className="empty">No articles published yet.</p>
+  }
+  return (
+    <>
+      {articleList.length > 0 ? (
+        <ul className="panel artlist">
+          {articleList.map((post) => (
+            <ArticleRow key={post.id} post={post} onOpen={onOpen} />
+          ))}
+        </ul>
+      ) : null}
+      {legacyList.length > 0 ? (
+        <details className="artlegacy">
+          <summary>Legacy posts ({legacyList.length})</summary>
+          <ul className="panel artlist">
+            {legacyList.map((post) => (
+              <ArticleRow key={post.id} post={post} onOpen={onOpen} />
+            ))}
+          </ul>
+        </details>
+      ) : null}
+    </>
+  )
+}
+
 export default function AuthorProfilePageClient({
   identity,
   isAddressIdentity = false,
@@ -283,7 +336,7 @@ export default function AuthorProfilePageClient({
   initialPostsCursor = null,
   initialReplies = null,
   identifier = '',
-  initialArticles = [],
+  articlesPromise = null,
   viewerIsAuthor = false,
   authorId = null,
 }) {
@@ -353,8 +406,6 @@ export default function AuthorProfilePageClient({
   const [repliesLoading, setRepliesLoading] = useState(false)
   const [repliesCursor, setRepliesCursor] = useState(null)
   const [repliesLoadingMore, setRepliesLoadingMore] = useState(false)
-  const articleList = (initialArticles ?? []).filter((p) => !p.legacy)
-  const legacyList = (initialArticles ?? []).filter((p) => p.legacy)
   const [blocked, setBlocked] = useState(Boolean(initialBlocked))
   const [copiedAddress, setCopiedAddress] = useState(false)
   const copyTimeoutRef = useRef(null)
@@ -502,7 +553,13 @@ export default function AuthorProfilePageClient({
             </Link>
           </div>
         ) : null}
-        <AuthorFrontPage identity={identity} stories={initialArticles} onOpenStory={openStory} />
+        <Suspense fallback={<AuthorFrontPage identity={identity} stories={[]} onOpenStory={openStory} />}>
+          <FrontPageArticles
+            articlesPromise={articlesPromise}
+            identity={identity}
+            onOpenStory={openStory}
+          />
+        </Suspense>
       </aside>
       {/* data-middle-pane: lets the handle carousel's hover preview (in the
           narrow left rail above) center itself here instead of popping up
@@ -667,28 +724,10 @@ export default function AuthorProfilePageClient({
               ) : null}
             </>
           )
-        ) : articleList.length === 0 && legacyList.length === 0 ? (
-          <p className="empty">No articles published yet.</p>
         ) : (
-          <>
-            {articleList.length > 0 ? (
-              <ul className="panel artlist">
-                {articleList.map((post) => (
-                  <ArticleRow key={post.id} post={post} onOpen={openStory} />
-                ))}
-              </ul>
-            ) : null}
-            {legacyList.length > 0 ? (
-              <details className="artlegacy">
-                <summary>Legacy posts ({legacyList.length})</summary>
-                <ul className="panel artlist">
-                  {legacyList.map((post) => (
-                    <ArticleRow key={post.id} post={post} onOpen={openStory} />
-                  ))}
-                </ul>
-              </details>
-            ) : null}
-          </>
+          <Suspense fallback={<p className="empty">Loading articles…</p>}>
+            <ArticlesTabPanel articlesPromise={articlesPromise} onOpen={openStory} />
+          </Suspense>
         )}
         </div>
       </main>
