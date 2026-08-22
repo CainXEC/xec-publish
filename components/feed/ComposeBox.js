@@ -561,7 +561,14 @@ export default function ComposeBox({
           // (see BottomNav.js) — the keyboard's visualViewport resize only
           // scrolls the TEXTAREA into view, not the Cancel/Pay row below it, so
           // the fixed bar could end up sitting right on top of those buttons.
-          onFocus={() => window.dispatchEvent(new Event('pow:composer-focus'))}
+          onFocus={() => {
+            // Refresh the pocket signer on focus too (not just on open): the
+            // always-mounted main composer warmed at page load, which may be well
+            // past the sync's freshness window by the time you actually type. A
+            // focus re-warm keeps the coming Post click broadcast-only.
+            prewarmPocketSpend()
+            window.dispatchEvent(new Event('pow:composer-focus'))
+          }}
           onBlur={() => window.dispatchEvent(new Event('pow:composer-blur'))}
           rows={isReply ? 2 : 3}
           placeholder={
