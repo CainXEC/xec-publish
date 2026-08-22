@@ -14,6 +14,7 @@ import { pollUntil } from '@/lib/ecash/pollUntil'
 import { beginPayment, completePayment, abortPayment } from '@/lib/pocket/payGateway'
 import { getPocketSnapshot } from '@/lib/pocket/store'
 import { FEED_ACTION } from '@/lib/feedProtocol'
+import { canBuildFeedPaymentLocally, buildFeedPaymentLocally } from '@/lib/feed/buildFeedPayment'
 import { confirmFeedPostInBackground } from '@/lib/feed/confirmFeedPost'
 import { combineForumContent, FORUM_TITLE_MAX } from '@/lib/forumPost'
 
@@ -265,16 +266,29 @@ export default function ComposeBox({
     })
     setPayViaPocket(handle.mode === 'pocket')
     try {
-      const res = await fetch('/api/feed/prepare', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ content: outgoingContent, action, parentTxid, quotedTxid, forumId }),
-      })
-      const data = await res.json()
-      if (!res.ok || !data.ok) {
-        abortPayment(handle)
-        setNotice(data.error || 'Could not start the payment. Try again.')
-        return
+      // A post or quote pays 100% to the fixed platform address, so build the
+      // payment RIGHT HERE — no /api/feed/prepare round trip (a cold-start-prone
+      // serverless hop). Replies + polls still prepare on the server (a reply
+      // pays another user, whose live payout only the server can resolve). Either
+      // way /api/feed/confirm re-derives + verifies everything on-chain, so this
+      // is pure latency. A local build that can't run (platform address not
+      // exposed, unpriceable, bad quoted txid) falls back to /prepare unchanged.
+      let data = canBuildFeedPaymentLocally(action, { poll: pollActive })
+        ? buildFeedPaymentLocally({ action, content: outgoingContent, quotedTxid })
+        : null
+      if (data && !data.ok) data = null
+      if (!data) {
+        const res = await fetch('/api/feed/prepare', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ content: outgoingContent, action, parentTxid, quotedTxid, forumId }),
+        })
+        data = await res.json()
+        if (!res.ok || !data.ok) {
+          abortPayment(handle)
+          setNotice(data.error || 'Could not start the payment. Try again.')
+          return
+        }
       }
       // Pocket signs locally (txid feeds the confirm poll); Cashtab is the
       // extension popup or the pre-opened tab — exactly one. A rejected popup
