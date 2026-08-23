@@ -590,6 +590,9 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 /* Inline @handle mention link inside a post/reply/ancestor/focused body. */
 .pow-feed .mention{color:var(--cyan);text-decoration:none;transition:text-shadow .15s;}
 .pow-feed .mention:hover{text-shadow:0 0 10px rgba(61,240,255,.45);}
+/* Outbound X/Twitter link — a trailing ↗ marks that it leaves the site (opens a
+   new tab), distinguishing it from on-site cyan links. */
+.pow-feed .extlink::after{content:"↗";font-size:.8em;margin-left:1px;vertical-align:baseline;}
 /* Mint announcements riding the timeline as quiet pulse lines: .mintline is a
    real post rendered one-line-quiet (dim body, tighter spacing, no card art —
    the art lives on the profile gallery, thread page, and quote embeds);
