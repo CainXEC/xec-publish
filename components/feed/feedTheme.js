@@ -335,6 +335,8 @@ html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation-name:pocke
   border-top:1px solid var(--line);padding-top:12px;flex-wrap:wrap;}
 .pow-feed .barleft{display:flex;align-items:center;gap:8px;}
 .pow-feed .count{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;}
+/* Flags the flat YouTube-embed surcharge as it's added to a post's cost. */
+.pow-feed .count-yt{font-size:12px;color:var(--cyan);font-variant-numeric:tabular-nums;margin-right:8px;}
 .pow-feed .count.over{color:var(--no);}
 .pow-feed .count .cost{margin-left:10px;color:var(--neon);}
 /* margin-left:auto keeps the buttons right-aligned whether they sit next to the

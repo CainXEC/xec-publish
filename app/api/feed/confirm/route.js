@@ -78,7 +78,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Unsupported action' }, { status: 400 })
   }
 
-  const priced = priceFeedPost(body?.content)
+  const priced = priceFeedPost(body?.content, { action })
   if (!priced.ok) {
     return NextResponse.json({ error: priced.error }, { status: 400 })
   }
