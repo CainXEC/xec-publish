@@ -14,20 +14,41 @@ import { useEffect, useState } from 'react'
 import CopyLinkButton from '@/components/feed/CopyLinkButton'
 import FeedThreadClient from '@/components/feed/FeedThreadClient'
 
-export default function ThreadPane({ txid, onClose, onOpenThread }) {
-  const [state, setState] = useState({ loading: true })
+// Wrap an optimistic post (e.g. a just-made quote) as a thread payload so the
+// pane can render it INSTANTLY — no ancestors/replies yet; the background fetch
+// reconciles those in. Marked __seeded so the fetch's success can remount the
+// thread with the real, fully-decorated data.
+function seedToThread(seed) {
+  return {
+    __seeded: true,
+    post: seed,
+    ancestors: [],
+    replies: [],
+    viewerAccountId: seed.author_account_id ?? null, // it's the poster's own post
+    isAuthor: true,
+    forumSlug: null,
+  }
+}
+
+export default function ThreadPane({ txid, seed = null, onClose, onOpenThread }) {
+  const hasSeed = seed && seed.txid === txid
+  const [state, setState] = useState(() =>
+    hasSeed ? { loading: false, data: seedToThread(seed) } : { loading: true },
+  )
 
   useEffect(() => {
     let alive = true
-    setState({ loading: true })
-    // A JUST-posted thread (e.g. you quote a post and jump to your new quote) is
-    // broadcast optimistically, but its DB row is written a beat later by the
-    // background confirm once Chronik indexes the tx (~2–3s). Opening the pane in
-    // that window would 404 → "Post not found", so a not-found is RETRIED briefly
-    // before it's treated as real. A genuinely missing thread just waits out the
-    // window (a few seconds) and then shows the error.
+    const seeded = seed && seed.txid === txid
+    // Seeded (an optimistic quote/post): show it NOW; the fetch below swaps in the
+    // real thread once its DB row lands. Un-seeded: normal loader.
+    setState(seeded ? { loading: false, data: seedToThread(seed) } : { loading: true })
+    // A JUST-posted thread is broadcast optimistically, but its DB row is written
+    // a beat later by the background confirm once Chronik indexes the tx (~2–3s).
+    // So a not-found is RETRIED briefly before it's treated as real. When seeded we
+    // keep showing the seed the whole time (and never flash an error); un-seeded, a
+    // genuinely missing thread waits out the window and then shows the error.
     const RETRY_MS = 900
-    const MAX_ATTEMPTS = 6 // ~5s, comfortably past a normal confirm
+    const MAX_ATTEMPTS = seeded ? 12 : 6 // ~11s vs ~5s
     let attempt = 0
     const load = async () => {
       if (!alive) return
@@ -38,7 +59,7 @@ export default function ThreadPane({ txid, onClose, onOpenThread }) {
         const j = await res.json().catch(() => ({}))
         if (!alive) return
         if (j.ok) {
-          setState({ loading: false, data: j })
+          setState({ loading: false, data: j }) // real data → remounts over the seed
           return
         }
         if (res.status === 404 && attempt < MAX_ATTEMPTS) {
@@ -46,7 +67,8 @@ export default function ThreadPane({ txid, onClose, onOpenThread }) {
           setTimeout(load, RETRY_MS)
           return
         }
-        setState({ loading: false, error: j.error || 'Post unavailable.' })
+        // Exhausted: keep the seed on screen if we have one; else surface the error.
+        if (!seeded) setState({ loading: false, error: j.error || 'Post unavailable.' })
       } catch {
         if (!alive) return
         if (attempt < MAX_ATTEMPTS) {
@@ -54,14 +76,14 @@ export default function ThreadPane({ txid, onClose, onOpenThread }) {
           setTimeout(load, RETRY_MS)
           return
         }
-        setState({ loading: false, error: 'Post unavailable — try again.' })
+        if (!seeded) setState({ loading: false, error: 'Post unavailable — try again.' })
       }
     }
     void load()
     return () => {
       alive = false
     }
-  }, [txid])
+  }, [txid, seed])
 
   // Esc turns back to the feed, matching the article pane.
   useEffect(() => {
@@ -87,7 +109,7 @@ export default function ThreadPane({ txid, onClose, onOpenThread }) {
         <p className="hr-state">{state.error}</p>
       ) : (
         <FeedThreadClient
-          key={txid}
+          key={`${txid}${d.__seeded ? '-seed' : ''}`}
           embedded
           initialPost={d.post}
           initialAncestors={d.ancestors}

@@ -77,9 +77,13 @@ export default function FeedClient({
   )
 
   const openThread = useCallback(
-    (txid) => {
+    // `seed` is an optional optimistic post (e.g. a just-made quote) rendered in
+    // the pane instantly while the real thread is fetched + reconciled.
+    (txid, seed = null) => {
       const t = String(txid ?? '').trim().toLowerCase()
-      if (/^[0-9a-f]{64}$/.test(t)) openPane({ kind: 'thread', txid: t })
+      if (/^[0-9a-f]{64}$/.test(t)) {
+        openPane({ kind: 'thread', txid: t, seed: seed && seed.txid ? seed : null })
+      }
     },
     [openPane],
   )
@@ -458,7 +462,7 @@ export default function FeedClient({
           <HomeReader key={pane.slug} slug={pane.slug} onClose={closeReader} />
         ) : null}
         {pane?.kind === 'thread' ? (
-          <ThreadPane txid={pane.txid} onClose={closeReader} onOpenThread={wideShell ? openThread : undefined} />
+          <ThreadPane txid={pane.txid} seed={pane.seed ?? null} onClose={closeReader} onOpenThread={wideShell ? openThread : undefined} />
         ) : null}
         <div style={pane ? { display: 'none' } : undefined}>
         {/* The front page, reflowed above the feed below 1280px (CSS-hidden at

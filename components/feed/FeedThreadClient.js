@@ -300,7 +300,10 @@ export default function FeedThreadClient({
     (quote) => {
       setShowQuote(false)
       if (!quote?.txid) return
-      if (onOpenThread) onOpenThread(quote.txid)
+      // Hand the optimistic quote straight to the pane so it renders INSTANTLY
+      // (the pane reconciles with the real thread once its row lands) — no
+      // "Pulling the thread…" wait on your own just-made quote.
+      if (onOpenThread) onOpenThread(quote.txid, quote)
       else router.push('/')
     },
     [router, onOpenThread],
