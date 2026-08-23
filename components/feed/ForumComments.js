@@ -6,6 +6,7 @@ import FeedBody from '@/components/feed/FeedBody'
 import ComposeBox from '@/components/feed/ComposeBox'
 import EngagementBar from '@/components/feed/EngagementBar'
 import PostCopyLink from '@/components/feed/PostCopyLink'
+import TranslateButton from '@/components/TranslateButton'
 
 function truncateAddress(addr) {
   const t = String(addr ?? '').trim()
@@ -52,6 +53,7 @@ function CommentByline({ identity, color }) {
  */
 function CommentNode({ comment, childrenByParent, viewerAccountId, onReplyAdded, onDeleted, depth }) {
   const [showReply, setShowReply] = useState(false)
+  const [translated, setTranslated] = useState(null)
   const kids = childrenByParent.get(comment.txid) ?? []
   const isOwn = !!viewerAccountId && comment.author_account_id === viewerAccountId
 
@@ -80,7 +82,7 @@ function CommentNode({ comment, childrenByParent, viewerAccountId, onReplyAdded,
           <p className="fcomment-body tombstone">This comment was deleted.</p>
         ) : (
           <p className="fcomment-body">
-            <FeedBody text={typeof comment.content === 'string' ? comment.content : ''} />
+            <FeedBody text={translated ?? (typeof comment.content === 'string' ? comment.content : '')} />
           </p>
         )}
 
@@ -103,6 +105,12 @@ function CommentNode({ comment, childrenByParent, viewerAccountId, onReplyAdded,
               canQuote={false}
               canRepost={false}
               isOwnPost={isOwn}
+            />
+            <TranslateButton
+              kind="feed"
+              id={comment.txid}
+              onTranslated={(d) => setTranslated(d.translated)}
+              onShowOriginal={() => setTranslated(null)}
             />
             {isOwn ? (
               <button
