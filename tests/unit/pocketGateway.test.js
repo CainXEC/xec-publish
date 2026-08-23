@@ -60,6 +60,9 @@ describe('spendEligibility', () => {
     // ...and a bigger balance affords a bigger tip. No per-payment ceiling.
     mocks.snapshot = { ...mocks.snapshot, balanceSats: 3_000_000 }
     expect(spendEligibility('tip', 25_000).eligible).toBe(true)
+    // Forum creation is a 100%-platform fee bound to the account, not the payer —
+    // pocket-eligible like a post (10,000 XEC fits the 30,000 XEC balance).
+    expect(spendEligibility('forum-create', 10_000).eligible).toBe(true)
   })
 
   it('routes structural exclusions to Cashtab regardless of balance', async () => {
