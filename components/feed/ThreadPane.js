@@ -20,18 +20,44 @@ export default function ThreadPane({ txid, onClose, onOpenThread }) {
   useEffect(() => {
     let alive = true
     setState({ loading: true })
-    ;(async () => {
+    // A JUST-posted thread (e.g. you quote a post and jump to your new quote) is
+    // broadcast optimistically, but its DB row is written a beat later by the
+    // background confirm once Chronik indexes the tx (~2–3s). Opening the pane in
+    // that window would 404 → "Post not found", so a not-found is RETRIED briefly
+    // before it's treated as real. A genuinely missing thread just waits out the
+    // window (a few seconds) and then shows the error.
+    const RETRY_MS = 900
+    const MAX_ATTEMPTS = 6 // ~5s, comfortably past a normal confirm
+    let attempt = 0
+    const load = async () => {
+      if (!alive) return
       try {
         const res = await fetch(`/api/feed/thread/${encodeURIComponent(txid)}`, {
           cache: 'no-store',
         })
         const j = await res.json().catch(() => ({}))
         if (!alive) return
-        setState(j.ok ? { loading: false, data: j } : { loading: false, error: j.error || 'Post unavailable.' })
+        if (j.ok) {
+          setState({ loading: false, data: j })
+          return
+        }
+        if (res.status === 404 && attempt < MAX_ATTEMPTS) {
+          attempt += 1
+          setTimeout(load, RETRY_MS)
+          return
+        }
+        setState({ loading: false, error: j.error || 'Post unavailable.' })
       } catch {
-        if (alive) setState({ loading: false, error: 'Post unavailable — try again.' })
+        if (!alive) return
+        if (attempt < MAX_ATTEMPTS) {
+          attempt += 1
+          setTimeout(load, RETRY_MS)
+          return
+        }
+        setState({ loading: false, error: 'Post unavailable — try again.' })
       }
-    })()
+    }
+    void load()
     return () => {
       alive = false
     }
