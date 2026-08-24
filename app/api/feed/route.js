@@ -28,8 +28,14 @@ export async function GET(request) {
       })
       return NextResponse.json({ posts, nextCursor })
     }
-    const acct = await getAuthedAccount()
-    const { posts, nextCursor } = await getCachedForYouPage(cursor, 25, acct?.accountId ?? null)
+    // Not awaited here — see the doc comment on getCachedForYouPage: the cached
+    // feed window doesn't need the session, so the two round trips run together.
+    const acctPromise = getAuthedAccount()
+    const { posts, nextCursor } = await getCachedForYouPage(
+      cursor,
+      25,
+      acctPromise.then((a) => a?.accountId ?? null),
+    )
     return NextResponse.json({ posts, nextCursor })
   } catch (e) {
     return NextResponse.json({ error: e?.message || 'Failed to load feed' }, { status: 500 })

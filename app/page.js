@@ -25,15 +25,26 @@ export default async function HomePage({ searchParams }) {
   // per-viewer (your likes/reposts/follows) still layers on the client via
   // /api/feed/viewer-state; only blocks need to be gone before the FIRST paint,
   // or they'd flash on screen for a moment before that client effect resolves.
-  const acct = await getAuthedAccount()
+  //
+  // Not awaited here: the feed's cached window doesn't need the session at all,
+  // so starting both round trips together (instead of session-then-feed) cuts
+  // one full wait off nearly every load. getCachedForYouPage takes a promise for
+  // its viewer id and awaits it only once the feed side is ready to use it.
+  const acctPromise = getAuthedAccount()
 
   try {
-    const result = await getCachedForYouPage(null, 25, acct?.accountId ?? null)
+    const result = await getCachedForYouPage(
+      null,
+      25,
+      acctPromise.then((a) => a?.accountId ?? null),
+    )
     posts = result.posts
     nextCursor = result.nextCursor
   } catch (err) {
     loadError = err?.message || 'Failed to load feed'
   }
+
+  const acct = await acctPromise
 
   return (
     <FeedClient
