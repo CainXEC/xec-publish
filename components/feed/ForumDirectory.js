@@ -14,6 +14,17 @@ export default function ForumDirectory({ signedIn }) {
   const [forums, setForums] = useState(null) // null = loading
   const [error, setError] = useState('')
   const [creating, setCreating] = useState(false)
+  // Mobile shows the create flow in a bottom sheet (opened by the floating
+  // pen-nib button); desktop keeps it inline under the header.
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined
+    const mq = window.matchMedia('(max-width:600px)')
+    const update = () => setIsMobile(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
 
   const load = useCallback(async () => {
     try {
@@ -79,7 +90,7 @@ export default function ForumDirectory({ signedIn }) {
         ) : null}
       </div>
 
-      {creating ? (
+      {creating && !isMobile ? (
         <CreateForum onCreated={onCreated} onCancel={() => setCreating(false)} />
       ) : null}
 
@@ -110,6 +121,42 @@ export default function ForumDirectory({ signedIn }) {
           ))}
         </ul>
       )}
+
+      {/* Mobile: the same floating pen-nib button the feed uses, here creating a
+          forum (opens the create flow as a bottom sheet). CSS-hidden ≥600px, where
+          the header's "Create forum" button takes over. Only for signed-in users. */}
+      {signedIn ? (
+        <button
+          type="button"
+          className="feed-fab"
+          aria-label="Create forum"
+          onClick={() => setCreating(true)}
+        >
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path className="pnib" d="M4 20l1.2-4L15 6.2l2.8 2.8L8 18.8 4 20z" />
+            <path className="pcut" d="M5.2 16L8 18.8" />
+            <path className="pnib" d="M15 6.2l2-2a2 2 0 012.8 2.8l-2 2" />
+          </svg>
+        </button>
+      ) : null}
+
+      {creating && isMobile ? (
+        <div className="feed-sheet-backdrop" onClick={() => setCreating(false)}>
+          <div className="feed-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="feed-sheet-head">
+              <button
+                type="button"
+                className="feed-sheet-close"
+                aria-label="Close"
+                onClick={() => setCreating(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <CreateForum onCreated={onCreated} onCancel={() => setCreating(false)} />
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

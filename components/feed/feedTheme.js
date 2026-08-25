@@ -1717,11 +1717,17 @@ html:not(.dark) .pow-feed .np-entry{border-bottom-color:var(--line);}
    =========================================================================== */
 @media (max-width:600px){
   .pow-feed .tabs,
-  .pow-feed .panel.posts{ margin-left:-20px; margin-right:-20px; }
-  .pow-feed .panel.posts{
+  .pow-feed .panel.posts,
+  .pow-feed .panel.forumlist{ margin-left:-20px; margin-right:-20px; }
+  .pow-feed .panel.posts,
+  .pow-feed .panel.forumlist{
     border-left:0; border-right:0; border-radius:0; box-shadow:none; background:transparent;
   }
   .pow-feed .feed-compose-inline{ display:none; }
+  /* Forums: drop the "Topic communities" header + inline Create button so the
+     forum list starts right under the tabs — same as the feed's posts do — and
+     creating a forum moves to the floating pen-nib button. */
+  .pow-feed .forumdir-head{ display:none; }
 }
 
 /* Floating compose button — mobile only, cleared above the fixed bottom nav
