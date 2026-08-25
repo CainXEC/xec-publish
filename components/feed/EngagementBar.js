@@ -127,7 +127,7 @@ export default function EngagementBar({
             title={isOwnPost ? 'See who reacted' : 'React · 100 XEC'}
             onClick={isOwnPost ? toggleWho : undefined}
           >
-            ☺+
+            ❤️+
           </button>
           {isOwnPost ? (
             whoOpen ? (
