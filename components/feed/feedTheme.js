@@ -527,7 +527,7 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
   margin:0 0 6px;}
 /* "📌 Pinned" eyebrow above a pinned post on a profile (reads like "Reposted by"). */
 .pow-feed .pinnedtag{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;
-  color:var(--dim);margin:0 0 6px;letter-spacing:.02em;}
+  color:var(--no);margin:0 0 6px;letter-spacing:.02em;}
 .pow-feed .pinnedtag span{font-size:11px;line-height:1;}
 .pow-feed .reposticon{font-size:11px;line-height:1;}
 .pow-feed .repostedby-who{color:var(--hc,var(--dim));font-weight:600;transition:color .15s;}
@@ -672,7 +672,11 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .reactpill:hover{color:var(--neon);}
 .pow-feed .reactpill:disabled{cursor:default;opacity:.6;}
 .pow-feed .reactwrap{position:relative;display:inline-flex;}
-.pow-feed .reactbtn{background:none;border:none;color:var(--dim);font:inherit;font-size:18px;line-height:1;
+/* ❤️ is a full-color emoji glyph, not a thin text one — unlike ♡/❝ above it
+   already carries the same visual weight as the other action icons at their
+   size, so it takes the same 13px as .replybtn/.repostbtn/.reactpill instead
+   of the boost those need. */
+.pow-feed .reactbtn{background:none;border:none;color:var(--dim);font:inherit;font-size:13px;line-height:1;
   cursor:pointer;padding:0 2px;letter-spacing:-.05em;transition:color .15s;}
 .pow-feed .reactbtn:hover,.pow-feed .reactbtn.on{color:var(--neon);}
 .pow-feed .reactbtn:disabled{cursor:default;opacity:.7;}
