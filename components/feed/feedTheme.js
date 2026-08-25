@@ -299,6 +299,9 @@ html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation-name:pocke
    by body{padding-bottom} (see BottomNav) — the wrap must NOT re-reserve that
    height too, or the two stack into a big empty gap above the bar. */
 .pow-feed .wrap{max-width:640px;margin:0 auto;padding:0 20px 56px;}
+/* Breathing room under the sticky topbar (was an inline style on the feed's
+   <main>); a class so the mobile block below can tighten it. */
+.pow-feed .feed-main{padding-top:28px;}
 @media (max-width:1099px){ .pow-feed .wrap{padding-bottom:24px;} }
 
 /* ---- panels ---- */
@@ -1728,6 +1731,9 @@ html:not(.dark) .pow-feed .np-entry{border-bottom-color:var(--line);}
      forum list starts right under the tabs — same as the feed's posts do — and
      creating a forum moves to the floating pen-nib button. */
   .pow-feed .forumdir-head{ display:none; }
+  /* Tighten the gap under the banner — 28+20px was too much on a phone. */
+  .pow-feed .feed-main{ padding-top:10px; }
+  .pow-feed .feed-main .tabs{ margin-top:6px; }
 }
 
 /* Floating compose button — mobile only, cleared above the fixed bottom nav

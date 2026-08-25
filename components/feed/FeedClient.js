@@ -470,7 +470,7 @@ export default function FeedClient({
           onOpenStory={openStory}
         />
       </aside>
-      <main className="wrap" style={{ paddingTop: '28px' }}>
+      <main className="wrap feed-main">
         {pane?.kind === 'article' ? (
           <HomeReader key={pane.slug} slug={pane.slug} onClose={closeReader} />
         ) : null}
