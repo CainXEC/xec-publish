@@ -281,9 +281,10 @@ html:not(.dark) .pow-article .hr-unlock:disabled{background:transparent;color:va
    feed EngagementBar picker + pills, styled for the article/paper scope. */
 .pow-article .creact{position:relative;display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .pow-article .creactwrap{position:relative;display:inline-flex;}
-/* ❤️ is a full-color emoji glyph — same size as .commentreplybtn/.clikebtn,
-   not the bump a thin text glyph would need. */
-.pow-article .creactbtn{background:none;border:none;color:var(--dim);font:inherit;font-size:13px;line-height:1;
+/* Outline ♡, not a filled/colored heart — the trigger reads as an action,
+   not as an already-placed reaction (the pills show those in solid color).
+   Needs the same size boost .clikeico gets for the same thin-glyph reason. */
+.pow-article .creactbtn{background:none;border:none;color:var(--dim);font:inherit;font-size:15px;line-height:1;
   cursor:pointer;padding:0;transition:color .12s;}
 .pow-article .creactbtn:hover{color:var(--cyan);}
 .pow-article .creactbtn:disabled{opacity:.6;cursor:default;}

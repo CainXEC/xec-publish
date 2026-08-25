@@ -77,7 +77,7 @@ export default function CommentReactions({ targetTxid, reactionCounts = {}, isOw
             aria-label="React · 100 XEC"
             title="React · 100 XEC"
           >
-            ❤️+
+            ♡+
           </button>
           {!pending ? (
             <div className="creactpicker" role="menu">

@@ -672,11 +672,12 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .reactpill:hover{color:var(--neon);}
 .pow-feed .reactpill:disabled{cursor:default;opacity:.6;}
 .pow-feed .reactwrap{position:relative;display:inline-flex;}
-/* ❤️ is a full-color emoji glyph, not a thin text one — unlike ♡/❝ above it
-   already carries the same visual weight as the other action icons at their
-   size, so it takes the same 13px as .replybtn/.repostbtn/.reactpill instead
-   of the boost those need. */
-.pow-feed .reactbtn{background:none;border:none;color:var(--dim);font:inherit;font-size:13px;line-height:1;
+/* Outline ♡, not a filled/colored heart — the trigger for "add a reaction" has
+   to read as an action, not as a reaction that's already been placed (the
+   pills next to it show real reactions in solid color). Same thin-text-glyph
+   case as .likeico above: needs the size boost to carry the same visual
+   weight as the emoji action icons beside it. */
+.pow-feed .reactbtn{background:none;border:none;color:var(--dim);font:inherit;font-size:18px;line-height:1;
   cursor:pointer;padding:0 2px;letter-spacing:-.05em;transition:color .15s;}
 .pow-feed .reactbtn:hover,.pow-feed .reactbtn.on{color:var(--neon);}
 .pow-feed .reactbtn:disabled{cursor:default;opacity:.7;}
