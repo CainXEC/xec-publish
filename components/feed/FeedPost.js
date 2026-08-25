@@ -391,6 +391,12 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const pinned = isOwn && !!post.txid && myPinned === post.txid
+  // The visible "Pinned" tag shows on a profile's pinned post to EVERYONE — the
+  // server sets post.isPinned on that row (viewer-neutral). The OWNER instead
+  // follows their live optimistic pin state (`pinned`) so a pin/unpin updates
+  // without a refetch, rather than the stale server flag. (The Pin/Unpin BUTTON
+  // stays owner-only via `pinned`.)
+  const showPinnedTag = isOwn ? pinned : !!post.isPinned
   const handlePin = async () => {
     if (pinBusy) return
     const next = !pinned
@@ -490,7 +496,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
 
   return (
     <li ref={seenElRef} className={`post${compactMint ? ' mintline' : ''}`} onClick={openThread} style={{ cursor: 'pointer' }}>
-      {pinned ? (
+      {showPinnedTag ? (
         <div className="pinnedtag"><span aria-hidden>📌</span> Pinned</div>
       ) : null}
       {repostedBy ? (
