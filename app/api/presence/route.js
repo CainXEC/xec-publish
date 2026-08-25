@@ -27,6 +27,19 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const KEY = "presence:v1";
+
+// The count silently becomes null when Redis is missing OR erroring (e.g. the
+// Upstash monthly request cap is hit) — the two are indistinguishable to the
+// client, which is why "the number vanished" is hard to diagnose. Log the reason
+// so it's visible in the Vercel function logs, throttled per reason (presence is
+// high-volume + serverless, so unthrottled it would flood during an outage).
+const _lastLog = new Map();
+function presenceLog(reason, message) {
+  const now = Date.now();
+  if (now - (_lastLog.get(reason) ?? 0) < 60_000) return;
+  _lastLog.set(reason, now);
+  console.error(`[presence] ${message}`);
+}
 // A tab pings ~every 90s; a 210s window tolerates one missed beat before it's
 // counted as gone. KEY_TTL comfortably outlives the client's ~5min count
 // cadence so the key survives between refreshes, and still clears itself once
@@ -44,7 +57,13 @@ async function liveCount(redis) {
 
 export async function POST(req) {
   const redis = getRedis();
-  if (!redis) return NextResponse.json({ ok: true, count: null });
+  if (!redis) {
+    presenceLog(
+      "no-redis",
+      "Redis not configured — count hidden (set UPSTASH_REDIS_REST_URL/TOKEN or KV_REST_API_URL/TOKEN)",
+    );
+    return NextResponse.json({ ok: true, count: null });
+  }
 
   let tabId = "";
   // The client asks for the live count only on its first beat and then ~every
@@ -77,7 +96,10 @@ export async function POST(req) {
     // Count-beat: prune the departed, refresh the key TTL, and read the count.
     await redis.expire(KEY, KEY_TTL_S);
     return NextResponse.json({ ok: true, count: await liveCount(redis) });
-  } catch {
+  } catch (e) {
+    // Almost always the Upstash monthly request cap (the free tier is 500k/mo);
+    // the message says which so the logs distinguish quota from auth/network.
+    presenceLog("error", `Redis error — count hidden: ${e?.name}: ${e?.message}`);
     return NextResponse.json({ ok: true, count: null });
   }
 }
