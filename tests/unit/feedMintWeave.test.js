@@ -29,12 +29,13 @@ describe('weaveMintRows', () => {
     expect(weaveMintRows(posts, null, undefined, NOW)).toEqual(posts)
   })
 
-  it('slots a mint by pure recency among unloved posts', () => {
-    // Old posts (past the exploration window) score ≈ -age; a 1h-old mint
-    // (score -1) belongs above a 3h-old post and below nothing fresher.
+  it('slots a mint by recency among unloved posts, but never in the first slot', () => {
+    // Old posts (past the exploration window) score ≈ -age; a 1h-old mint would
+    // outscore both by pure recency, but a mint never LEADS the feed — the top
+    // stays real content, so the mint slots at index 1 (above the 5h post).
     const ranked = rankFeedCandidates([post(3), post(5)], undefined, NOW)
     const woven = weaveMintRows(ranked, [mint(1, 'alice')], undefined, NOW)
-    expect(woven.map((p) => p.txid)).toEqual(['mint-alice', ranked[0].txid, ranked[1].txid])
+    expect(woven.map((p) => p.txid)).toEqual([ranked[0].txid, 'mint-alice', ranked[1].txid])
   })
 
   it('never outranks a post with real paid signal, even a much older one', () => {
@@ -59,7 +60,9 @@ describe('weaveMintRows', () => {
     expect(woven[1].txid).toBe('mint-carol')
   })
 
-  it('keeps multiple mints newest-first when they land together', () => {
+  it('keeps multiple mints newest-first when they land together (under the lead post)', () => {
+    // All three mints outscore the lone 10h post on recency, but the post keeps
+    // the lead slot; the mints follow it newest-first.
     const ranked = rankFeedCandidates([post(10)], undefined, NOW)
     const woven = weaveMintRows(
       ranked,
@@ -67,7 +70,7 @@ describe('weaveMintRows', () => {
       undefined,
       NOW,
     )
-    expect(woven.map((p) => p.txid)).toEqual(['mint-new', 'mint-mid', 'mint-old', ranked[0].txid])
+    expect(woven.map((p) => p.txid)).toEqual([ranked[0].txid, 'mint-new', 'mint-mid', 'mint-old'])
   })
 
   it('weaves a synthetic digest entry by its stamped time like any mint', () => {

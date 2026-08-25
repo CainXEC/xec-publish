@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { rankFeedCandidates } from '@/lib/feedRanking'
+import { rankFeedCandidates, weaveMintRows } from '@/lib/feedRanking'
 
 // Build a post row `ageHours` old with optional denormalized conversation counts.
 function post(id, ageHours, extra = {}) {
@@ -110,5 +110,38 @@ describe('rankFeedCandidates', () => {
     const before = ids(posts)
     rankFeedCandidates(posts)
     expect(ids(posts)).toEqual(before)
+  })
+})
+
+// A mint entry `ageHours` old (mirrors the fetched handle_mint row / digest).
+function mint(id, ageHours) {
+  return { txid: id, created_at: new Date(Date.now() - ageHours * 3.6e6).toISOString() }
+}
+
+describe('weaveMintRows', () => {
+  it('drops mints older than the freshness cap (the reported 22h / days-ago rows)', () => {
+    const posts = [post('p1', 1), post('p2', 30)]
+    const woven = weaveMintRows(posts, [mint('m-22h', 22), mint('m-3d', 72)])
+    expect(ids(woven)).toEqual(['p1', 'p2']) // both stale mints dropped
+  })
+
+  it('weaves a FRESH mint in by recency', () => {
+    const posts = [post('p1', 1), post('p2', 6)]
+    const woven = weaveMintRows(posts, [mint('m-3h', 3)])
+    // 3h mint sits between the 1h and 6h posts
+    expect(ids(woven)).toEqual(['p1', 'm-3h', 'p2'])
+  })
+
+  it('never lets a mint take the very first slot — the feed leads with real content', () => {
+    // A brand-new mint outscores an older quiet post on pure recency, but must not
+    // lead: the real post keeps slot 0, the mint slots right after it.
+    const posts = [post('p1', 5)]
+    const woven = weaveMintRows(posts, [mint('m-fresh', 0.1)])
+    expect(ids(woven)).toEqual(['p1', 'm-fresh'])
+  })
+
+  it('leaves the feed untouched when every mint is stale', () => {
+    const posts = [post('p1', 2), post('p2', 4)]
+    expect(weaveMintRows(posts, [mint('old', 48)])).toEqual(posts)
   })
 })
