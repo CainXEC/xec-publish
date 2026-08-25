@@ -240,6 +240,11 @@ export default function FeedThreadClient({
   // over a post you came to read. Only an explicit tap on 💬 focuses the box.
   const [replyFocus, setReplyFocus] = useState(false)
   const [showQuote, setShowQuote] = useState(false)
+  // The posts that quote THIS post, loaded on demand when the reader opens the
+  // "N quotes" section (null = not fetched yet).
+  const [quotes, setQuotes] = useState(null)
+  const [quotesOpen, setQuotesOpen] = useState(false)
+  const [quotesLoading, setQuotesLoading] = useState(false)
   const [translated, setTranslated] = useState(null)
   // A forum post's translated TITLE (null = show the original title).
   const [translatedTitle, setTranslatedTitle] = useState(null)
@@ -310,6 +315,30 @@ export default function FeedThreadClient({
   )
 
   const post = initialPost
+
+  // Toggle the "N quotes" section; fetch the quoting posts the first time it opens.
+  const toggleQuotes = useCallback(async () => {
+    const next = !quotesOpen
+    setQuotesOpen(next)
+    if (!next || quotes !== null || quotesLoading) return
+    setQuotesLoading(true)
+    try {
+      const res = await fetch(`/api/feed/quotes/${encodeURIComponent(post.txid)}`, {
+        cache: 'no-store',
+      })
+      const data = await res.json()
+      setQuotes(Array.isArray(data.posts) ? data.posts : [])
+    } catch {
+      setQuotes([])
+    } finally {
+      setQuotesLoading(false)
+    }
+  }, [quotesOpen, quotes, quotesLoading, post?.txid])
+
+  const removeQuote = useCallback((txid) => {
+    setQuotes((prev) => (prev ? prev.filter((q) => q.txid !== txid) : prev))
+  }, [])
+
   const ancestors = initialAncestors
   const hasAncestors = ancestors.length > 0
 
@@ -596,6 +625,44 @@ export default function FeedThreadClient({
             </div>
           </article>
         </div>
+
+        {/* Quotes of this post — the ❝ count on the post says it's been quoted;
+            this is where you SEE those quotes. Loaded on demand when opened. Not
+            shown for forum posts (they aren't quotable). */}
+        {!forumSlug && !rootDeleted && (post.quoteCount ?? post.quote_count ?? 0) > 0 ? (
+          <div className="quotes-section">
+            <button
+              type="button"
+              className="quoteshead"
+              onClick={() => void toggleQuotes()}
+              aria-expanded={quotesOpen}
+            >
+              {(post.quoteCount ?? post.quote_count ?? 0).toLocaleString()}{' '}
+              {(post.quoteCount ?? post.quote_count ?? 0) === 1 ? 'quote' : 'quotes'}
+              <span aria-hidden className="quotes-caret">{quotesOpen ? ' ▲' : ' ▼'}</span>
+            </button>
+            {quotesOpen ? (
+              quotesLoading && quotes === null ? (
+                <p className="empty">Loading quotes…</p>
+              ) : quotes && quotes.length > 0 ? (
+                <ul className="panel posts">
+                  {quotes.map((q) => (
+                    <FeedPost
+                      key={q.txid}
+                      post={q}
+                      viewerAccountId={viewerAccountId}
+                      onDeleted={removeQuote}
+                      onQuoted={handleQuoted}
+                      onOpenThread={onOpenThread ?? undefined}
+                    />
+                  ))}
+                </ul>
+              ) : (
+                <p className="empty">No quotes to show.</p>
+              )
+            ) : null}
+          </div>
+        ) : null}
 
         <h2 className="replieshead">
           {forumSlug

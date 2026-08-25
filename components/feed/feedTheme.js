@@ -1065,6 +1065,14 @@ html:not(.dark) .dashhandle-tip{background:#fdfcf8;border-color:#e3dfd2;color:#1
 .pow-feed .onchain{font-size:12px;color:var(--dim);}
 .pow-feed .onchain:hover{color:var(--cyan);}
 .pow-feed .replieshead{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:24px 0 10px;}
+/* "N quotes" toggle — reveals the posts that quote this one. Reads like the
+   replies head but is a button. */
+.pow-feed .quotes-section{margin:20px 0 0;}
+.pow-feed .quoteshead{background:none;border:none;cursor:pointer;font:inherit;font-size:12px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--dim);padding:0;transition:color .15s;}
+.pow-feed .quoteshead:hover{color:var(--cyan);}
+.pow-feed .quotes-caret{font-size:9px;}
+.pow-feed .quotes-section .posts{margin-top:10px;}
 
 /* Forum thread comments — Reddit-style nested tree. Each comment is flat text
    (byline · time, full body, compact actions); children indent under a thread
