@@ -2,7 +2,7 @@
 // =============================================================================
 //  PresenceHeartbeat.js — the "who's here" beacon, mounted once site-wide.
 //
-//  Every open tab pings /api/presence on a ~25s heartbeat with a stable
+//  Every open tab pings /api/presence on a ~150s heartbeat with a stable
 //  per-tab id, and re-pings whenever the tab is refocused so a returning
 //  reader is counted promptly. It renders NOTHING and never blocks: the first
 //  ping fires after paint, and each request is fire-and-forget. The count that
@@ -16,14 +16,15 @@
 
 import { useEffect } from 'react'
 
-const PING_MS = 90_000
+const PING_MS = 150_000
 // Ask the server for the live count this rarely; the frequent beats in between
-// just refresh presence (a single cheap Redis command). Reading the count is the
-// expensive part, so we do it sparingly to stay under the Redis request cap.
-// Tuned for the free Upstash tier (500k requests/month) as the permanent plan:
-// at ~90s beats + a 5-min count refresh, one always-open tab costs ~55k/month,
-// so the cap comfortably absorbs the handful of concurrent readers this site has.
-const COUNT_EVERY_MS = 300_000
+// just refresh presence (a single cheap zadd). Reading the count is the expensive
+// part, so we do it sparingly to stay under the free Upstash request cap
+// (500k/month). At ~150s beats + a 15-min count refresh, one always-open tab now
+// costs ~20k/month (was ~55k) — mostly the unavoidable per-tab "mark me" zadd —
+// and the count itself is server-cached so the expensive prune+ZCARD no longer
+// scales with the number of concurrent readers.
+const COUNT_EVERY_MS = 900_000
 const STORE_KEY = 'pow_tab_id'
 const PRESENCE_EVENT = 'pow:presence'
 // A freshly-mounted listener (the activity rail after an in-app navigation)
