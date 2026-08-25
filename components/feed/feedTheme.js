@@ -651,7 +651,11 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 /* The ❝ quotation ornament sits on the cap-height line, riding high next to the
    vertically-centred emoji glyphs (💬 ♡ 🔁). Bump the size and nudge it down so
    it optically lines up with the other action icons. */
-.pow-feed .qico{display:inline-block;font-size:23px;line-height:1;transform:translateY(6px);}
+/* line-height:0 keeps the oversized ❝ from expanding the button's line box — so
+   the quote COUNT sits at the same baseline as the reply/reaction numbers instead
+   of being dragged down — while the glyph still renders at 23px (overflowing) and
+   is optically centred by the translate. */
+.pow-feed .qico{display:inline-block;font-size:23px;line-height:0;transform:translateY(9px);}
 /* The like heart (♡/♥) and quote ❝ are thin text glyphs — render them larger so
    they carry the same visual weight as the emoji action icons (💬 reply, 🔁 repost). */
 .pow-feed .likeico{display:inline-block;font-size:18px;line-height:1;transform:translateY(2px);}
