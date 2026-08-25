@@ -1705,4 +1705,51 @@ html:not(.dark) .pow-feed .qr{background:#fff;box-shadow:0 0 0 1px var(--line),v
 
 /* Warm the last teal-tinted hairlines that were set explicitly for daylight. */
 html:not(.dark) .pow-feed .np-entry{border-bottom-color:var(--line);}
+
+/* ===========================================================================
+   MOBILE EDGE-TO-EDGE FEED (≤600px)
+   Post LISTS and the tabs break OUT of the column's 20px side inset to the
+   screen edges, and the list sheds its card bubble (border / radius / glow /
+   panel fill) — leaving only the full-width hairline between posts. Everything
+   else in the column keeps its padding. The always-open composer is hidden here;
+   a floating pen-nib button (.feed-fab) opens it as a bottom sheet instead, so a
+   visitor lands straight in the feed and sees more of it.
+   =========================================================================== */
+@media (max-width:600px){
+  .pow-feed .tabs,
+  .pow-feed .panel.posts{ margin-left:-20px; margin-right:-20px; }
+  .pow-feed .panel.posts{
+    border-left:0; border-right:0; border-radius:0; box-shadow:none; background:transparent;
+  }
+  .pow-feed .feed-compose-inline{ display:none; }
+}
+
+/* Floating compose button — mobile only, cleared above the fixed bottom nav
+   (~62px). The pen-nib is the POWR mark; it themes via tokens (--bg ink on the
+   --neon disc, --neon accent cut) so it flips with light/dark automatically. */
+.pow-feed .feed-fab{ display:none; }
+@media (max-width:600px){
+  .pow-feed .feed-fab{
+    display:flex; position:fixed; right:16px;
+    bottom:calc(62px + env(safe-area-inset-bottom) + 16px);
+    width:56px; height:56px; border-radius:50%; background:var(--neon); border:none;
+    align-items:center; justify-content:center; cursor:pointer; z-index:70;
+    box-shadow:0 4px 16px rgba(0,0,0,.35);
+  }
+}
+.pow-feed .feed-fab svg{ width:30px; height:30px; }
+.pow-feed .feed-fab .pnib{ fill:var(--bg); stroke:var(--bg); stroke-width:1.2; stroke-linejoin:round; }
+.pow-feed .feed-fab .pcut{ stroke:var(--neon); stroke-width:1.4; }
+
+/* Compose bottom-sheet (opened by the FAB): a backdrop with a panel that holds
+   the same ComposeBox the top of the feed used to. */
+.pow-feed .feed-sheet-backdrop{ position:fixed; inset:0; z-index:90; background:rgba(0,0,0,.5);
+  display:flex; align-items:flex-end; }
+.pow-feed .feed-sheet{ width:100%; background:var(--bg); border-top:1px solid var(--line);
+  border-radius:16px 16px 0 0; max-height:88vh; overflow:auto;
+  padding:8px 16px calc(16px + env(safe-area-inset-bottom)); }
+.pow-feed .feed-sheet-head{ display:flex; justify-content:flex-end; padding:2px 0; }
+.pow-feed .feed-sheet-close{ background:none; border:none; color:var(--dim); cursor:pointer;
+  font-size:20px; line-height:1; padding:4px 6px; }
+.pow-feed .feed-sheet-close:hover{ color:var(--text); }
 `

@@ -46,6 +46,9 @@ export default function FeedClient({
   // all survive the detour; each pane's "Open full page ↗" link is the
   // shareable URL.
   const [pane, setPane] = useState(null) // {kind:'article',slug} | {kind:'thread',txid} | null
+  // Mobile: the top composer is hidden and replaced by a floating pen-nib button
+  // that opens the composer as a bottom sheet. Desktop keeps the inline composer.
+  const [composeOpen, setComposeOpen] = useState(false)
   const paneOpenRef = useRef(false)
   const feedScrollRef = useRef(0)
   // The pane is a WIDE-SHELL behavior: on phones a post click must keep
@@ -359,6 +362,16 @@ export default function FeedClient({
     [patchTab],
   )
 
+  // On mobile the inline composer is hidden, so a shared-draft link (?share=) or a
+  // focus request must open the bottom-sheet composer instead. Desktop's inline
+  // composer handles those itself (autoFocus), so only act at the mobile width.
+  useEffect(() => {
+    if (!(initialCompose || focusCompose)) return
+    if (typeof window !== 'undefined' && window.matchMedia?.('(max-width:600px)').matches) {
+      setComposeOpen(true)
+    }
+  }, [initialCompose, focusCompose])
+
   const removePost = useCallback(
     (txid) => {
       setTabs((prev) => {
@@ -475,13 +488,15 @@ export default function FeedClient({
             (a directory) there's no global post to make — you post inside a
             forum, on its own page — so it's hidden there. */}
         {scope !== 'forums' ? (
-          <ComposeBox
-            action="post"
-            onPosted={prependPost}
-            initialContent={initialCompose}
-            autoFocus={Boolean(initialCompose) || focusCompose}
-            allowOptimistic
-          />
+          <div className="feed-compose-inline">
+            <ComposeBox
+              action="post"
+              onPosted={prependPost}
+              initialContent={initialCompose}
+              autoFocus={Boolean(initialCompose) || focusCompose}
+              allowOptimistic
+            />
+          </div>
         ) : null}
 
         <div className="tabs" role="tablist">
@@ -579,6 +594,51 @@ export default function FeedClient({
         />
       </aside>
       </div>
+
+      {/* Mobile compose button (CSS-hidden ≥600px): the POWR pen-nib on a neon
+          disc, opening the composer as a bottom sheet. Hidden on the Forums tab,
+          where posting happens inside a forum, not globally. */}
+      {scope !== 'forums' ? (
+        <button
+          type="button"
+          className="feed-fab"
+          aria-label="New post"
+          onClick={() => setComposeOpen(true)}
+        >
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path className="pnib" d="M4 20l1.2-4L15 6.2l2.8 2.8L8 18.8 4 20z" />
+            <path className="pcut" d="M5.2 16L8 18.8" />
+            <path className="pnib" d="M15 6.2l2-2a2 2 0 012.8 2.8l-2 2" />
+          </svg>
+        </button>
+      ) : null}
+
+      {composeOpen ? (
+        <div className="feed-sheet-backdrop" onClick={() => setComposeOpen(false)}>
+          <div className="feed-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="feed-sheet-head">
+              <button
+                type="button"
+                className="feed-sheet-close"
+                aria-label="Close"
+                onClick={() => setComposeOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <ComposeBox
+              action="post"
+              onPosted={(p) => {
+                prependPost(p)
+                setComposeOpen(false)
+              }}
+              initialContent={initialCompose}
+              autoFocus
+              allowOptimistic
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
