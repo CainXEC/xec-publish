@@ -687,7 +687,10 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
    case as .likeico above: needs the size boost to carry the same visual
    weight as the emoji action icons beside it. */
 .pow-feed .reactbtn{background:none;border:none;color:var(--dim);font:inherit;font-size:18px;line-height:1;
-  cursor:pointer;padding:0 2px;letter-spacing:-.05em;transition:color .15s;}
+  cursor:pointer;padding:0 2px;letter-spacing:-.05em;transition:color .15s;
+  /* The ♡ outline reads thin/faint at --dim in both themes — stroke the glyph in
+     its own colour to fatten the outline (and the +) so it's easier to spot. */
+  -webkit-text-stroke:0.7px currentColor;}
 .pow-feed .reactbtn:hover,.pow-feed .reactbtn.on{color:var(--neon);}
 .pow-feed .reactbtn:disabled{cursor:default;opacity:.7;}
 /* Picker: a fixed 2 rows of 4 (8 emoji), revealed on hover/focus of .reactwrap
