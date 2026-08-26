@@ -1724,8 +1724,12 @@ html:not(.dark) .pow-feed .np-entry{border-bottom-color:var(--line);}
   .pow-feed .panel.forumlist{ margin-left:-20px; margin-right:-20px; }
   .pow-feed .panel.posts,
   .pow-feed .panel.forumlist{
-    border-left:0; border-right:0; border-radius:0; box-shadow:none; background:transparent;
+    border-left:0; border-right:0; border-top:0; border-radius:0; box-shadow:none; background:transparent;
   }
+  /* Tuck the list up under the tabs divider: drop the 16px gap (and the list's own
+     top hairline, above) so the tabs' bottom line IS the line above the first
+     post — no floating second separator below the tabs. */
+  .pow-feed .panel.posts{ margin-top:0; }
   .pow-feed .feed-compose-inline{ display:none; }
   /* Forums: drop the "Topic communities" header + inline Create button so the
      forum list starts right under the tabs — same as the feed's posts do — and
