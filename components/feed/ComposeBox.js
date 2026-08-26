@@ -125,10 +125,12 @@ export default function ComposeBox({
   const pollCleanOptions = pollOptions.map((o) => o.trim()).filter(Boolean)
   const pollValid = !pollActive || pollCleanOptions.length >= 2
   const canSubmit = priced.ok && pollValid && titleValid && !submitting
-  // The Pay control starts as a plain icon-only square; the instant you start
-  // typing it lights up, widens, and reveals the amount — so it stays quiet
-  // until there's actually something to pay for.
-  const payActive = chars > 0
+  // The Pay control starts as a plain icon-only square; once the post is actually
+  // submittable it lights up, widens, and reveals the amount. Gating on canSubmit
+  // (not just "has any text") avoids the confusing state where it shows "Pay N
+  // XEC" but is disabled — e.g. a forum post whose title is still empty, or a post
+  // over the character cap.
+  const payActive = canSubmit
 
   const setOption = (i, val) =>
     setPollOptions((prev) => prev.map((o, idx) => (idx === i ? val : o)))
@@ -691,6 +693,9 @@ export default function ComposeBox({
             >
               🎬 +{FEED_YOUTUBE_SURCHARGE_XEC.toLocaleString()}
             </span>
+          ) : null}
+          {withTitle && titleClean.length === 0 && content.trim().length > 0 ? (
+            <span className="composehint">Add a title to post</span>
           ) : null}
           <span className={`count${overCap ? ' over' : ''}`}>
             {chars}/{FEED_MAX_CHARS}
