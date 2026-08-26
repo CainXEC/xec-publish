@@ -285,7 +285,9 @@ html:not(.dark) .pow-article .hr-unlock:disabled{background:transparent;color:va
    not as an already-placed reaction (the pills show those in solid color).
    Needs the same size boost .clikeico gets for the same thin-glyph reason. */
 .pow-article .creactbtn{background:none;border:none;color:var(--dim);font:inherit;font-size:15px;line-height:1;
-  cursor:pointer;padding:0;transition:color .12s;}
+  cursor:pointer;padding:0;transition:color .12s;
+  /* Match the feed: fatten the thin ♡ outline (+ the +) so it's easier to see. */
+  -webkit-text-stroke:0.7px currentColor;}
 .pow-article .creactbtn:hover{color:var(--cyan);}
 .pow-article .creactbtn:disabled{opacity:.6;cursor:default;}
 /* Hidden by default; revealed on hover/focus of .creactwrap (like the feed). A
