@@ -42,9 +42,16 @@ describe('buildFeedOgImageUrl', () => {
     expect(u.searchParams.get('id')).toBe('abc123')
   })
 
-  it('collapses runs of whitespace', () => {
+  it('collapses intra-line whitespace but preserves line breaks', () => {
+    // The card is a picture of the post — a bulleted/multi-line post must keep
+    // its line breaks (only runs of spaces/tabs within a line collapse).
     const u = new URL(buildFeedOgImageUrl({ text: 'hello    world  \n\n  foo' }))
-    expect(u.searchParams.get('text')).toBe('hello world foo')
+    expect(u.searchParams.get('text')).toBe('hello world\n\nfoo')
+  })
+
+  it('caps consecutive blank lines to one', () => {
+    const u = new URL(buildFeedOgImageUrl({ text: 'a\n\n\n\n\nb' }))
+    expect(u.searchParams.get('text')).toBe('a\n\nb')
   })
 
   it('clips text to 280 chars', () => {

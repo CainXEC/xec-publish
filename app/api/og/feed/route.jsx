@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { FEED_ACTION } from '@/lib/feedProtocol'
 import { truncateAtWord } from '@/lib/truncateAtWord'
+import { normalizeOgText } from '@/lib/normalizeOgText'
 
 export const runtime = 'nodejs'
 
@@ -29,19 +30,22 @@ export async function GET(request) {
   // "AI simulation" label next to the byline.
   const isAi = searchParams.get('ai') === '1'
 
-  // Tweet-length preview: collapse whitespace and clip so the layout stays
-  // legible no matter how long the on-chain post is. Callers (feedOgMetadata)
-  // already clip at a word — this is the backstop for a hand-built or
-  // older-cached URL, and it clips at a word too so no path can cut mid-word.
-  const text = truncateAtWord(rawText.replace(/\s+/g, ' ').trim(), 280)
+  // Tweet-length preview: tidy whitespace (PRESERVING line breaks so the card
+  // reads as written) and clip so the layout stays legible no matter how long
+  // the on-chain post is. Callers (feedOgMetadata) already clip at a word — this
+  // is the backstop for a hand-built or older-cached URL, and it clips at a word
+  // too so no path can cut mid-word.
+  const text = truncateAtWord(normalizeOgText(rawText), 280)
 
-  // Scale the body to the amount of text: short posts fill the card, long ones
-  // shrink to fit without overflowing. (Mono runs wide, so sizes stay modest.)
-  // Sizes are for the 1200x630 canvas (half the old 2400x1260 — the 2x card
-  // took ~4s to render and overran social crawlers' timeout, so X dropped it).
+  // Scale the body to fit: shrink for long posts (char count) AND for many-line
+  // posts (line count), whichever forces smaller, so a bulleted post can't push
+  // its own text off the card. Sizes are for the 1200x630 canvas (half the old
+  // 2400x1260 — the 2x card took ~4s and overran social crawlers' timeout).
   const len = text.length
-  const bodySize =
-    len > 220 ? 27 : len > 140 ? 34 : len > 70 ? 44 : len > 30 ? 54 : 66
+  const lineCount = text.split('\n').length
+  const byLen = len > 220 ? 27 : len > 140 ? 34 : len > 70 ? 44 : len > 30 ? 54 : 66
+  const byLines = lineCount >= 9 ? 27 : lineCount >= 7 ? 34 : lineCount >= 6 ? 44 : lineCount >= 5 ? 54 : 66
+  const bodySize = Math.min(byLen, byLines)
 
   let fonts = []
   try {
@@ -162,6 +166,8 @@ export async function GET(request) {
                   color: TEXT,
                   maxWidth: '1020px',
                   overflow: 'hidden',
+                  // Honor the post's line breaks (long lines still wrap).
+                  whiteSpace: 'pre-wrap',
                 }}
               >
                 {text}
