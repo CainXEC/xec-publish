@@ -14,7 +14,11 @@ import { tokenizeContent } from '@/lib/contentLinks'
  * anything left here linkifies inline.
  */
 export default function FeedBody({ text }) {
-  const tokens = tokenizeContent(text)
+  // Trim leading/trailing whitespace so trailing blank lines never render as dead
+  // space under a post (bodies render with white-space:pre-wrap). Interior line
+  // breaks are preserved. New posts arrive already trimmed (ComposeBox); this also
+  // cleans up older posts stored before that trimming.
+  const tokens = tokenizeContent(typeof text === 'string' ? text.trim() : text)
   if (tokens.length === 0) return null
   return tokens.map((t, i) => {
     if (t.type === 'mention') {

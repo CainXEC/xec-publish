@@ -119,7 +119,15 @@ export default function ComposeBox({
   // What actually goes on chain: for a forum post, title + body combined; else
   // just the body. Priced + hashed + sent as one blob.
   const titleClean = title.trim()
-  const outgoingContent = withTitle ? combineForumContent(titleClean, content) : content
+  // Trim leading/trailing whitespace off the body before it's priced, hashed, and
+  // stored — trailing blank lines are never meaningful and, under the feed's
+  // pre-wrap rendering, show up as dead space at the bottom of the post. (Forum
+  // posts route through combineForumContent, which already trims; this covers the
+  // plain post/reply/quote path.) Also blocks a whitespace-only post from pricing
+  // as non-empty. The live textarea keeps the raw value — only the OUTGOING content
+  // is trimmed.
+  const bodyClean = content.trim()
+  const outgoingContent = withTitle ? combineForumContent(titleClean, bodyClean) : bodyClean
 
   const priced = priceFeedPost(outgoingContent, { action })
   const chars = priced.chars
@@ -330,7 +338,9 @@ export default function ComposeBox({
         quoted_txid: quotedTxid ?? null,
         forumId: forumId ?? null,
         title: withTitle ? titleClean : null,
-        content,
+        // Show the same trimmed body that gets stored, so the optimistic row
+        // matches the post after it reloads (no trailing blank lines flashing).
+        content: bodyClean,
         content_hash: null,
         author_account_id: snap.accountId ?? null,
         author_identity: snap.identity ?? null,
@@ -438,7 +448,7 @@ export default function ComposeBox({
     } finally {
       setSubmitting(false)
     }
-  }, [content, outgoingContent, titleClean, withTitle, action, parentTxid, quotedTxid, forumId, quotedPost, priced.ok, priced.costXec, pollActive, pollEligibility, pollOptions, pollValid, resetToCompose, allowOptimistic, handlePosted])
+  }, [content, bodyClean, outgoingContent, titleClean, withTitle, action, parentTxid, quotedTxid, forumId, quotedPost, priced.ok, priced.costXec, pollActive, pollEligibility, pollOptions, pollValid, resetToCompose, allowOptimistic, handlePosted])
 
   // Poll for the on-chain payment while paying (Cashtab + non-optimistic pocket;
   // the optimistic path hands recording to confirmFeedPostInBackground instead).
