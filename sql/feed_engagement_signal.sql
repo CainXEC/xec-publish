@@ -11,9 +11,12 @@
 --   distinct_supporters — how many DISTINCT paying clusters reacted (the primary
 --                         quality signal; breadth is what an attacker can't fake
 --                         cheaply — alt wallets cost real fees to fund).
---   total_amount_sats   — total XEC paid across those reactions (a SECONDARY
---                         boost; the ranker saturates it hard so a whale can
---                         nudge a post up a few slots but never buy the page).
+--
+-- (Previously also returned total_amount_sats, a hard-saturated anti-whale boost.
+-- Dropped 2026-08-27: with tips removed from posts and reactions/reposts flat at
+-- 100 XEC, the only remaining amount variance was reply/quote length, so the term
+-- degenerated to a near-constant "+~1h if any paid support" that breadth already
+-- captured. The ranker now scores on breadth + conversation + exploration alone.)
 --
 -- WHAT COUNTS AS A "REACTION": every PAID interaction with the post —
 --   • likes + reposts  → feed_events rows targeting the post (target_txid)
@@ -49,11 +52,15 @@
 -- Apply in the Supabase SQL editor (schema is managed in the dashboard; this
 -- file is the source of record). Depends on account_links.sql. Safe to re-run.
 
+-- The 2026-08-27 amount-drop removed a column from RETURNS TABLE, and Postgres
+-- refuses to change a function's return type via CREATE OR REPLACE — so drop the
+-- old (3-column) signature first. IF EXISTS keeps this safe on a fresh DB.
+DROP FUNCTION IF EXISTS public.get_feed_engagement_signal(text[]);
+
 CREATE OR REPLACE FUNCTION public.get_feed_engagement_signal(post_txids text[])
 RETURNS TABLE (
   target_txid        text,
-  distinct_supporters bigint,
-  total_amount_sats   numeric
+  distinct_supporters bigint
 )
 LANGUAGE sql
 STABLE
@@ -83,8 +90,7 @@ AS $$
     -- Likes (5) + reposts (4): content-free paid reactions in feed_events.
     SELECT
       e.target_txid,
-      COALESCE(al.cluster_id, e.actor_account_id) AS supporter_cluster,
-      e.amount_sats
+      COALESCE(al.cluster_id, e.actor_account_id) AS supporter_cluster
     FROM public.feed_events e
     LEFT JOIN public.account_links al ON al.account_id = e.actor_account_id
     WHERE e.target_txid = ANY (post_txids)
@@ -97,8 +103,7 @@ AS $$
     -- pointing at a target. Only live rows (a tombstoned reply isn't support).
     SELECT
       COALESCE(c.parent_txid, c.quoted_txid) AS target_txid,
-      COALESCE(al.cluster_id, c.author_account_id) AS supporter_cluster,
-      c.amount_sats
+      COALESCE(al.cluster_id, c.author_account_id) AS supporter_cluster
     FROM public.feed_posts c
     LEFT JOIN public.account_links al ON al.account_id = c.author_account_id
     WHERE c.deleted_at IS NULL
@@ -111,8 +116,7 @@ AS $$
   )
   SELECT
     t.txid AS target_txid,
-    COUNT(DISTINCT r.supporter_cluster)   AS distinct_supporters,
-    COALESCE(SUM(r.amount_sats), 0)::numeric AS total_amount_sats
+    COUNT(DISTINCT r.supporter_cluster) AS distinct_supporters
   FROM targets t
   JOIN reactions r
     ON r.target_txid = t.txid

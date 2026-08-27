@@ -1,8 +1,8 @@
 // =============================================================================
 //  Hermetic test for the house/AI-account exclusion in the ranking signals:
 //    • sql/feed_engagement_signal.sql  — is_ai SUPPORTERS (a herald's likes /
-//      reposts / paid replies) must add neither breadth nor amount to a post's
-//      engagement signal, exactly like a self/alt-ring reaction.
+//      reposts / paid replies) must add no breadth to a post's engagement
+//      signal, exactly like a self/alt-ring reaction.
 //    • sql/rpc_get_unlock_counts.sql   — is_ai UNLOCKERS (a patron's grants) must
 //      NOT inflate a post's public reader count …
 //    • sql/rpc_get_unlock_earnings.sql — … while earnings KEEP them, because that
@@ -252,49 +252,43 @@ describe.skipIf(!enabled)('house/AI exclusion from ranking signals (hermetic scr
 
   const one = (arr) => (arr.length === 1 ? arr[0] : null)
 
-  it('feed engagement signal: is_ai supporters (likes/reposts/replies) add no breadth or amount', () => {
+  it('feed engagement signal: is_ai supporters (likes/reposts/replies) add no breadth', () => {
     // No reactions yet → the post is simply absent from the signal.
     expect(signal([POST0])).toEqual([])
 
-    // A real supporter likes it (100 sats): breadth 1, amount 100.
+    // A real supporter likes it: breadth 1.
     like('evt-b-like', ACC.b, 100)
     let s = one(signal([POST0]))
     expect(s).not.toBeNull()
     expect(Number(s.distinct_supporters)).toBe(1)
-    expect(Number(s.total_amount_sats)).toBe(100)
 
-    // The herald (is_ai) likes it too — a REAL 100-sat payment, visible on-chain.
-    // The signal must NOT move: still breadth 1, amount 100.
+    // The herald (is_ai) likes it too — a REAL payment, visible on-chain. The
+    // signal must NOT move: still breadth 1.
     like('evt-h-like', ACC.h, 100)
     s = one(signal([POST0]))
     expect(Number(s.distinct_supporters)).toBe(1)
-    expect(Number(s.total_amount_sats)).toBe(100)
 
     // A second is_ai herald piles on. Still no movement — the whole house cluster
     // is invisible to rank no matter how many agents react.
     like('evt-h2-like', ACC.h2, 100)
     s = one(signal([POST0]))
     expect(Number(s.distinct_supporters)).toBe(1)
-    expect(Number(s.total_amount_sats)).toBe(100)
 
     // Guard against a vacuous test: a NEW HUMAN supporter DOES move it (breadth 2).
     like('evt-c-like', ACC.c, 100)
     s = one(signal([POST0]))
     expect(Number(s.distinct_supporters)).toBe(2)
-    expect(Number(s.total_amount_sats)).toBe(200)
 
     // The exclusion also covers the paid-reply/quote branch of the signal.
-    // An is_ai reply (250 sats) adds nothing…
+    // An is_ai reply adds nothing…
     reply('reply-h-onpost', ACC.h, 250)
     s = one(signal([POST0]))
     expect(Number(s.distinct_supporters)).toBe(2)
-    expect(Number(s.total_amount_sats)).toBe(200)
 
-    // …while a human reply (50 sats) counts as both breadth (3) and amount (250).
+    // …while a human reply counts as breadth (3).
     reply('reply-r-onpost', ACC.r, 50)
     s = one(signal([POST0]))
     expect(Number(s.distinct_supporters)).toBe(3)
-    expect(Number(s.total_amount_sats)).toBe(250)
   })
 
   it('unlock counts exclude is_ai readers (reach), while earnings keep them (money)', () => {

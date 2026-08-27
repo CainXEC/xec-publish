@@ -35,33 +35,31 @@ describe('rankFeedCandidates', () => {
   it('lets distinct paying supporters float an older post above a newer quiet one', () => {
     const newer = post('newer', 2, { author: 'A' })
     const older = post('older', 8, { author: 'B' })
-    const signals = new Map([
-      ['older', { distinctSupporters: 12, totalAmountSats: 0 }],
-    ])
+    const signals = new Map([['older', { distinctSupporters: 12 }]])
     const ranked = rankFeedCandidates([newer, older], signals)
     expect(ids(ranked)[0]).toBe('older')
   })
 
-  it('weights breadth (many distinct payers) over a single whale tip', () => {
+  it('ranks a broadly-supported post over a narrowly-supported one of the same age', () => {
+    // Breadth is the only paid lever now (amount was removed): more DISTINCT
+    // supporters wins, regardless of how much any single wallet spent.
     const broad = post('broad', 5, { author: 'A' })
-    const whale = post('whale', 5, { author: 'B' })
+    const narrow = post('narrow', 5, { author: 'B' })
     const signals = new Map([
-      // Ten people paid 100 XEC each vs. one wallet paying 1,000,000 XEC.
-      ['broad', { distinctSupporters: 10, totalAmountSats: 10 * 100 * 100 }],
-      ['whale', { distinctSupporters: 1, totalAmountSats: 1_000_000 * 100 }],
+      ['broad', { distinctSupporters: 10 }],
+      ['narrow', { distinctSupporters: 1 }],
     ])
-    const ranked = rankFeedCandidates([broad, whale], signals)
+    const ranked = rankFeedCandidates([broad, narrow], signals)
     expect(ids(ranked)[0]).toBe('broad')
   })
 
-  it('saturates amount so a whale cannot out-rank a much newer post', () => {
+  it('bounds breadth so a lone supporter cannot lift a day-old post over a fresh one', () => {
     const fresh = post('fresh', 0.5, { author: 'A' })
-    const bought = post('bought', 30, { author: 'B' })
-    const signals = new Map([
-      ['bought', { distinctSupporters: 1, totalAmountSats: 1_000_000 * 100 }],
-    ])
-    const ranked = rankFeedCandidates([fresh, bought], signals)
-    // A single huge tip on a day-old post can't teleport it over a 30-min-old post.
+    const supported = post('supported', 30, { author: 'B' })
+    const signals = new Map([['supported', { distinctSupporters: 1 }]])
+    const ranked = rankFeedCandidates([fresh, supported], signals)
+    // The breadth boost is capped (≤18h), so it can't teleport a 30-hour-old post
+    // over a 30-minute-old one.
     expect(ids(ranked)[0]).toBe('fresh')
   })
 
@@ -82,8 +80,8 @@ describe('rankFeedCandidates', () => {
     const c1 = post('c1', 9, { author: 'C' })
     const d1 = post('d1', 10, { author: 'D' })
     const signals = new Map([
-      ['a1', { distinctSupporters: 20, totalAmountSats: 0 }],
-      ['a2', { distinctSupporters: 20, totalAmountSats: 0 }],
+      ['a1', { distinctSupporters: 20 }],
+      ['a2', { distinctSupporters: 20 }],
     ])
     const ranked = rankFeedCandidates([a1, a2, b1, c1, d1], signals)
     for (let i = 1; i < ranked.length; i++) {

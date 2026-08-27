@@ -43,7 +43,7 @@ describe('weaveMintRows', () => {
     // (breadth ≈ +10h vs -4h age); a brand-new mint (score ≈ 0) stays below.
     const supported = post(4)
     const signals = new Map([
-      [supported.txid, { distinctSupporters: 5, totalAmountSats: 50000 }],
+      [supported.txid, { distinctSupporters: 5 }],
     ])
     const ranked = rankFeedCandidates([supported, post(6)], signals, NOW)
     const woven = weaveMintRows(ranked, [mint(0.01, 'bob')], signals, NOW)
@@ -87,7 +87,7 @@ describe('weaveMintRows', () => {
 
   it('never drops or reorders the ranked posts themselves', () => {
     const posts = [post(0.5), post(2), post(3, { reply_count: 4 }), post(7), post(9)]
-    const signals = new Map([[posts[3].txid, { distinctSupporters: 3, totalAmountSats: 1000 }]])
+    const signals = new Map([[posts[3].txid, { distinctSupporters: 3 }]])
     const ranked = rankFeedCandidates(posts, signals, NOW)
     const woven = weaveMintRows(ranked, [mint(1, 'a'), mint(6, 'b')], signals, NOW)
     expect(woven).toHaveLength(ranked.length + 2)
