@@ -635,11 +635,19 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
   transition:color .15s;}
 .pow-feed .pinbtn:hover{color:var(--cyan);}
 .pow-feed .pinbtn:disabled{opacity:.5;cursor:default;}
-/* Pin/Delete now live in the top meta-row actions cluster (with on-chain + copy);
-   the cluster's gap is 2px (tuned for icons), so give these text buttons a little
-   horizontal padding so they don't crowd each other or the copy icon. */
+/* Pin/Delete live in the top meta-row actions cluster as ICON buttons the SAME
+   size as the copy-link icon (26x22 box, 15px glyph), so the three sit evenly.
+   The pin lights up red (--no) when pinned; delete goes red on hover. */
 .pow-feed .postactions .pinbtn,
-.pow-feed .postactions .delbtn{font-size:12px;padding:2px 5px;}
+.pow-feed .postactions .delbtn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:26px;height:22px;padding:0;border-radius:6px;color:var(--dim);}
+.pow-feed .postactions .pinbtn:hover,
+.pow-feed .postactions .delbtn:hover{background:rgba(255,255,255,.05);}
+.pow-feed .postactions .pinbtn:hover{color:var(--cyan);}
+.pow-feed .postactions .pinbtn.on,
+.pow-feed .postactions .pinbtn.on:hover{color:var(--no);}
+.pow-feed .postactions .delbtn:hover{color:var(--no);}
 .pow-feed .inlinereply,.pow-feed .inlinequote{margin-top:12px;flex-basis:100%;}
 /* replies just posted, nested inline under their parent post on the feed */
 .pow-feed .postreplies{list-style:none;margin:12px 0 0 6px;padding:0 0 0 14px;border-left:2px solid var(--line);}
