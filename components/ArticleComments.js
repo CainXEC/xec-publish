@@ -135,6 +135,10 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
   const [notice, setNotice] = useState('')
   const [txidInput, setTxidInput] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // Synchronous re-entrancy lock (see ComposeBox.js): `submitting` is state and
+  // flips a render late, so a fast double-tap could fire startPayment twice and
+  // pay for the comment twice. A ref refuses the second call in the same tick.
+  const submitLockRef = useRef(false)
   // True when the click resolved to a pocket payment — drives the compact
   // "Posting…" screen and the optimistic dismiss (vs the Cashtab wait screen).
   const [payViaPocket, setPayViaPocket] = useState(false)
@@ -174,6 +178,7 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
   }, [])
 
   const resetToCompose = useCallback(() => {
+    submitLockRef.current = false
     setPhase('compose')
     setIntent(null)
     setNotice('')
@@ -195,6 +200,10 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
 
   const startPayment = useCallback(async () => {
     if (!priced.ok) return
+    // Refuse a second concurrent start synchronously (double-tap / Enter+click),
+    // before any state or await, so the comment can't be paid for twice.
+    if (submitLockRef.current) return
+    submitLockRef.current = true
     setSubmitting(true)
     setNotice('')
     prewarmPaymentWatch()
@@ -264,6 +273,8 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
       abortPayment(handle)
       setPayViaPocket(false)
       setNotice('Network hiccup — try again.')
+      // Nothing broadcast — release the lock so a retry can start.
+      submitLockRef.current = false
     } finally {
       setSubmitting(false)
     }

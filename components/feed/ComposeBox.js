@@ -107,6 +107,13 @@ export default function ComposeBox({
   const [notice, setNotice] = useState('')
   const [txidInput, setTxidInput] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // Synchronous re-entrancy lock. `submitting` is React state — it flips a render
+  // later, so a fast double-tap (or Enter+click) can fire startPayment TWICE
+  // before the button disables, and the pocket's serialize mutex then builds the
+  // second tx on the first's change: TWO broadcasts, a double charge. A ref flips
+  // NOW, so the second call is refused in the same tick. Held for the whole
+  // payment lifecycle; released only when we're back to a fresh composer.
+  const submitLockRef = useRef(false)
   const textareaRef = useRef(null)
 
   // What actually goes on chain: for a forum post, title + body combined; else
@@ -219,6 +226,9 @@ export default function ComposeBox({
   })
 
   const resetToCompose = useCallback(() => {
+    // Back to a fresh composer → release the re-entrancy lock so the NEXT post
+    // can start (a fresh draft is a fresh, legitimate payment).
+    submitLockRef.current = false
     setPhase('compose')
     setIntent(null)
     setPayViaPocket(false)
@@ -253,6 +263,11 @@ export default function ComposeBox({
 
   const startPayment = useCallback(async () => {
     if (!priced.ok || !pollValid) return
+    // Refuse a second concurrent start (double-tap / Enter+click) SYNCHRONOUSLY —
+    // before any state update or await — so a payment can never be built+broadcast
+    // twice. Released by resetToCompose (success/cancel) or the catch below.
+    if (submitLockRef.current) return
+    submitLockRef.current = true
     // Snapshot the poll now so the confirm poll-loop records exactly what was
     // composed, even though the compose inputs are unmounted during 'paying'.
     pollRef.current = pollActive
@@ -417,6 +432,9 @@ export default function ComposeBox({
     } catch {
       abortPayment(handle)
       setNotice('Network hiccup — try again.')
+      // Nothing broadcast — release the lock so the user can retry from the
+      // still-open composer.
+      submitLockRef.current = false
     } finally {
       setSubmitting(false)
     }

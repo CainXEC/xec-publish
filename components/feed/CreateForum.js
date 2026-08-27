@@ -32,12 +32,16 @@ export default function CreateForum({ onCreated, onCancel }) {
   const [submitting, setSubmitting] = useState(false)
   const [statusMsg, setStatusMsg] = useState('Waiting for payment…')
   const bodyRef = useRef(null)
+  // Synchronous re-entrancy lock (see ComposeBox.js): guards against a double-tap
+  // paying the forum-creation fee twice before `submitting` disables the button.
+  const submitLockRef = useRef(false)
 
   const slugOk = SLUG_RE.test(slug) && !slug.startsWith('_') && !slug.endsWith('_')
   const titleOk = title.trim().length > 0 && title.trim().length <= 80
   const canSubmit = slugOk && titleOk && !submitting
 
   const resetToCompose = useCallback(() => {
+    submitLockRef.current = false
     setPhase('compose')
     setIntent(null)
     setPayViaPocket(false)
@@ -48,6 +52,10 @@ export default function CreateForum({ onCreated, onCancel }) {
 
   const startPayment = useCallback(async () => {
     if (!canSubmit) return
+    // Refuse a second concurrent start synchronously (double-tap / Enter+click) so
+    // the creation fee can't be paid twice.
+    if (submitLockRef.current) return
+    submitLockRef.current = true
     bodyRef.current = { slug: slug.trim(), title: title.trim(), description: description.trim() }
     setSubmitting(true)
     setNotice('')
@@ -86,6 +94,8 @@ export default function CreateForum({ onCreated, onCancel }) {
     } catch {
       abortPayment(handle)
       setNotice('Network hiccup — try again.')
+      // Nothing broadcast — release the lock so a retry can start.
+      submitLockRef.current = false
     } finally {
       setSubmitting(false)
     }
