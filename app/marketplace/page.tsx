@@ -11,14 +11,18 @@ import { getAuthedAccount } from "@/lib/authHelpers";
 
 // Defining `openGraph` here REPLACES the root layout's openGraph object (Next
 // shallow-merges top-level metadata keys, so a nested openGraph without images
-// drops the inherited /og-site.png and the card renders imageless). Redeclare
-// the site card explicitly. Same for twitter — declaring it lets the card carry
-// the marketplace-specific title instead of inheriting the generic one.
+// drops the inherited image and the card renders imageless). Redeclare the card
+// explicitly. Same for twitter — declaring it lets the card carry the
+// marketplace-specific title instead of inheriting the generic one.
+//
+// Bespoke "Handles" card (app/api/og/marketplace). Bump ?v= when the template
+// changes — OG images are CDN-cached immutable, so a new v= re-renders every
+// shared card. Relative URL resolves against the root layout's metadataBase.
 const OG_IMAGE = {
-  url: "/og-site.png",
+  url: "/api/og/marketplace?v=1",
   width: 1200,
   height: 630,
-  alt: "Handles — proofofwriting",
+  alt: "Claim a one-of-one @handle on Proof Of Writing",
 };
 
 export const metadata: Metadata = {
