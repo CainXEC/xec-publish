@@ -11,7 +11,7 @@ import { pollUntil } from '@/lib/ecash/pollUntil'
 // Pocket-aware gateway: identical contract to the cashtabPay trio. Pocket
 // eligible → local sign + instant broadcast (r.txid feeds the confirm poll);
 // otherwise the exact extension/web-tab behavior this file always had.
-import { beginPayment, completePayment, abortPayment, prewarmPocketSpend } from '@/lib/pocket/payGateway'
+import { beginPayment, completePayment, completePaymentOptimistic, abortPayment, prewarmPocketSpend } from '@/lib/pocket/payGateway'
 import { getPocketSnapshot } from '@/lib/pocket/store'
 import { FEED_ACTION } from '@/lib/feedProtocol'
 import { canBuildFeedPaymentLocally, buildFeedPaymentLocally } from '@/lib/feed/buildFeedPayment'
@@ -301,85 +301,106 @@ export default function ComposeBox({
           return
         }
       }
-      // Pocket signs locally (txid feeds the confirm poll); Cashtab is the
-      // extension popup or the pre-opened tab — exactly one. A rejected popup
-      // drops back to the composer with the draft intact; a pocket failure
-      // keeps the paying screen, whose manual Cashtab link completes it.
-      void completePayment(handle, {
-        bip21: data.bip21Url,
-        cashtabUrl: data.cashtabUrl,
-      }).then((r) => {
+      // The optimistic post row we drop into the feed — a full post shape keyed by
+      // the real txid, rendered from the pocket byline the store supplies.
+      const makeOptimisticPost = (txid, snap) => ({
+        txid,
+        action:
+          action === 'reply'
+            ? FEED_ACTION.REPLY
+            : action === 'quote'
+              ? FEED_ACTION.QUOTE
+              : FEED_ACTION.POST,
+        parent_txid: parentTxid ?? null,
+        quoted_txid: quotedTxid ?? null,
+        forumId: forumId ?? null,
+        title: withTitle ? titleClean : null,
+        content,
+        content_hash: null,
+        author_account_id: snap.accountId ?? null,
+        author_identity: snap.identity ?? null,
+        displayIdentity: snap.identity ?? null,
+        displayColor: snap.handleColor ?? null,
+        payer_address: snap.primaryAddress ?? null,
+        payout_address: snap.primaryAddress ?? null,
+        amount_sats: null,
+        created_at: new Date().toISOString(),
+        deleted: false,
+        deleted_at: null,
+        reply_count: 0,
+        like_count: 0,
+        repost_count: 0,
+        quote_count: 0,
+        card_kind: null,
+        card_meta: null,
+        image_url: null,
+        quoted: action === 'quote' && quotedPost ? quotedPost : null,
+        parent: null,
+        linkedPost: null,
+        articleCard: null,
+        likedByViewer: false,
+        repostedByViewer: false,
+        optimistic: true,
+      })
+      // Record server-side in the background (a DETACHED poll that survives the
+      // composer being dismissed) AND show the post — handlePosted also clears the
+      // draft + poll state and resets to the empty composer.
+      const recordAndShow = (txid, snap) => {
+        confirmFeedPostInBackground({
+          txid,
+          content: outgoingContent,
+          action,
+          parentTxid,
+          quotedTxid,
+          forumId,
+          poll: pollRef.current,
+          preparedAt: data.preparedAt,
+          payAddress: data.payAddress,
+        })
+        handlePosted(makeOptimisticPost(txid, snap))
+      }
+
+      const snap0 = getPocketSnapshot()
+      // Only optimistic where the caller opted in, only for a plain post (polls keep
+      // the classic flow), and only with a byline to render (the pocket supplies it).
+      const canShowOptimistic = allowOptimistic && !pollActive && (snap0.identity || snap0.primaryAddress)
+      const payArgs = { bip21: data.bip21Url, cashtabUrl: data.cashtabUrl }
+
+      if (handle.mode === 'pocket' && canShowOptimistic) {
+        // INSTANT: the pocket signs locally, so the real txid exists the moment the
+        // tx is built — show the post then, and let the broadcast finish in the
+        // background. No network round-trip blocks the feel of posting.
+        void completePaymentOptimistic(handle, payArgs).then((r) => {
+          if (r.ok && r.txid) {
+            recordAndShow(r.txid, snap0)
+            // Rare: the background broadcast failed. The post was never recorded, so
+            // it self-heals on the next refresh — surface it so the user can retry.
+            r.broadcast?.then((bc) => {
+              if (bc && !bc.ok) setNotice(bc.error || 'Your post didn’t broadcast — please try again.')
+            })
+          } else if (r.reason === 'denied') {
+            resetToCompose()
+            setNotice('Payment cancelled — your draft is safe.')
+          } else if (r.reason === 'pocket_error') {
+            setPayViaPocket(false)
+            setNotice(r.message || 'Pocket couldn’t send — use the Cashtab link below.')
+          }
+        })
+        setIntent(data)
+        setPhase('paying')
+        return
+      }
+
+      // Cashtab (extension/tab) or non-optimistic: show once the payment actually
+      // broadcasts. The extension returns a txid on approval (optimistic); the web
+      // tab resolves with no txid and stays on the poll until the chain shows it.
+      void completePayment(handle, payArgs).then((r) => {
         if (r.ok && r.txid) {
-          // A txid in hand = proof the payment broadcast: the Pocket always returns
-          // one, and the Cashtab EXTENSION returns one the moment you approve — both
-          // show optimistically. The web tab resolves with no txid (it can't know you
-          // paid until the chain shows it), so it skips this and stays on the poll.
           setStatusMsg('Posting…')
           setIntent((prev) => (prev ? { ...prev, knownTxid: r.txid } : prev))
           const snap = getPocketSnapshot()
-          // Only where the caller opted in (allowOptimistic), only for a plain post
-          // (polls keep the classic flow), and only when we have a byline to render
-          // (the pocket store supplies it) — else fall through so a post never blanks.
           if (allowOptimistic && !pollActive && (snap.identity || snap.primaryAddress)) {
-            // Hand the RECORDING to a background confirm so the composer can be
-            // dismissed the instant the post shows (waiting for the chain made the
-            // box linger a beat, which felt slow) — and so posting again right away
-            // can't overwrite this one's in-flight confirm. Its result is discarded;
-            // the optimistic post below is what stays on screen.
-            confirmFeedPostInBackground({
-              txid: r.txid,
-              content: outgoingContent,
-              action,
-              parentTxid,
-              quotedTxid,
-              forumId,
-              poll: pollRef.current,
-              preparedAt: data.preparedAt,
-              payAddress: data.payAddress,
-            })
-            // handlePosted shows the post (onPosted) AND clears the draft + poll
-            // state + resets to the empty composer — the whole reason the text field
-            // was left populated before was calling onPosted+resetToCompose, which
-            // does NOT clear the draft.
-            handlePosted({
-              txid: r.txid,
-              action:
-                action === 'reply'
-                  ? FEED_ACTION.REPLY
-                  : action === 'quote'
-                    ? FEED_ACTION.QUOTE
-                    : FEED_ACTION.POST,
-              parent_txid: parentTxid ?? null,
-              quoted_txid: quotedTxid ?? null,
-              forumId: forumId ?? null,
-              title: withTitle ? titleClean : null,
-              content,
-              content_hash: null,
-              author_account_id: snap.accountId ?? null,
-              author_identity: snap.identity ?? null,
-              displayIdentity: snap.identity ?? null,
-              displayColor: snap.handleColor ?? null,
-              payer_address: snap.primaryAddress ?? null,
-              payout_address: snap.primaryAddress ?? null,
-              amount_sats: null,
-              created_at: new Date().toISOString(),
-              deleted: false,
-              deleted_at: null,
-              reply_count: 0,
-              like_count: 0,
-              repost_count: 0,
-              quote_count: 0,
-              card_kind: null,
-              card_meta: null,
-              image_url: null,
-              quoted: action === 'quote' && quotedPost ? quotedPost : null,
-              parent: null,
-              linkedPost: null,
-              articleCard: null,
-              likedByViewer: false,
-              repostedByViewer: false,
-              optimistic: true,
-            })
+            recordAndShow(r.txid, snap)
           }
         } else if (!r.ok && r.reason === 'denied') {
           resetToCompose()

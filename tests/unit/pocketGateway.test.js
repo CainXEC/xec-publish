@@ -8,6 +8,10 @@ const mocks = vi.hoisted(() => ({
   snapshot: { status: 'ready', registered: true, balanceSats: 1_000_000, accountId: 'acct-1' },
   spendContext: { skHex: 'ab'.repeat(32), address: 'ecash:qpocket' },
   pocketSpend: vi.fn(async () => ({ ok: true, txid: 'f'.repeat(64) })),
+  pocketSpendDeferred: vi.fn(() => ({
+    built: Promise.resolve({ ok: true, txid: 'a'.repeat(64) }),
+    done: Promise.resolve({ ok: true }),
+  })),
   warmPocketWallet: vi.fn(async () => {}),
   refreshPocketBalance: vi.fn(),
   applyOptimisticSpend: vi.fn(),
@@ -29,6 +33,7 @@ vi.mock('@/lib/pocket/store', () => ({
 }))
 vi.mock('@/lib/pocket/wallet', () => ({
   pocketSpend: mocks.pocketSpend,
+  pocketSpendDeferred: mocks.pocketSpendDeferred,
   warmPocketWallet: mocks.warmPocketWallet,
 }))
 vi.mock('@/lib/ecash/cashtabPay', () => ({
@@ -47,6 +52,10 @@ beforeEach(() => {
   mocks.spendContext = { skHex: 'ab'.repeat(32), address: 'ecash:qpocket' }
   mocks.extensionAvailable = false
   mocks.pocketSpend.mockResolvedValue({ ok: true, txid: 'f'.repeat(64) })
+  mocks.pocketSpendDeferred.mockReturnValue({
+    built: Promise.resolve({ ok: true, txid: 'a'.repeat(64) }),
+    done: Promise.resolve({ ok: true }),
+  })
 })
 
 describe('spendEligibility', () => {
@@ -162,6 +171,81 @@ describe('beginPayment / completePayment', () => {
     const { abortPayment } = await import('@/lib/pocket/payGateway')
     abortPayment({ mode: 'pocket' })
     expect(mocks.abortCashtabPayment).not.toHaveBeenCalled()
+  })
+})
+
+describe('completePaymentOptimistic (instant posting)', () => {
+  it('pocket resolves with the real txid at BUILD, before the broadcast lands', async () => {
+    const { completePaymentOptimistic } = await import('@/lib/pocket/payGateway')
+    // done never settles — proves the caller gets the txid from `built`, not broadcast.
+    mocks.pocketSpendDeferred.mockReturnValue({
+      built: Promise.resolve({ ok: true, txid: 'a'.repeat(64) }),
+      done: new Promise(() => {}),
+    })
+    const r = await completePaymentOptimistic({ mode: 'pocket' }, PAY)
+    expect(r).toMatchObject({ ok: true, via: 'pocket', txid: 'a'.repeat(64) })
+    expect(r.broadcast).toBeInstanceOf(Promise)
+    // The balance drops optimistically at build (no wait for the chain).
+    expect(mocks.applyOptimisticSpend).toHaveBeenCalled()
+    expect(mocks.undoOptimisticSpend).not.toHaveBeenCalled()
+  })
+
+  it('reconciles the balance when the background broadcast succeeds', async () => {
+    const { completePaymentOptimistic } = await import('@/lib/pocket/payGateway')
+    const r = await completePaymentOptimistic({ mode: 'pocket' }, PAY)
+    const bc = await r.broadcast
+    expect(bc).toEqual({ ok: true })
+    expect(mocks.refreshPocketBalance).toHaveBeenCalled()
+    expect(mocks.undoOptimisticSpend).not.toHaveBeenCalled()
+  })
+
+  it('undoes the optimistic drop when the background broadcast FAILS', async () => {
+    const { completePaymentOptimistic } = await import('@/lib/pocket/payGateway')
+    mocks.pocketSpendDeferred.mockReturnValue({
+      built: Promise.resolve({ ok: true, txid: 'a'.repeat(64) }),
+      done: Promise.resolve({ ok: false, error: 'Broadcast was rejected — try again.' }),
+    })
+    const r = await completePaymentOptimistic({ mode: 'pocket' }, PAY)
+    expect(r.ok).toBe(true) // the post already showed
+    const bc = await r.broadcast
+    expect(bc.ok).toBe(false)
+    expect(mocks.undoOptimisticSpend).toHaveBeenCalled()
+  })
+
+  it('a BUILD failure never broadcasts — undoes the drop and reports pocket_error', async () => {
+    const { completePaymentOptimistic } = await import('@/lib/pocket/payGateway')
+    mocks.pocketSpendDeferred.mockReturnValue({
+      built: Promise.resolve({ ok: false, error: 'Network hiccup talking to the chain — try again.' }),
+      done: Promise.resolve({ ok: false, error: 'x' }),
+    })
+    const r = await completePaymentOptimistic({ mode: 'pocket' }, PAY)
+    expect(r.ok).toBe(false)
+    expect(r.reason).toBe('pocket_error')
+    expect(mocks.undoOptimisticSpend).toHaveBeenCalled()
+    expect(mocks.payWithCashtab).not.toHaveBeenCalled()
+    const bc = await r.broadcast
+    expect(bc.ok).toBe(false)
+  })
+
+  it('a BUILD failure WITH the extension silently retries via the extension', async () => {
+    const { completePaymentOptimistic } = await import('@/lib/pocket/payGateway')
+    mocks.extensionAvailable = true
+    mocks.pocketSpendDeferred.mockReturnValue({
+      built: Promise.resolve({ ok: false, error: 'boom' }),
+      done: Promise.resolve({ ok: false, error: 'boom' }),
+    })
+    const r = await completePaymentOptimistic({ mode: 'pocket' }, PAY)
+    expect(mocks.payWithCashtab).toHaveBeenCalledWith(PAY)
+    expect(r.via).toBe('extension')
+  })
+
+  it('non-pocket delegates to the normal Cashtab path (no early txid)', async () => {
+    const { completePaymentOptimistic } = await import('@/lib/pocket/payGateway')
+    const handle = { mode: 'cashtab', gesture: { hasExtension: false, placeholderWindow: null } }
+    const r = await completePaymentOptimistic(handle, PAY)
+    expect(mocks.completeCashtabPayment).toHaveBeenCalledWith(handle.gesture, PAY)
+    expect(mocks.pocketSpendDeferred).not.toHaveBeenCalled()
+    expect(r.broadcast).toBeInstanceOf(Promise)
   })
 })
 
