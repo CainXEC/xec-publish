@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { getFeedNotifications } from '@/lib/feedNotifications'
+import { CONVERSATIONAL_TYPES } from '@/lib/notifFormat'
 
 /**
  * The signed-in account's recent feed notifications + unread count, for the
@@ -19,12 +20,16 @@ export async function GET(request) {
   // `before` (ISO timestamp) drives "Load more": page back through older
   // notifications from the oldest one already shown.
   const before = request.nextUrl.searchParams.get('before') || null
+  // `filter=mentions` narrows to the respond-worthy types (the Mentions tab);
+  // anything else returns the full mixed list (the All tab).
+  const types =
+    request.nextUrl.searchParams.get('filter') === 'mentions' ? CONVERSATIONAL_TYPES : null
 
   const supabase = adminDb()
   const { notifications, unreadCount, nextCursor } = await getFeedNotifications(
     supabase,
     acct.accountId,
-    { before },
+    { before, types },
   )
 
   // Admin sessions also get the AI_SATOSHI review-queue count, folded into the

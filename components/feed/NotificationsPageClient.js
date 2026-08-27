@@ -124,12 +124,46 @@ function EarnedChip({ items, type }) {
   return earned ? <span className="notifamt">{earned} · </span> : null
 }
 
-export default function NotificationsPageClient({ initialItems, initialCursor, agentPending }) {
-  const [items, setItems] = useState(initialItems ?? [])
-  const [cursor, setCursor] = useState(initialCursor ?? null)
-  const [loadingMore, setLoadingMore] = useState(false)
+// The two views. 'all' is everything; 'mentions' is the respond-worthy types
+// (reply/quote/mention/comment), server-filtered so it pages over only those.
+const TABS = [
+  { key: 'all', label: 'All notifications' },
+  { key: 'mentions', label: 'Mentions', filter: 'mentions' },
+]
 
-  const groups = useMemo(() => groupNotifications(items), [items])
+export default function NotificationsPageClient({ initialItems, initialCursor, agentPending }) {
+  const [tab, setTab] = useState('all')
+  // Per-tab list + keyset cursor + whether it's been fetched. 'all' is seeded by
+  // the SSR page; 'mentions' lazy-loads (server-filtered) the first time it's
+  // opened, so flipping between tabs never refetches.
+  const [tabs, setTabs] = useState({
+    all: { items: initialItems ?? [], cursor: initialCursor ?? null, loaded: true },
+    mentions: { items: [], cursor: null, loaded: false },
+  })
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [switching, setSwitching] = useState(false)
+
+  const active = tabs[tab]
+  const groups = useMemo(() => groupNotifications(active.items), [active.items])
+
+  const patchTab = useCallback((key, patch) => {
+    setTabs((t) => ({
+      ...t,
+      [key]: typeof patch === 'function' ? patch(t[key]) : { ...t[key], ...patch },
+    }))
+  }, [])
+
+  // One fetch for both tabs — the Mentions tab just adds ?filter=mentions.
+  const fetchNotifs = useCallback(async (key, before) => {
+    const params = new URLSearchParams()
+    if (before) params.set('before', before)
+    const filter = TABS.find((t) => t.key === key)?.filter
+    if (filter) params.set('filter', filter)
+    const qs = params.toString()
+    const res = await fetch(`/api/feed/notifications${qs ? `?${qs}` : ''}`, { cache: 'no-store' })
+    if (!res.ok) throw new Error('Failed to load notifications')
+    return res.json()
+  }, [])
 
   // The server already marked everything read before this component ever
   // mounted (app/notifications/page.js runs markFeedNotificationsRead during
@@ -139,37 +173,52 @@ export default function NotificationsPageClient({ initialItems, initialCursor, a
     broadcastNotificationsRead()
   }, [])
 
-  // Pull in notifications that arrived AFTER this page loaded and prepend them.
-  // The page renders its list once (server-side) and otherwise only appends OLDER
-  // rows via loadMore, so without this a notification that lands while you're
-  // sitting here — flagged by the bell's red badge — would never show. Fired by
-  // the header bell's click (the badge you tap), since clicking it while already
-  // on /notifications is a no-op navigation that can't refetch server-side.
+  const selectTab = useCallback(
+    async (key) => {
+      setTab(key)
+      if (tabs[key].loaded || switching) return
+      setSwitching(true)
+      try {
+        const data = await fetchNotifs(key, null)
+        patchTab(key, {
+          items: Array.isArray(data.notifications) ? data.notifications : [],
+          cursor: data.nextCursor ?? null,
+          loaded: true,
+        })
+      } catch {
+        /* leave it unloaded so re-tapping the tab retries */
+      } finally {
+        setSwitching(false)
+      }
+    },
+    [tabs, switching, fetchNotifs, patchTab],
+  )
+
+  // Pull in notifications that arrived AFTER this page loaded and prepend them to
+  // the ACTIVE tab (with its filter). The page renders its list once (server-side)
+  // and otherwise only appends OLDER rows via loadMore, so without this a
+  // notification that lands while you're sitting here — flagged by the bell's red
+  // badge — would never show. Fired by the header bell's click, since clicking it
+  // while already on /notifications is a no-op navigation that can't refetch SSR.
   const refreshLatest = useCallback(async () => {
     try {
-      const res = await fetch('/api/feed/notifications', { cache: 'no-store' })
-      if (!res.ok) return
-      const data = await res.json()
+      const data = await fetchNotifs(tab, null)
       const latest = Array.isArray(data.notifications) ? data.notifications : []
-      setItems((prev) => {
-        const seen = new Set(prev.map((n) => n.id))
+      patchTab(tab, (cur) => {
+        const seen = new Set(cur.items.map((n) => n.id))
         const fresh = latest.filter((n) => !seen.has(n.id))
-        if (fresh.length === 0) return prev
-        // API is newest-first, so the new rows lead — prepend them ahead of the
-        // existing list, preserving overall newest-first order. They arrive with
-        // read:false, so they render with the unread highlight for this view.
-        return [...fresh, ...prev]
+        // API is newest-first, so new rows lead — prepend, preserving order.
+        return fresh.length ? { ...cur, items: [...fresh, ...cur.items] } : cur
       })
-      // Clear the DB unread so the bell badge doesn't re-appear on its next poll —
-      // mirrors the page's mark-read-on-load behavior. The rows we just added keep
-      // their unread styling here (we don't re-read their state), same as a load.
+      // Clear the DB unread so the bell badge doesn't re-appear on its next poll
+      // (unreadCount is global, so this holds on either tab).
       if (Number(data.unreadCount) > 0) {
         fetch('/api/feed/notifications/mark-read', { method: 'POST' }).catch(() => {})
       }
     } catch {
       /* best-effort; the badge stays and the next click retries */
     }
-  }, [])
+  }, [tab, fetchNotifs, patchTab])
 
   useEffect(() => {
     const onRefresh = () => void refreshLatest()
@@ -178,27 +227,26 @@ export default function NotificationsPageClient({ initialItems, initialCursor, a
   }, [refreshLatest])
 
   const loadMore = useCallback(async () => {
-    if (!cursor || loadingMore) return
+    const cur = tabs[tab]
+    if (!cur.cursor || loadingMore) return
     setLoadingMore(true)
     try {
-      const res = await fetch(`/api/feed/notifications?before=${encodeURIComponent(cursor)}`, {
-        cache: 'no-store',
+      const data = await fetchNotifs(tab, cur.cursor)
+      const more = Array.isArray(data.notifications) ? data.notifications : []
+      patchTab(tab, (t) => {
+        const seen = new Set(t.items.map((n) => n.id))
+        return {
+          ...t,
+          items: [...t.items, ...more.filter((n) => !seen.has(n.id))],
+          cursor: data.nextCursor ?? null,
+        }
       })
-      if (res.ok) {
-        const data = await res.json()
-        const more = Array.isArray(data.notifications) ? data.notifications : []
-        setItems((prev) => {
-          const seen = new Set(prev.map((n) => n.id))
-          return [...prev, ...more.filter((n) => !seen.has(n.id))]
-        })
-        setCursor(data.nextCursor ?? null)
-      }
     } catch {
       /* best-effort; the button stays so the user can retry */
     } finally {
       setLoadingMore(false)
     }
-  }, [cursor, loadingMore])
+  }, [tab, tabs, loadingMore, fetchNotifs, patchTab])
 
   return (
     <>
@@ -209,8 +257,25 @@ export default function NotificationsPageClient({ initialItems, initialCursor, a
         </Link>
       ) : null}
 
-      {groups.length === 0 ? (
-        <p className="notifempty">Nothing yet.</p>
+      <div className="tabs" role="tablist">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.key}
+            className={`tab${tab === t.key ? ' on' : ''}`}
+            onClick={() => void selectTab(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {switching && !active.loaded ? (
+        <p className="notifempty">Loading…</p>
+      ) : groups.length === 0 ? (
+        <p className="notifempty">{tab === 'mentions' ? 'No mentions yet.' : 'Nothing yet.'}</p>
       ) : (
         <ul className="notifpage-list">
           {groups.map((g) => {
@@ -291,7 +356,7 @@ export default function NotificationsPageClient({ initialItems, initialCursor, a
         </ul>
       )}
 
-      {cursor ? (
+      {active.cursor ? (
         <div className="loadmore">
           <button type="button" className="notifmore" onClick={loadMore} disabled={loadingMore}>
             {loadingMore ? 'Loading…' : 'Load more'}
