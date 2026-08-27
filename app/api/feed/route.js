@@ -1,7 +1,7 @@
 export const runtime = 'nodejs'
 
 import { NextResponse } from 'next/server'
-import { getCachedForYouPage, getFollowingFeedPage } from '@/lib/getFeed'
+import { getCachedForYouPage, getFollowingFeedPage, FORYOU_PAGE_SIZE } from '@/lib/getFeed'
 import { getAuthedAccount } from '@/lib/authHelpers'
 
 /** Paginated newest-first feed of top-level posts (for client refresh / load more).
@@ -33,7 +33,7 @@ export async function GET(request) {
     const acctPromise = getAuthedAccount()
     const { posts, nextCursor } = await getCachedForYouPage(
       cursor,
-      25,
+      FORYOU_PAGE_SIZE,
       acctPromise.then((a) => a?.accountId ?? null),
     )
     return NextResponse.json({ posts, nextCursor })

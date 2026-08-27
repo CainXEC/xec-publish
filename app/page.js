@@ -1,5 +1,5 @@
 import FeedClient from '@/components/feed/FeedClient'
-import { getCachedForYouPage } from '@/lib/getFeed'
+import { getCachedForYouPage, FORYOU_PAGE_SIZE } from '@/lib/getFeed'
 import { getAuthedAccount } from '@/lib/authHelpers'
 
 export const dynamic = 'force-dynamic'
@@ -35,7 +35,7 @@ export default async function HomePage({ searchParams }) {
   try {
     const result = await getCachedForYouPage(
       null,
-      25,
+      FORYOU_PAGE_SIZE,
       acctPromise.then((a) => a?.accountId ?? null),
     )
     posts = result.posts
