@@ -41,7 +41,7 @@ const newsreader = Newsreader({
 
 const siteUrl = "https://www.proofofwriting.com";
 const defaultDescription =
-  "Written by independent writers for independent thinkers. Pay with eCash to unlock the full story.";
+  "Pay-per-read publishing on eCash. Unlock the full story with XEC.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
