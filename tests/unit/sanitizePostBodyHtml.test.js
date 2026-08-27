@@ -41,4 +41,41 @@ describe('sanitizePostBodyHtml', () => {
     expect(sanitizePostBodyHtml(undefined)).toBe('')
     expect(sanitizePostBodyHtml(123)).toBe('')
   })
+
+  describe('anchor policy', () => {
+    it('keeps a marked on-site (data-pow) link to a live path', () => {
+      const out = sanitizePostBodyHtml('<a data-pow href="/posts/hello">read</a>')
+      expect(out).toContain('href="/posts/hello"')
+      expect(out).toContain('>read<')
+      expect(out).not.toContain('target')
+    })
+
+    it('keeps a marked external (data-pow-ext) link and forces safe new-tab attrs', () => {
+      const out = sanitizePostBodyHtml(
+        '<a data-pow-ext href="https://explorer.e.cash/tx/abc">tx</a>',
+      )
+      expect(out).toContain('href="https://explorer.e.cash/tx/abc"')
+      expect(out).toContain('target="_blank"')
+      expect(out).toMatch(/rel="[^"]*noopener[^"]*noreferrer[^"]*"/)
+    })
+
+    it('strips the href from a data-pow-ext anchor pointing at a NON-allowed host', () => {
+      const out = sanitizePostBodyHtml('<a data-pow-ext href="https://evil.com/x">x</a>')
+      expect(out).not.toContain('href')
+      expect(out).not.toContain('target')
+      expect(out).toContain('>x<')
+    })
+
+    it('strips the href from an UNMARKED anchor (a stale/pasted link is inert)', () => {
+      const out = sanitizePostBodyHtml('<a href="https://explorer.e.cash/tx/abc">tx</a>')
+      expect(out).not.toContain('href')
+      expect(out).toContain('>tx<')
+    })
+
+    it('neutralizes a javascript: href even when mis-marked as external', () => {
+      const out = sanitizePostBodyHtml('<a data-pow-ext href="javascript:alert(1)">x</a>')
+      expect(out.toLowerCase()).not.toContain('javascript:')
+      expect(out).not.toContain('href')
+    })
+  })
 })

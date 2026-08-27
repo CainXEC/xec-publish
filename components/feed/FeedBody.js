@@ -6,8 +6,8 @@ import { tokenizeContent } from '@/lib/contentLinks'
 /**
  * Render a plain-text feed body with the inline links the feed allows:
  * @handle mentions link to /@handle, same-site URLs (proofofwriting.com) link to
- * their relative path, and an X/Twitter URL is a live OUTBOUND link (opens the
- * tweet in a new tab — the one external host allowed, no embed). All other text —
+ * their relative path, and an X/Twitter or e.cash URL is a live OUTBOUND link
+ * (opens in a new tab — the allowed external hosts, no embed). All other text —
  * including any other EXTERNAL URL — is emitted verbatim (JSX-escaped), so it
  * reads as inert text. The FIRST on-site article/feed-post link is handled
  * separately as an embed below the body (it's stripped from this text upstream);
@@ -31,9 +31,10 @@ export default function FeedBody({ text }) {
         </Link>
       )
     }
-    if (t.type === 'xlink') {
-      // Outbound X/Twitter link — new tab, and rel guards against tab-nabbing +
-      // referrer/SEO leakage. The href is always an absolute http(s) URL.
+    if (t.type === 'extlink') {
+      // Outbound X/Twitter or e.cash link — new tab, and rel guards against
+      // tab-nabbing + referrer/SEO leakage. The href is always an absolute
+      // http(s) URL to an allowed external host.
       return (
         <a
           key={i}
