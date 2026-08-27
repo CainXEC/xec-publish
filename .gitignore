@@ -61,3 +61,4 @@ app/dev/wordmark/
 # importer script stays tracked for reference. Re-add explicitly if ever needed.
 legacy_posts.json
 legacy_posts_test.json
+.commitmsg.tmp
