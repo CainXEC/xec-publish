@@ -63,23 +63,42 @@ async function tokenIdsAtAddress(address: string): Promise<string[]> {
  *  Display path (profile carousel) — budgeted: a hung Chronik endpoint yields
  *  an empty strip instead of a 30s stall. addressHoldsToken below stays
  *  UNBUDGETED: it authorizes handle binding, and security checks wait. */
+// Max token ids per `.in(...)` so the PostgREST request URL stays small. A whale
+// wallet can hold 1000+ tokens; a single .in() over all of them builds a URL big
+// enough to FAIL (the request errors and returns no rows — the "holds no handles"
+// bug on a large holder). Chunk + merge instead. 64-hex ids × 50 ≈ a ~4KB URL.
+const HANDLE_IN_CHUNK = 50;
+
 export async function heldHandlesForAddress(address: string): Promise<HeldHandle[]> {
   const tokenIds = await chronikBudget(tokenIdsAtAddress(address), 2500, [] as string[]);
   if (tokenIds.length === 0) return [];
 
   const supabase = adminDb();
-  const { data } = await supabase
-    .from("handles")
-    .select("token_id, handle, image_url, created_at")
-    .in("token_id", tokenIds)
-    .order("created_at", { ascending: false });
+  const chunks: string[][] = [];
+  for (let i = 0; i < tokenIds.length; i += HANDLE_IN_CHUNK) {
+    chunks.push(tokenIds.slice(i, i + HANDLE_IN_CHUNK));
+  }
+  const rows = (
+    await Promise.all(
+      chunks.map((ids) =>
+        supabase
+          .from("handles")
+          .select("token_id, handle, image_url, created_at")
+          .in("token_id", ids)
+          .then((r) => r.data ?? []),
+      ),
+    )
+  ).flat();
 
-  return (data ?? []).map((h: any) => ({
-    tokenId: h.token_id as string,
-    handle: h.handle as string,
-    imageUrl: (h.image_url as string) ?? null,
-    createdAt: (h.created_at as string) ?? null,
-  }));
+  return rows
+    .map((h: any) => ({
+      tokenId: h.token_id as string,
+      handle: h.handle as string,
+      imageUrl: (h.image_url as string) ?? null,
+      createdAt: (h.created_at as string) ?? null,
+    }))
+    // Newest mint first (done in memory now that results are merged from chunks).
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
 }
 
 // How long the profile carousel may serve a cached held-handles enumeration
