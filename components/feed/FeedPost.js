@@ -563,7 +563,33 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
         <Link href={`/feed/${post.txid}`} className="time" suppressHydrationWarning>
           {timeAgo(post.created_at)}
         </Link>
+        {/* The post's transaction on the eCash explorer — the same on-chain link
+            the thread page shows, now surfaced in the feed too. openThread skips
+            navigation for clicks on an <a>, so it opens the explorer, not the thread. */}
+        <span aria-hidden className="dot">
+          ·
+        </span>
+        <a
+          href={`https://explorer.e.cash/tx/${post.txid}`}
+          target="_blank"
+          rel="noreferrer"
+          className="onchain"
+        >
+          on-chain
+        </a>
         <span className="postactions">
+          {/* Own-post management (Pin/Delete) lives up here with the on-chain link
+              now, not down in the engagement row. */}
+          {isOwn ? (
+            <>
+              <button type="button" onClick={handlePin} disabled={pinBusy} className="pinbtn">
+                {pinBusy ? '…' : pinned ? 'Unpin' : 'Pin'}
+              </button>
+              <button type="button" onClick={handleDelete} disabled={deleting} className="delbtn">
+                {deleting ? 'Deleting…' : 'Delete'}
+              </button>
+            </>
+          ) : null}
           {!post.deleted ? <PostCopyLink txid={post.txid} /> : null}
           {canManageAuthor ? (
             <PostMenu
@@ -674,16 +700,6 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
               setTranslatedOptions(null)
             }}
           />
-        ) : null}
-        {isOwn ? (
-          <button type="button" onClick={handlePin} disabled={pinBusy} className="pinbtn">
-            {pinBusy ? '…' : pinned ? 'Unpin' : 'Pin'}
-          </button>
-        ) : null}
-        {isOwn ? (
-          <button type="button" onClick={handleDelete} disabled={deleting} className="delbtn">
-            {deleting ? 'Deleting…' : 'Delete'}
-          </button>
         ) : null}
       </div>
 

@@ -635,6 +635,11 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
   transition:color .15s;}
 .pow-feed .pinbtn:hover{color:var(--cyan);}
 .pow-feed .pinbtn:disabled{opacity:.5;cursor:default;}
+/* Pin/Delete now live in the top meta-row actions cluster (with on-chain + copy);
+   the cluster's gap is 2px (tuned for icons), so give these text buttons a little
+   horizontal padding so they don't crowd each other or the copy icon. */
+.pow-feed .postactions .pinbtn,
+.pow-feed .postactions .delbtn{font-size:12px;padding:2px 5px;}
 .pow-feed .inlinereply,.pow-feed .inlinequote{margin-top:12px;flex-basis:100%;}
 /* replies just posted, nested inline under their parent post on the feed */
 .pow-feed .postreplies{list-style:none;margin:12px 0 0 6px;padding:0 0 0 14px;border-left:2px solid var(--line);}
