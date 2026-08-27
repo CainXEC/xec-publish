@@ -15,7 +15,7 @@ import FeedBody from '@/components/feed/FeedBody'
 import PostCopyLink from '@/components/feed/PostCopyLink'
 import PostManageIcons from '@/components/feed/PostManageIcons'
 import TranslateButton from '@/components/TranslateButton'
-import { isSelectingWithin } from '@/lib/selectionGuard'
+import { isSelectingWithin, wasDrag } from '@/lib/selectionGuard'
 import {
   getMyPinnedTxid,
   setMyPinnedTxid,
@@ -427,9 +427,11 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
     if (e.target.closest('a, button, input, textarea, .inlinereply, .inlinequote, .quoted, .engage, .postmenu')) {
       return
     }
-    // Highlighting the post's text to copy it ends in a click — don't treat that
-    // as a tap-to-open.
-    if (isSelectingWithin(e.currentTarget)) return
+    // A drag-select (including in a reply/quote compose field) ends in a click —
+    // don't treat that as a tap-to-open, or the composer unmounts and the draft
+    // is lost. wasDrag catches the cross-element / textarea case; isSelectingWithin
+    // catches a static selection inside this card.
+    if (wasDrag(e) || isSelectingWithin(e.currentTarget)) return
     // Stop here so a click on a nested reply opens ITS thread, not the ancestor's.
     e.stopPropagation()
     // Host pages with a center reading pane (the home feed) open the thread

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import HandleCardImage from '@/components/HandleCardImage'
-import { isSelectingWithin } from '@/lib/selectionGuard'
+import { isSelectingWithin, wasDrag } from '@/lib/selectionGuard'
 
 function truncateAddress(addr) {
   const t = String(addr ?? '').trim()
@@ -54,7 +54,7 @@ export default function QuotedEmbed({ post, interactive = true, onOpenThread = n
     if (e.target.closest('a, button')) return
     // Highlighting the quoted text to copy it ends in a click — don't treat that
     // as a tap-to-open (same guard the parent post card uses).
-    if (isSelectingWithin(e.currentTarget)) return
+    if (wasDrag(e) || isSelectingWithin(e.currentTarget)) return
     // Host pages with a center reading pane open the quoted thread in place.
     if (onOpenThread) {
       onOpenThread(post.txid)

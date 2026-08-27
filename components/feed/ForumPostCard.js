@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import FeedBody from '@/components/feed/FeedBody'
 import { REACTIONS } from '@/lib/reactions'
-import { isSelectingWithin } from '@/lib/selectionGuard'
+import { isSelectingWithin, wasDrag } from '@/lib/selectionGuard'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
 import { extractYouTubeId, stripYouTubeLink } from '@/lib/youtubeLinks'
@@ -80,7 +80,7 @@ export default function ForumPostCard({ post }) {
     // Let the byline link and any real anchor handle their own clicks; and don't
     // hijack a click that's actually the end of a text selection (copying).
     if (e.target.closest('a, button')) return
-    if (isSelectingWithin(e.currentTarget)) return
+    if (wasDrag(e) || isSelectingWithin(e.currentTarget)) return
     router.push(`/feed/${post.txid}`)
   }
 

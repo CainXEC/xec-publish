@@ -19,7 +19,7 @@ import MintCard from '@/components/feed/MintCard'
 import PollCard from '@/components/feed/PollCard'
 import TranslateButton from '@/components/TranslateButton'
 import { getTranslation } from '@/lib/translateStore'
-import { isSelectingWithin } from '@/lib/selectionGuard'
+import { isSelectingWithin, wasDrag } from '@/lib/selectionGuard'
 import {
   getMyPinnedTxid,
   setMyPinnedTxid,
@@ -132,7 +132,7 @@ function AncestorNode({ post, top = false, onOpenThread = null }) {
   const go = (e) => {
     if (e.target.closest('a, button')) return
     // Highlighting the parent's text to copy it ends in a click — not a tap.
-    if (isSelectingWithin(e.currentTarget)) return
+    if (wasDrag(e) || isSelectingWithin(e.currentTarget)) return
     if (onOpenThread) {
       onOpenThread(post.txid)
       return
