@@ -11,7 +11,6 @@
 // =============================================================================
 
 import { useEffect, useState } from 'react'
-import CopyLinkButton from '@/components/feed/CopyLinkButton'
 import FeedThreadClient from '@/components/feed/FeedThreadClient'
 
 // Wrap an optimistic post (e.g. a just-made quote) as a thread payload so the
@@ -98,9 +97,10 @@ export default function ThreadPane({ txid, seed = null, onClose, onOpenThread })
 
   return (
     <div className="homereader">
+      {/* No top "Copy link" here — the post's own meta row carries the copy-link
+          icon, so a second one in the bar was redundant. */}
       <div className="hr-bar">
         <button type="button" className="hr-back" onClick={onClose}>← Feed</button>
-        <CopyLinkButton path={`/feed/${txid}`} />
       </div>
 
       {state.loading ? (

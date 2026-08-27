@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import ComposeBox from '@/components/feed/ComposeBox'
 import FeedPost from '@/components/feed/FeedPost'
 import PostCopyLink from '@/components/feed/PostCopyLink'
+import PostManageIcons from '@/components/feed/PostManageIcons'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import ActivityRail from '@/components/feed/ActivityRail'
 import ArticleRail from '@/components/feed/ArticleRail'
@@ -464,6 +465,15 @@ export default function FeedThreadClient({
                 </a>
                 {!rootDeleted ? (
                   <span className="postactions">
+                    {isOwnRoot ? (
+                      <PostManageIcons
+                        pinned={pinned}
+                        pinBusy={pinBusy}
+                        onPin={handlePinRoot}
+                        deleting={deletingRoot}
+                        onDelete={handleDeleteRoot}
+                      />
+                    ) : null}
                     <PostCopyLink txid={post.txid} />
                   </span>
                 ) : null}
@@ -571,26 +581,6 @@ export default function FeedThreadClient({
                     title="Share this forum post to the feed"
                   >
                     Share to feed
-                  </button>
-                ) : null}
-                {isOwnRoot ? (
-                  <button
-                    type="button"
-                    onClick={handlePinRoot}
-                    disabled={pinBusy}
-                    className="pinbtn"
-                  >
-                    {pinBusy ? '…' : pinned ? 'Unpin' : 'Pin'}
-                  </button>
-                ) : null}
-                {isOwnRoot ? (
-                  <button
-                    type="button"
-                    onClick={handleDeleteRoot}
-                    disabled={deletingRoot}
-                    className="delbtn"
-                  >
-                    {deletingRoot ? 'Deleting…' : 'Delete'}
                   </button>
                 ) : null}
               </div>
