@@ -684,6 +684,9 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
             repostCount={post.repostCount ?? 0}
             quoteCount={quoteCount}
             repostedByViewer={Boolean(post.repostedByViewer)}
+            // Emoji reactions are LIKE-action events, so likedByViewer (from the
+            // viewer-state overlay) == "you've reacted" — fills the trigger, cross-device.
+            reactedByViewer={Boolean(post.likedByViewer)}
             isOwnPost={isOwn}
             onQuote={() => setShowQuote((s) => !s)}
           />

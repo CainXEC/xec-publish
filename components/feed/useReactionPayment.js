@@ -61,6 +61,11 @@ export function useReactionPayment({
   repostCount = 0,
   likedByViewer = false,
   repostedByViewer = false,
+  // Whether the SERVER knows this viewer has reacted (any emoji) to the post —
+  // from the feed's viewer-state overlay (emoji reactions are LIKE-action
+  // feed_events). Cross-device; OR'd with this device's own memory to fill the
+  // trigger. Defaults false where a caller has no server signal yet.
+  reactedByViewer = false,
   // Emoji reactions (feed posts) are MULTI — you can react any number of times,
   // paying each. They pass an `emoji` to startReaction and don't touch the binary
   // liked/likes state; the parent owns the per-emoji pill counts. These fire on a
@@ -111,10 +116,12 @@ export function useReactionPayment({
   useEffect(() => {
     setReposted(repostedByViewer || hasReacted('repost', targetTxid))
   }, [repostedByViewer, targetTxid])
-  // Seed the "already reacted" fill from this device's memory of emoji reactions.
+  // Seed the "already reacted" fill from the SERVER (cross-device) OR this device's
+  // own memory — either one means you've reacted, and a remembered fill never
+  // downgrades to false.
   useEffect(() => {
-    setReacted(hasReacted('react', targetTxid))
-  }, [targetTxid])
+    setReacted(reactedByViewer || hasReacted('react', targetTxid))
+  }, [reactedByViewer, targetTxid])
 
   // Optimistic flip: reflect the like/repost the instant you tap.
   const applyReaction = useCallback((action) => {
@@ -302,14 +309,15 @@ export function useReactionPayment({
     const emoji = pendingEmojiRef.current
     if (emoji) {
       onReactFailed?.(emoji) // undo the parent's optimistic pill
-      setReacted(hasReacted('react', targetTxid)) // un-fill only if this was the first
+      // Un-fill only if this was the first reaction (server + device both say no).
+      setReacted(reactedByViewer || hasReacted('react', targetTxid))
     } else if (pending) revertReaction(pending) // undo the binary optimistic flip
     setPending(null)
     setIntent(null)
     setInPagePay(false)
     setTxidInput('')
     setNotice('')
-  }, [pending, revertReaction, onReactFailed, targetTxid])
+  }, [pending, revertReaction, onReactFailed, targetTxid, reactedByViewer])
 
   return {
     likes, liked, reposts, reposted, reacted,

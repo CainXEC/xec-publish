@@ -21,6 +21,8 @@ export default function EngagementBar({
   repostCount = 0,
   quoteCount = 0,
   repostedByViewer = false,
+  // Server-known "you've reacted to this post" (cross-device) — fills the trigger.
+  reactedByViewer = false,
   canQuote = true,
   // Repost is a FEED mechanic; forum posts hide it (canRepost=false) so their
   // action row reads as a discussion (comments + reactions), not a feed row.
@@ -66,6 +68,7 @@ export default function EngagementBar({
     targetTxid,
     repostCount,
     repostedByViewer,
+    reactedByViewer,
     onReacted: () => {}, // pill already bumped optimistically; server reconciles
     onReactFailed: (emoji) => bump(emoji, -1), // payment cancelled/failed → undo
   })
