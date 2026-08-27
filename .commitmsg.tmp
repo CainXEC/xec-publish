@@ -1,0 +1,9 @@
+Feed: stop weaving mint-announcement posts into the feed
+
+Mint rows (card_kind='handle_mint') cluttered the For You feed, and a
+stale one could keep landing at the top. Remove the span-mint fetch and
+weave from getFeedPage entirely; mints still live full-size on the
+@proofofwriting profile, thread pages, and quote embeds. The digest/weave
+helpers stay dormant (called with empty data, no-op) for easy re-enable.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
