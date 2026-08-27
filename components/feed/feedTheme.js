@@ -1740,9 +1740,18 @@ html:not(.dark) .pow-feed .np-entry{border-bottom-color:var(--line);}
      forum list starts right under the tabs — same as the feed's posts do — and
      creating a forum moves to the floating pen-nib button. */
   .pow-feed .forumdir-head{ display:none; }
-  /* Tighten the gap under the banner — 28+20px was too much on a phone. */
-  .pow-feed .feed-main{ padding-top:10px; }
-  .pow-feed .feed-main .tabs{ margin-top:6px; }
+  /* No banner on a phone (the top-stories rail is hidden < 1100px), so the tabs
+     ride right under the sticky topbar. Zero the gap so the space ABOVE the tab
+     labels equals the space below them (the buttons' own 12px padding) — the
+     Feed/Forums labels sit visually centered in their strip. */
+  .pow-feed .feed-main{ padding-top:0; }
+  /* Freeze the Feed/Forums strip: it sticks just under the topbar (top:54px, a
+     hair into the topbar so a sub-pixel rounding never opens a gap — the topbar's
+     higher z-index covers the overlap) so you can always toggle. Opaque --bg so
+     posts scroll cleanly beneath the full-width strip. */
+  .pow-feed .feed-main .tabs{
+    margin-top:0; position:sticky; top:54px; z-index:40; background:var(--bg);
+  }
 }
 
 /* Floating compose button — mobile only, cleared above the fixed bottom nav

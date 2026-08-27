@@ -319,9 +319,32 @@ export default function FeedClient({
 
   const selectScope = useCallback(
     async (key) => {
+      const reselect = key === scope
       setScope(key)
       // Forums is a directory, not a post feed — nothing to fetch here.
       if (key === 'forums') return
+      // Re-tapping the active Feed tab refreshes it: jump to the top, pull a
+      // fresh page 1, replace the posts, and clear the "new posts" pill.
+      if (reselect) {
+        if (loading) return
+        if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+        setLoading(true)
+        try {
+          const data = await fetchScope(key, null)
+          patchTab(key, {
+            posts: data.posts ?? [],
+            nextCursor: data.nextCursor ?? null,
+            error: null,
+            loaded: true,
+          })
+          setNewCount(0)
+        } catch (e) {
+          patchTab(key, { error: e?.message || 'Failed to refresh feed' })
+        } finally {
+          setLoading(false)
+        }
+        return
+      }
       if (tabs[key].loaded || loading) return
       setLoading(true)
       try {
@@ -338,7 +361,7 @@ export default function FeedClient({
         setLoading(false)
       }
     },
-    [tabs, loading, fetchScope, patchTab],
+    [scope, tabs, loading, fetchScope, patchTab],
   )
 
   const prependPost = useCallback(
