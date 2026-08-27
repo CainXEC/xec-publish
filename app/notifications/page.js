@@ -40,7 +40,6 @@ export default async function NotificationsPage() {
       <style>{FEED_CSS}</style>
       <FeedTopbar signedIn isAuthor={Boolean(acct.authorId)} />
       <main className="wrap" style={{ paddingTop: '28px' }}>
-        <h1 className="dashwelcome">Notifications</h1>
         <NotificationsPageClient
           initialItems={notifications}
           initialCursor={nextCursor}
