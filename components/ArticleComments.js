@@ -62,8 +62,8 @@ function CommentBody({ text }) {
       )
     }
     if (t.type === 'extlink') {
-      // Outbound X/Twitter or e.cash link — new tab, rel guards against
-      // tab-nabbing + referrer/SEO leakage (same as the feed).
+      // Outbound link to a whitelisted external site — new tab, rel guards
+      // against tab-nabbing + referrer/SEO leakage (same as the feed).
       return (
         <a key={i} href={t.href} target="_blank" rel="noopener noreferrer nofollow">
           {t.value}

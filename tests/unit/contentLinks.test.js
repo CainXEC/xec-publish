@@ -20,6 +20,11 @@ describe('externalUrlHref', () => {
     )
   })
 
+  it('accepts cashtab.com and its subdomains', () => {
+    expect(externalUrlHref('https://cashtab.com/#/send')).toBe('https://cashtab.com/#/send')
+    expect(externalUrlHref('https://www.cashtab.com/')).toBe('https://www.cashtab.com/')
+  })
+
   it('rejects other hosts, e.cash lookalikes, non-http schemes, and junk', () => {
     expect(externalUrlHref('https://example.com/x.com')).toBeNull()
     expect(externalUrlHref('https://notx.com/a')).toBeNull()

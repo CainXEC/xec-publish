@@ -32,9 +32,9 @@ export default function FeedBody({ text }) {
       )
     }
     if (t.type === 'extlink') {
-      // Outbound X/Twitter or e.cash link — new tab, and rel guards against
-      // tab-nabbing + referrer/SEO leakage. The href is always an absolute
-      // http(s) URL to an allowed external host.
+      // Outbound link to a whitelisted external site (EXTERNAL_LINK_DOMAINS) —
+      // new tab, and rel guards against tab-nabbing + referrer/SEO leakage. The
+      // href is always an absolute http(s) URL to an allowed external host.
       return (
         <a
           key={i}
