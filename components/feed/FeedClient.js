@@ -116,6 +116,29 @@ export default function FeedClient({
     document.addEventListener('click', onCapture, true)
     return () => document.removeEventListener('click', onCapture, true)
   }, [pane, closeReader])
+
+  // The mobile Feed/Forums strip sticks directly under the sticky topbar. Pin it
+  // to the topbar's EXACT rendered height (as a CSS var) so its resting position
+  // and its stuck position are identical — otherwise a hardcoded offset that's a
+  // hair off makes the space above the labels shift by a pixel the moment it
+  // pins. Re-measures on resize + font-load reflow.
+  useEffect(() => {
+    const root = document.querySelector('.pow-feed')
+    const bar = root?.querySelector('.topbar')
+    if (!root || !bar) return
+    const sync = () => {
+      root.style.setProperty('--topbar-h', `${bar.getBoundingClientRect().height}px`)
+    }
+    sync()
+    const ro = new ResizeObserver(sync)
+    ro.observe(bar)
+    window.addEventListener('resize', sync)
+    if (document.fonts?.ready) document.fonts.ready.then(sync).catch(() => {})
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', sync)
+    }
+  }, [])
   // Paying to post mints a session; if we didn't have one at SSR time, the post
   // we just made proves who we are — adopt its account so delete shows at once.
   const [viewerAccountId, setViewerAccountId] = useState(initialViewerAccountId)

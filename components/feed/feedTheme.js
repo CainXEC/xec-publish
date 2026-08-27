@@ -1745,12 +1745,13 @@ html:not(.dark) .pow-feed .np-entry{border-bottom-color:var(--line);}
      labels equals the space below them (the buttons' own 12px padding) — the
      Feed/Forums labels sit visually centered in their strip. */
   .pow-feed .feed-main{ padding-top:0; }
-  /* Freeze the Feed/Forums strip: it sticks just under the topbar (top:54px, a
-     hair into the topbar so a sub-pixel rounding never opens a gap — the topbar's
-     higher z-index covers the overlap) so you can always toggle. Opaque --bg so
-     posts scroll cleanly beneath the full-width strip. */
+  /* Freeze the Feed/Forums strip: it sticks right under the topbar so you can
+     always toggle. --topbar-h is measured live (FeedClient) = the topbar's exact
+     rendered height, so the strip's resting and stuck positions match EXACTLY —
+     no 1px shift in the space above the labels when it pins. Opaque --bg so posts
+     scroll cleanly beneath the full-width strip. */
   .pow-feed .feed-main .tabs{
-    margin-top:0; position:sticky; top:54px; z-index:40; background:var(--bg);
+    margin-top:0; position:sticky; top:var(--topbar-h, 55px); z-index:40; background:var(--bg);
   }
 }
 
