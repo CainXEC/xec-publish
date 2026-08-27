@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { tokenizeContent, externalUrlHref } from '@/lib/contentLinks'
+import { tokenizeContent, tokenizeUrls, externalUrlHref } from '@/lib/contentLinks'
 
 describe('externalUrlHref', () => {
   it('accepts X / Twitter hosts (incl. www/mobile/m), returns the absolute URL', () => {
@@ -65,6 +65,33 @@ describe('tokenizeContent — X + e.cash links go live, other externals stay ine
     expect(e.href).toBe('https://explorer.e.cash/tx/abc')
     // the period survives as its own text token
     expect(toks.some((t) => t.type === 'text' && t.value === '.')).toBe(true)
+  })
+
+  it('linkifies a BARE (scheme-less) on-site domain to its path', () => {
+    // The reported case: "PROOFOFWRITING.com" with no https:// prefix.
+    const toks = tokenizeContent('Try PROOFOFWRITING.com today')
+    const link = toks.find((t) => t.type === 'link')
+    expect(link).toBeTruthy()
+    expect(link.href).toBe('/') // the homepage
+    expect(link.value).toBe('PROOFOFWRITING.com') // displayed as written
+  })
+
+  it('linkifies a bare on-site path and a bare whitelisted external domain', () => {
+    const a = tokenizeContent('read proofofwriting.com/posts/hello')
+    expect(a.some((t) => t.type === 'link' && t.href === '/posts/hello')).toBe(true)
+
+    const b = tokenizeContent('proof at explorer.e.cash/tx/abc')
+    const ext = b.find((t) => t.type === 'extlink')
+    expect(ext.href).toBe('https://explorer.e.cash/tx/abc')
+    expect(ext.value).toBe('explorer.e.cash/tx/abc')
+  })
+
+  it('does NOT linkify a bare non-known domain, a glued fragment, or a look-alike', () => {
+    expect(tokenizeUrls('see example.com here').every((t) => t.type === 'text')).toBe(true)
+    // "proofofwriting.community" must not match the domain (negative lookahead).
+    expect(tokenizeUrls('join the proofofwriting.community').every((t) => t.type === 'text')).toBe(true)
+    // An email's domain is glued to "@" → not linkified by the URL tokenizer.
+    expect(tokenizeUrls('me@proofofwriting.com').every((t) => t.type === 'text')).toBe(true)
   })
 
   it('linkifies on-site URLs, @mentions, and BOTH external kinds together', () => {
