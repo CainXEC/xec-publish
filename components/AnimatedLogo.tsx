@@ -215,10 +215,16 @@ const AnimatedLogo = forwardRef<AnimatedLogoHandle, AnimatedLogoProps>(
           igniting && styles.igniting,
           spaced && styles.spaced,
           bebas.variable,
+          // Keep page translators (Google Translate et al.) out of the brand
+          // mark: it's letter-spaced per-glyph spans, and a translator re-wraps
+          // them into garbage ("P R O O FO FWRITING"). `translate="no"` is the
+          // HTML-standard opt-out; `notranslate` covers older engine versions.
+          'notranslate',
           className,
         ]
           .filter(Boolean)
           .join(' ')}
+        translate="no"
         role="img"
         aria-label={words.join(' ')}
       >
