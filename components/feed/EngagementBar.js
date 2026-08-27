@@ -51,6 +51,7 @@ export default function EngagementBar({
   const {
     reposts,
     reposted,
+    reacted,
     pending,
     intent,
     inPagePay,
@@ -124,10 +125,16 @@ export default function EngagementBar({
             aria-haspopup="menu"
             aria-expanded={isOwnPost ? whoOpen : undefined}
             aria-label={isOwnPost ? 'See who reacted' : 'React · 100 XEC'}
-            title={isOwnPost ? 'See who reacted' : 'React · 100 XEC'}
+            title={
+              isOwnPost ? 'See who reacted' : reacted ? 'You reacted · React again · 100 XEC' : 'React · 100 XEC'
+            }
             onClick={isOwnPost ? toggleWho : undefined}
           >
-            ♡+
+            {/* Filled heart once you've reacted, so you can tell you already did.
+                The ︎ (text variation selector) forces MONOCHROME presentation
+                so it takes the icon's own dim color via CSS — never the red heart
+                EMOJI (which would clash with the ❤️ reaction). */}
+            {!isOwnPost && reacted ? '♥︎+' : '♡+'}
           </button>
           {isOwnPost ? (
             whoOpen ? (

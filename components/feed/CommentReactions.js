@@ -32,6 +32,7 @@ export default function CommentReactions({ targetTxid, reactionCounts = {}, isOw
     })
 
   const {
+    reacted,
     pending,
     intent,
     inPagePay,
@@ -75,9 +76,11 @@ export default function CommentReactions({ targetTxid, reactionCounts = {}, isOw
             disabled={Boolean(pending) && !inPagePay}
             aria-haspopup="menu"
             aria-label="React · 100 XEC"
-            title="React · 100 XEC"
+            title={reacted ? 'You reacted · React again · 100 XEC' : 'React · 100 XEC'}
           >
-            ♡+
+            {/* Filled once you've reacted; the text variation selector keeps it
+                monochrome (the icon's dim color), never the red heart emoji. */}
+            {reacted ? '♥︎+' : '♡+'}
           </button>
           {!pending ? (
             <div className="creactpicker" role="menu">

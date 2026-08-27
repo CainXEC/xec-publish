@@ -73,6 +73,11 @@ export function useReactionPayment({
   const [reposts, setReposts] = useState(repostCount)
   const [liked, setLiked] = useState(likedByViewer)
   const [reposted, setReposted] = useState(repostedByViewer)
+  // Whether THIS device has reacted (any emoji) to the post — fills the reaction
+  // trigger so you can see you already reacted. Emoji reactions are multi (you can
+  // still react again), so this is a DISPLAY flag, not a re-pay guard. Persisted on
+  // confirm; same-device only (no server per-viewer reaction state).
+  const [reacted, setReacted] = useState(false)
 
   // Which reaction is mid-payment, if any: 'like' | 'repost' | null.
   const [pending, setPending] = useState(null)
@@ -106,6 +111,10 @@ export function useReactionPayment({
   useEffect(() => {
     setReposted(repostedByViewer || hasReacted('repost', targetTxid))
   }, [repostedByViewer, targetTxid])
+  // Seed the "already reacted" fill from this device's memory of emoji reactions.
+  useEffect(() => {
+    setReacted(hasReacted('react', targetTxid))
+  }, [targetTxid])
 
   // Optimistic flip: reflect the like/repost the instant you tap.
   const applyReaction = useCallback((action) => {
@@ -149,6 +158,8 @@ export function useReactionPayment({
       }
       startingRef.current = true
       pendingEmojiRef.current = emoji
+      // Fill the trigger the instant you tap an emoji (reverted on cancel/fail).
+      if (emoji) setReacted(true)
       setNotice('')
       setTipError('')
       // Decide pocket-vs-Cashtab AT the click gesture (never both).
@@ -237,9 +248,10 @@ export function useReactionPayment({
         const data = await res.json()
         if (data.status === 'reacted') {
           if (intent.emoji) {
-            // Multi-react: no localStorage guard (it exists to PREVENT re-paying);
-            // just tell the parent to solidify this emoji's pill.
+            // Multi-react: no re-pay GUARD (you can react again), but remember it
+            // for DISPLAY so the trigger stays filled, and solidify the pill.
             onReacted?.(intent.emoji)
+            rememberReacted('react', targetTxid)
           } else {
             // Remember a binary like/repost on THIS device so a later visit where
             // the server doesn't recognize us can't re-charge it.
@@ -271,8 +283,10 @@ export function useReactionPayment({
       })
       const data = await res.json()
       if (data.status === 'reacted') {
-        if (emoji) onReacted?.(emoji)
-        else rememberReacted(pending, targetTxid)
+        if (emoji) {
+          onReacted?.(emoji)
+          rememberReacted('react', targetTxid)
+        } else rememberReacted(pending, targetTxid)
         finalizeReacted()
       } else if (data.status === 'awaiting_payment') {
         setNotice("That transaction doesn't match this reaction yet.")
@@ -286,17 +300,19 @@ export function useReactionPayment({
 
   const cancel = useCallback(() => {
     const emoji = pendingEmojiRef.current
-    if (emoji) onReactFailed?.(emoji) // undo the parent's optimistic pill
-    else if (pending) revertReaction(pending) // undo the binary optimistic flip
+    if (emoji) {
+      onReactFailed?.(emoji) // undo the parent's optimistic pill
+      setReacted(hasReacted('react', targetTxid)) // un-fill only if this was the first
+    } else if (pending) revertReaction(pending) // undo the binary optimistic flip
     setPending(null)
     setIntent(null)
     setInPagePay(false)
     setTxidInput('')
     setNotice('')
-  }, [pending, revertReaction, onReactFailed])
+  }, [pending, revertReaction, onReactFailed, targetTxid])
 
   return {
-    likes, liked, reposts, reposted,
+    likes, liked, reposts, reposted, reacted,
     pending, intent, inPagePay, notice, txidInput, setTxidInput,
     tipError,
     startReaction, verifyManual, cancel,
