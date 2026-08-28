@@ -110,9 +110,10 @@ const STARTER_CSS = `
   border-radius: 12px;
 }
 /* Phone: composer hidden, so the card sits between the sticky header and the
-   tabs — balance its spacing the same way the get-started strip is. */
+   tabs — balance its spacing the same way the get-started strip is (gap above,
+   the tabs' own padding is the matching gap below). */
 @media (max-width: 1099px) {
-  .starter-card { margin: 7px 0; }
+  .starter-card { margin: 12px 0 0; }
 }
 .starter-x {
   position: absolute; top: 8px; right: 10px;

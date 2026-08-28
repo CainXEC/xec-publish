@@ -23,20 +23,23 @@ export default function OnboardingStrip() {
 
 const STRIP_CSS = `
 .onboard-strip {
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  text-align: center;
   margin: 0 0 14px;
-  padding: 12px 14px;
+  padding: 14px;
   background: color-mix(in srgb, var(--neon, #7CFF6B) 7%, var(--panel, #111));
   border: 1px solid color-mix(in srgb, var(--neon, #7CFF6B) 35%, var(--line, #333));
   border-radius: 10px;
 }
 /* On a phone the composer is hidden, so the strip sits between the sticky header
-   and the Feed/Forums tabs. Give it breathing room above (it was flush to the
-   header) by moving half the space that sat below it up top — balanced. */
+   and the Feed/Forums tabs — and the tabs contribute ~12px of their own top
+   padding below the banner. So equal MARGINS read lopsided (tight above, loose
+   below). Put the gap above the banner and none below; the tabs' padding is the
+   matching gap, so it sits evenly between the header and the Feed/Forums labels. */
 @media (max-width: 1099px) {
-  .onboard-strip { margin: 7px 0; }
+  .onboard-strip { margin: 12px 0 0; }
 }
-.onboard-strip-text { flex: 1 1 auto; min-width: 0; font-size: 13.5px; line-height: 1.4; color: var(--text, #fff); }
+.onboard-strip-text { font-size: 13.5px; line-height: 1.4; color: var(--text, #fff); }
 /* Rectangular, neon-outlined — matches the site's newposts / forum buttons. */
 .onboard-strip-btn {
   flex: 0 0 auto; cursor: pointer;
