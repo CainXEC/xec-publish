@@ -282,10 +282,10 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   const [confirmDialog, confirmDialogNode] = useConfirmDialog()
 
   const body = typeof post.content === 'string' ? post.content : ''
-  // A YouTube link embeds a player — but ONLY on top-level posts (feed posts +
-  // forum posts), never replies/comments (action 2). On a reply, ytId stays null
-  // so the URL is left as plain text and no player renders.
-  const ytId = post.action !== FEED_ACTION.REPLY ? extractYouTubeId(body) : null
+  // A YouTube link embeds a player on posts, quotes, top-level forum posts, AND
+  // replies (each pays the +1000 XEC surcharge, priceFeedPost). Article comments
+  // are a separate surface and don't reach here.
+  const ytId = extractYouTubeId(body)
   // On-site links render as an embed/card that IS the link, so strip the raw URL
   // from the displayed text (an article link → ArticleCard; a feed-post link →
   // QuotedEmbed). Keep `body` intact for the card's slug/txid detection.

@@ -73,10 +73,12 @@ describe('priceFeedPost — YouTube surcharge', () => {
     expect(priceFeedPost(base, { action: 3 }).costXec).toBe(FEED_MIN_XEC + FEED_YOUTUBE_SURCHARGE_XEC) // QUOTE
   })
 
-  it('does NOT surcharge a REPLY (no embed there)', () => {
-    expect(priceFeedPost(base, { action: 'reply' }).youtube).toBe(false)
-    expect(priceFeedPost(base, { action: 2 }).youtube).toBe(false)
-    expect(priceFeedPost(base, { action: 'reply' }).costXec).toBe(FEED_MIN_XEC)
+  it('surcharges a REPLY that embeds YouTube (string + numeric action)', () => {
+    expect(priceFeedPost(base, { action: 'reply' }).youtube).toBe(true)
+    expect(priceFeedPost(base, { action: 2 }).youtube).toBe(true)
+    expect(priceFeedPost(base, { action: 'reply' }).costXec).toBe(
+      FEED_MIN_XEC + FEED_YOUTUBE_SURCHARGE_XEC,
+    )
   })
 
   it('does NOT surcharge a comment (no action passed) or a post without a YouTube link', () => {

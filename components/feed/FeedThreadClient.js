@@ -107,9 +107,9 @@ function AncestorNode({ post, top = false, onOpenThread = null }) {
   const textRef = useRef(null)
   const [expanded, setExpanded] = useState(false)
   const [clamped, setClamped] = useState(false)
-  // A top-level ancestor (the root post above the focused reply) embeds its
-  // YouTube video, just like a feed post — replies never do.
-  const ancestorYtId = post.action !== FEED_ACTION.REPLY ? extractYouTubeId(post.content) : null
+  // Ancestor posts embed their YouTube video — replies too, now (consistent with
+  // the reply rows and their +1000 XEC surcharge).
+  const ancestorYtId = extractYouTubeId(post.content)
 
   // Keep a translated parent translated: if the viewer has translated this post,
   // show that translation here too. Ancestors used to always render the original,
