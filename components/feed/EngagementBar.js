@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useReactionPayment } from '@/components/feed/useReactionPayment'
 import { REACTIONS } from '@/lib/reactions'
+import PocketWaitHint from '@/components/pocket/PocketWaitHint'
 
 /**
  * Reaction / Repost / Quote controls for a feed post. Reactions are on-chain paid
@@ -227,6 +228,7 @@ export default function EngagementBar({
             Confirm <strong>{intent.amountXec} XEC</strong> in Cashtab to{' '}
             {intent.emoji ? `react ${intent.emoji}` : pending === 'repost' ? 'repost' : 'react'}…
           </p>
+          <PocketWaitHint />
           <details className="manual">
             <summary>Cashtab didn&apos;t open, or already paid?</summary>
             <div style={{ textAlign: 'center', margin: '10px 0 0' }}>

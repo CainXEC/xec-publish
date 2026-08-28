@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useTipPayment } from '@/components/feed/useTipPayment'
+import PocketWaitHint from '@/components/pocket/PocketWaitHint'
 
 // Quick-pick tip amounts (XEC); the field takes any custom amount. Mirrors the
 // feed like menu (EngagementBar) so tipping feels the same everywhere.
@@ -107,6 +108,7 @@ export default function TipButton({ toAccountId }) {
           <p className="poll">
             Confirm <strong>{intent.amountXec} XEC</strong> in Cashtab to tip this author…
           </p>
+          <PocketWaitHint />
           <details className="manual">
             <summary>Cashtab didn&apos;t open, or already paid?</summary>
             <div style={{ textAlign: 'center', margin: '10px 0 0' }}>

@@ -26,6 +26,7 @@ import { watchPaymentAddress, prewarmPaymentWatch } from '@/lib/ecash/watchPayme
 // address scan); everything else is the exact payWithCashtab behavior.
 import { payDirect } from '@/lib/pocket/payGateway'
 import { triggerPaymentSuccessEffect } from '@/lib/paymentSuccessEffect'
+import PocketWaitHint from '@/components/pocket/PocketWaitHint'
 
 export default function PaneUnlock({ postId, priceXec, authorAddress, slug, onUnlocked, commentsOnly = false }) {
   const [phase, setPhase] = useState('idle') // idle | watching | finalizing
@@ -242,6 +243,7 @@ export default function PaneUnlock({ postId, priceXec, authorAddress, slug, onUn
           {!pocketTxidRef.current ? (
             <p className="hr-note">Approve in the Cashtab tab — this pane unlocks itself in a few seconds.</p>
           ) : null}
+          <PocketWaitHint />
           {notice ? <p className="hr-note">{notice}</p> : null}
           <button
             type="button"
