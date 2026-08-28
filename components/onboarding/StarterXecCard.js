@@ -109,6 +109,11 @@ const STARTER_CSS = `
   border: 1px solid color-mix(in srgb, var(--neon, #7CFF6B) 45%, var(--line, #333));
   border-radius: 12px;
 }
+/* Phone: composer hidden, so the card sits between the sticky header and the
+   tabs — balance its spacing the same way the get-started strip is. */
+@media (max-width: 1099px) {
+  .starter-card { margin: 7px 0; }
+}
 .starter-x {
   position: absolute; top: 8px; right: 10px;
   background: none; border: none; cursor: pointer;
@@ -120,14 +125,16 @@ const STARTER_CSS = `
 .starter-h { margin: 0 0 5px; font-size: 15.5px; font-weight: 700; color: var(--text, #fff); }
 .starter-p { margin: 0 0 12px; font-size: 13.5px; line-height: 1.5; color: var(--dim, #bbb); }
 .starter-p strong { color: var(--text, #fff); }
+/* Rectangular, neon-outlined — matches the site's newposts / forum buttons. */
 .starter-btn {
   display: inline-block; cursor: pointer;
-  font-size: 13.5px; font-weight: 600; font-family: inherit;
-  padding: 8px 18px; border-radius: 999px;
+  font: inherit; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  padding: 9px 18px; border-radius: 8px;
   border: 1px solid var(--neon, #7CFF6B);
-  background: var(--neon, #7CFF6B); color: var(--bg, #000);
+  background: transparent; color: var(--neon, #7CFF6B);
+  transition: box-shadow .15s, color .15s;
 }
-.starter-btn:hover { filter: brightness(1.08); }
-.starter-btn.ghost { background: transparent; color: var(--text, #fff); }
-.starter-btn.ghost:hover { filter: none; border-color: var(--text, #fff); }
+.starter-btn:hover { box-shadow: 0 0 12px rgba(0,255,156,.25); }
+.starter-btn.ghost { border-color: var(--line, #444); color: var(--dim, #aaa); }
+.starter-btn.ghost:hover { box-shadow: none; border-color: var(--neon, #7CFF6B); color: var(--neon, #7CFF6B); }
 `

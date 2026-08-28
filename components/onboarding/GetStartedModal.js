@@ -57,7 +57,7 @@ export function GetStartedModal({ open, onClose }) {
                 enough to log in. Save your seed phrase (it&rsquo;s the only key to your wallet)
                 then come back to this page.
               </p>
-              <a className="ob-btn ob-btn-primary" href={CASHTAB_URL} target="_blank" rel="noopener noreferrer">
+              <a className="ob-btn" href={CASHTAB_URL} target="_blank" rel="noopener noreferrer">
                 Get Cashtab →
               </a>
             </div>
@@ -155,18 +155,14 @@ const OB_MODAL_CSS = `
 .ob-h { margin: 2px 0 4px; font-size: 15px; font-weight: 700; color: var(--text, #fff); }
 .ob-p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.5; color: var(--dim, #aaa); }
 .ob-p strong { color: var(--text, #fff); }
+/* Rectangular, neon-outlined — matches the site's newposts / forum buttons. */
 .ob-btn {
   display: inline-block; cursor: pointer;
-  font-size: 13.5px; font-weight: 600; font-family: inherit;
-  padding: 8px 16px; border-radius: 999px;
-  border: 1px solid var(--line, #444);
-  background: transparent; color: var(--text, #fff);
-  text-decoration: none;
+  font: inherit; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  padding: 9px 16px; border-radius: 8px;
+  border: 1px solid var(--neon, #7CFF6B);
+  background: transparent; color: var(--neon, #7CFF6B);
+  text-decoration: none; transition: box-shadow .15s, color .15s;
 }
-.ob-btn:hover { border-color: var(--neon, #7CFF6B); }
-.ob-btn-primary {
-  background: var(--neon, #7CFF6B); color: var(--bg, #000);
-  border-color: var(--neon, #7CFF6B);
-}
-.ob-btn-primary:hover { filter: brightness(1.08); }
+.ob-btn:hover { box-shadow: 0 0 12px rgba(0,255,156,.25); }
 `
