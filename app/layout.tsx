@@ -78,15 +78,16 @@ export const metadata: Metadata = {
 };
 
 // Runs before first paint. Precedence is COOKIE-FIRST — deliberately the same
-// source the server used to render <html> above — then localStorage, then the
-// OS. Matching the server's source is what prevents the "load in one theme,
-// then flip" jump: whenever a cookie exists (the normal case), the class this
-// computes equals what the server already rendered. It also re-persists BOTH
-// the cookie and localStorage from the resolved value, so (a) they can't drift
-// apart and (b) refreshing the cookie every visit dodges Safari's 7-day cap on
-// script-set cookies, which used to let the cookie silently expire while
-// localStorage survived. Cross-tab changes are handled live by ThemeSync.
-const themeInitScript = `(function(){try{var m=document.cookie.match(/(?:^|; )theme=([^;]*)/);var c=m?m[1]:null;var ls=null;try{ls=localStorage.getItem("theme")}catch(e){}var t=c||ls;var d;if(t==="light")d=false;else if(t==="dark")d=true;else d=window.matchMedia("(prefers-color-scheme: dark)").matches;document.documentElement.classList.toggle("dark",d);var v=d?"dark":"light";try{localStorage.setItem("theme",v)}catch(e){}document.cookie="theme="+v+"; path=/; max-age=31536000; samesite=lax";}catch(e){}})();`;
+// source the server used to render <html> above — then localStorage, then a
+// DARK default: with no stored choice a first-time visitor opens in dark
+// (the terminal look is the brand), regardless of the OS preference. Matching
+// the server's default (dark unless the cookie says "light") is what prevents
+// the "load in one theme, then flip" jump. It also re-persists BOTH the cookie
+// and localStorage from the resolved value, so (a) they can't drift apart and
+// (b) refreshing the cookie every visit dodges Safari's 7-day cap on script-set
+// cookies, which used to let the cookie silently expire while localStorage
+// survived. Cross-tab changes are handled live by ThemeSync.
+const themeInitScript = `(function(){try{var m=document.cookie.match(/(?:^|; )theme=([^;]*)/);var c=m?m[1]:null;var ls=null;try{ls=localStorage.getItem("theme")}catch(e){}var t=c||ls;var d;if(t==="light")d=false;else d=true;document.documentElement.classList.toggle("dark",d);var v=d?"dark":"light";try{localStorage.setItem("theme",v)}catch(e){}document.cookie="theme="+v+"; path=/; max-age=31536000; samesite=lax";}catch(e){}})();`;
 
 export default async function RootLayout({
   children,
@@ -95,7 +96,9 @@ export default async function RootLayout({
 }>) {
   const cookieStore = await cookies();
   const themeCookie = cookieStore.get("theme")?.value;
-  const isDark = themeCookie === "dark";
+  // Dark by default: only an explicit "light" cookie renders light. No cookie
+  // (first-time visitor) → dark, matching themeInitScript so there's no flash.
+  const isDark = themeCookie !== "light";
 
   return (
     <html
