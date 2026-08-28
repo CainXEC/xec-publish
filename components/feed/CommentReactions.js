@@ -63,6 +63,31 @@ export default function CommentReactions({ targetTxid, reactionCounts = {}, isOw
     [counts],
   )
 
+  // "Who reacted" — own comment only (mirrors the feed). `who`: null (unloaded) |
+  // 'loading' | 'error' | array of { identity, emoji }. Fetched each time it opens.
+  const [whoOpen, setWhoOpen] = useState(false)
+  const [who, setWho] = useState(null)
+  const toggleWho = () => {
+    const opening = !whoOpen
+    setWhoOpen(opening)
+    if (opening) {
+      setWho('loading')
+      fetch(`/api/comments/reactions?txid=${targetTxid}`)
+        .then((r) => (r.ok ? r.json() : { ok: false }))
+        .then((j) => setWho(j.ok ? j.reactors : 'error'))
+        .catch(() => setWho('error'))
+    }
+  }
+  const whoGroups = useMemo(() => {
+    if (!Array.isArray(who)) return null
+    const m = new Map()
+    for (const r of who) {
+      if (!m.has(r.emoji)) m.set(r.emoji, [])
+      m.get(r.emoji).push(r.identity)
+    }
+    return [...m.entries()].sort((a, b) => b[1].length - a[1].length)
+  }, [who])
+
   return (
     <span className="creact">
       {!isOwn ? (
@@ -99,17 +124,51 @@ export default function CommentReactions({ targetTxid, reactionCounts = {}, isOw
             </div>
           ) : null}
         </span>
-      ) : null}
+      ) : (
+        // Your OWN comment: you can't react to yourself, so the ♡+ opens a "who
+        // reacted" list instead (mirrors the feed's own-post behavior).
+        <span className="creactwrap">
+          <button
+            type="button"
+            className={`creactbtn${whoOpen ? ' on' : ''}`}
+            onClick={toggleWho}
+            aria-haspopup="menu"
+            aria-expanded={whoOpen}
+            aria-label="See who reacted"
+            title="See who reacted"
+          >
+            ♡+
+          </button>
+          {whoOpen ? (
+            <div className="cwhoreacted">
+              {who === 'loading' ? (
+                <p className="cwhonote">Loading…</p>
+              ) : who === 'error' ? (
+                <p className="cwhonote">Couldn’t load reactions.</p>
+              ) : whoGroups && whoGroups.length > 0 ? (
+                whoGroups.map(([emoji, names]) => (
+                  <div className="cwhorow" key={emoji}>
+                    <span className="cwhoemoji" aria-hidden>{emoji}</span>
+                    <span className="cwhonames">{names.join(', ')}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="cwhonote">No reactions yet.</p>
+              )}
+            </div>
+          ) : null}
+        </span>
+      )}
 
       {pills.map(([emoji, n]) => (
         <button
           key={emoji}
           type="button"
           className="creactpill"
-          disabled={isOwn || (Boolean(pending) && !inPagePay)}
-          onClick={() => react(emoji)}
-          aria-label={isOwn ? `${emoji} reactions` : `React ${emoji}`}
-          title={isOwn ? `${emoji} ${n}` : `React ${emoji} · 100 XEC`}
+          disabled={!isOwn && Boolean(pending) && !inPagePay}
+          onClick={() => (isOwn ? toggleWho() : react(emoji))}
+          aria-label={isOwn ? `${emoji} reactions — see who` : `React ${emoji}`}
+          title={isOwn ? 'See who reacted' : `React ${emoji} · 100 XEC`}
         >
           {emoji} {n}
         </button>

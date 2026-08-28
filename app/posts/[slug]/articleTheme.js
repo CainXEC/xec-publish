@@ -306,6 +306,17 @@ html:not(.dark) .pow-article .hr-unlock:disabled{background:transparent;color:va
   padding:2px 9px;cursor:pointer;font-variant-numeric:tabular-nums;transition:border-color .12s;}
 .pow-article .creactpill:hover:not(:disabled){border-color:var(--cyan);}
 .pow-article .creactpill:disabled{cursor:default;}
+/* "Who reacted" popover on your OWN comment — the comment analogue of the feed's
+   .whoreacted. Opens above the ♡+ (which turns cyan while open). */
+.pow-article .creactbtn.on{color:var(--cyan);}
+.pow-article .cwhoreacted{position:absolute;bottom:calc(100% + 6px);left:0;z-index:20;min-width:200px;max-width:300px;
+  max-height:280px;overflow-y:auto;background:var(--panel2);border:1px solid var(--line);border-radius:12px;
+  padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.4);display:flex;flex-direction:column;gap:8px;}
+.pow-article .cwhoreacted::after{content:"";position:absolute;top:100%;left:0;right:0;height:8px;}
+.pow-article .cwhorow{display:flex;align-items:baseline;gap:8px;font-size:12.5px;}
+.pow-article .cwhoemoji{font-size:15px;flex-shrink:0;line-height:1;}
+.pow-article .cwhonames{color:var(--text);word-break:break-word;line-height:1.45;}
+.pow-article .cwhonote{margin:0;font-size:12.5px;color:var(--dim);}
 .pow-article .comment-replyingto{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);margin:0 0 8px;}
 .pow-article .comment-replyarrow{color:var(--dim);}
 .pow-article .comment-replyingto-who{color:var(--hc,var(--cyan));font-weight:600;}
