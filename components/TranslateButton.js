@@ -17,6 +17,9 @@ import {
   getArticleIntent,
   setArticleIntent,
   clearArticleIntent,
+  getShortTranslation,
+  setShortTranslation,
+  clearShortTranslation,
 } from '@/lib/translateStore'
 
 const LS_KEY = 'pow_translate_lang'
@@ -83,10 +86,13 @@ export default function TranslateButton({
       }
       setActive(true)
       setTranslation(kind, id, data) // survives in-app navigation / re-render
-      // Articles also persist durably (localStorage) so they stay translated
-      // for you across reloads and future visits, and the front-page rail can
-      // show the translated title.
+      // Persist durably so it comes back translated across reloads / return
+      // visits. Articles store only the INTENT + language (their bodies are large,
+      // re-fetched from Redis on mount); short content (feed posts / comments)
+      // stores the TRANSLATED TEXT itself, so it re-applies instantly with NO
+      // re-fetch (Option B).
       if (isArticle) setArticleIntent(id, { lang: data.lang || lang, title: data.title })
+      else setShortTranslation(kind, id, data)
       onTranslatedRef.current?.(data) // { translated, title?, lang }
     } catch {
       if (silent) setActive(false)
@@ -123,6 +129,16 @@ export default function TranslateButton({
         void translateToRef.current?.(intent.lang, { silent: true })
         return
       }
+    } else {
+      // Durable short-content translation: re-apply the STORED TEXT instantly, no
+      // re-fetch. Warm the in-memory layer too so later in-app nav reuses it.
+      const durable = getShortTranslation(kind, id)
+      if (durable?.data) {
+        setActive(true)
+        setTranslation(kind, id, durable.data)
+        onTranslatedRef.current?.(durable.data)
+        return
+      }
     }
     setActive(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -146,7 +162,9 @@ export default function TranslateButton({
     setActive(false)
     setError('')
     clearTranslation(kind, id) // viewer chose the original — don't re-apply later
-    if (isArticle) clearArticleIntent(id) // and forget the durable choice
+    // Forget the durable choice too, so it doesn't come back on the next visit.
+    if (isArticle) clearArticleIntent(id)
+    else clearShortTranslation(kind, id)
     onShowOriginal?.()
   }
 
