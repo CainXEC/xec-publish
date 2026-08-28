@@ -63,7 +63,7 @@ export function GetStartedModal({ open, onClose }) {
             <span className="ob-num" aria-hidden>2</span>
             <div className="ob-body">
               <h3 className="ob-h">Log in</h3>
-              <p className="ob-p">One tiny 6-XEC payment logs you in. That&rsquo;s it!</p>
+              <p className="ob-p">A tiny 6-XEC payment logs you in!</p>
               <button type="button" className="ob-btn" onClick={onLogin}>
                 Log in
               </button>
