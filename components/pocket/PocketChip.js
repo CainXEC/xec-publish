@@ -148,6 +148,8 @@ export default function PocketChip() {
         >
           <PocketIcon />
         </button>
+        {/* Desktop hover nudge — CSS reveals it only on hover-capable devices. */}
+        <span className="pocket-tip" role="tooltip">Load your Pocket once and pay instantly</span>
       </div>
     )
   }

@@ -17,6 +17,7 @@ import { beginPayment, completePayment, abortPayment } from '@/lib/pocket/payGat
 import { getPocketSnapshot } from '@/lib/pocket/store'
 import { confirmCommentInBackground } from '@/lib/comments/confirmComment'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
+import PocketWaitHint from '@/components/pocket/PocketWaitHint'
 
 // =============================================================================
 //  ArticleComments — paid, threaded comments on an article.
@@ -376,6 +377,7 @@ function CommentComposer({ postId, parentId = null, autoFocus = false, onPosted,
           <span className="spinner" aria-hidden />
           <span>Waiting for your payment…</span>
         </div>
+        <PocketWaitHint />
         <details className="commentmanual">
           <summary>Cashtab didn&apos;t open, or already paid?</summary>
           <div style={{ textAlign: 'center', margin: '10px 0 0' }}>

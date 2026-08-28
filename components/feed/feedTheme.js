@@ -233,6 +233,14 @@ html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation-name:pocke
 @media (hover:hover){.pow-feed .pocketbtn-wrap:hover .pocket-bal{opacity:1;transform:translateY(0);pointer-events:auto;}}
 .pow-feed .pocketbtn-wrap.open .pocket-bal,
 .pow-feed .pocketbtn-wrap.flash .pocket-bal{opacity:1;transform:translateY(0);pointer-events:auto;}
+/* Empty-chip hover nudge (desktop only): a small tooltip below the dashed chip.
+   left:0 anchors it to the chip's left edge so the wide label never clips off the
+   left of the topbar; hover-capable devices only, so a touch tap never fires it. */
+.pow-feed .pocket-tip{position:absolute;top:calc(100% + 6px);left:0;z-index:60;white-space:nowrap;
+  font-size:11.5px;font-weight:600;color:var(--text);background:var(--panel);border:1px solid var(--line);
+  border-radius:8px;padding:6px 10px;box-shadow:0 8px 22px rgba(0,0,0,.4);
+  opacity:0;pointer-events:none;transform:translateY(-3px);transition:opacity .12s,transform .12s;}
+@media (hover:hover){.pow-feed .pocketbtn-wrap:hover .pocket-tip{opacity:1;transform:translateY(0);}}
 /* Spend flash: a green breath on the card + chip so a pocket-paid action reads as
    "money moved" even with the card closed, then it fades back to just the icon.
    Driven by the store's spendPulse; PocketChip removes .flash after ~1.8s. */

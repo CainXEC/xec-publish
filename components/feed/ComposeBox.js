@@ -17,6 +17,7 @@ import { FEED_ACTION } from '@/lib/feedProtocol'
 import { canBuildFeedPaymentLocally, buildFeedPaymentLocally } from '@/lib/feed/buildFeedPayment'
 import { confirmFeedPostInBackground } from '@/lib/feed/confirmFeedPost'
 import { combineForumContent, FORUM_TITLE_MAX } from '@/lib/forumPost'
+import PocketWaitHint from '@/components/pocket/PocketWaitHint'
 
 // Top-of-feed placeholders: posting here costs real XEC, so the prompts lean
 // into "make it worth it" and the proof-of-writing name instead of a generic
@@ -552,6 +553,7 @@ export default function ComposeBox({
           Cashtab opened for <strong>{intent.amountXec} XEC</strong>. Confirm the {noun} there.
         </p>
         <p className="poll">{statusMsg}</p>
+        <PocketWaitHint />
 
         <details className="manual">
           <summary>Cashtab didn&apos;t open, or already paid?</summary>
