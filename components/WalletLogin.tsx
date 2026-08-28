@@ -9,7 +9,6 @@
 // =============================================================================
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { QRCodeSVG } from "qrcode.react";
 import { prewarmPaymentWatch } from "@/lib/ecash/watchPaymentAddress";
 import { pollUntil } from "@/lib/ecash/pollUntil";
 import {
@@ -34,7 +33,6 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
   const [started, setStarted] = useState<Started | null>(null);
   const [notice, setNotice] = useState("");
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
-  const [copied, setCopied] = useState(false);
   const startedOnceRef = useRef(false);
   const cashtabOpenedRef = useRef(false);
   // A window pre-opened by the "Login" tap (see loginLaunch). On iOS Safari this
@@ -63,10 +61,13 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
     void payWithCashtab({ bip21: started.bip21Url, cashtabUrl });
   }, [started, cashtabUrl]);
 
-  const copyAddr = async () => {
-    if (!started) return;
-    try { await navigator.clipboard.writeText(started.proofAddress); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* ignore */ }
-  };
+  // Bail out of login (changed their mind). Abort any Cashtab window the "Login"
+  // tap pre-opened so we don't leave a stray tab, then go home. Navigating away
+  // unmounts this component, tearing down the payment poller + countdown.
+  const cancelLogin = useCallback(() => {
+    if (launchRef.current) { abortCashtabPayment(launchRef.current); launchRef.current = null; }
+    if (typeof window !== "undefined") window.location.assign("/");
+  }, []);
 
   const startLogin = useCallback(async () => {
     setNotice("");
@@ -182,11 +183,9 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
       {phase === "proving" && started && (
         <div className="pay">
           <p className="poll">Waiting for your {started.amountXec} XEC login payment{secondsLeft != null && secondsLeft > 0 && <span className="timer"> · expires in {mm}:{ss}</span>}</p>
-          <button type="button" className="cta" onClick={openCashtab}>Open Cashtab</button>
-          <p className="fallback">Cashtab didn’t open? Scan the code or use the address below.</p>
-          <div className="qr"><QRCodeSVG value={started.bip21Url} size={188} bgColor="#dffff2" fgColor="#05130d" /></div>
-          <p className="addr" title={started.proofAddress}>{started.proofAddress}</p>
-          <button className="copybtn" onClick={copyAddr}>{copied ? "copied \u2713" : "copy address"}</button>
+          {/* Cashtab opens automatically with the payment pre-filled; this button
+              is just an escape hatch if you changed your mind. */}
+          <button type="button" className="cta ghost" onClick={cancelLogin}>Cancel</button>
           {notice && <p className="notice">{notice}</p>}
         </div>
       )}
@@ -232,17 +231,12 @@ const CSS = `
 .pow-mint .cta:hover{background:var(--neon);color:#04120c;box-shadow:0 0 30px rgba(0,255,156,.5);}
 .pow-mint .cta:active{transform:translateY(1px);}
 .pow-mint .cta:disabled{background:transparent;border-color:var(--line);color:var(--dim);box-shadow:none;cursor:not-allowed;}
+/* Cancel: a quiet secondary — dim outline, no glow, brightens on hover. It's an
+   escape hatch, not the action we want you to take (Cashtab already opened). */
+.pow-mint .cta.ghost{border-color:var(--line);color:var(--dim);box-shadow:none;}
+.pow-mint .cta.ghost:hover{background:transparent;border-color:var(--neon);color:var(--neon);box-shadow:none;}
 .pow-mint .notice{color:var(--no);font-size:14px;margin:14px 0 0;}
 
-.pow-mint .pay .payhead{font-size:15px;margin:0 0 10px;color:var(--text);}
-.pow-mint .pay strong{color:var(--neon);}
-.pow-mint .qr{display:inline-block;padding:12px;background:#dffff2;border-radius:12px;margin:0 0 16px;
-  box-shadow:0 0 0 1px var(--neon),0 0 24px rgba(0,255,156,.28);}
-.pow-mint .fallback{font-size:12.5px;color:var(--dim);margin:18px 0 12px;}
-.pow-mint .addr{font-size:12px;color:var(--dim);word-break:break-all;margin:12px 0 6px;}
-.pow-mint .copybtn{background:transparent;border:1px solid var(--line);color:var(--cyan);border-radius:8px;
-  padding:6px 14px;font:inherit;font-size:12px;cursor:pointer;margin:0 0 10px;transition:border-color .15s;}
-.pow-mint .copybtn:hover{border-color:var(--cyan);}
 .pow-mint .poll{font-size:14px;color:var(--text);margin:10px 0 0;}
 .pow-mint .pay .poll{margin:0 0 16px;}
 .pow-mint .poll::after{content:"\\2588";margin-left:3px;color:var(--neon);animation:pow-blink 1s steps(1) infinite;}
@@ -270,6 +264,6 @@ html:not(.dark) .pow-mint .sub{color:#4a4d42;}
 /* CTA: filled ink-green with paper text on hover, one soft shadow, no glow. */
 html:not(.dark) .pow-mint .cta{box-shadow:var(--paper-shadow);}
 html:not(.dark) .pow-mint .cta:hover{background:var(--neon);color:#fdfcf8;box-shadow:var(--paper-shadow);}
-/* QR: a clean near-white plate with a hairline, not a mint tile with a halo. */
-html:not(.dark) .pow-mint .qr{background:#fff;box-shadow:0 0 0 1px var(--line),var(--paper-shadow);}
+/* Cancel stays a quiet ghost in light mode too (don't fill it on hover). */
+html:not(.dark) .pow-mint .cta.ghost:hover{background:transparent;color:var(--neon);}
 `;
