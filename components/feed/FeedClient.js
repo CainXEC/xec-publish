@@ -9,6 +9,8 @@ import ForumDirectory from '@/components/feed/ForumDirectory'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import HomeReader from '@/components/feed/HomeReader'
 import ThreadPane from '@/components/feed/ThreadPane'
+import OnboardingStrip from '@/components/onboarding/OnboardingStrip'
+import StarterXecCard from '@/components/onboarding/StarterXecCard'
 import { getSeenMap, reorderBySeen } from '@/lib/feedSeenStore'
 import { RANK_FORYOU_FEED } from '@/lib/feedMode'
 import { FEED_CSS } from '@/components/feed/feedTheme'
@@ -22,6 +24,11 @@ export default function FeedClient({
   initialCompose = '',
   focusCompose = false,
   initialScope = 'foryou',
+  // Onboarding (walletless funnel): a brand-new, unfunded logged-in account is
+  // `starterEligible` and sees the "Claim starter XEC" card; `profilePath` is the
+  // link that rides in its X share. Logged-out visitors see the get-started strip.
+  starterEligible = false,
+  profilePath = null,
 }) {
   const [scope, setScope] = useState(initialScope) // 'foryou' | 'forums'
 
@@ -538,6 +545,14 @@ export default function FeedClient({
         <div className="feed-topstories">
           <ArticleRail variant="top" />
         </div>
+        {/* Onboarding (Pieces 1 & 3): a logged-out visitor gets the get-started
+            strip; a brand-new, unfunded logged-in account gets the claim card.
+            Both sit at the very top of the feed column, above the composer. */}
+        {scope !== 'forums' && !signedIn ? <OnboardingStrip /> : null}
+        {scope !== 'forums' && signedIn && starterEligible ? (
+          <StarterXecCard profilePath={profilePath} />
+        ) : null}
+
         {/* The site-wide composer posts to the global Feed; on the Forums tab
             (a directory) there's no global post to make — you post inside a
             forum, on its own page — so it's hidden there. */}
@@ -549,6 +564,7 @@ export default function FeedClient({
               initialContent={initialCompose}
               autoFocus={Boolean(initialCompose) || focusCompose}
               allowOptimistic
+              needsStarterXec={starterEligible}
             />
           </div>
         ) : null}

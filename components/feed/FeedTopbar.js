@@ -7,6 +7,7 @@ import FeedNotifications from '@/components/feed/FeedNotifications'
 import PocketChip from '@/components/pocket/PocketChip'
 import ThemeToggle from '@/components/ThemeToggle'
 import AnimatedLogo from '@/components/AnimatedLogo'
+import GetStartedButton from '@/components/onboarding/GetStartedModal'
 import { armLoginLaunch } from '@/lib/ecash/loginLaunch'
 
 /**
@@ -88,6 +89,11 @@ export default function FeedTopbar({
         <Link href="/dashboard" className={cls} onClick={() => setOpen(false)}>
           dashboard
         </Link>
+      ) : null}
+      {!signedIn && !isAuthor ? (
+        <GetStartedButton className={cls} onClick={() => setOpen(false)}>
+          get started
+        </GetStartedButton>
       ) : null}
       {!signedIn && !isAuthor ? (
         <Link href="/login" className={cls} onClick={() => { setOpen(false); armLoginLaunch(); }}>

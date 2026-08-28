@@ -1,6 +1,7 @@
 import FeedClient from '@/components/feed/FeedClient'
 import { getCachedForYouPage, FORYOU_PAGE_SIZE } from '@/lib/getFeed'
 import { getAuthedAccount } from '@/lib/authHelpers'
+import { isBrandNewUnfunded, accountProfilePath } from '@/lib/onboarding'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,6 +33,14 @@ export default async function HomePage({ searchParams }) {
   // its viewer id and awaits it only once the feed side is ready to use it.
   const acctPromise = getAuthedAccount()
 
+  // Onboarding: is this a brand-new, unfunded account (no tip received, no post,
+  // no reaction) that should see the "Claim starter XEC" card? Chained off the
+  // session so its cheap existence checks overlap the feed render below instead
+  // of adding a serial round-trip. Logged-out / funded accounts resolve false.
+  const starterPromise = acctPromise.then((a) =>
+    a?.accountId ? isBrandNewUnfunded(a.accountId) : false,
+  )
+
   try {
     const result = await getCachedForYouPage(
       null,
@@ -45,6 +54,8 @@ export default async function HomePage({ searchParams }) {
   }
 
   const acct = await acctPromise
+  const starterEligible = await starterPromise
+  const profilePath = acct ? accountProfilePath(acct) : null
 
   return (
     <FeedClient
@@ -56,6 +67,8 @@ export default async function HomePage({ searchParams }) {
       initialCompose={initialCompose}
       focusCompose={focusCompose}
       initialScope={initialScope}
+      starterEligible={starterEligible}
+      profilePath={profilePath}
     />
   )
 }

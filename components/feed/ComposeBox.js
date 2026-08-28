@@ -68,6 +68,10 @@ export default function ComposeBox({
   // hand at broadcast (Pocket or the Cashtab extension); the web-tab path has no
   // txid until the chain shows it, so it stays on the in-component confirm poll.
   allowOptimistic = false,
+  // Onboarding (Piece 4): a brand-new, unfunded account can't cover the 100-XEC
+  // floor yet. When they start typing, nudge them to the "Claim starter XEC" card
+  // instead of letting them hit an insufficient-funds wall in Cashtab.
+  needsStarterXec = false,
 }) {
   const [content, setContent] = useState(initialContent)
   // Forum-post title (withTitle only). The body stays in `content`; what gets
@@ -770,6 +774,21 @@ export default function ComposeBox({
           </button>
         </div>
       </div>
+      {needsStarterXec && content.trim().length > 0 ? (
+        <p className="notice starter-nudge">
+          You&rsquo;ll need starter XEC to post —{' '}
+          <a
+            href="#starter-xec"
+            onClick={(e) => {
+              e.preventDefault()
+              document.getElementById('starter-xec')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }}
+          >
+            get it free
+          </a>
+          .
+        </p>
+      ) : null}
       {notice ? <p className="notice">{notice}</p> : null}
     </div>
   )
