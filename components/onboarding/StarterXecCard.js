@@ -23,11 +23,25 @@ export default function StarterXecCard({ profilePath }) {
   const [shared, setShared] = useState(false)
 
   const onShare = useCallback(() => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    if (typeof window === 'undefined') return
+    const origin = window.location.origin
     const url = profilePath ? `${origin}${profilePath}` : origin
     const text = `${TWEET_TEXT} ${url}`
-    const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`
-    if (typeof window !== 'undefined') window.open(intent, '_blank', 'noopener,noreferrer')
+    const web = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`
+
+    const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent || '')
+    if (isMobile) {
+      // Prefer the native X app: its twitter:// scheme opens the composer
+      // pre-filled. If the app isn't installed nothing handles the scheme, so
+      // after a beat — and only if we're still here (the app didn't take over and
+      // hide the tab) — fall back to the web composer.
+      window.location.href = `twitter://post?message=${encodeURIComponent(text)}`
+      setTimeout(() => {
+        if (document.visibilityState === 'visible') window.location.href = web
+      }, 800)
+    } else {
+      window.open(web, '_blank', 'noopener,noreferrer')
+    }
     setShared(true)
   }, [profilePath])
 
