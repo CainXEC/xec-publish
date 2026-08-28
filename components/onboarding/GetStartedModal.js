@@ -49,9 +49,9 @@ export function GetStartedModal({ open, onClose }) {
             <div className="ob-body">
               <h3 className="ob-h">Create your eCash wallet</h3>
               <p className="ob-p">
-                Cashtab is an open source web wallet. New wallets can claim{' '}
-                <strong>42 XEC free</strong>. Save your seed phrase (it&rsquo;s the only key to
-                your wallet) then come back to this page.
+                Cashtab is your key to this platform. It&rsquo;s an open source web wallet and
+                new users can claim <strong>42 XEC free</strong>. Claim your free XEC, save your
+                seed phrase, then come back to this page.
               </p>
               <a className="ob-btn" href={CASHTAB_URL} target="_blank" rel="noopener noreferrer">
                 Get Cashtab →
@@ -63,7 +63,7 @@ export function GetStartedModal({ open, onClose }) {
             <span className="ob-num" aria-hidden>2</span>
             <div className="ob-body">
               <h3 className="ob-h">Log in</h3>
-              <p className="ob-p">One tiny 6-XEC payment proves the wallet is yours.</p>
+              <p className="ob-p">One tiny 6-XEC payment logs you in. That&rsquo;s it!</p>
               <button type="button" className="ob-btn" onClick={onLogin}>
                 Log in
               </button>
@@ -75,7 +75,7 @@ export function GetStartedModal({ open, onClose }) {
             <div className="ob-body">
               <h3 className="ob-h">Get XEC</h3>
               <p className="ob-p">
-                Once you&rsquo;re in, share your profile on X and tag us — we&rsquo;ll send you
+                Once you&rsquo;re in, click on the Share on X button and we&rsquo;ll send you
                 enough XEC to start posting.
               </p>
             </div>
