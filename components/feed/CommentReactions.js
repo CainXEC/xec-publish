@@ -12,7 +12,13 @@ import { REACTIONS } from '@/lib/reactions'
  * per-emoji pill counts. Multi-react: you can react as many times as you pay.
  * On your OWN comment the pills are read-only (you can't react to yourself).
  */
-export default function CommentReactions({ targetTxid, reactionCounts = {}, isOwn = false }) {
+export default function CommentReactions({
+  targetTxid,
+  reactionCounts = {},
+  // Server-known "you've reacted to this comment" (cross-device) — fills the ♡+.
+  reactedByViewer = false,
+  isOwn = false,
+}) {
   // Per-emoji counts shown as pills. Seeded from the server truth and re-seeded
   // when it changes — using the "adjust state when a prop changes during render"
   // pattern (keyed on the VALUE, since the prop is a fresh object each render), so
@@ -45,6 +51,7 @@ export default function CommentReactions({ targetTxid, reactionCounts = {}, isOw
   } = useReactionPayment({
     endpointBase: '/api/comments/react',
     targetTxid,
+    reactedByViewer,
     onReacted: () => {}, // pill already bumped optimistically; server reconciles
     onReactFailed: (emoji) => bump(emoji, -1), // payment cancelled/failed → undo
   })

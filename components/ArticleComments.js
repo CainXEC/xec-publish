@@ -707,6 +707,7 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
                       <CommentReactions
                         targetTxid={comment.txid}
                         reactionCounts={comment.reactionCounts ?? {}}
+                        reactedByViewer={Boolean(comment.reactedByViewer)}
                         isOwn={isOwnComment}
                       />
                     ) : null}

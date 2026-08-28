@@ -95,14 +95,18 @@ export async function GET(request, { params }) {
 
   // Paid emoji-reaction counts per on-chain comment. Reactions live in
   // comment_events (target_txid = the comment's txid); per-emoji counts are
-  // computed live from the rows (NULL emoji = a legacy ♥ like → ❤️). Reactions
-  // are MULTI now, so there's no per-viewer "already reacted" state to resolve.
+  // computed live from the rows (NULL emoji = a legacy ♥ like → ❤️). The SAME
+  // rows also tell us which comments the SIGNED-IN viewer has reacted to (their
+  // actor_account_id), which fills the ♡+ trigger — cross-device, like feed posts.
+  const viewer = await getAuthedAccount()
+  const viewerAccountId = viewer?.accountId ?? null
   const reactionCountsByTxid = new Map()
+  const reactedByViewerTxids = new Set()
   const commentTxids = [...new Set((data ?? []).map((c) => c.txid).filter(Boolean))]
   if (commentTxids.length > 0) {
     const { data: reactRows } = await supabase
       .from('comment_events')
-      .select('target_txid, emoji')
+      .select('target_txid, emoji, actor_account_id')
       .eq('action', 5)
       .in('target_txid', commentTxids)
     for (const r of reactRows ?? []) {
@@ -113,6 +117,9 @@ export async function GET(request, { params }) {
         reactionCountsByTxid.set(r.target_txid, m)
       }
       m[k] = (m[k] ?? 0) + 1
+      if (viewerAccountId && r.actor_account_id === viewerAccountId) {
+        reactedByViewerTxids.add(r.target_txid)
+      }
     }
   }
 
@@ -127,9 +134,10 @@ export async function GET(request, { params }) {
     const color = hasHandle ? colorByAccount.get(author_account_id) ?? null : null
     const author_identity = liveByline(author_account_id, c.author_identity, c.payer_address)
     const reactionCounts = c.txid ? reactionCountsByTxid.get(c.txid) ?? {} : {}
+    const reactedByViewer = c.txid ? reactedByViewerTxids.has(c.txid) : false
     return c.deleted_at
       ? { ...rest, isAi, color: null, reactionCounts: {}, content: '', deleted: true }
-      : { ...rest, isAi, color, author_identity, reactionCounts, deleted: false }
+      : { ...rest, isAi, color, author_identity, reactionCounts, reactedByViewer, deleted: false }
   })
 
   return NextResponse.json({ comments })
