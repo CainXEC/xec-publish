@@ -10,6 +10,7 @@ import FeedTopbar from '@/components/feed/FeedTopbar'
 import HomeReader from '@/components/feed/HomeReader'
 import ThreadPane from '@/components/feed/ThreadPane'
 import { getSeenMap, reorderBySeen } from '@/lib/feedSeenStore'
+import { RANK_FORYOU_FEED } from '@/lib/feedMode'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 
 export default function FeedClient({
@@ -237,10 +238,16 @@ export default function FeedClient({
   // as you scroll and mark new posts) and reused for load-more pages. Runs after
   // hydration (localStorage is client-only), so the SSR order paints first, then
   // the unseen-first reorder settles in — same as the viewer-state overlay.
+  //
+  // OFF while the feed is pure reverse-chronological (RANK_FORYOU_FEED=false):
+  // the seen map changes as you read, so this reshuffle would make the sort look
+  // different on every refresh — the opposite of a stable chronological feed. The
+  // snapshot ref is still set so seen-tracking stays wired for the re-enable.
   const seenSnapshotRef = useRef(null)
   useEffect(() => {
     const snap = getSeenMap()
     seenSnapshotRef.current = snap
+    if (!RANK_FORYOU_FEED) return
     if (Object.keys(snap).length === 0) return
     patchTab('foryou', (t) => ({ ...t, posts: reorderBySeen(t.posts, snap) }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -460,7 +467,8 @@ export default function FeedClient({
         const loaded = new Set(t.posts.map((p) => p.txid))
         let fresh = (data.posts ?? []).filter((p) => p?.txid && !loaded.has(p.txid))
         // Keep the unseen-first ordering going for load-more pages too (For You).
-        if (scope === 'foryou' && seenSnapshotRef.current) {
+        // Off in reverse-chronological mode (see the mount effect above).
+        if (RANK_FORYOU_FEED && scope === 'foryou' && seenSnapshotRef.current) {
           fresh = reorderBySeen(fresh, seenSnapshotRef.current)
         }
         return {
