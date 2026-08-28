@@ -6,7 +6,7 @@
 --  emoji is display metadata; polarity (author 94/6 vs 👎 → platform 100%) is
 --  proven on-chain by the payment split and verified server-side.
 --
---  Palette (lib/reactions.js): ❤️ 😂 🔥 👏 💯 👍 👎 🤔
+--  Palette (lib/reactions.js): ❤️ 😂 🔥 🙏 💯 👍 👎 🤔
 --
 --  Apply in the Supabase SQL editor (schema is managed in the dashboard; this
 --  file is the source of record). Everything here is idempotent — safe to re-run.

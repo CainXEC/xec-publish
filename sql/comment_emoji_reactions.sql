@@ -8,7 +8,7 @@
 --  proven on-chain by the payment split and verified server-side. Counts are
 --  computed LIVE from the rows (grouped by emoji) — no denorm column/trigger.
 --
---  Palette (lib/reactions.js): ❤️ 😂 🔥 👏 💯 👍 👎 🤔
+--  Palette (lib/reactions.js): ❤️ 😂 🔥 🙏 💯 👍 👎 🤔
 --
 --  Apply in the Supabase SQL editor. Everything here is idempotent.
 -- =============================================================================
