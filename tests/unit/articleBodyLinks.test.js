@@ -58,6 +58,26 @@ describe('transformArticleBodyLinks — feed link parity in article bodies', () 
     expect(rendered).toMatch(/rel="[^"]*noopener[^"]*"/)
   })
 
+  it('embeds a YouTube URL that is on its own line', () => {
+    const out = transformArticleBodyLinks('<p>https://youtu.be/dQw4w9WgXcQ</p>')
+    expect(out).toContain('class="ytembed"')
+    expect(out).toContain('src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"')
+    expect(out).not.toContain('<p>') // the paragraph was replaced by the embed
+  })
+
+  it('leaves an inline YouTube URL (with surrounding prose) alone', () => {
+    const out = transformArticleBodyLinks('<p>Watch https://youtu.be/dQw4w9WgXcQ — great</p>')
+    expect(out).not.toContain('ytembed')
+    expect(out).toContain('Watch')
+  })
+
+  it('embeds a watch?v= URL through the sanitizer end-to-end', () => {
+    const stored = transformArticleBodyLinks('<p>https://www.youtube.com/watch?v=dQw4w9WgXcQ</p>')
+    const rendered = sanitizePostBodyHtml(stored)
+    expect(rendered).toContain('src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"')
+    expect(rendered).toContain('class="ytembed"')
+  })
+
   it('returns blank/whitespace input unchanged', () => {
     expect(transformArticleBodyLinks('')).toBe('')
     expect(transformArticleBodyLinks('   ')).toBe('   ')

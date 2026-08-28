@@ -94,6 +94,12 @@ export const ARTICLE_CSS = `
   max-width:none;}
 .pow-article .prose > :first-child{margin-top:0;}
 .pow-article .prose p{margin:0 0 1.1em;}
+/* YouTube embed inside an article body (matches the feed's .ytembed): a
+   responsive 16:9 player the publish-time transform drops in for an own-line
+   YouTube URL. */
+.pow-article .prose .ytembed{position:relative;margin:1.4em 0;width:100%;aspect-ratio:16/9;
+  border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#000;}
+.pow-article .prose .ytembed iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
 /* Book-style justified body text: the running text fills the column to BOTH
    margins (a crisp right edge like the comment cards, not a ragged one).
    hyphens:auto keeps the inter-word spacing even — important on the narrow

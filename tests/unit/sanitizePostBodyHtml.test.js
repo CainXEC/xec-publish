@@ -78,4 +78,32 @@ describe('sanitizePostBodyHtml', () => {
       expect(out).not.toContain('href')
     })
   })
+
+  describe('youtube embed', () => {
+    it('keeps a validated youtube-nocookie iframe in a .ytembed wrapper', () => {
+      const out = sanitizePostBodyHtml(
+        '<div class="ytembed"><iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ" allow="encrypted-media" allowfullscreen></iframe></div>',
+      )
+      expect(out).toContain('src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"')
+      expect(out).toContain('class="ytembed"')
+    })
+
+    it('drops a non-YouTube iframe entirely', () => {
+      const out = sanitizePostBodyHtml('<div class="ytembed"><iframe src="https://evil.com/x"></iframe></div>')
+      expect(out).not.toContain('<iframe')
+      expect(out).not.toContain('evil.com')
+    })
+
+    it('drops a javascript: iframe src', () => {
+      const out = sanitizePostBodyHtml('<iframe src="javascript:alert(1)"></iframe>')
+      expect(out.toLowerCase()).not.toContain('javascript:')
+      expect(out).not.toContain('<iframe')
+    })
+
+    it('strips a class that is not the embed wrapper', () => {
+      const out = sanitizePostBodyHtml('<div class="sneaky">hi</div>')
+      expect(out).not.toContain('sneaky')
+      expect(out).toContain('hi')
+    })
+  })
 })
