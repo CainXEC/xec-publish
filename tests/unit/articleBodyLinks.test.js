@@ -65,10 +65,19 @@ describe('transformArticleBodyLinks — feed link parity in article bodies', () 
     expect(out).not.toContain('<p>') // the paragraph was replaced by the embed
   })
 
-  it('leaves an inline YouTube URL (with surrounding prose) alone', () => {
+  it('embeds an inline YouTube URL, keeping the surrounding prose', () => {
     const out = transformArticleBodyLinks('<p>Watch https://youtu.be/dQw4w9WgXcQ — great</p>')
-    expect(out).not.toContain('ytembed')
-    expect(out).toContain('Watch')
+    expect(out).toContain('ytembed')
+    expect(out).toContain('src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"')
+    expect(out).toContain('Watch') // the prose stays…
+    expect(out).toContain('great') // …on both sides of the removed URL
+  })
+
+  it('embeds a TipTap autolinked YouTube anchor', () => {
+    const out = transformArticleBodyLinks(
+      '<p><a href="https://youtu.be/dQw4w9WgXcQ">https://youtu.be/dQw4w9WgXcQ</a></p>',
+    )
+    expect(out).toContain('src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"')
   })
 
   it('embeds a watch?v= URL through the sanitizer end-to-end', () => {
