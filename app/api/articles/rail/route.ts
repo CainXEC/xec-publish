@@ -19,11 +19,22 @@
 // =============================================================================
 
 import { NextResponse } from "next/server";
+import { unstable_cache } from "next/cache";
 import { adminDb } from "@/lib/db";
 import { fetchAllUnlockCountRows } from "@/lib/supabaseUnlockCounts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// Deleting or publishing an article calls revalidateTag(ARTICLES_RAIL_CACHE_TAG)
+// so the rail drops/picks it up immediately instead of waiting out the window
+// below — see app/dashboard/deletePost.js. Before this tag existed the rail was
+// only ever cached via a raw Cache-Control header, which a hard delete has no
+// way to reach: revalidateTag/revalidatePath purge Next's OWN Data Cache, not a
+// CDN entry created from a manually-set header on a force-dynamic route. Moving
+// the caching into unstable_cache (same mechanism getFeed.js's FEED_CACHE_TAG
+// uses) is what makes on-demand invalidation possible at all.
+export const ARTICLES_RAIL_CACHE_TAG = "articles-rail";
 
 const supabase = adminDb();
 
@@ -71,8 +82,7 @@ const shortAddr = (address: string) => {
   return `${b.slice(0, 8)}…${b.slice(-4)}`;
 };
 
-export async function GET(request: Request) {
-  const range = parseRange(new URL(request.url).searchParams.get("range"));
+async function buildRailList(range: RangeKey): Promise<RailStory[]> {
   const isLatest = range === "latest";
   const since = sinceFor(range);
 
@@ -184,17 +194,23 @@ export async function GET(request: Request) {
   // drop anything with zero reads (nothing to be "most read" about); ties break
   // toward the newer piece. LATEST is pure chronology, newest first, no read
   // filter. Either way, the top 25.
-  const list = isLatest
+  return isLatest
     ? [...stories].sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, LIST_N)
     : stories
         .filter((s) => s.count > 0)
         .sort((a, b) => b.count - a.count || (a.at < b.at ? 1 : -1))
         .slice(0, LIST_N);
+}
 
-  return NextResponse.json(
-    { ok: true, range, stories: list },
-    // Publishes are rare events; a minute of CDN cache keeps this free. The range
-    // varies the response, so cache per-URL (Next keys the CDN cache by full URL).
-    { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
-  );
+export async function GET(request: Request) {
+  const range = parseRange(new URL(request.url).searchParams.get("range"));
+  // Publishes and deletes are rare, so a minute of shared caching keeps this
+  // free — but unlike a raw Cache-Control header, this is invalidatable
+  // on-demand (see ARTICLES_RAIL_CACHE_TAG above).
+  const list = await unstable_cache(
+    () => buildRailList(range),
+    ["articles-rail", range],
+    { tags: [ARTICLES_RAIL_CACHE_TAG], revalidate: 60 },
+  )();
+  return NextResponse.json({ ok: true, range, stories: list });
 }
