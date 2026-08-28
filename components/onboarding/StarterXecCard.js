@@ -83,10 +83,9 @@ export default function StarterXecCard({ profilePath }) {
         </div>
       ) : (
         <div className="starter-body">
-          <h3 className="starter-h">Claim your starter XEC!</h3>
           <p className="starter-p">
-            Tag <strong>@proofofwriting</strong> on X to receive free XEC to post, react,
-            unlock content, and more!
+            Tag <strong>@proofofwriting</strong> on X to receive enough free XEC to post,
+            react, unlock content, and more!
           </p>
           <button type="button" className="starter-btn" onClick={onShare}>
             Share on X
@@ -100,9 +99,11 @@ export default function StarterXecCard({ profilePath }) {
 const STARTER_CSS = `
 .starter-card {
   position: relative;
-  display: flex; gap: 14px; align-items: flex-start;
+  text-align: center;
   margin: 0 0 14px;
-  padding: 16px 40px 16px 16px;
+  /* symmetric side padding so the centered copy/button are truly centered, and
+     wide enough on the right to clear the absolute dismiss × */
+  padding: 16px 40px;
   background: color-mix(in srgb, var(--neon, #7CFF6B) 8%, var(--panel, #111));
   border: 1px solid color-mix(in srgb, var(--neon, #7CFF6B) 45%, var(--line, #333));
   border-radius: 12px;
