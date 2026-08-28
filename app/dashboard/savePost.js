@@ -4,6 +4,7 @@ import { revalidateTag } from 'next/cache'
 import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { savePostCore } from '@/lib/savePostCore'
+import { ARTICLES_RAIL_CACHE_TAG } from '@/app/api/articles/rail/route'
 
 /**
  * Create or update a post the current author owns. Authorization is the wallet
@@ -49,5 +50,16 @@ export async function savePost(input = {}) {
       /* no request store (tests / non-request caller) — the window still covers it */
     }
   }
+  // Same idea for the front page rail (see deletePost.js — this is the write
+  // side of the same fix): only when this save actually touched `published`,
+  // not on every autosave keystroke, or the rail cache would never hold.
+  if (result.ok && result.publishedChanged) {
+    try {
+      revalidateTag(ARTICLES_RAIL_CACHE_TAG)
+    } catch {
+      /* no request store (tests / non-request caller) — the window still covers it */
+    }
+  }
+  delete result.publishedChanged
   return result
 }

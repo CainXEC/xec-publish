@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { recordArticleMentionNotifications } from '@/lib/feedNotifications'
+import { ARTICLES_RAIL_CACHE_TAG } from '@/app/api/articles/rail/route'
 
 // POST /api/agent/article/publish — REST publish flip for external clients
 // (the AI_SATOSHI agent). Runs after the on-chain fee cleared: the agent has
@@ -78,6 +80,15 @@ export async function POST(request) {
   // First publish only → notify anyone @-tagged in the article (best-effort).
   if (firstPublish) {
     await recordArticleMentionNotifications(admin, { postId: updated.id })
+  }
+
+  // Same fix as savePost.js / deletePost.js: bust the front page rail's
+  // cached list so a newly (or re-)published article shows without waiting
+  // out its revalidate window.
+  try {
+    revalidateTag(ARTICLES_RAIL_CACHE_TAG)
+  } catch {
+    /* no request store (tests / non-request caller) — the window still covers it */
   }
 
   return NextResponse.json(
