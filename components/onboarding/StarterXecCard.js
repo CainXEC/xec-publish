@@ -70,7 +70,6 @@ export default function StarterXecCard({ profilePath }) {
     <div className="starter-card" id="starter-xec">
       <style>{STARTER_CSS}</style>
       <button type="button" className="starter-x" onClick={onDismiss} aria-label="Dismiss">×</button>
-      <div className="starter-quill" aria-hidden>🪶</div>
       {shared ? (
         <div className="starter-body">
           <h3 className="starter-h">Starter XEC is on its way</h3>
@@ -84,11 +83,10 @@ export default function StarterXecCard({ profilePath }) {
         </div>
       ) : (
         <div className="starter-body">
-          <h3 className="starter-h">You&rsquo;re in! Claim your starter XEC</h3>
+          <h3 className="starter-h">Claim your starter XEC!</h3>
           <p className="starter-p">
-            You&rsquo;ve got enough XEC to look around — to post and react, get some free.
-            Share your profile on X and tag <strong>@proofofwriting</strong>, and we&rsquo;ll
-            send you starter XEC.
+            Tag <strong>@proofofwriting</strong> on X to receive free XEC to post, react,
+            unlock content, and more!
           </p>
           <button type="button" className="starter-btn" onClick={onShare}>
             Share on X
@@ -121,7 +119,6 @@ const STARTER_CSS = `
   font-size: 22px; line-height: 1; color: var(--dim, #888); padding: 2px 6px;
 }
 .starter-x:hover { color: var(--text, #fff); }
-.starter-quill { font-size: 26px; line-height: 1.2; flex: 0 0 auto; }
 .starter-body { flex: 1 1 auto; min-width: 0; }
 .starter-h { margin: 0 0 5px; font-size: 15.5px; font-weight: 700; color: var(--text, #fff); }
 .starter-p { margin: 0 0 12px; font-size: 13.5px; line-height: 1.5; color: var(--dim, #bbb); }
