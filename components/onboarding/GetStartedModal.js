@@ -42,20 +42,16 @@ export function GetStartedModal({ open, onClose }) {
       <div className="ob-modal" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="ob-x" onClick={onClose} aria-label="Close">×</button>
         <h2 className="ob-title">Get started free</h2>
-        <p className="ob-sub">
-          Proof of Writing runs on eCash (XEC) — real internet money. Three quick steps and
-          you&rsquo;re posting.
-        </p>
 
         <ol className="ob-steps">
           <li className="ob-step">
             <span className="ob-num" aria-hidden>1</span>
             <div className="ob-body">
-              <h3 className="ob-h">Create your free wallet</h3>
+              <h3 className="ob-h">Create your eCash wallet</h3>
               <p className="ob-p">
-                Cashtab is a free web wallet. New wallets can claim <strong>42 XEC free</strong> —
-                enough to log in. Save your seed phrase (it&rsquo;s the only key to your wallet)
-                then come back to this page.
+                Cashtab is an open source web wallet. New wallets can claim{' '}
+                <strong>42 XEC free</strong>. Save your seed phrase (it&rsquo;s the only key to
+                your wallet) then come back to this page.
               </p>
               <a className="ob-btn" href={CASHTAB_URL} target="_blank" rel="noopener noreferrer">
                 Get Cashtab →
@@ -77,10 +73,10 @@ export function GetStartedModal({ open, onClose }) {
           <li className="ob-step">
             <span className="ob-num" aria-hidden>3</span>
             <div className="ob-body">
-              <h3 className="ob-h">Get starter XEC</h3>
+              <h3 className="ob-h">Get XEC</h3>
               <p className="ob-p">
                 Once you&rsquo;re in, share your profile on X and tag us — we&rsquo;ll send you
-                XEC to start posting.
+                enough XEC to start posting.
               </p>
             </div>
           </li>
@@ -127,6 +123,9 @@ const OB_MODAL_CSS = `
   position: relative;
   width: 100%; max-width: 460px;
   max-height: calc(100vh - 40px); overflow-y: auto;
+  /* Left-justified regardless of where the modal is mounted — it's a DOM child of
+     the get-started button, which may sit inside a centered strip. */
+  text-align: left;
   background: var(--panel, #111);
   border: 1px solid var(--line, #333);
   border-radius: 14px;
@@ -140,8 +139,7 @@ const OB_MODAL_CSS = `
   padding: 4px 8px;
 }
 .ob-x:hover { color: var(--text, #fff); }
-.ob-title { margin: 0 0 6px; font-size: 22px; font-weight: 700; color: var(--text, #fff); }
-.ob-sub { margin: 0 0 20px; font-size: 14px; line-height: 1.5; color: var(--dim, #999); }
+.ob-title { margin: 0 0 20px; font-size: 22px; font-weight: 700; color: var(--text, #fff); }
 .ob-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 18px; }
 .ob-step { display: flex; gap: 14px; align-items: flex-start; }
 .ob-num {
@@ -155,8 +153,11 @@ const OB_MODAL_CSS = `
 .ob-h { margin: 2px 0 4px; font-size: 15px; font-weight: 700; color: var(--text, #fff); }
 .ob-p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.5; color: var(--dim, #aaa); }
 .ob-p strong { color: var(--text, #fff); }
-/* Rectangular, neon-outlined — matches the site's newposts / forum buttons. */
-.ob-btn {
+/* Rectangular, neon-outlined — matches the site's newposts / forum buttons.
+   Scoped as .ob-modal .ob-btn so the neon color out-specifies the global
+   pow-feed anchor rule (color:inherit), which would otherwise wash the anchor
+   variant — Get Cashtab — back to the body text color. */
+.ob-modal .ob-btn {
   display: inline-block; cursor: pointer;
   font: inherit; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
   padding: 9px 16px; border-radius: 8px;
@@ -164,5 +165,5 @@ const OB_MODAL_CSS = `
   background: transparent; color: var(--neon, #7CFF6B);
   text-decoration: none; transition: box-shadow .15s, color .15s;
 }
-.ob-btn:hover { box-shadow: 0 0 12px rgba(0,255,156,.25); }
+.ob-modal .ob-btn:hover { box-shadow: 0 0 12px rgba(0,255,156,.25); }
 `
