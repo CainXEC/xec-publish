@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useConfirmDialog } from '@/components/ConfirmDialog'
 import ComposeBox from '@/components/feed/ComposeBox'
 import ForumPostCard from '@/components/feed/ForumPostCard'
 import FeedTopbar from '@/components/feed/FeedTopbar'
@@ -33,7 +35,33 @@ export default function ForumPageClient({
   // The composer is hidden until "Create Post" is clicked — the forum leads with
   // its discussion, not an empty text field.
   const [showComposer, setShowComposer] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const signedIn = viewerAccountId != null
+  const router = useRouter()
+  const [confirmDelete, confirmDialogNode] = useConfirmDialog()
+
+  // Runner-only, empty-forum-only delete. The server re-verifies both (runner +
+  // no posts), since forum_id is ON DELETE SET NULL — a non-empty forum must
+  // never be deletable or its posts would leak into the global Feed.
+  const onDelete = useCallback(async () => {
+    if (deleting) return
+    if (!(await confirmDelete(`Delete /f/${forum.slug}? This can’t be undone.`))) return
+    setDeleting(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/forums/${encodeURIComponent(forum.slug)}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) {
+        setError(data.error || 'Could not delete the forum.')
+        setDeleting(false)
+        return
+      }
+      router.push('/?tab=forums')
+    } catch {
+      setError('Network hiccup — try again.')
+      setDeleting(false)
+    }
+  }, [deleting, confirmDelete, forum.slug, router])
 
   const prependPost = useCallback((post) => {
     if (!post?.txid) return
@@ -155,6 +183,7 @@ export default function ForumPageClient({
   return (
     <div className="pow-feed has-rail">
       <style>{FEED_CSS}</style>
+      {confirmDialogNode}
 
       <FeedTopbar signedIn={signedIn} isAuthor={isAuthor} />
 
@@ -184,6 +213,20 @@ export default function ForumPageClient({
               ) : null}
               {forum.isRunner ? <span className="forumhead-youtag">you run this</span> : null}
             </div>
+            {/* A runner can remove a forum they created only while it has no posts
+                (mistaken/empty forums). canDelete is computed server-side from the
+                real row count (not the active-only post_count); the DELETE route
+                re-verifies both runner + emptiness. */}
+            {forum.canDelete ? (
+              <button
+                type="button"
+                className="forumhead-delete"
+                onClick={() => void onDelete()}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting…' : 'Delete forum'}
+              </button>
+            ) : null}
           </div>
 
           <div className="forumsort">

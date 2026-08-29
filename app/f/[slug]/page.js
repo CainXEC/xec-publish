@@ -44,14 +44,25 @@ export default async function ForumPage({ params }) {
   if (!forum) notFound()
 
   const acct = await getAuthedAccount()
+  const isRunner = acct?.accountId === forum.runner_account_id
 
-  const [{ posts, nextCursor }, runnerMap] = await Promise.all([
+  const [{ posts, nextCursor }, runnerMap, forumRowCount] = await Promise.all([
     getForumFeedPage({
       forumId: forum.id,
       viewerAddress: acct?.address ?? '',
       viewerAccountId: acct?.accountId ?? null,
     }),
     displayHandlesByAccountId([forum.runner_account_id], supabase),
+    // Only the runner can delete a forum, and only while it's empty — count ALL
+    // rows (any action, soft-deleted included) so the button matches the server's
+    // gate. Skip the query for everyone else.
+    isRunner
+      ? supabase
+          .from('feed_posts')
+          .select('id', { count: 'exact', head: true })
+          .eq('forum_id', forum.id)
+          .then((r) => r.count ?? 0)
+      : Promise.resolve(null),
   ])
 
   const runnerHandle = runnerMap[forum.runner_account_id]?.handle
@@ -66,7 +77,8 @@ export default async function ForumPage({ params }) {
         description: forum.description,
         postCount: forum.post_count,
         runner: runnerHandle,
-        isRunner: acct?.accountId === forum.runner_account_id,
+        isRunner,
+        canDelete: isRunner && forumRowCount === 0,
       }}
       forumId={forum.id}
       initialPosts={posts}

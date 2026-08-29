@@ -1188,6 +1188,13 @@ html:not(.dark) .pow-feed .forumcreate-pay:disabled{box-shadow:none;}
   font-variant-numeric:tabular-nums;}
 .pow-feed .forumhead-runner{color:var(--cyan);}
 .pow-feed .forumhead-youtag{color:var(--neon);}
+/* Runner-only, empty-forum delete: a quiet destructive control (dim by default,
+   reddens on hover) so it never competes with the forum's own actions. */
+.pow-feed .forumhead-delete{margin-top:12px;background:transparent;border:1px solid var(--line);
+  color:var(--dim);border-radius:8px;padding:6px 12px;font:inherit;font-size:11px;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:border-color .15s,color .15s;}
+.pow-feed .forumhead-delete:hover:not(:disabled){border-color:var(--no);color:var(--no);}
+.pow-feed .forumhead-delete:disabled{opacity:.6;cursor:default;}
 
 /* Forum controls row: New/Top sort tabs on the left, "Create Post" on the right.
    Rectangular buttons (small radius), not pills. */
