@@ -40,6 +40,7 @@ export default function CommentReactions({
   const {
     reacted,
     pending,
+    starting,
     intent,
     inPagePay,
     notice,
@@ -57,7 +58,7 @@ export default function CommentReactions({
   })
 
   const react = (emoji) => {
-    if (pending || isOwn) return
+    if (pending || starting || isOwn) return
     bump(emoji, +1) // optimistic
     void startReaction('like', undefined, emoji)
   }

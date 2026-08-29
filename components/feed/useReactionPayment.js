@@ -7,7 +7,8 @@ import { pollUntil } from '@/lib/ecash/pollUntil'
 // Pocket-aware gateway: identical contract to the cashtabPay trio. Pocket
 // eligible → local sign + instant broadcast (r.txid feeds the confirm poll);
 // otherwise the exact extension/web-tab behavior.
-import { beginPayment, completePayment, abortPayment } from '@/lib/pocket/payGateway'
+import { beginPayment, completePayment, completePaymentOptimistic, abortPayment } from '@/lib/pocket/payGateway'
+import { confirmReactionInBackground } from '@/lib/feed/confirmReactionInBackground'
 
 // A device-local record of reactions this browser has CONFIRMED paying for, so a
 // like/repost you already made can never render as un-done — which is what let a
@@ -95,6 +96,11 @@ export function useReactionPayment({
   const [txidInput, setTxidInput] = useState('')
   const [tipError, setTipError] = useState('')
   const startingRef = useRef(false)
+  // Mirrors startingRef as STATE so the parent can gate a tap during the brief
+  // prepare window (a ref can't re-render the button). Without it, a rapid second
+  // tap in the instant path would bump a pill for a reaction that then gets
+  // throttled by startingRef and never sent.
+  const [starting, setStarting] = useState(false)
   // The emoji of the reaction mid-payment (null for a binary like/repost).
   const pendingEmojiRef = useRef(null)
 
@@ -164,6 +170,7 @@ export function useReactionPayment({
         }
       }
       startingRef.current = true
+      setStarting(true)
       pendingEmojiRef.current = emoji
       // Fill the trigger the instant you tap an emoji (reverted on cancel/fail).
       if (emoji) setReacted(true)
@@ -196,6 +203,42 @@ export function useReactionPayment({
           setNotice(data.error || 'Could not start the payment. Try again.')
           return
         }
+        // INSTANT MULTI-REACT — a Pocket emoji reaction resolves the moment the tx
+        // is signed, so record it in the BACKGROUND and NEVER set `pending`: you can
+        // react again immediately (the pocket's in-tab spend mutex chains rapid
+        // taps safely). The pill was already bumped optimistically on tap, so on
+        // failure we just undo it (onReactFailed). Everything else — a binary
+        // like/repost, or an emoji paid via the Cashtab tab/extension — keeps the
+        // single-pending confirm flow below.
+        if (emoji && handle.mode === 'pocket') {
+          void completePaymentOptimistic(handle, {
+            bip21: data.bip21Url,
+            cashtabUrl: data.cashtabUrl,
+          }).then((r) => {
+            if (r.ok) {
+              rememberReacted('react', targetTxid)
+              confirmReactionInBackground({
+                endpointBase,
+                txid: r.txid ?? null,
+                action,
+                targetTxid,
+                emoji,
+                preparedAt: data.preparedAt,
+                payAddress: data.payAddress,
+              })
+            } else {
+              onReactFailed?.(emoji) // undo the parent's optimistic pill
+              setReacted(reactedByViewer || hasReacted('react', targetTxid))
+              setNotice(
+                r.reason === 'denied'
+                  ? 'Payment cancelled.'
+                  : r.message || 'Pocket couldn’t send — try again.',
+              )
+            }
+          })
+          return
+        }
+
         void completePayment(handle, {
           bip21: data.bip21Url,
           cashtabUrl: data.cashtabUrl,
@@ -224,9 +267,10 @@ export function useReactionPayment({
         setNotice('Network hiccup — try again.')
       } finally {
         startingRef.current = false
+        setStarting(false)
       }
     },
-    [pending, liked, reposted, targetTxid, endpointBase, applyReaction, revertReaction, onReactFailed],
+    [pending, liked, reposted, targetTxid, endpointBase, applyReaction, revertReaction, onReacted, onReactFailed, reactedByViewer],
   )
 
   // Poll for the on-chain reaction while a payment is pending, via the shared
@@ -321,7 +365,7 @@ export function useReactionPayment({
 
   return {
     likes, liked, reposts, reposted, reacted,
-    pending, intent, inPagePay, notice, txidInput, setTxidInput,
+    pending, starting, intent, inPagePay, notice, txidInput, setTxidInput,
     tipError,
     startReaction, verifyManual, cancel,
   }

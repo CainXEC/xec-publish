@@ -56,6 +56,7 @@ export default function EngagementBar({
     reposted,
     reacted,
     pending,
+    starting,
     intent,
     inPagePay,
     notice,
@@ -75,7 +76,11 @@ export default function EngagementBar({
   })
 
   const react = (emoji) => {
-    if (pending) return
+    // `starting` covers the brief prepare window so a rapid tap can't bump a pill
+    // for a reaction that startingRef then throttles. `pending` only blocks the
+    // slow Cashtab-tab path; a Pocket reaction never sets it, so you can react
+    // again the instant the previous one is signed.
+    if (pending || starting) return
     bump(emoji, +1) // optimistic
     void startReaction('like', undefined, emoji)
   }
