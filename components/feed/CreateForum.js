@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { prewarmPaymentWatch } from '@/lib/ecash/watchPaymentAddress'
 import { pollUntil } from '@/lib/ecash/pollUntil'
 import { beginPayment, completePayment, abortPayment } from '@/lib/pocket/payGateway'
+import { savePendingForum, clearPendingForum } from '@/lib/forums/pendingForumCreate'
 import EcashIcon from '@/components/EcashIcon'
 
 // Display-only (the server re-prices in /api/forums/create/prepare). Keep in sync
@@ -74,6 +75,17 @@ export default function CreateForum({ onCreated, onCancel }) {
         setNotice(data.error || 'Could not start the payment. Try again.')
         return
       }
+      // Stash the creation so an interrupted confirm (unmount / navigate-away /
+      // mobile page-reload after Cashtab) can be finished later from the Forums
+      // directory — otherwise the fee is paid but no forum is ever created.
+      const pending = {
+        slug: bodyRef.current.slug,
+        title: bodyRef.current.title,
+        description: bodyRef.current.description,
+        preparedAt: data.preparedAt,
+        payAddress: data.payAddress,
+      }
+      savePendingForum(pending)
       void completePayment(handle, {
         bip21: data.bip21Url,
         cashtabUrl: data.cashtabUrl,
@@ -81,7 +93,9 @@ export default function CreateForum({ onCreated, onCancel }) {
         if (r.ok && r.txid) {
           setStatusMsg('Creating your forum…')
           setIntent((prev) => (prev ? { ...prev, knownTxid: r.txid } : prev))
+          savePendingForum({ ...pending, txid: r.txid }) // pin the exact tx for recovery
         } else if (!r.ok && r.reason === 'denied') {
+          clearPendingForum(bodyRef.current.slug) // nothing was paid
           resetToCompose()
           setNotice('Payment cancelled — your draft is safe.')
         } else if (!r.ok && r.reason === 'pocket_error') {
@@ -127,6 +141,7 @@ export default function CreateForum({ onCreated, onCancel }) {
         if (res.status === 429) return { backoff: true }
         const data = await res.json()
         if (data.status === 'created' && data.forum) {
+          clearPendingForum(data.forum.slug)
           onCreated?.(data.forum)
           return { done: true }
         }
@@ -158,6 +173,7 @@ export default function CreateForum({ onCreated, onCancel }) {
       })
       const data = await res.json()
       if (data.status === 'created' && data.forum) {
+        clearPendingForum(data.forum.slug)
         onCreated?.(data.forum)
       } else if (data.status === 'awaiting_payment') {
         setNotice("That transaction doesn't match this forum yet.")

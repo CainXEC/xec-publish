@@ -1,8 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import CreateForum from '@/components/feed/CreateForum'
+import { loadPendingForum } from '@/lib/forums/pendingForumCreate'
+import { confirmForumInBackground } from '@/lib/forums/confirmForumInBackground'
 
 /**
  * The Forums tab: a directory of every forum + a "Create forum" panel. Not a post
@@ -73,6 +75,20 @@ export default function ForumDirectory({ signedIn }) {
     },
     [load],
   )
+
+  // Recovery: if a forum was paid for but its confirm was interrupted (unmount /
+  // navigate-away / mobile page-reload after Cashtab), the payload is stashed in
+  // localStorage — finish it here, the natural place the user comes to look for
+  // their forum. The confirm is idempotent, so this is safe to fire on every
+  // Forums visit; it self-clears the stash on success (or once it gives up).
+  const resumedRef = useRef(false)
+  useEffect(() => {
+    if (resumedRef.current || !signedIn) return
+    const pending = loadPendingForum()
+    if (!pending) return
+    resumedRef.current = true
+    confirmForumInBackground(pending, { onCreated })
+  }, [signedIn, onCreated])
 
   return (
     <div className="forumdir">
