@@ -92,7 +92,7 @@ describe('POST /api/agent/article (draft creation)', () => {
   it('stores a published:false draft through the real transform chain and echoes the stored bytes', async () => {
     const { POST } = await import('@/app/api/agent/article/route')
     const res = await POST(
-      makeReq({ title: 'Hello Agent World', body: RAW_BODY, priceXec: 55 }),
+      makeReq({ title: 'Hello Agent World', body: RAW_BODY, priceXec: 55 }), // below the floor
     )
     expect(res.status).toBe(200)
     const json = await res.json()
@@ -103,7 +103,7 @@ describe('POST /api/agent/article (draft creation)', () => {
     expect(inserted).not.toBeNull()
     expect(inserted.author_id).toBe('author-1')
     expect(inserted.published).toBe(false)
-    expect(inserted.price_xec).toBe(55)
+    expect(inserted.price_xec).toBe(100) // sub-100 input is clamped to the ARTICLE_MIN_PRICE_XEC floor
     expect(inserted.slug).toBe(json.finalSlug)
     expect(json.finalSlug.length).toBeGreaterThan(0)
     expect(typeof inserted.reading_time_minutes).toBe('number')
