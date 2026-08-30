@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useReactionPayment } from '@/components/feed/useReactionPayment'
 import { REACTIONS } from '@/lib/reactions'
 import PocketWaitHint from '@/components/pocket/PocketWaitHint'
@@ -51,6 +51,20 @@ export default function EngagementBar({
       return next
     })
 
+  // The emoji picker reveals on HOVER on desktop (CSS). Touch has no hover, so a
+  // TAP on the trigger also toggles it open (.open class) — same as the Pocket
+  // chip. An outside pointerdown closes it.
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const wrapRef = useRef(null)
+  useEffect(() => {
+    if (!pickerOpen) return undefined
+    const onDown = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setPickerOpen(false)
+    }
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
+  }, [pickerOpen])
+
   const {
     reposts,
     reposted,
@@ -81,6 +95,7 @@ export default function EngagementBar({
     // slow Cashtab-tab path; a Pocket reaction never sets it, so you can react
     // again the instant the previous one is signed.
     if (pending || starting) return
+    setPickerOpen(false)
     bump(emoji, +1) // optimistic
     void startReaction('like', undefined, emoji)
   }
@@ -125,19 +140,20 @@ export default function EngagementBar({
       <div className="engagebar">
         {/* The picker reveals on hover / focus of this wrap (CSS), like the old
             tip menu — a transparent bridge spans the gap so the pointer can
-            travel from the button up into the picker without the hover dropping. */}
-        <span className="reactwrap">
+            travel from the button up into the picker without the hover dropping.
+            A tap toggles `.open` for touch, where there's no hover. */}
+        <span className={`reactwrap${pickerOpen ? ' open' : ''}`} ref={wrapRef}>
           <button
             type="button"
             className={`reactbtn${isOwnPost && whoOpen ? ' on' : ''}`}
             disabled={!isOwnPost && Boolean(pending) && !inPagePay}
             aria-haspopup="menu"
-            aria-expanded={isOwnPost ? whoOpen : undefined}
+            aria-expanded={isOwnPost ? whoOpen : pickerOpen}
             aria-label={isOwnPost ? 'See who reacted' : 'React · 100 XEC'}
             title={
               isOwnPost ? 'See who reacted' : reacted ? 'You reacted · React again · 100 XEC' : 'React · 100 XEC'
             }
-            onClick={isOwnPost ? toggleWho : undefined}
+            onClick={isOwnPost ? toggleWho : () => setPickerOpen((v) => !v)}
           >
             {/* Filled heart once you've reacted, so you can tell you already did.
                 The ︎ (text variation selector) forces MONOCHROME presentation

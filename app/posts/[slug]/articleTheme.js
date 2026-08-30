@@ -302,7 +302,8 @@ html:not(.dark) .pow-article .hr-unlock:disabled{background:transparent;color:va
   background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 8px;
   box-shadow:0 8px 24px rgba(0,0,0,.28);}
 .pow-article .creactwrap:hover .creactpicker,
-.pow-article .creactwrap:focus-within .creactpicker{display:flex;}
+.pow-article .creactwrap:focus-within .creactpicker,
+.pow-article .creactwrap.open .creactpicker{display:flex;}
 .pow-article .creactpicker::after{content:"";position:absolute;top:100%;left:0;right:0;height:8px;}
 .pow-article .creactopt{background:none;border:none;font-size:19px;line-height:1;cursor:pointer;padding:3px;
   border-radius:8px;transition:transform .1s,background .12s;}

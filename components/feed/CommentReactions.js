@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useReactionPayment } from '@/components/feed/useReactionPayment'
 import { REACTIONS } from '@/lib/reactions'
 
@@ -57,8 +57,22 @@ export default function CommentReactions({
     onReactFailed: (emoji) => bump(emoji, -1), // payment cancelled/failed → undo
   })
 
+  // The picker reveals on HOVER on desktop (CSS); a TAP toggles it open for touch,
+  // where there's no hover. Outside pointerdown closes it.
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const wrapRef = useRef(null)
+  useEffect(() => {
+    if (!pickerOpen) return undefined
+    const onDown = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setPickerOpen(false)
+    }
+    document.addEventListener('pointerdown', onDown)
+    return () => document.removeEventListener('pointerdown', onDown)
+  }, [pickerOpen])
+
   const react = (emoji) => {
     if (pending || starting || isOwn) return
+    setPickerOpen(false)
     bump(emoji, +1) // optimistic
     void startReaction('like', undefined, emoji)
   }
@@ -102,14 +116,16 @@ export default function CommentReactions({
         // The picker reveals on HOVER / focus of this wrap (CSS), like the feed —
         // a transparent bridge spans the gap so the pointer can travel from the
         // button up into the picker without the hover dropping.
-        <span className="creactwrap">
+        <span className={`creactwrap${pickerOpen ? ' open' : ''}`} ref={wrapRef}>
           <button
             type="button"
             className="creactbtn"
             disabled={Boolean(pending) && !inPagePay}
             aria-haspopup="menu"
+            aria-expanded={pickerOpen}
             aria-label="React · 100 XEC"
             title={reacted ? 'You reacted · React again · 100 XEC' : 'React · 100 XEC'}
+            onClick={() => setPickerOpen((v) => !v)}
           >
             {/* Filled once you've reacted; the text variation selector keeps it
                 monochrome (the icon's dim color), never the red heart emoji. */}

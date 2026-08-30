@@ -720,7 +720,7 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .reactpicker{display:none;position:absolute;bottom:calc(100% + 6px);left:0;z-index:20;
   grid-template-columns:repeat(4,auto);gap:2px;background:var(--panel);border:1px solid var(--line);
   border-radius:12px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);}
-.pow-feed .reactwrap:hover .reactpicker,.pow-feed .reactwrap:focus-within .reactpicker{display:grid;}
+.pow-feed .reactwrap:hover .reactpicker,.pow-feed .reactwrap:focus-within .reactpicker,.pow-feed .reactwrap.open .reactpicker{display:grid;}
 .pow-feed .reactpicker::after{content:"";position:absolute;top:100%;left:0;right:0;height:8px;}
 .pow-feed .reactopt{background:none;border:none;font-size:22px;line-height:1;padding:4px;border-radius:8px;
   cursor:pointer;transition:background .12s,transform .12s;}
