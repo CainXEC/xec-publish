@@ -930,7 +930,11 @@ export default function MarketplaceClient({
       ) : null}
 
       {loading ? (
-        <p className="state">
+        // Reserve gallery height WHILE the holder's handles load, so the page is
+        // already tall enough for MarketplaceShell to scroll straight to this
+        // section on a holder deep-link (otherwise it can't scroll until the cards
+        // paint — a multi-second "stuck on the mint hero" wait).
+        <p className="state" style={holder ? { minHeight: "70vh" } : undefined}>
           {holder ? "Loading their handles…" : view === "forsale" ? "Loading listings…" : "Loading the collection…"}
         </p>
       ) : error ? (

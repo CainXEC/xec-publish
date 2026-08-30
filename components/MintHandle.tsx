@@ -30,7 +30,17 @@ const STATUS_COPY: Record<string, string> = {
   sold_out: "Sold out — all 10,000 handles have been minted.",
 };
 
-export default function MintHandle({ signedIn = false }: { signedIn?: boolean }) {
+export default function MintHandle({
+  signedIn = false,
+  // Autofocus the name field on mount — the default, so the mint flow is ready to
+  // type. Suppressed when the marketplace is opened on a holder deep-link, where
+  // focusing (and its scroll-into-view + mobile keyboard) would fight the
+  // auto-scroll that lands the viewport on that holder's handles below.
+  autoFocus = true,
+}: {
+  signedIn?: boolean;
+  autoFocus?: boolean;
+}) {
   const [handle, setHandle] = useState("");
   const [avail, setAvail] = useState<Availability | null>(null);
   const [checking, setChecking] = useState(false);
@@ -333,7 +343,7 @@ export default function MintHandle({ signedIn = false }: { signedIn?: boolean })
           <div className="field">
             <span className="at">@</span>
             <input
-              autoFocus
+              autoFocus={autoFocus}
               value={handle}
               onChange={(e) => setHandle(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && canMint && startMint()}

@@ -17,7 +17,7 @@
 //  sort bar (its only mobile control, as before) drives the same state.
 // =============================================================================
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import FeedTopbar from "@/components/feed/FeedTopbar";
 import { FEED_CSS } from "@/components/feed/feedTheme";
 import MintHandle from "@/components/MintHandle";
@@ -44,6 +44,14 @@ export default function MarketplaceShell({
   // "Make an offer on a handle →" link → ?holder=<identity>). Picking a browse
   // view (For sale / All minted) exits the scope.
   const [holder, setHolder] = useState<string | null>(null);
+  // Whether THIS page load opened on a holder deep-link — read synchronously at
+  // first render (holder state is set in an effect, one tick too late to gate the
+  // mint field's mount-time autoFocus). Used only to suppress that autoFocus so it
+  // doesn't scroll the viewport back up to the mint hero (and pop the mobile
+  // keyboard) while we auto-scroll down to the holder's handles.
+  const openedOnHolder = useRef<boolean>(
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).has("holder"),
+  );
 
   // Keep the sort valid for the view it applies to (ask-price sorts only
   // exist for listed handles).
@@ -81,23 +89,34 @@ export default function MarketplaceShell({
       // on the STACKED (mobile / narrow) layout, which is the one with a mint↔
       // handles divider (the .mkt-main border-top; side-by-side desktop has none).
       // We detect that from the divider itself, not a mount-time matchMedia (the
-      // emulated/real viewport can settle a beat after mount). Two things fight a
-      // one-shot scroll: the handles load async (until a card paints the page isn't
-      // tall enough, so scrollTo clamps to ~0), and the mint hero art keeps growing
-      // the offset. So we poll: once the divider is present AND a card has painted,
-      // scroll — recomputing each tick — until it holds stable, tucking the divider
-      // behind the sticky header with a little padding above the handles.
+      // emulated/real viewport can settle a beat after mount). The handles load
+      // async, but MarketplaceClient reserves gallery height WHILE they load (a
+      // min-height on the loading placeholder), so the page is tall enough to
+      // scroll IMMEDIATELY — we don't wait for a card to paint (that was the
+      // multi-second "stuck on the mint hero" wait). We keep recomputing the
+      // target each tick as the mint art and the loading→cards swap reflow the
+      // page, settling only once cards have actually painted so the final layout
+      // is stable — and we bow out the instant the user scrolls themselves.
       const VISIBLE_PAD = 12;
       let tries = 0;
       let stable = 0;
+      let userScrolled = false;
+      const onUser = () => { userScrolled = true; };
+      window.addEventListener("wheel", onUser, { passive: true });
+      window.addEventListener("touchmove", onUser, { passive: true });
+      const stop = () => {
+        window.removeEventListener("wheel", onUser);
+        window.removeEventListener("touchmove", onUser);
+      };
       const land = () => {
         tries += 1;
+        if (userScrolled) { stop(); return; } // don't fight a manual scroll
         const main = document.querySelector<HTMLElement>(".mkt-main");
         const cs = main ? getComputedStyle(main) : null;
         const stacked = cs ? parseFloat(cs.borderTopWidth) > 0 : false;
         // Not stacked once the layout has settled → side-by-side desktop, nothing to do.
-        if (main && !stacked && tries > 12) return;
-        if (main && stacked && cs && main.querySelector(".mkcard")) {
+        if (main && !stacked && tries > 12) { stop(); return; }
+        if (main && stacked && cs) {
           const inset = (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.paddingTop) || 0);
           const barH = document.querySelector(".topbar")?.getBoundingClientRect().height ?? 55;
           const target = Math.max(
@@ -110,9 +129,12 @@ export default function MarketplaceShell({
           } else {
             stable += 1;
           }
-          if (stable >= 3) return; // settled ON the handles
+          // Settle only once the real cards have painted — otherwise the
+          // loading-placeholder → grid swap could shift us after we've stopped.
+          if (stable >= 3 && main.querySelector(".mkcard")) { stop(); return; }
         }
-        if (tries < 120) setTimeout(land, 50); // ≤6s: wait for layout+handles, then correct until stable
+        if (tries < 120) setTimeout(land, 50); // ≤6s cap, then give up
+        else stop();
       };
       // setTimeout (not requestAnimationFrame) so it still fires if the tab isn't
       // foregrounded during load (rAF is paused in background tabs).
@@ -134,7 +156,7 @@ export default function MarketplaceShell({
 
       <div className="mkt-cols">
         <aside className="mkt-rail">
-          <MintHandle signedIn={signedIn} />
+          <MintHandle signedIn={signedIn} autoFocus={!openedOnHolder.current} />
 
           <MarketFilters
             className="railfilters"
