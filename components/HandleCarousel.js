@@ -58,6 +58,10 @@ export default function HandleCarousel({
   // cross the server→client boundary. Ignored in the interactive picker, whose
   // click already means "choose display handle".
   cardHrefBase = null,
+  // Public profile only: a link to the marketplace scoped to this owner's handles
+  // ("Make an offer on a handle →"). When set it takes the header slot (replacing
+  // the search field), so it shows on mobile + desktop alike.
+  offerHref = null,
   busy = false,
   error = null,
 }) {
@@ -204,7 +208,11 @@ export default function HandleCarousel({
     <div className="dashhandles">
       <div className="dashhandles-head">
         <h2 className="dashsection-title">{title}</h2>
-        {handles.length > SEARCH_THRESHOLD ? (
+        {offerHref ? (
+          <Link className="dashhandles-offer" href={offerHref}>
+            Make an offer on a handle →
+          </Link>
+        ) : handles.length > SEARCH_THRESHOLD ? (
           <input
             type="search"
             className="dashhandles-search"

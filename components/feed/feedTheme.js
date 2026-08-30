@@ -932,6 +932,11 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .dashhandles-search{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;
   font:inherit;font-size:12px;color:var(--text);min-width:160px;transition:border-color .15s,box-shadow .15s;}
 .pow-feed .dashhandles-search:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 12px rgba(61,240,255,.16);}
+/* "Make an offer on a handle →" in the carousel header (replaces the search on
+   public profiles) — shows on mobile + desktop. */
+.pow-feed .dashhandles-offer{font-size:12.5px;font-weight:600;color:var(--cyan);letter-spacing:.02em;
+  text-decoration:none;border-bottom:1px solid transparent;white-space:nowrap;transition:border-color .15s;}
+.pow-feed .dashhandles-offer:hover{border-color:var(--cyan);}
 .pow-feed .dashhandles-track{display:flex;align-items:flex-start;gap:10px;margin-top:12px;overflow-x:auto;padding:4px 2px 12px;
   scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;
   /* scrolls by wheel/swipe, never shows the gray gutter (macOS always-show) */

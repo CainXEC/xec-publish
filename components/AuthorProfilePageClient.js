@@ -543,15 +543,9 @@ export default function AuthorProfilePageClient({
       <div className="feed-cols">
       <aside className="feed-left" aria-label="This author's front page">
         {handleCardsSlot ? (
-          <div className="prof-handles-rail">
-            {handleCardsSlot}
-            <Link
-              className="prof-offerlink"
-              href={`/marketplace?holder=${encodeURIComponent(String(identity).replace(/^@/, ''))}`}
-            >
-              Make an offer on a handle →
-            </Link>
-          </div>
+          // The "Make an offer on a handle →" link now lives in the carousel
+          // header (HandleCarousel offerHref), so it shows on mobile + desktop.
+          <div className="prof-handles-rail">{handleCardsSlot}</div>
         ) : null}
         <Suspense fallback={<AuthorFrontPage identity={identity} stories={[]} onOpenStory={openStory} />}>
           <FrontPageArticles

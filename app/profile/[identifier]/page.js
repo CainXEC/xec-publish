@@ -50,7 +50,7 @@ export async function generateMetadata({ params }) {
  *  handle a wallet holds is a Chronik call, so it renders behind Suspense and
  *  pops in when Chronik answers — the rest of the profile streams immediately.
  *  Same data + same unshift rule the page used to compute inline. */
-async function ProfileHandleCards({ holderAddress, urlCard }) {
+async function ProfileHandleCards({ holderAddress, urlCard, offerHref }) {
   const heldHandles = holderAddress ? await cachedHeldHandlesForDisplay(holderAddress) : []
   const handleCards = (heldHandles ?? []).map((h) => ({
     tokenId: h.tokenId,
@@ -61,7 +61,14 @@ async function ProfileHandleCards({ holderAddress, urlCard }) {
   if (urlCard && !handleCards.some((h) => h.handle === urlCard.handle)) {
     handleCards.unshift(urlCard)
   }
-  return <HandleCarousel handles={handleCards} title="Handles" cardHrefBase={CASHTAB_TOKEN_BASE} />
+  return (
+    <HandleCarousel
+      handles={handleCards}
+      title="Handles"
+      cardHrefBase={CASHTAB_TOKEN_BASE}
+      offerHref={offerHref}
+    />
+  )
 }
 
 export default async function ProfilePage({ params }) {
@@ -118,6 +125,11 @@ export default async function ProfilePage({ params }) {
   // Byline = the account's LIVE identity: "@handle" if held, else the raw address.
   const isAddressIdentity = !resolved.identity.startsWith('@')
 
+  // "Make an offer on a handle →": the marketplace scoped to this owner's handles.
+  // Lives in the carousel header (see HandleCarousel offerHref) so it shows on
+  // mobile + desktop, replacing the search field.
+  const offerHref = `/marketplace?holder=${encodeURIComponent(resolved.identity.replace(/^@/, ''))}`
+
   // The URL's own card renders instantly as the Suspense placeholder while the
   // full held-handles enumeration (Chronik) streams in behind it.
   const urlCard = resolved.displayHandle
@@ -143,10 +155,15 @@ export default async function ProfilePage({ params }) {
               handles={urlCard ? [urlCard] : []}
               title="Handles"
               cardHrefBase={CASHTAB_TOKEN_BASE}
+              offerHref={offerHref}
             />
           }
         >
-          <ProfileHandleCards holderAddress={resolved.holderAddress} urlCard={urlCard} />
+          <ProfileHandleCards
+            holderAddress={resolved.holderAddress}
+            urlCard={urlCard}
+            offerHref={offerHref}
+          />
         </Suspense>
       }
       followerCount={followerCount}
