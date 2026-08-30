@@ -70,6 +70,54 @@ export default function MarketplaceShell({
     if (q) setQuery(q);
     // A holder scope ("@who's handles") reads over the all-minted machinery.
     if (h) { setHolder(h); setView("all"); setSort("new"); }
+
+    // On the stacked (mobile / narrow) layout, a holder deep-link — from a
+    // profile's "Make an offer on a handle →" — should LAND on the handles, not
+    // the mint hero above them. Scroll so the mint↔handles divider (the .mkt-main
+    // border-top) tucks behind the sticky header, leaving a little padding above
+    // the handles. Desktop (>=1100px) is side-by-side with no divider, so skip.
+    if (h) {
+      // Land the viewport ON the handles, not the mint hero above them — but only
+      // on the STACKED (mobile / narrow) layout, which is the one with a mint↔
+      // handles divider (the .mkt-main border-top; side-by-side desktop has none).
+      // We detect that from the divider itself, not a mount-time matchMedia (the
+      // emulated/real viewport can settle a beat after mount). Two things fight a
+      // one-shot scroll: the handles load async (until a card paints the page isn't
+      // tall enough, so scrollTo clamps to ~0), and the mint hero art keeps growing
+      // the offset. So we poll: once the divider is present AND a card has painted,
+      // scroll — recomputing each tick — until it holds stable, tucking the divider
+      // behind the sticky header with a little padding above the handles.
+      const VISIBLE_PAD = 12;
+      let tries = 0;
+      let stable = 0;
+      const land = () => {
+        tries += 1;
+        const main = document.querySelector<HTMLElement>(".mkt-main");
+        const cs = main ? getComputedStyle(main) : null;
+        const stacked = cs ? parseFloat(cs.borderTopWidth) > 0 : false;
+        // Not stacked once the layout has settled → side-by-side desktop, nothing to do.
+        if (main && !stacked && tries > 12) return;
+        if (main && stacked && cs && main.querySelector(".mkcard")) {
+          const inset = (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.paddingTop) || 0);
+          const barH = document.querySelector(".topbar")?.getBoundingClientRect().height ?? 55;
+          const target = Math.max(
+            0,
+            window.scrollY + main.getBoundingClientRect().top + inset - barH - VISIBLE_PAD
+          );
+          if (Math.abs(window.scrollY - target) > 2) {
+            window.scrollTo({ top: target, behavior: "auto" });
+            stable = 0;
+          } else {
+            stable += 1;
+          }
+          if (stable >= 3) return; // settled ON the handles
+        }
+        if (tries < 120) setTimeout(land, 50); // ≤6s: wait for layout+handles, then correct until stable
+      };
+      // setTimeout (not requestAnimationFrame) so it still fires if the tab isn't
+      // foregrounded during load (rAF is paused in background tabs).
+      setTimeout(land, 0);
+    }
   }, []);
 
   return (
