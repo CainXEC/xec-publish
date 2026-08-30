@@ -4,6 +4,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useReactionPayment } from '@/components/feed/useReactionPayment'
 import { REACTIONS } from '@/lib/reactions'
 
+// Handle (@name) shown as-is; a raw eCash address truncated for the who-reacted panel.
+function truncateAddress(addr) {
+  const t = String(addr ?? '').trim()
+  if (t.length <= 16) return t
+  return `${t.slice(0, 10)}…${t.slice(-4)}`
+}
+
 /**
  * Emoji reactions for a single article comment — the comment analogue of the
  * feed's EngagementBar (no repost/quote). Tapping an emoji sends a flat 100 XEC
@@ -100,14 +107,25 @@ export default function CommentReactions({
         .catch(() => setWho('error'))
     }
   }
+  // Collapse repeats to "byline (N)" and truncate raw addresses, so the panel
+  // stays compact (mirrors the feed's EngagementBar).
   const whoGroups = useMemo(() => {
     if (!Array.isArray(who)) return null
-    const m = new Map()
+    const byEmoji = new Map() // emoji -> Map(identity -> count)
     for (const r of who) {
-      if (!m.has(r.emoji)) m.set(r.emoji, [])
-      m.get(r.emoji).push(r.identity)
+      if (!byEmoji.has(r.emoji)) byEmoji.set(r.emoji, new Map())
+      const counts = byEmoji.get(r.emoji)
+      counts.set(r.identity, (counts.get(r.identity) || 0) + 1)
     }
-    return [...m.entries()].sort((a, b) => b[1].length - a[1].length)
+    return [...byEmoji.entries()]
+      .map(([emoji, counts]) => {
+        const total = [...counts.values()].reduce((n, v) => n + v, 0)
+        const label = [...counts.entries()]
+          .map(([identity, n]) => truncateAddress(identity) + (n > 1 ? ` (${n})` : ''))
+          .join(', ')
+        return { emoji, label, total }
+      })
+      .sort((a, b) => b.total - a.total)
   }, [who])
 
   return (
@@ -170,10 +188,10 @@ export default function CommentReactions({
               ) : who === 'error' ? (
                 <p className="cwhonote">Couldn’t load reactions.</p>
               ) : whoGroups && whoGroups.length > 0 ? (
-                whoGroups.map(([emoji, names]) => (
+                whoGroups.map(({ emoji, label }) => (
                   <div className="cwhorow" key={emoji}>
                     <span className="cwhoemoji" aria-hidden>{emoji}</span>
-                    <span className="cwhonames">{names.join(', ')}</span>
+                    <span className="cwhonames">{label}</span>
                   </div>
                 ))
               ) : (

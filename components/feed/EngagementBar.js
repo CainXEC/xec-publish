@@ -5,6 +5,14 @@ import { useReactionPayment } from '@/components/feed/useReactionPayment'
 import { REACTIONS } from '@/lib/reactions'
 import PocketWaitHint from '@/components/pocket/PocketWaitHint'
 
+// A handle (@name, short) shows as-is; a raw eCash address gets truncated so the
+// "who reacted" panel doesn't fill with a 40-char string per reactor.
+function truncateAddress(addr) {
+  const t = String(addr ?? '').trim()
+  if (t.length <= 16) return t
+  return `${t.slice(0, 10)}…${t.slice(-4)}`
+}
+
 /**
  * Reaction / Repost / Quote controls for a feed post. Reactions are on-chain paid
  * actions: tapping an emoji sends a flat 100 XEC (94/6 to the author, or 100% to
@@ -124,15 +132,26 @@ export default function EngagementBar({
         .catch(() => setWho('error'))
     }
   }
-  // Group the reactor list by emoji for display (bylines under each emoji).
+  // Group the reactor list by emoji, then collapse repeats: a byline appears once
+  // with "(N)" when they reacted N>1 times, and raw addresses are truncated — so
+  // the panel stays compact (a long address repeated fills the popup off-screen).
   const whoGroups = useMemo(() => {
     if (!Array.isArray(who)) return null
-    const m = new Map()
+    const byEmoji = new Map() // emoji -> Map(identity -> count)
     for (const r of who) {
-      if (!m.has(r.emoji)) m.set(r.emoji, [])
-      m.get(r.emoji).push(r.identity)
+      if (!byEmoji.has(r.emoji)) byEmoji.set(r.emoji, new Map())
+      const counts = byEmoji.get(r.emoji)
+      counts.set(r.identity, (counts.get(r.identity) || 0) + 1)
     }
-    return [...m.entries()].sort((a, b) => b[1].length - a[1].length)
+    return [...byEmoji.entries()]
+      .map(([emoji, counts]) => {
+        const total = [...counts.values()].reduce((n, v) => n + v, 0)
+        const label = [...counts.entries()]
+          .map(([identity, n]) => truncateAddress(identity) + (n > 1 ? ` (${n})` : ''))
+          .join(', ')
+        return { emoji, label, total }
+      })
+      .sort((a, b) => b.total - a.total)
   }, [who])
 
   return (
@@ -169,10 +188,10 @@ export default function EngagementBar({
                 ) : who === 'error' ? (
                   <p className="whonote">Couldn’t load reactions.</p>
                 ) : whoGroups && whoGroups.length > 0 ? (
-                  whoGroups.map(([emoji, names]) => (
+                  whoGroups.map(({ emoji, label }) => (
                     <div className="whorow" key={emoji}>
                       <span className="whoemoji" aria-hidden>{emoji}</span>
-                      <span className="whonames">{names.join(', ')}</span>
+                      <span className="whonames">{label}</span>
                     </div>
                   ))
                 ) : (
