@@ -139,6 +139,14 @@ export function useReactionPayment({
     if (action === 'like') { setLiked(false); setLikes((n) => Math.max(0, n - 1)) }
     else { setReposted(false); setReposts((n) => Math.max(0, n - 1)) }
   }, [])
+  // Undo the optimistic TRIGGER fill (the ♥+ shown the instant you tap) back to
+  // the pre-tap truth — a prior reaction stays filled, a first reaction un-fills.
+  // MUST run alongside onReactFailed on every emoji-reaction failure, or a failed
+  // reaction leaves a filled icon with no visible reaction (pill already reverted).
+  const revertReactedFill = useCallback(
+    () => setReacted(reactedByViewer || hasReacted('react', targetTxid)),
+    [reactedByViewer, targetTxid],
+  )
   // Payment confirmed: the button is already flipped, so just clear the pending UI.
   const finalizeReacted = useCallback(() => {
     setPending(null)
@@ -197,7 +205,7 @@ export function useReactionPayment({
         const data = await res.json()
         if (!res.ok || !data.ok) {
           abortPayment(handle)
-          if (emoji) onReactFailed?.(emoji)
+          if (emoji) { onReactFailed?.(emoji); revertReactedFill() }
           else revertReaction(action)
           setInPagePay(false)
           setNotice(data.error || 'Could not start the payment. Try again.')
@@ -228,7 +236,7 @@ export function useReactionPayment({
               })
             } else {
               onReactFailed?.(emoji) // undo the parent's optimistic pill
-              setReacted(reactedByViewer || hasReacted('react', targetTxid))
+              revertReactedFill() // …and the trigger fill
               setNotice(
                 r.reason === 'denied'
                   ? 'Payment cancelled.'
@@ -246,7 +254,7 @@ export function useReactionPayment({
           if (r.ok && r.txid) {
             setIntent((prev) => (prev ? { ...prev, knownTxid: r.txid } : prev))
           } else if (!r.ok && r.reason === 'denied') {
-            if (emoji) onReactFailed?.(emoji)
+            if (emoji) { onReactFailed?.(emoji); revertReactedFill() }
             else revertReaction(action)
             setPending(null)
             setIntent(null)
@@ -261,7 +269,7 @@ export function useReactionPayment({
         setPending(action)
       } catch {
         abortPayment(handle)
-        if (emoji) onReactFailed?.(emoji)
+        if (emoji) { onReactFailed?.(emoji); revertReactedFill() }
         else revertReaction(action)
         setInPagePay(false)
         setNotice('Network hiccup — try again.')
@@ -270,7 +278,7 @@ export function useReactionPayment({
         setStarting(false)
       }
     },
-    [pending, liked, reposted, targetTxid, endpointBase, applyReaction, revertReaction, onReacted, onReactFailed, reactedByViewer],
+    [pending, liked, reposted, targetTxid, endpointBase, applyReaction, revertReaction, revertReactedFill, onReacted, onReactFailed, reactedByViewer],
   )
 
   // Poll for the on-chain reaction while a payment is pending, via the shared
@@ -353,15 +361,14 @@ export function useReactionPayment({
     const emoji = pendingEmojiRef.current
     if (emoji) {
       onReactFailed?.(emoji) // undo the parent's optimistic pill
-      // Un-fill only if this was the first reaction (server + device both say no).
-      setReacted(reactedByViewer || hasReacted('react', targetTxid))
+      revertReactedFill() // …and the trigger fill (un-fill only if it was the first)
     } else if (pending) revertReaction(pending) // undo the binary optimistic flip
     setPending(null)
     setIntent(null)
     setInPagePay(false)
     setTxidInput('')
     setNotice('')
-  }, [pending, revertReaction, onReactFailed, targetTxid, reactedByViewer])
+  }, [pending, revertReaction, revertReactedFill, onReactFailed])
 
   return {
     likes, liked, reposts, reposted, reacted,
