@@ -16,7 +16,18 @@ export default function ScrollToTopOnRouteChange() {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    console.log('[scroll-fix] route changed', pathname, 'scrollY:', window.scrollY)
+    // The marketplace, on a holder deep-link (?holder=), scrolls ITSELF down to
+    // that holder's handles (MarketplaceShell). Don't fight it — a blanket
+    // scroll-to-top, with its retry timeouts, would yank the viewport back to the
+    // mint hero right after the auto-scroll landed. Read the query here (not via
+    // useSearchParams as a dep) so a marketplace FILTER change on the same path
+    // doesn't newly trigger a scroll-to-top.
+    if (
+      pathname === '/marketplace' &&
+      new URLSearchParams(window.location.search).get('holder')
+    ) {
+      return
+    }
 
     const scrollAllTargets = () => {
       const y = window.scrollY || window.pageYOffset || 0
@@ -28,14 +39,9 @@ export default function ScrollToTopOnRouteChange() {
     }
 
     scrollAllTargets()
-    console.log('[scroll-fix] after immediate scrollTo, scrollY:', window.scrollY)
-
-    const timeouts = [50, 150, 400].map((delay) =>
-      setTimeout(() => {
-        scrollAllTargets()
-        console.log(`[scroll-fix] after ${delay}ms scrollTo, scrollY:`, window.scrollY)
-      }, delay),
-    )
+    // Retry: the App Router can restore/adjust scroll a beat after the route
+    // commits, so re-assert top a few times.
+    const timeouts = [50, 150, 400].map((delay) => setTimeout(scrollAllTargets, delay))
 
     return () => timeouts.forEach(clearTimeout)
   }, [pathname])

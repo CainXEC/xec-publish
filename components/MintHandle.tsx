@@ -45,6 +45,14 @@ export default function MintHandle({
   const [avail, setAvail] = useState<Availability | null>(null);
   const [checking, setChecking] = useState(false);
   const [phase, setPhase] = useState<"choose" | "pay" | "done">("choose");
+  // Client-side focus of the name field on mount when autoFocus is on (see the
+  // input's ref comment for why it isn't the autoFocus attribute).
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (autoFocus) nameInputRef.current?.focus();
+    // Run once on mount — mirrors the autoFocus attribute's "focus when inserted".
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [intent, setIntent] = useState<Intent | null>(null);
   const [statusMsg, setStatusMsg] = useState("Waiting for payment");
   // True once the payment lands on-chain (finalizing or minting). Flips the pay
@@ -343,7 +351,12 @@ export default function MintHandle({
           <div className="field">
             <span className="at">@</span>
             <input
-              autoFocus={autoFocus}
+              // Focused imperatively (below) rather than via the autoFocus
+              // ATTRIBUTE: autoFocus is server-rendered, so an autoFocus value that
+              // differs server↔client (it's suppressed only on a client-read holder
+              // deep-link) would hydration-mismatch. A ref + effect keeps the SSR
+              // DOM identical either way.
+              ref={nameInputRef}
               value={handle}
               onChange={(e) => setHandle(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && canMint && startMint()}

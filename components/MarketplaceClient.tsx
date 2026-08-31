@@ -930,13 +930,26 @@ export default function MarketplaceClient({
       ) : null}
 
       {loading ? (
-        // Reserve gallery height WHILE the holder's handles load, so the page is
-        // already tall enough for MarketplaceShell to scroll straight to this
-        // section on a holder deep-link (otherwise it can't scroll until the cards
-        // paint — a multi-second "stuck on the mint hero" wait).
-        <p className="state" style={holder ? { minHeight: "70vh" } : undefined}>
-          {holder ? "Loading their handles…" : view === "forsale" ? "Loading listings…" : "Loading the collection…"}
-        </p>
+        holder ? (
+          // Skeleton cards while the holder's handles load: they fill the gallery
+          // with card-shaped placeholders so (a) the page is already tall enough
+          // for MarketplaceShell to scroll straight to this section on a holder
+          // deep-link (no "stuck on the mint hero" wait) and (b) the real cards
+          // swap in place — no empty block flashing then collapsing.
+          <div className="mkgrid" aria-hidden>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div className="mkcard mkskel" key={i}>
+                <div className="mkart" />
+                <div className="mkmeta">
+                  <div className="mkskelline w60" />
+                  <div className="mkskelline w40" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="state">{view === "forsale" ? "Loading listings…" : "Loading the collection…"}</p>
+        )
       ) : error ? (
         <p className="state err">{error}</p>
       ) : !items || items.length === 0 ? (
@@ -1025,6 +1038,14 @@ const CSS = `
 .pow-market .mkart{aspect-ratio:1/1;background:#0a0f0e;position:relative;overflow:hidden;}
 .pow-market .mkart img{display:block;width:100%;height:100%;}
 .pow-market .mkmeta{padding:14px 16px;display:flex;flex-direction:column;gap:4px;}
+/* Loading skeletons: card-shaped placeholders (no hover, no pulse — a static
+   dim silhouette that the real art swaps into, keeping the guidance to avoid
+   ambient flicker). The meta gets two short dim bars for the handle + price. */
+.pow-market .mkskel{pointer-events:none;}
+.pow-market .mkskel .mkmeta{gap:8px;padding-top:16px;padding-bottom:16px;}
+.pow-market .mkskelline{height:11px;border-radius:5px;background:var(--line);opacity:.55;}
+.pow-market .mkskelline.w60{width:60%;}
+.pow-market .mkskelline.w40{width:40%;}
 /* Keep a full 15-char handle on ONE line so it never wraps the last letter onto
    a new row and grows the card. On the narrow grid (150px floor below 1100px) a
    15-char handle only fits at ~13px (measured, JetBrains Mono 700); desktop cards

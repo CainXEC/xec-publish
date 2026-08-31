@@ -209,7 +209,11 @@ export default function HandleCarousel({
       <div className="dashhandles-head">
         <h2 className="dashsection-title">{title}</h2>
         {offerHref ? (
-          <Link className="dashhandles-offer" href={offerHref}>
+          // scroll={false}: the marketplace auto-scrolls itself to this holder's
+          // handles (MarketplaceShell). Without this, the App Router's own
+          // scroll-to-top fires just after navigation and yanks the viewport back
+          // to the mint hero once our auto-scroll has already landed.
+          <Link className="dashhandles-offer" href={offerHref} scroll={false}>
             Make an offer on a handle →
           </Link>
         ) : handles.length > SEARCH_THRESHOLD ? (

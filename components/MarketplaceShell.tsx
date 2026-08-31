@@ -96,26 +96,20 @@ export default function MarketplaceShell({
       // multi-second "stuck on the mint hero" wait). We keep recomputing the
       // target each tick as the mint art and the loading→cards swap reflow the
       // page, settling only once cards have actually painted so the final layout
-      // is stable — and we bow out the instant the user scrolls themselves.
+      // is stable. It settles within ~200ms of landing (the skeleton grid carries
+      // .mkcard the moment it paints), so there's no lasting fight with a user who
+      // scrolls — no event guard needed (and a synthetic touch/wheel from a mobile
+      // emulator would wrongly trip one).
       const VISIBLE_PAD = 12;
       let tries = 0;
       let stable = 0;
-      let userScrolled = false;
-      const onUser = () => { userScrolled = true; };
-      window.addEventListener("wheel", onUser, { passive: true });
-      window.addEventListener("touchmove", onUser, { passive: true });
-      const stop = () => {
-        window.removeEventListener("wheel", onUser);
-        window.removeEventListener("touchmove", onUser);
-      };
       const land = () => {
         tries += 1;
-        if (userScrolled) { stop(); return; } // don't fight a manual scroll
         const main = document.querySelector<HTMLElement>(".mkt-main");
         const cs = main ? getComputedStyle(main) : null;
         const stacked = cs ? parseFloat(cs.borderTopWidth) > 0 : false;
         // Not stacked once the layout has settled → side-by-side desktop, nothing to do.
-        if (main && !stacked && tries > 12) { stop(); return; }
+        if (main && !stacked && tries > 12) return;
         if (main && stacked && cs) {
           const inset = (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.paddingTop) || 0);
           const barH = document.querySelector(".topbar")?.getBoundingClientRect().height ?? 55;
@@ -129,12 +123,11 @@ export default function MarketplaceShell({
           } else {
             stable += 1;
           }
-          // Settle only once the real cards have painted — otherwise the
-          // loading-placeholder → grid swap could shift us after we've stopped.
-          if (stable >= 3 && main.querySelector(".mkcard")) { stop(); return; }
+          // Settle once we're steady on the handles (skeleton or real cards both
+          // carry .mkcard, so this fires as soon as the placeholder grid paints).
+          if (stable >= 3 && main.querySelector(".mkcard")) return;
         }
         if (tries < 120) setTimeout(land, 50); // ≤6s cap, then give up
-        else stop();
       };
       // setTimeout (not requestAnimationFrame) so it still fires if the tab isn't
       // foregrounded during load (rAF is paused in background tabs).
