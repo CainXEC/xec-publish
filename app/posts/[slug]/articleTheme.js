@@ -284,8 +284,13 @@ html:not(.dark) .pow-article .hr-unlock:disabled{background:transparent;color:va
 .pow-article .clike-notice{margin:8px 0 0;font-size:12px;color:var(--no);}
 
 /* Emoji reactions on a comment (CommentReactions) — the comment analogue of the
-   feed EngagementBar picker + pills, styled for the article/paper scope. */
-.pow-article .creact{position:relative;display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;}
+   feed EngagementBar picker + pills, styled for the article/paper scope.
+   display:contents (like the feed's .engage) so the trigger and each pill
+   become direct flex items of .commentactions instead of a nested cluster —
+   pills get order:10 below so they trail Reply/Translate exactly like the
+   feed's reaction pills trail its action row, instead of bunching right next
+   to the ♡+ button. */
+.pow-article .creact{display:contents;}
 .pow-article .creactwrap{position:relative;display:inline-flex;}
 /* Outline ♡, not a filled/colored heart — the trigger reads as an action,
    not as an already-placed reaction (the pills show those in solid color).
@@ -296,23 +301,26 @@ html:not(.dark) .pow-article .hr-unlock:disabled{background:transparent;color:va
   -webkit-text-stroke:0.7px currentColor;}
 .pow-article .creactbtn:hover{color:var(--cyan);}
 .pow-article .creactbtn:disabled{opacity:.6;cursor:default;}
-/* Hidden by default; revealed on hover/focus of .creactwrap (like the feed). A
-   transparent ::after bridges the gap so the pointer can travel button→picker. */
-.pow-article .creactpicker{display:none;position:absolute;bottom:calc(100% + 8px);left:0;z-index:30;gap:2px;
-  background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 8px;
-  box-shadow:0 8px 24px rgba(0,0,0,.28);}
+/* Hidden by default; revealed on hover/focus of .creactwrap (like the feed).
+   Same fixed 2-rows-of-4 grid as the feed's .reactpicker, not a single pill-
+   shaped row — a transparent ::after bridges the gap so the pointer can
+   travel button→picker. */
+.pow-article .creactpicker{display:none;position:absolute;bottom:calc(100% + 8px);left:0;z-index:30;
+  grid-template-columns:repeat(4,auto);gap:2px;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.28);}
 .pow-article .creactwrap:hover .creactpicker,
 .pow-article .creactwrap:focus-within .creactpicker,
-.pow-article .creactwrap.open .creactpicker{display:flex;}
+.pow-article .creactwrap.open .creactpicker{display:grid;}
 .pow-article .creactpicker::after{content:"";position:absolute;top:100%;left:0;right:0;height:8px;}
-.pow-article .creactopt{background:none;border:none;font-size:19px;line-height:1;cursor:pointer;padding:3px;
-  border-radius:8px;transition:transform .1s,background .12s;}
-.pow-article .creactopt:hover{transform:scale(1.25);background:var(--panel2);}
-.pow-article .creactpill{display:inline-flex;align-items:center;gap:4px;background:var(--panel2);
-  border:1px solid var(--line);border-radius:999px;color:var(--text);font:inherit;font-size:12.5px;
-  padding:2px 9px;cursor:pointer;font-variant-numeric:tabular-nums;transition:border-color .12s;}
-.pow-article .creactpill:hover:not(:disabled){border-color:var(--cyan);}
-.pow-article .creactpill:disabled{cursor:default;}
+.pow-article .creactopt{background:none;border:none;font-size:22px;line-height:1;padding:4px;
+  border-radius:8px;cursor:pointer;transition:background .12s,transform .12s;}
+.pow-article .creactopt:hover{background:var(--panel2);transform:scale(1.15);}
+/* Plain text pill, like the reply/translate buttons beside it — not a bordered
+   chip — matching the feed's .reactpill exactly (order:10 above). */
+.pow-article .creactpill{order:10;background:none;border:none;color:var(--dim);font:inherit;font-size:13px;
+  cursor:pointer;padding:2px 0;font-variant-numeric:tabular-nums;transition:color .15s;}
+.pow-article .creactpill:hover:not(:disabled){color:var(--cyan);}
+.pow-article .creactpill:disabled{cursor:default;opacity:.6;}
 /* "Who reacted" popover on your OWN comment — the comment analogue of the feed's
    .whoreacted. Opens above the ♡+ (which turns cyan while open). */
 .pow-article .creactbtn.on{color:var(--cyan);}
