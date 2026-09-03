@@ -536,7 +536,13 @@ export default function FeedClient({
           <HomeReader key={pane.slug} slug={pane.slug} onClose={closeReader} />
         ) : null}
         {pane?.kind === 'thread' ? (
-          <ThreadPane txid={pane.txid} seed={pane.seed ?? null} onClose={closeReader} onOpenThread={wideShell ? openThread : undefined} />
+          <ThreadPane
+            txid={pane.txid}
+            seed={pane.seed ?? null}
+            onClose={closeReader}
+            onOpenThread={wideShell ? openThread : undefined}
+            onQuoted={prependPost}
+          />
         ) : null}
         <div style={pane ? { display: 'none' } : undefined}>
         {/* The front page, reflowed above the feed below 1280px (CSS-hidden at

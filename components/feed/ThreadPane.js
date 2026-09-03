@@ -29,7 +29,7 @@ function seedToThread(seed) {
   }
 }
 
-export default function ThreadPane({ txid, seed = null, onClose, onOpenThread }) {
+export default function ThreadPane({ txid, seed = null, onClose, onOpenThread, onQuoted }) {
   const hasSeed = seed && seed.txid === txid
   const [state, setState] = useState(() =>
     hasSeed ? { loading: false, data: seedToThread(seed) } : { loading: true },
@@ -118,6 +118,7 @@ export default function ThreadPane({ txid, seed = null, onClose, onOpenThread })
           isAuthor={d.isAuthor}
           forumSlug={d.forumSlug ?? null}
           onOpenThread={onOpenThread}
+          onQuoted={onQuoted}
         />
       )}
     </div>

@@ -223,6 +223,12 @@ export default function FeedThreadClient({
   // another thread instead of navigating (ancestors, replies, quote-jumps).
   embedded = false,
   onOpenThread = null,
+  // The host's own "a new top-level post exists" hook (FeedClient's
+  // prependPost) — a quote made in here is a new top-level post same as one
+  // made from the main list, so the feed underneath the pane needs it too,
+  // not just this thread's own swapped-in view. Optional: the standalone
+  // thread page has no feed list to update.
+  onQuoted = null,
 }) {
   const router = useRouter()
   const [replies, setReplies] = useState(initialReplies)
@@ -306,13 +312,18 @@ export default function FeedThreadClient({
     (quote) => {
       setShowQuote(false)
       if (!quote?.txid) return
+      // The pane swap is a view change, not a data change — the feed list
+      // underneath still needs the new quote or it's missing until a refresh
+      // once the pane closes. onQuoted covers that independent of which
+      // branch below runs.
+      onQuoted?.(quote)
       // Hand the optimistic quote straight to the pane so it renders INSTANTLY
       // (the pane reconciles with the real thread once its row lands) — no
       // "Pulling the thread…" wait on your own just-made quote.
       if (onOpenThread) onOpenThread(quote.txid, quote)
       else router.push('/')
     },
-    [router, onOpenThread],
+    [router, onOpenThread, onQuoted],
   )
 
   const post = initialPost
