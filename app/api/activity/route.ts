@@ -735,7 +735,11 @@ async function buildActivity(req: NextRequest) {
       target: null,
       amountXec: priceForHandle(m.handle).priceXec,
       at: m.created_at,
-      href: `/@${m.handle}`,
+      // The "minted" verb links to the @proofofwriting announcement card, not
+      // the handle's profile (that's what actorHref is for) — the mint feed
+      // card's txid IS the token id by construction (lib/mintProcessor.ts),
+      // so no join is needed to find it.
+      href: `/feed/${m.token_id}`,
       txid: m.token_id,
     });
   }
@@ -760,7 +764,10 @@ async function buildActivity(req: NextRequest) {
       target: null,
       amountXec: priceForHandle(handle).priceXec,
       at: m.created_at,
-      href: `/@${handle}`,
+      // Same as the site-wide mint rows above: "minted" links to the
+      // announcement card (this row's own txid IS that card's txid), not the
+      // profile page.
+      href: `/feed/${m.txid}`,
       txid: m.txid,
     });
   }
