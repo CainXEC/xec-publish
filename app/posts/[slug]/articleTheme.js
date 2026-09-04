@@ -77,6 +77,22 @@ export const ARTICLE_CSS = `
 .pow-article button.metaitem{cursor:pointer;transition:color .15s;}
 .pow-article button.metaitem:hover{color:var(--cyan);}
 
+/* ---- author-only "who unlocked" reveal ---- */
+.pow-article .unlockers-caret{font-size:9px;color:var(--dim);margin-left:1px;}
+.pow-article .unlockers{margin:14px 0 0;border:1px solid var(--line);border-radius:10px;
+  padding:6px;max-height:320px;overflow-y:auto;}
+.pow-article .unlockers-note{margin:0;padding:8px 10px;font-size:13px;color:var(--dim);}
+.pow-article .unlockers-head{margin:0;padding:8px 10px 6px;font-size:11px;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--dim);}
+.pow-article .unlockers-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;}
+.pow-article .unlockers-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:9px 10px;border-radius:7px;font-size:13.5px;}
+.pow-article .unlockers-row:hover{background:rgba(61,240,255,.06);}
+.pow-article .unlockers-who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-weight:700;color:var(--hc,var(--cyan));}
+.pow-article .unlockers-ai{font-weight:700;letter-spacing:.06em;color:var(--neon);}
+.pow-article .unlockers-when{flex:none;font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;}
+
 /* ---- checking-access line ---- */
 .pow-article .checking{margin:40px 0 0;font-size:14px;color:var(--dim);}
 

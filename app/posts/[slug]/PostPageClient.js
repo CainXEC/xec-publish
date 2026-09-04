@@ -25,6 +25,7 @@ import {
   primeAudioContextOnUserGesture,
 } from '@/lib/webAudioUnlock'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
+import { actorLabel, timeAgo } from '@/lib/notifFormat'
 
 // Server and client must render the SAME text on first paint, or React throws
 // a hydration mismatch (#418): the server runs in UTC, the browser in the
@@ -371,6 +372,35 @@ export default function PostPageClient({
       /* ignore count fetch errors */
     }
   }, [])
+
+  // Author-only: the list of readers who unlocked this article. Loaded lazily
+  // the first time the author opens the "who unlocked" panel (the API is gated
+  // to the post's author server-side; a non-author never sees the toggle).
+  const [unlockersOpen, setUnlockersOpen] = useState(false)
+  const [unlockers, setUnlockers] = useState(null) // null = not loaded yet
+  const [unlockersError, setUnlockersError] = useState(false)
+  const loadUnlockers = useCallback(async () => {
+    if (!post?.id) return
+    setUnlockersError(false)
+    try {
+      const res = await fetch(`/api/unlock-viewers/${encodeURIComponent(post.id)}`, {
+        cache: 'no-store',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && Array.isArray(data?.viewers)) setUnlockers(data.viewers)
+      else setUnlockersError(true)
+    } catch {
+      setUnlockersError(true)
+    }
+  }, [post?.id])
+
+  const toggleUnlockers = useCallback(() => {
+    setUnlockersOpen((open) => {
+      const next = !open
+      if (next && unlockers === null && !unlockersError) void loadUnlockers()
+      return next
+    })
+  }, [unlockers, unlockersError, loadUnlockers])
 
   // Restore an unlock this device has no cookie for (new device, cleared or
   // expired cookie). /api/check-unlock matches the post against the logged-in
@@ -943,9 +973,26 @@ export default function PostPageClient({
             <span className="metaitem">
               🏷️ <span>{priceXec > 0 ? `${formatXec(priceXec)} XEC` : 'Free'}</span>
             </span>
-            <span className="metaitem">
-              🔓 <span>{unlockCount}</span>
-            </span>
+            {/* The author can tap the unlock count to see WHO unlocked; every
+                other reader just sees the number. */}
+            {isAuthorSession ? (
+              <button
+                type="button"
+                className="metaitem unlockers-toggle"
+                onClick={toggleUnlockers}
+                aria-expanded={unlockersOpen}
+                title="See who unlocked this article"
+              >
+                🔓 <span>{unlockCount}</span>
+                <span className="unlockers-caret" aria-hidden>
+                  {unlockersOpen ? '▲' : '▼'}
+                </span>
+              </button>
+            ) : (
+              <span className="metaitem">
+                🔓 <span>{unlockCount}</span>
+              </span>
+            )}
 
             <button
               type="button"
@@ -976,6 +1023,49 @@ export default function PostPageClient({
               </span>
             ) : null}
           </div>
+
+          {/* Author-only reveal: who unlocked this article. Toggled from the
+              unlock-count meta item above; the list is fetched from an
+              author-gated route the first time it opens. */}
+          {isAuthorSession && unlockersOpen ? (
+            <div className="unlockers" role="region" aria-label="Readers who unlocked this article">
+              {unlockers === null && !unlockersError ? (
+                <p className="unlockers-note">Loading…</p>
+              ) : unlockersError ? (
+                <p className="unlockers-note">Couldn’t load the list.</p>
+              ) : unlockers.length === 0 ? (
+                <p className="unlockers-note">No one has unlocked this yet.</p>
+              ) : (
+                <>
+                  {/* Distinct readers — a wallet that unlocked more than once (or
+                      an account with several linked wallets) counts once here, so
+                      this can read lower than the 🔓 tally, which is raw unlocks. */}
+                  <p className="unlockers-head">
+                    {unlockers.length} reader{unlockers.length === 1 ? '' : 's'}
+                  </p>
+                  <ul className="unlockers-list">
+                  {unlockers.map((v, i) => {
+                    const isHandle = typeof v.identity === 'string' && v.identity.startsWith('@')
+                    return (
+                      <li key={`${v.identity}-${i}`} className="unlockers-row">
+                        <span
+                          className="unlockers-who"
+                          style={isHandle && v.color ? { '--hc': v.color } : undefined}
+                        >
+                          {actorLabel(v.identity)}
+                          {v.isAi ? <span className="unlockers-ai"> [AI]</span> : null}
+                        </span>
+                        {v.unlockedAt ? (
+                          <span className="unlockers-when">{timeAgo(v.unlockedAt)}</span>
+                        ) : null}
+                      </li>
+                    )
+                  })}
+                  </ul>
+                </>
+              )}
+            </div>
+          ) : null}
 
           {showPaywall && hasPaywallMarker ? (
             <section className="section">
