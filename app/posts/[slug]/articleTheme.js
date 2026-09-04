@@ -79,15 +79,14 @@ export const ARTICLE_CSS = `
 
 /* ---- author-only "who unlocked" reveal ---- */
 .pow-article .unlockers-caret{font-size:9px;color:var(--dim);margin-left:1px;}
-.pow-article .unlockers{margin:14px 0 0;border:1px solid var(--line);border-radius:10px;
-  padding:6px;max-height:320px;overflow-y:auto;}
-.pow-article .unlockers-note{margin:0;padding:8px 10px;font-size:13px;color:var(--dim);}
-.pow-article .unlockers-head{margin:0;padding:8px 10px 6px;font-size:11px;font-weight:700;
+/* No surrounding box — just the readers list, flush with the article text. */
+.pow-article .unlockers{margin:12px 0 0;max-height:320px;overflow-y:auto;}
+.pow-article .unlockers-note{margin:0;padding:4px 0;font-size:13px;color:var(--dim);}
+.pow-article .unlockers-head{margin:0;padding:0 0 6px;font-size:11px;font-weight:700;
   letter-spacing:.12em;text-transform:uppercase;color:var(--dim);}
 .pow-article .unlockers-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;}
 .pow-article .unlockers-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
-  padding:9px 10px;border-radius:7px;font-size:13.5px;}
-.pow-article .unlockers-row:hover{background:rgba(61,240,255,.06);}
+  padding:3px 0;font-size:13.5px;}
 .pow-article .unlockers-who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   font-weight:700;color:var(--hc,var(--cyan));}
 .pow-article .unlockers-ai{font-weight:700;letter-spacing:.06em;color:var(--neon);}
