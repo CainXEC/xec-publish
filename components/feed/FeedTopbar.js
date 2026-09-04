@@ -170,7 +170,10 @@ export default function FeedTopbar({
             desktop (>=1100px, CSS .tb-search), where search lives in the
             hamburger menu instead — the bottom bar doesn't carry it either. */}
         <Link href="/search" className="toplink toplink-toggle tb-search" aria-label="Search">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          {/* Intrinsic width/height so the icon can never fall back to the SVG
+              default (300×150) for the frame before CSS applies — that flash was
+              a giant magnifying glass on a cold load. CSS still sizes it after. */}
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <circle cx="11" cy="11" r="6.5" />
             <path d="M15.8 15.8L21 21" />
           </svg>
