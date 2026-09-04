@@ -29,6 +29,7 @@ import { takePrefetchedReader } from '@/lib/readerPrefetch'
 import { setTranslation, setArticleIntent } from '@/lib/translateStore'
 import { fetchTranslation } from '@/lib/translateClient'
 import { ARTICLE_CSS } from '@/app/posts/[slug]/articleTheme'
+import { actorLabel, timeAgo } from '@/lib/notifFormat'
 
 // Pinned locale + UTC so SSR and client hydrate identical text (#418).
 const fmtDate = (iso) => {
@@ -59,6 +60,36 @@ export default function HomeReader({ slug, onClose, backLabel = '← Feed' }) {
   // (own comments) and let an author moderate. The article page passes the same
   // `me` to ArticleComments; the pane was missing it, so delete never appeared.
   const [me, setMe] = useState(null)
+
+  // Author-only: who unlocked this article. The pane is keyed by slug (remounts
+  // per story), so this state resets naturally when a different article opens.
+  const [unlockersOpen, setUnlockersOpen] = useState(false)
+  const [unlockers, setUnlockers] = useState(null) // null = not loaded yet
+  const [unlockersError, setUnlockersError] = useState(false)
+  const loadUnlockers = useCallback(async (postId) => {
+    if (!postId) return
+    setUnlockersError(false)
+    try {
+      const res = await fetch(`/api/unlock-viewers/${encodeURIComponent(postId)}`, {
+        cache: 'no-store',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && Array.isArray(data?.viewers)) setUnlockers(data.viewers)
+      else setUnlockersError(true)
+    } catch {
+      setUnlockersError(true)
+    }
+  }, [])
+  const toggleUnlockers = useCallback(
+    (postId) => {
+      setUnlockersOpen((open) => {
+        const next = !open
+        if (next && unlockers === null && !unlockersError) void loadUnlockers(postId)
+        return next
+      })
+    },
+    [unlockers, unlockersError, loadUnlockers],
+  )
 
   useEffect(() => {
     let alive = true
@@ -112,6 +143,7 @@ export default function HomeReader({ slug, onClose, backLabel = '← Feed' }) {
   }, [onClose])
 
   const d = state.data
+  const isAuthorSession = Boolean(me?.authorId && d?.authorId && me.authorId === d.authorId)
 
   // The pane never touches the address bar, so — like CopyLinkButton — the share
   // targets are built from the slug, not window.location (which is the feed's URL
@@ -214,7 +246,21 @@ export default function HomeReader({ slug, onClose, backLabel = '← Feed' }) {
             {d.readMinutes ? `${d.readMinutes} min · ` : ''}
             {d.publishedAt ? fmtDate(d.publishedAt) : ''}
             {` · ${d.priceXec > 0 ? `${Number(d.priceXec).toLocaleString()} XEC` : 'Free'}`}
-            {` · ${Number(d.unlockCount ?? 0)} unlock${d.unlockCount === 1 ? '' : 's'}`}
+            {' · '}
+            {isAuthorSession ? (
+              <button
+                type="button"
+                className="hr-jump unlockers-toggle"
+                onClick={() => toggleUnlockers(d.postId)}
+                aria-expanded={unlockersOpen}
+                title="See who unlocked this article"
+              >
+                {Number(d.unlockCount ?? 0)} unlock{d.unlockCount === 1 ? '' : 's'}
+                {unlockersOpen ? ' ▲' : ' ▼'}
+              </button>
+            ) : (
+              `${Number(d.unlockCount ?? 0)} unlock${d.unlockCount === 1 ? '' : 's'}`
+            )}
             {' · '}
             {d.unlocked ? (
               // Once unlocked the comments render below in the pane — let the
@@ -232,6 +278,47 @@ export default function HomeReader({ slug, onClose, backLabel = '← Feed' }) {
               `${Number(d.commentCount ?? 0)} comment${d.commentCount === 1 ? '' : 's'}`
             )}
           </p>
+
+          {/* Author-only reveal: who unlocked this article (same author-gated
+              route + list as the standalone article page). */}
+          {isAuthorSession && unlockersOpen ? (
+            <div className="unlockers" role="region" aria-label="Readers who unlocked this article">
+              {unlockers === null && !unlockersError ? (
+                <p className="unlockers-note">Loading…</p>
+              ) : unlockersError ? (
+                <p className="unlockers-note">Couldn’t load the list.</p>
+              ) : unlockers.length === 0 ? (
+                <p className="unlockers-note">No one has unlocked this yet.</p>
+              ) : (
+                <>
+                  {/* Distinct readers — see the article page for why this can read
+                      lower than the raw unlock tally. */}
+                  <p className="unlockers-head">
+                    {unlockers.length} reader{unlockers.length === 1 ? '' : 's'}
+                  </p>
+                  <ul className="unlockers-list">
+                    {unlockers.map((v, i) => {
+                      const isHandle = typeof v.identity === 'string' && v.identity.startsWith('@')
+                      return (
+                        <li key={`${v.identity}-${i}`} className="unlockers-row">
+                          <span
+                            className="unlockers-who"
+                            style={isHandle && v.color ? { '--hc': v.color } : undefined}
+                          >
+                            {actorLabel(v.identity)}
+                            {v.isAi ? <span className="unlockers-ai"> [AI]</span> : null}
+                          </span>
+                          {v.unlockedAt ? (
+                            <span className="unlockers-when">{timeAgo(v.unlockedAt)}</span>
+                          ) : null}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </>
+              )}
+            </div>
+          ) : null}
 
           {/* Server-prepared HTML: public part only unless this viewer is
               entitled — the same bytes the article page would render. */}
@@ -290,7 +377,7 @@ export default function HomeReader({ slug, onClose, backLabel = '← Feed' }) {
               postId={d.postId}
               canComment={d.unlocked}
               me={me}
-              isAuthorSession={Boolean(me?.authorId && d.authorId && me.authorId === d.authorId)}
+              isAuthorSession={isAuthorSession}
               onChanged={() => void load({ quiet: true, fresh: true })}
             />
           ) : null}
