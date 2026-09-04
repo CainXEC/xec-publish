@@ -13,7 +13,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { armLoginLaunch } from '@/lib/ecash/loginLaunch'
 
 const HOME = (
@@ -75,10 +75,26 @@ export default function BottomNav() {
   // (before the keyboard animates in), and browsers without visualViewport just
   // keep the old focus/blur behavior (it stays true until blur).
   const [keyboardOpen, setKeyboardOpen] = useState(false)
+  // Focus depth + "keyboard has been up" live in refs (not effect-locals) so the
+  // lifecycle resets below can clear them too.
+  const focusCountRef = useRef(0)
+  const sawKeyboardRef = useRef(false)
+
+  // Force the bar visible and wipe all "keyboard is up" bookkeeping. The hide
+  // state is driven by PAIRED focus/blur + viewport-resize events; several
+  // leave-and-return paths never deliver the matching event — a bfcache restore
+  // (back/forward, or returning to the Safari tab), or navigating away while a
+  // composer is focused — which would otherwise strand the bar hidden. Every
+  // such lifecycle moment calls this, so the bar can never stay gone.
+  const forceShow = useCallback(() => {
+    focusCountRef.current = 0
+    sawKeyboardRef.current = false
+    setComposerActive(false)
+    setKeyboardOpen(false)
+  }, [])
+
   useEffect(() => {
-    let count = 0
     let hideTimer = null
-    let sawKeyboard = false // the keyboard has actually been up this focus session
     const apply = (active) => {
       if (hideTimer) {
         clearTimeout(hideTimer)
@@ -88,14 +104,14 @@ export default function BottomNav() {
       else hideTimer = setTimeout(() => setComposerActive(false), 80)
     }
     const onFocus = () => {
-      count += 1
+      focusCountRef.current += 1
       apply(true)
-      sawKeyboard = false
+      sawKeyboardRef.current = false
       setKeyboardOpen(true) // optimistic hide; the viewport confirms/dismisses
     }
     const onBlur = () => {
-      count = Math.max(0, count - 1)
-      if (count === 0) apply(false)
+      focusCountRef.current = Math.max(0, focusCountRef.current - 1)
+      if (focusCountRef.current === 0) apply(false)
     }
     window.addEventListener('pow:composer-focus', onFocus)
     window.addEventListener('pow:composer-blur', onBlur)
@@ -110,9 +126,9 @@ export default function BottomNav() {
       if (!vv) return
       const keyboardUp = window.innerHeight - vv.height > 120
       if (keyboardUp) {
-        sawKeyboard = true
+        sawKeyboardRef.current = true
         setKeyboardOpen(true)
-      } else if (sawKeyboard) {
+      } else if (sawKeyboardRef.current) {
         setKeyboardOpen(false)
       }
     }
@@ -125,6 +141,28 @@ export default function BottomNav() {
       if (hideTimer) clearTimeout(hideTimer)
     }
   }, [])
+
+  // Returning to the page must never leave the bar hidden: `pageshow` covers a
+  // bfcache restore (back/forward or tab switch), and a foreground
+  // `visibilitychange` covers app-switching back. If a composer is genuinely
+  // still focused (app-switched away mid-compose), leave the viewport handler in
+  // charge rather than fighting it; otherwise the keyboard is down and the bar
+  // belongs on screen.
+  useEffect(() => {
+    const onPageShow = () => forceShow()
+    const onVisibility = () => {
+      if (document.visibilityState !== 'visible') return
+      const el = document.activeElement
+      const typing = el && (el.tagName === 'TEXTAREA' || el.isContentEditable)
+      if (!typing) forceShow()
+    }
+    window.addEventListener('pageshow', onPageShow)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('pageshow', onPageShow)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [forceShow])
 
   useEffect(() => {
     let alive = true
