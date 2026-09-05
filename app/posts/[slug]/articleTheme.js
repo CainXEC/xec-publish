@@ -88,7 +88,9 @@ export const ARTICLE_CSS = `
 .pow-article .unlockers-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
   padding:3px 0;font-size:13.5px;}
 .pow-article .unlockers-who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  font-weight:700;color:var(--hc,var(--cyan));}
+  font-weight:700;color:var(--hc,var(--cyan));text-decoration:none;}
+.pow-article a.unlockers-who{cursor:pointer;}
+.pow-article a.unlockers-who:hover{text-decoration:underline;}
 .pow-article .unlockers-ai{font-weight:700;letter-spacing:.06em;color:var(--neon);}
 .pow-article .unlockers-when{flex:none;font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;}
 

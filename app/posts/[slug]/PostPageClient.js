@@ -26,6 +26,7 @@ import {
 } from '@/lib/webAudioUnlock'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { actorLabel, timeAgo } from '@/lib/notifFormat'
+import { profileHrefForIdentity } from '@/lib/contentLinks'
 
 // Server and client must render the SAME text on first paint, or React throws
 // a hydration mismatch (#418): the server runs in UTC, the browser in the
@@ -1046,15 +1047,25 @@ export default function PostPageClient({
                   <ul className="unlockers-list">
                   {unlockers.map((v, i) => {
                     const isHandle = typeof v.identity === 'string' && v.identity.startsWith('@')
+                    const href = profileHrefForIdentity(v.identity)
+                    const whoStyle = isHandle && v.color ? { '--hc': v.color } : undefined
+                    const whoInner = (
+                      <>
+                        {actorLabel(v.identity)}
+                        {v.isAi ? <span className="unlockers-ai"> [AI]</span> : null}
+                      </>
+                    )
                     return (
                       <li key={`${v.identity}-${i}`} className="unlockers-row">
-                        <span
-                          className="unlockers-who"
-                          style={isHandle && v.color ? { '--hc': v.color } : undefined}
-                        >
-                          {actorLabel(v.identity)}
-                          {v.isAi ? <span className="unlockers-ai"> [AI]</span> : null}
-                        </span>
+                        {href ? (
+                          <Link href={href} className="unlockers-who" style={whoStyle}>
+                            {whoInner}
+                          </Link>
+                        ) : (
+                          <span className="unlockers-who" style={whoStyle}>
+                            {whoInner}
+                          </span>
+                        )}
                         {v.unlockedAt ? (
                           <span className="unlockers-when">{timeAgo(v.unlockedAt)}</span>
                         ) : null}

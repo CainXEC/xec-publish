@@ -30,6 +30,7 @@ import { setTranslation, setArticleIntent } from '@/lib/translateStore'
 import { fetchTranslation } from '@/lib/translateClient'
 import { ARTICLE_CSS } from '@/app/posts/[slug]/articleTheme'
 import { actorLabel, timeAgo } from '@/lib/notifFormat'
+import { profileHrefForIdentity } from '@/lib/contentLinks'
 
 // Pinned locale + UTC so SSR and client hydrate identical text (#418).
 const fmtDate = (iso) => {
@@ -299,15 +300,25 @@ export default function HomeReader({ slug, onClose, backLabel = '← Feed' }) {
                   <ul className="unlockers-list">
                     {unlockers.map((v, i) => {
                       const isHandle = typeof v.identity === 'string' && v.identity.startsWith('@')
+                      const href = profileHrefForIdentity(v.identity)
+                      const whoStyle = isHandle && v.color ? { '--hc': v.color } : undefined
+                      const whoInner = (
+                        <>
+                          {actorLabel(v.identity)}
+                          {v.isAi ? <span className="unlockers-ai"> [AI]</span> : null}
+                        </>
+                      )
                       return (
                         <li key={`${v.identity}-${i}`} className="unlockers-row">
-                          <span
-                            className="unlockers-who"
-                            style={isHandle && v.color ? { '--hc': v.color } : undefined}
-                          >
-                            {actorLabel(v.identity)}
-                            {v.isAi ? <span className="unlockers-ai"> [AI]</span> : null}
-                          </span>
+                          {href ? (
+                            <Link href={href} className="unlockers-who" style={whoStyle}>
+                              {whoInner}
+                            </Link>
+                          ) : (
+                            <span className="unlockers-who" style={whoStyle}>
+                              {whoInner}
+                            </span>
+                          )}
                           {v.unlockedAt ? (
                             <span className="unlockers-when">{timeAgo(v.unlockedAt)}</span>
                           ) : null}
