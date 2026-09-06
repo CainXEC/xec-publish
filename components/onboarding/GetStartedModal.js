@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { armLoginLaunch } from '@/lib/ecash/loginLaunch'
 
@@ -15,6 +15,9 @@ const CASHTAB_URL = 'https://cashtab.com'
  */
 export function GetStartedModal({ open, onClose }) {
   const router = useRouter()
+  // The Cashtab tab THIS modal opened (step 1). Script-opened so we hold a
+  // handle we can close — see onLogin.
+  const cashtabWinRef = useRef(null)
 
   // Close on Escape.
   useEffect(() => {
@@ -26,7 +29,38 @@ export function GetStartedModal({ open, onClose }) {
     return () => document.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
+  // Open the Cashtab web wallet in a NAMED, script-owned tab — not a bare
+  // <a target="_blank">. Named ('cashtab') so repeat taps reuse one tab instead
+  // of piling up; script-owned so we hold a handle to CLOSE it when the user
+  // moves on to log in (a lingering cashtab.com tab collides with the login
+  // payment tab on iOS Safari and breaks Cashtab's self-close-and-return —
+  // you'd be left stranded on Cashtab instead of back on POW).
+  const openCashtab = useCallback(() => {
+    if (typeof window === 'undefined') return
+    const w = window.open(CASHTAB_URL, 'cashtab')
+    if (w) {
+      try {
+        w.opener = null
+      } catch {
+        /* older Safari — harmless */
+      }
+      cashtabWinRef.current = w
+    }
+  }, [])
+
   const onLogin = useCallback(() => {
+    // Close the Cashtab tab this modal opened, if it's still around, so login
+    // opens a FRESH, uncontested Cashtab tab. The leftover tab is exactly what
+    // breaks the return to POW after the login payment.
+    const w = cashtabWinRef.current
+    if (w) {
+      try {
+        if (!w.closed) w.close()
+      } catch {
+        /* not closable / already gone */
+      }
+      cashtabWinRef.current = null
+    }
     // Same gesture the topbar uses: pre-open the Cashtab window inside the tap
     // (iOS Safari), then navigate to /login which points it at the challenge.
     armLoginLaunch()
@@ -53,9 +87,9 @@ export function GetStartedModal({ open, onClose }) {
                 new users can claim <strong>42 XEC free</strong>. Claim your free XEC, save your
                 seed phrase, then come back to this page.
               </p>
-              <a className="ob-btn" href={CASHTAB_URL} target="_blank" rel="noopener noreferrer">
+              <button type="button" className="ob-btn" onClick={openCashtab}>
                 Get Cashtab →
-              </a>
+              </button>
             </div>
           </li>
 
