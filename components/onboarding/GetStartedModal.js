@@ -30,19 +30,17 @@ export function GetStartedModal({ open, onClose }) {
     return () => document.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
-  // Open the Cashtab web wallet in a tab named 'cashtab' so, where the browser
-  // honors named-window reuse (desktop / Android), the login step reuses this
-  // same tab instead of piling up a second one.
-  //
-  // NB: we deliberately KEEP window.opener here. Login later redirects this tab
-  // to POW (so the self-closing payment tab lands on a signed-in POW, not on
-  // Cashtab) — and nulling the opener strips the permission for our POW tab to
-  // navigate this one cross-origin, which silently killed that redirect. Reverse-
-  // tabnabbing risk is negligible for cashtab.com, the wallet the whole app runs
-  // on.
+  // Open the Cashtab web wallet in a NEW tab, leaving POW in place so the user
+  // can come back and tap "Log in". Target MUST be '_blank': a named target is
+  // unreliable on iOS (it can navigate the CURRENT tab to Cashtab — POW itself
+  // goes away — instead of opening a new one). We keep the returned handle (and
+  // its window.opener) so /login can later redirect THIS tab to POW, so the
+  // self-closing payment tab lands on a signed-in POW instead of on Cashtab.
+  // Reverse-tabnabbing risk is negligible for cashtab.com, the wallet the whole
+  // app runs on.
   const openCashtab = useCallback(() => {
     if (typeof window === 'undefined') return
-    const w = window.open(CASHTAB_URL, 'cashtab')
+    const w = window.open(CASHTAB_URL, '_blank')
     if (w) cashtabWinRef.current = w
   }, [])
 
