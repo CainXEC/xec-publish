@@ -18,7 +18,7 @@ import FeedBody from '@/components/feed/FeedBody'
 import MintCard from '@/components/feed/MintCard'
 import PollCard from '@/components/feed/PollCard'
 import TranslateButton from '@/components/TranslateButton'
-import { GetStartedModal } from '@/components/onboarding/GetStartedModal'
+import OnboardingStrip from '@/components/onboarding/OnboardingStrip'
 import { getTranslation } from '@/lib/translateStore'
 import { isSelectingWithin, wasDrag } from '@/lib/selectionGuard'
 import {
@@ -234,29 +234,6 @@ export default function FeedThreadClient({
   const router = useRouter()
   const [replies, setReplies] = useState(initialReplies)
   const [viewerAccountId, setViewerAccountId] = useState(initialViewerAccountId)
-
-  // A shared thread link is a top entry point for logged-out visitors (from X,
-  // etc.) — greet them with the Get Started onboarding so the link is an on-ramp,
-  // not a dead end. Only on the standalone page (never the embedded reading
-  // pane), only when logged out, and only once per browser session so it never
-  // nags. Opened once on mount; the sessionStorage flag makes it one-shot.
-  const [obOpen, setObOpen] = useState(false)
-  useEffect(() => {
-    if (embedded || initialViewerAccountId != null) return
-    let seen = false
-    try {
-      seen = sessionStorage.getItem('pow_getstarted_seen') === '1'
-    } catch {
-      /* private mode / storage blocked — just show it */
-    }
-    if (seen) return
-    try {
-      sessionStorage.setItem('pow_getstarted_seen', '1')
-    } catch {
-      /* ignore */
-    }
-    setObOpen(true)
-  }, [embedded, initialViewerAccountId])
   const [rootDeleted, setRootDeleted] = useState(Boolean(initialPost?.deleted))
   const [deletingRoot, setDeletingRoot] = useState(false)
   const [confirmDialog, confirmDialogNode] = useConfirmDialog()
@@ -750,15 +727,17 @@ export default function FeedThreadClient({
 
       <FeedTopbar signedIn={viewerAccountId != null} isAuthor={isAuthor} />
 
-      {/* First-visit onboarding for a logged-out visitor arriving via a shared
-          link. Hides itself the moment they turn out to be / become logged in. */}
-      <GetStartedModal open={obOpen && viewerAccountId == null} onClose={() => setObOpen(false)} />
-
       <div className="feed-cols">
         <aside className="feed-left" aria-label="The front page — long-form writing">
           <ArticleRail />
         </aside>
         <main className="wrap" style={{ paddingTop: '28px' }}>
+          {/* A shared thread link is a top entry point for logged-out visitors
+              (from X, etc.) — greet them with the same onboarding strip the home
+              feed uses, ABOVE the post so the thread is still fully visible. The
+              strip's own button opens the Get Started explainer on click; it
+              disappears once they're signed in. */}
+          {viewerAccountId == null ? <OnboardingStrip /> : null}
           {content}
         </main>
         <aside className="feed-rail" aria-label="Live on-chain activity">
