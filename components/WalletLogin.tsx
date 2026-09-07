@@ -17,7 +17,7 @@ import {
   abortCashtabPayment,
   type CashtabGesture,
 } from "@/lib/ecash/cashtabPay";
-import { takeLoginLaunch } from "@/lib/ecash/loginLaunch";
+import { takeLoginLaunch, takeLoginReturnWindow } from "@/lib/ecash/loginLaunch";
 
 type Started = {
   ok: true;
@@ -40,6 +40,10 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
   // let the page-load effect open one. Captured on mount; null when /login was
   // reached without a tap (redirect / hard load) — then we fall back below.
   const launchRef = useRef<CashtabGesture | null>(null);
+  // The leftover onboarding "Get Cashtab" tab (iOS): we redirect it to POW once
+  // login lands, so the self-closing payment tab drops back onto POW, not
+  // Cashtab. Null for a normal login (no second tab). See loginLaunch.
+  const returnWinRef = useRef<Window | null>(null);
 
   // Cashtab web deep link — RAW bip21 (no encodeURIComponent), carries the nonce.
   const cashtabUrl = started ? `https://cashtab.com/#/send?bip21=${started.bip21Url}` : "#";
@@ -98,6 +102,7 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
     // Grab the window the "Login" tap pre-opened (if any) BEFORE the async start,
     // so openCashtab can redirect it the moment the nonce lands.
     launchRef.current = takeLoginLaunch();
+    returnWinRef.current = takeLoginReturnWindow();
     void startLogin();
   }, [startLogin]);
 
@@ -122,6 +127,19 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
         const j = await r.json();
         if (j.ok && j.accountId) {
           setPhase("done");
+          // Onboarding (iOS): redirect the leftover "Get Cashtab" tab to POW now
+          // that we're logged in. When the payment tab self-closes it drops onto
+          // this tab — so it lands on a signed-in POW instead of on Cashtab. We
+          // can't close or focus that tab on iOS, but navigating it is allowed.
+          const rw = returnWinRef.current;
+          returnWinRef.current = null;
+          if (rw && !rw.closed && typeof window !== "undefined") {
+            try {
+              rw.location.href = new URL(redirectTo, window.location.origin).href;
+            } catch {
+              /* cross-origin navigation blocked — the POW tab still redirects itself */
+            }
+          }
           // hard navigation so every component re-reads auth via /api/me
           setTimeout(() => { if (typeof window !== "undefined") window.location.assign(redirectTo); }, 600);
           return { done: true };

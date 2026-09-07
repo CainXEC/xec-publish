@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { armLoginLaunch } from '@/lib/ecash/loginLaunch'
+import { armLoginLaunch, setLoginReturnWindow } from '@/lib/ecash/loginLaunch'
 
 // The free Cashtab WEB wallet (no extension, no app) — new wallets can claim
 // 42 XEC free, enough to cover the 6-XEC login challenge.
@@ -15,6 +15,10 @@ const CASHTAB_URL = 'https://cashtab.com'
  */
 export function GetStartedModal({ open, onClose }) {
   const router = useRouter()
+  // The Cashtab tab this modal's "Get Cashtab" step opened. We can't close or
+  // focus it on iOS, but we CAN navigate it — so login redirects it to POW once
+  // logged in, and the self-closing payment tab lands on POW, not on Cashtab.
+  const cashtabWinRef = useRef(null)
 
   // Close on Escape.
   useEffect(() => {
@@ -38,6 +42,7 @@ export function GetStartedModal({ open, onClose }) {
       } catch {
         /* older Safari — harmless */
       }
+      cashtabWinRef.current = w
     }
   }, [])
 
@@ -45,6 +50,9 @@ export function GetStartedModal({ open, onClose }) {
     // Pre-open the Cashtab payment window inside the tap (foregrounds it on iOS),
     // then head to /login which points it at the challenge once the nonce lands.
     armLoginLaunch()
+    // Hand /login the leftover "Get Cashtab" tab so it can send it to POW once
+    // login lands — that tab is what the self-closing payment tab drops back to.
+    setLoginReturnWindow(cashtabWinRef.current)
     onClose?.()
     router.push('/login')
   }, [onClose, router])

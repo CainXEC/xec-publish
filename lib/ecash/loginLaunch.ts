@@ -41,3 +41,30 @@ export function takeLoginLaunch(): CashtabGesture | null {
   pending = null
   return g
 }
+
+// ---------------------------------------------------------------------------
+//  The "land back on POW" window.
+//
+//  Onboarding leaves a second Cashtab tab open (step 1's "Get Cashtab"). On iOS
+//  we can neither close it (window.close() is blocked) nor focus it — so when
+//  the login payment tab SELF-CLOSES, the browser lands on that leftover Cashtab
+//  tab instead of POW. What we CAN do is navigate it: the one operation iOS
+//  allows on a window we opened. So /login points it at POW the moment the login
+//  is confirmed — then the tab sitting behind the payment tab IS POW, and the
+//  self-close lands there. Navigating only after confirmation means it loads
+//  already signed in (a navigation at tap time would load it signed out).
+// ---------------------------------------------------------------------------
+
+let returnWindow: Window | null = null
+
+/** Hand /login the leftover Cashtab tab to redirect to POW once login lands. */
+export function setLoginReturnWindow(w: Window | null): void {
+  returnWindow = w
+}
+
+/** /login retrieves (and clears) that tab, if any. */
+export function takeLoginReturnWindow(): Window | null {
+  const w = returnWindow
+  returnWindow = null
+  return w
+}
