@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { armLoginLaunch } from '@/lib/ecash/loginLaunch'
 
@@ -15,6 +15,9 @@ const CASHTAB_URL = 'https://cashtab.com'
  */
 export function GetStartedModal({ open, onClose }) {
   const router = useRouter()
+  // The exact Cashtab window this modal opened (step 1). Login reuses THIS
+  // handle for the payment so there's only ever one Cashtab tab — see onLogin.
+  const cashtabWinRef = useRef(null)
 
   // Close on Escape.
   useEffect(() => {
@@ -26,13 +29,12 @@ export function GetStartedModal({ open, onClose }) {
     return () => document.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
-  // Open the Cashtab web wallet in a tab NAMED 'cashtab' (not a bare
-  // <a target="_blank">). The name is the whole point: when the user then taps
-  // "Log in", armLoginLaunch reuses this SAME 'cashtab' tab for the login
-  // payment instead of opening a second, competing cashtab.com tab — two tabs
-  // break Cashtab's self-close-and-return on iOS, leaving you stranded on
-  // Cashtab (window.close() can't dismiss the extra tab there). One reused tab
-  // matches the single-tab path a normal login already returns from correctly.
+  // Open the Cashtab web wallet in a script-owned tab and KEEP its handle. Login
+  // (onLogin) reuses this exact window for the payment, so a new user goes: open
+  // Cashtab → make a wallet → come back → log in, all in ONE Cashtab tab. That
+  // single-tab path is the only one that reliably returns to POW on iOS Chrome,
+  // where a leftover second Cashtab tab can neither be merged (named reuse) nor
+  // closed (window.close()) — and its presence strands you on Cashtab.
   const openCashtab = useCallback(() => {
     if (typeof window === 'undefined') return
     const w = window.open(CASHTAB_URL, 'cashtab')
@@ -42,15 +44,15 @@ export function GetStartedModal({ open, onClose }) {
       } catch {
         /* older Safari — harmless */
       }
+      cashtabWinRef.current = w
     }
   }, [])
 
   const onLogin = useCallback(() => {
-    // Same gesture the topbar uses: pre-open the Cashtab window inside the tap
-    // (iOS Safari), then navigate to /login which points it at the challenge.
-    // armLoginLaunch names the window 'cashtab', so it REUSES the tab opened
-    // above rather than opening a competing one.
-    armLoginLaunch()
+    // Hand login the Cashtab tab we already opened (if any) so it navigates THAT
+    // window to the challenge instead of opening a competing one. Falls back to
+    // its own window when there's none (they closed it, or came straight here).
+    armLoginLaunch(cashtabWinRef.current)
     onClose?.()
     router.push('/login')
   }, [onClose, router])
