@@ -184,17 +184,24 @@ export type CashtabGesture = {
  *  - extension absent  → opens about:blank to survive popup blockers; the
  *    caller points it at the Cashtab URL once /prepare returns.
  */
-export function beginCashtabPayment(): CashtabGesture {
+export function beginCashtabPayment(windowName: string = '_blank'): CashtabGesture {
   if (typeof window === 'undefined') {
     return { hasExtension: false, placeholderWindow: null }
   }
   if (isCashtabExtensionAvailable()) {
     return { hasExtension: true, placeholderWindow: null }
   }
+  // `windowName` lets a caller REUSE a specific tab instead of always opening a
+  // fresh one: login passes 'cashtab' so its payment lands in the SAME Cashtab
+  // tab the onboarding "Get Cashtab" step opened (also named 'cashtab'), rather
+  // than a second, competing cashtab.com tab. Two tabs break Cashtab's
+  // self-close-and-return on iOS — and window.close() can't dismiss the extra
+  // one there — so reusing one tab is the only reliable path. Default '_blank'
+  // keeps every other pay flow opening its own fresh tab, unchanged.
   // No 'noopener' here — with it, window.open returns null and we'd lose the
   // handle; the opener link is severed manually instead (matches the existing
   // ComposeBox / EngagementBar / MintHandle popup-blocker workaround).
-  const placeholderWindow = window.open('about:blank', '_blank')
+  const placeholderWindow = window.open('about:blank', windowName)
   if (placeholderWindow) placeholderWindow.opener = null
   return { hasExtension: false, placeholderWindow }
 }

@@ -29,7 +29,10 @@ export function armLoginLaunch(): void {
   // Drop a stale arm (e.g. a previous Login tap that never reached /login) so we
   // never leak more than one blank tab.
   if (pending) abortCashtabPayment(pending)
-  pending = beginCashtabPayment()
+  // Name the window 'cashtab' so login REUSES the Cashtab tab the onboarding
+  // "Get Cashtab" step already opened (same name) instead of opening a second,
+  // competing cashtab.com tab — two tabs break the self-close-and-return on iOS.
+  pending = beginCashtabPayment('cashtab')
 }
 
 /** /login retrieves (and clears) the armed launch, if any. */
