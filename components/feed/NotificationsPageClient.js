@@ -133,12 +133,21 @@ const TABS = [
 
 export default function NotificationsPageClient({ initialItems, initialCursor, agentPending }) {
   const [tab, setTab] = useState('all')
-  // Per-tab list + keyset cursor + whether it's been fetched. 'all' is seeded by
-  // the SSR page; 'mentions' lazy-loads (server-filtered) the first time it's
-  // opened, so flipping between tabs never refetches.
+  // Per-tab list + keyset cursor + whether it's been fetched. Both tabs are
+  // SEEDED from the same SSR page (the 'all' snapshot filtered to conversational
+  // types for 'mentions') so both share the read-state captured BEFORE the page
+  // marked everything read — otherwise a mentions lazy-fetch would run post-mark
+  // and every row would come back read, so a genuinely new mention would never
+  // get its unread accent. The cursor is the same (initialCursor is the oldest
+  // item of the mixed page; every conversational item shown is newer than it, so
+  // paging back from there is gapless).
   const [tabs, setTabs] = useState({
     all: { items: initialItems ?? [], cursor: initialCursor ?? null, loaded: true },
-    mentions: { items: [], cursor: null, loaded: false },
+    mentions: {
+      items: (initialItems ?? []).filter((n) => isConversationalNotif(n.type)),
+      cursor: initialCursor ?? null,
+      loaded: true,
+    },
   })
   const [loadingMore, setLoadingMore] = useState(false)
   const [switching, setSwitching] = useState(false)

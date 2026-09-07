@@ -280,9 +280,11 @@ html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation-name:pocke
   color:var(--dim);user-select:none;}
 .pow-feed .notifpage-main{min-width:0;flex:1;}
 /* Conversational (reply/quote/mention/comment) — someone talking TO you — steps
-   forward: a cyan accent rail + a cyan glyph. Reactions/reposts stay a dim nod. */
-.pow-feed .notifpage-row.convo{box-shadow:inset 2px 0 0 var(--cyan);}
-.pow-feed .notifpage-row.convo .notifpage-glyph{color:var(--cyan);}
+   forward WHILE UNREAD: a cyan accent rail + a cyan glyph mark it as new. Once
+   viewed (read) it drops back to a dim nod like a reaction/repost, so the "left
+   highlight" is an unread cue, not a permanent per-type badge. */
+.pow-feed .notifpage-row.convo.unread{box-shadow:inset 2px 0 0 var(--cyan);}
+.pow-feed .notifpage-row.convo.unread .notifpage-glyph{color:var(--cyan);}
 .pow-feed .notifpage-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
 .pow-feed .notifpage-actors{display:flex;flex-wrap:wrap;gap:4px;font-size:13.5px;line-height:1.5;color:var(--text);}
 .pow-feed .notifpage-actors a{color:inherit;text-decoration:none;}
