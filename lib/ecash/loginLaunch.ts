@@ -22,17 +22,20 @@ let pending: CashtabGesture | null = null
 
 /**
  * Call SYNCHRONOUSLY inside the Login tap (before navigating to /login). Opens a
- * placeholder tab (brought to the foreground by window.open — the only way to
- * foreground a Cashtab tab on iOS) to survive the async nonce fetch, except with
- * the desktop extension present, where nothing is opened (in-page popup). Named
- * 'cashtab' so it reuses an existing Cashtab tab where the browser honors that
- * (desktop / Android) instead of piling up a second one.
+ * FRESH placeholder tab ('_blank', foregrounded by window.open — the only way to
+ * surface a Cashtab tab on iOS) to survive the async nonce fetch, except with
+ * the desktop extension present, where nothing is opened (in-page popup).
+ *
+ * Deliberately '_blank', NOT 'cashtab': the onboarding "Get Cashtab" tab is
+ * named 'cashtab', and a matching name makes window.open REUSE that background
+ * tab instead of opening a new foregrounded one (so the payment tab never
+ * appears). The leftover tab is redirected to POW by its HANDLE, not its name.
  */
 export function armLoginLaunch(): void {
   // Drop a stale arm (e.g. a previous Login tap that never reached /login) so we
   // never leak more than one blank tab.
   if (pending) abortCashtabPayment(pending)
-  pending = beginCashtabPayment('cashtab')
+  pending = beginCashtabPayment()
 }
 
 /** /login retrieves (and clears) the armed launch, if any. */
