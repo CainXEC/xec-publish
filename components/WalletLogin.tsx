@@ -44,6 +44,11 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
   // login lands, so the self-closing payment tab drops back onto POW, not
   // Cashtab. Null for a normal login (no second tab). See loginLaunch.
   const returnWinRef = useRef<Window | null>(null);
+  // The Cashtab PAYMENT tab itself. On iOS Chrome it doesn't self-close after
+  // the send — the user is left sitting on it — so once login lands we navigate
+  // THIS window to POW too (see the poll). Keeping the handle is the only lever
+  // we have: iOS won't let us close or focus a tab.
+  const payWinRef = useRef<Window | null>(null);
 
   // Cashtab web deep link — RAW bip21 (no encodeURIComponent), carries the nonce.
   const cashtabUrl = started ? `https://cashtab.com/#/send?bip21=${started.bip21Url}` : "#";
@@ -57,6 +62,7 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
     const launch = launchRef.current;
     if (launch) {
       launchRef.current = null;
+      if (launch.placeholderWindow) payWinRef.current = launch.placeholderWindow;
       void completeCashtabPayment(launch, { bip21: started.bip21Url, cashtabUrl });
       return;
     }
@@ -127,19 +133,28 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
         const j = await r.json();
         if (j.ok && j.accountId) {
           setPhase("done");
-          // Onboarding (iOS): redirect the leftover "Get Cashtab" tab to POW now
-          // that we're logged in. When the payment tab self-closes it drops onto
-          // this tab — so it lands on a signed-in POW instead of on Cashtab. We
-          // can't close or focus that tab on iOS, but navigating it is allowed.
-          const rw = returnWinRef.current;
-          returnWinRef.current = null;
-          if (rw && !rw.closed && typeof window !== "undefined") {
-            try {
-              rw.location.href = new URL(redirectTo, window.location.origin).href;
-            } catch {
-              /* cross-origin navigation blocked — the POW tab still redirects itself */
+          // Onboarding (iOS): after paying, the user is stranded on a Cashtab tab
+          // — the payment tab doesn't self-close reliably, and iOS won't let us
+          // close or focus tabs. But we CAN navigate a window we opened. So now
+          // that we're logged in, point BOTH Cashtab tabs we hold — the payment
+          // tab (where the user actually is) and the leftover "Get Cashtab" tab —
+          // at a signed-in POW (home, top of feed). Whichever they're looking at
+          // flips to POW. Cross-origin nav of a window you opened is allowed;
+          // guarded so a block just leaves the POW /login tab to redirect itself.
+          if (typeof window !== "undefined") {
+            const powUrl = new URL(redirectTo, window.location.origin).href;
+            for (const w of [payWinRef.current, returnWinRef.current]) {
+              if (w && !w.closed) {
+                try {
+                  w.location.href = powUrl;
+                } catch {
+                  /* cross-origin navigation blocked */
+                }
+              }
             }
           }
+          payWinRef.current = null;
+          returnWinRef.current = null;
           // hard navigation so every component re-reads auth via /api/me
           setTimeout(() => { if (typeof window !== "undefined") window.location.assign(redirectTo); }, 600);
           return { done: true };
