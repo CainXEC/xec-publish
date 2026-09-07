@@ -74,7 +74,7 @@ export function GetStartedModal({ open, onClose }) {
               <p className="ob-p">
                 Cashtab is your key to this platform. It&rsquo;s an open source web wallet and
                 new users can claim <strong>42 XEC free</strong>. Claim your free XEC, save your
-                seed phrase, then come back to this page.
+                seed phrase, then come back to this page and proceed to step 2.
               </p>
               <button type="button" className="ob-btn" onClick={openCashtab}>
                 Get Cashtab →
