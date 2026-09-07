@@ -7,7 +7,7 @@ import FeedNotifications from '@/components/feed/FeedNotifications'
 import PocketChip from '@/components/pocket/PocketChip'
 import ThemeToggle from '@/components/ThemeToggle'
 import AnimatedLogo from '@/components/AnimatedLogo'
-import GetStartedButton from '@/components/onboarding/GetStartedModal'
+import GetStartedButton, { OnboardingAutoModal } from '@/components/onboarding/GetStartedModal'
 import { armLoginLaunch } from '@/lib/ecash/loginLaunch'
 
 /**
@@ -123,6 +123,11 @@ export default function FeedTopbar({
 
   return (
     <div className="topbar">
+      {/* Onboarding modal that auto-opens on ?getstarted=1 (the Android→Chrome
+          break-out target). Mounted here at the visible top level rather than
+          inside a GetStartedButton, whose modal would inherit the collapsed
+          menu's visibility:hidden. Renders nothing until the flag fires. */}
+      <OnboardingAutoModal />
       {/* Hamburger holds the nav links at every width. The menu is always in the
           DOM so CSS can reveal it on hover for pointer devices (see feedTheme
           `.topnav:hover`); the click toggles an `open` class that pins it open

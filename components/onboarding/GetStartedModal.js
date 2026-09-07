@@ -1,8 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { armLoginLaunch, setLoginReturnWindow } from '@/lib/ecash/loginLaunch'
+import {
+  AUTO_OPEN_PARAM,
+  isAndroidInAppBrowser,
+  breakOutToChrome,
+} from '@/lib/onboardingBreakout'
 
 // The free Cashtab WEB wallet (no extension, no app) — new wallets can claim
 // 42 XEC free, enough to cover the 6-XEC login challenge.
@@ -112,23 +118,88 @@ export function GetStartedModal({ open, onClose }) {
  * via `className`) that opens the explainer modal. Used in the topbar and the
  * logged-out feed strip — each instance owns its modal state, so only the one
  * that was clicked is open.
+ *
+ * Android-in-app-browser handling: if POW is running inside another app's WebView
+ * (the X app, etc.), tapping "Get started" hands the page to real Chrome (with
+ * the onboarding modal flagged to auto-open there) instead of opening the modal
+ * in the dead-end WebView. iOS keeps the in-place modal — it has no reliable
+ * WebView escape.
  */
 export default function GetStartedButton({ className = '', children = 'Get started', onClick }) {
   const [open, setOpen] = useState(false)
+
+  const handleClick = useCallback(() => {
+    onClick?.() // let a caller close its own menu first
+    if (isAndroidInAppBrowser()) {
+      breakOutToChrome()
+      // If Chrome takes over, this WebView backgrounds and we leave it be. If the
+      // host app swallowed the intent, we're still visible after a beat — open the
+      // modal here so the tap always does something.
+      let handedOff = false
+      const onHide = () => {
+        if (document.hidden) {
+          handedOff = true
+          cleanup()
+        }
+      }
+      const cleanup = () => {
+        document.removeEventListener('visibilitychange', onHide)
+        clearTimeout(timer)
+      }
+      document.addEventListener('visibilitychange', onHide)
+      const timer = setTimeout(() => {
+        cleanup()
+        if (!handedOff) setOpen(true)
+      }, 1500)
+      return
+    }
+    setOpen(true)
+  }, [onClick])
+
   return (
     <>
-      <button
-        type="button"
-        className={className}
-        onClick={() => {
-          onClick?.() // let a caller close its own menu first
-          setOpen(true)
-        }}
-      >
+      <button type="button" className={className} onClick={handleClick}>
         {children}
       </button>
       <GetStartedModal open={open} onClose={() => setOpen(false)} />
     </>
+  )
+}
+
+/**
+ * Pops the onboarding modal on load when the URL carries ?getstarted=1 — set by
+ * the Android→Chrome break-out (breakOutToChrome), and usable as a plain deep
+ * link too. Mounted ONCE from the topbar (present on every page a break-out can
+ * start from), but PORTALED to document.body: the topbar has a backdrop-filter,
+ * which makes it a containing block for fixed children, so an overlay rendered
+ * inside it would be clipped to the topbar's box instead of filling the viewport.
+ */
+export function OnboardingAutoModal() {
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get(AUTO_OPEN_PARAM) !== '1') return
+    // Strip the flag so a refresh or a shared URL doesn't reopen the modal.
+    params.delete(AUTO_OPEN_PARAM)
+    const qs = params.toString()
+    window.history.replaceState(
+      null,
+      '',
+      window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash,
+    )
+    // Legit one-shot sync of UI to an external system (the URL flag): the modal
+    // can't open during the initial (SSR-matching) render without a hydration
+    // mismatch, so it opens here on mount, exactly once.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOpen(true)
+  }, [])
+
+  if (!open || typeof document === 'undefined') return null
+  return createPortal(
+    <GetStartedModal open onClose={() => setOpen(false)} />,
+    document.body,
   )
 }
 
