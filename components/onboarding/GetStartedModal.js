@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { armLoginLaunch } from '@/lib/ecash/loginLaunch'
 
@@ -15,9 +15,6 @@ const CASHTAB_URL = 'https://cashtab.com'
  */
 export function GetStartedModal({ open, onClose }) {
   const router = useRouter()
-  // The exact Cashtab window this modal opened (step 1). Login reuses THIS
-  // handle for the payment so there's only ever one Cashtab tab — see onLogin.
-  const cashtabWinRef = useRef(null)
 
   // Close on Escape.
   useEffect(() => {
@@ -29,12 +26,9 @@ export function GetStartedModal({ open, onClose }) {
     return () => document.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
-  // Open the Cashtab web wallet in a script-owned tab and KEEP its handle. Login
-  // (onLogin) reuses this exact window for the payment, so a new user goes: open
-  // Cashtab → make a wallet → come back → log in, all in ONE Cashtab tab. That
-  // single-tab path is the only one that reliably returns to POW on iOS Chrome,
-  // where a leftover second Cashtab tab can neither be merged (named reuse) nor
-  // closed (window.close()) — and its presence strands you on Cashtab.
+  // Open the Cashtab web wallet in a tab named 'cashtab' so, where the browser
+  // honors named-window reuse (desktop / Android), the login step reuses this
+  // same tab instead of piling up a second one.
   const openCashtab = useCallback(() => {
     if (typeof window === 'undefined') return
     const w = window.open(CASHTAB_URL, 'cashtab')
@@ -44,15 +38,13 @@ export function GetStartedModal({ open, onClose }) {
       } catch {
         /* older Safari — harmless */
       }
-      cashtabWinRef.current = w
     }
   }, [])
 
   const onLogin = useCallback(() => {
-    // Hand login the Cashtab tab we already opened (if any) so it navigates THAT
-    // window to the challenge instead of opening a competing one. Falls back to
-    // its own window when there's none (they closed it, or came straight here).
-    armLoginLaunch(cashtabWinRef.current)
+    // Pre-open the Cashtab payment window inside the tap (foregrounds it on iOS),
+    // then head to /login which points it at the challenge once the nonce lands.
+    armLoginLaunch()
     onClose?.()
     router.push('/login')
   }, [onClose, router])

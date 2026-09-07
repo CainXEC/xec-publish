@@ -16,39 +16,22 @@
 //  attempt + the on-page "Open Cashtab" button.
 // =============================================================================
 
-import {
-  beginCashtabPayment,
-  abortCashtabPayment,
-  isCashtabExtensionAvailable,
-  type CashtabGesture,
-} from './cashtabPay'
+import { beginCashtabPayment, abortCashtabPayment, type CashtabGesture } from './cashtabPay'
 
 let pending: CashtabGesture | null = null
 
 /**
- * Call SYNCHRONOUSLY inside the Login tap (before navigating to /login).
- *
- * `existingWindow` — the Cashtab tab the onboarding "Get Cashtab" step already
- * opened (its actual Window handle). When present (and still open, and there's
- * no desktop extension), login REUSES that exact window for the payment rather
- * than opening a second, competing cashtab.com tab. This matters most on iOS
- * Chrome, where neither named-window reuse NOR window.close() works — so a
- * leftover Cashtab tab can't be merged or dismissed, and its presence breaks
- * Cashtab's self-close-and-return (you're left stranded on Cashtab). Holding the
- * real handle and navigating THAT window is the only reliable way to keep one
- * tab. Without an existing window, opens its own placeholder tab to survive the
- * async nonce fetch — except with the extension, where nothing is opened.
+ * Call SYNCHRONOUSLY inside the Login tap (before navigating to /login). Opens a
+ * placeholder tab (brought to the foreground by window.open — the only way to
+ * foreground a Cashtab tab on iOS) to survive the async nonce fetch, except with
+ * the desktop extension present, where nothing is opened (in-page popup). Named
+ * 'cashtab' so it reuses an existing Cashtab tab where the browser honors that
+ * (desktop / Android) instead of piling up a second one.
  */
-export function armLoginLaunch(existingWindow?: Window | null): void {
+export function armLoginLaunch(): void {
   // Drop a stale arm (e.g. a previous Login tap that never reached /login) so we
   // never leak more than one blank tab.
   if (pending) abortCashtabPayment(pending)
-  // Reuse the onboarding's Cashtab tab by HANDLE when we have one open and no
-  // extension will handle the payment in-page.
-  if (existingWindow && !existingWindow.closed && !isCashtabExtensionAvailable()) {
-    pending = { hasExtension: false, placeholderWindow: existingWindow }
-    return
-  }
   pending = beginCashtabPayment('cashtab')
 }
 
