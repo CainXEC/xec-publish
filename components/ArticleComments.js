@@ -496,6 +496,25 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
     if (postId && canComment) void fetchComments()
   }, [postId, canComment, fetchComments])
 
+  // A notification for a comment/reply links to #comment-<txid>. Once comments
+  // are in, jump straight to it (native anchor scroll fires too early — before
+  // this list exists — and ScrollToTopOnRouteChange defers to any URL hash) and
+  // briefly highlight it so the reader isn't stuck scanning the whole thread.
+  const [jumpTxid, setJumpTxid] = useState(null)
+  useEffect(() => {
+    if (loading || comments.length === 0) return
+    const hash = window.location.hash
+    if (!hash.startsWith('#comment-')) return
+    const txid = hash.slice('#comment-'.length)
+    const el = document.getElementById(hash.slice(1))
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setJumpTxid(txid)
+    const t = setTimeout(() => setJumpTxid(null), 1600)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, comments.length])
+
   // Upsert by txid: append a new comment, OR replace an existing row with the
   // same txid. The replace is what lets a pocket comment show OPTIMISTICALLY (a
   // temp `optimistic-<txid>` id) and then, when its background confirm lands, take
@@ -650,7 +669,11 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
                 : undefined
 
             return (
-              <li key={comment.txid || comment.id} className="commentitem">
+              <li
+                key={comment.txid || comment.id}
+                id={comment.txid ? `comment-${comment.txid}` : undefined}
+                className={`commentitem${jumpTxid === comment.txid ? ' pow-jump' : ''}`}
+              >
                 {parent ? (
                   <p className="comment-replyingto">
                     <span className="comment-replyarrow">↳</span> Replying to{' '}

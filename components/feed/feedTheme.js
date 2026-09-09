@@ -1091,6 +1091,10 @@ html:not(.dark) .dashhandle-tip{background:#fdfcf8;border-color:#e3dfd2;color:#1
 .pow-feed .tnode.focused .tdot{position:static;flex:none;width:11px;height:11px;
   background:var(--cyan);box-shadow:0 0 10px rgba(61,240,255,.6);}
 .pow-feed .tnode.focused.lineup::before{left:14px;top:0;height:22px;}
+/* Deep-linked from a reply notification (#post-<txid>): a brief fade on the
+   focused post itself, same fresh-row treatment as the forum comment tree. */
+.pow-feed .tnode.focused.pow-jump{animation:arow-in 1.6s ease;}
+html:not(.dark) .pow-feed .tnode.focused.pow-jump{animation-name:arow-in-light;}
 /* A forum post opens like a Reddit thread: big title heading, then the body. */
 .pow-feed .focustitle{margin:12px 0 0;font-size:26px;font-weight:800;line-height:1.25;color:var(--text);word-break:break-word;}
 /* The forum title on an ANCESTOR node (a titled forum post shown above the
@@ -1121,9 +1125,26 @@ html:not(.dark) .dashhandle-tip{background:#fdfcf8;border-color:#e3dfd2;color:#1
 .pow-feed .fcomment-meta .onchain{font-size:12px;}
 .pow-feed .fcomment-body{margin:5px 0 0;white-space:pre-wrap;word-break:break-word;font-size:14.5px;
   line-height:1.55;color:var(--text);}
-/* Nested children: a thread line on the left + indent, so depth reads at a glance. */
-.pow-feed .fcomment-children{margin-left:8px;padding-left:14px;border-left:2px solid var(--line);}
+/* Nested children: indent under their parent, each with its OWN elbow connector
+   (not one shared line down the whole group) — old-Reddit style, so a reply's
+   line visibly curls into THAT comment instead of reading as one continuous rail
+   that happens to run past unrelated top-level comments below it. */
+.pow-feed .fcomment-children{margin-left:8px;padding-left:14px;}
+.pow-feed .fcomment.nested{position:relative;}
+/* The curl: a vertical stub down from the parent, turning right into THIS
+   comment's own header row via a rounded corner. */
+.pow-feed .fcomment.nested::before{content:'';position:absolute;left:-14px;top:-1px;
+  width:12px;height:21px;border-left:2px solid var(--line);border-bottom:2px solid var(--line);
+  border-bottom-left-radius:8px;}
+/* The trunk continuing on to the NEXT sibling reply — omitted on the last one,
+   since there's nothing further for it to connect to. */
+.pow-feed .fcomment.nested:not(:last-child)::after{content:'';position:absolute;
+  left:-14px;top:20px;bottom:0;width:2px;background:var(--line);}
 .pow-feed .fcomment-reply{margin-top:8px;}
+/* Deep-linked from a notification (#post-<txid>): reuse the activity rail's
+   fresh-row fade so the reader's eye lands on the right comment in the tree. */
+.pow-feed .fcomment.pow-jump > .fcomment-main{animation:arow-in 1.6s ease;}
+html:not(.dark) .pow-feed .fcomment.pow-jump > .fcomment-main{animation-name:arow-in-light;}
 
 @media (prefers-reduced-motion:reduce){.pow-feed *{transition:none!important;animation:none!important;}}
 @media (max-width:480px){.pow-feed .head{padding-top:20px;}}

@@ -208,6 +208,12 @@ html:not(.dark) .pow-article .hr-unlock:disabled{background:transparent;color:va
 .pow-article .commentmuted{margin:16px 0 0;font-size:13px;color:var(--dim);}
 .pow-article .commentlist{list-style:none;margin:24px 0 0;padding:0;display:flex;flex-direction:column;gap:12px;}
 .pow-article .commentitem{border:1px solid var(--line);background:var(--panel2);border-radius:12px;padding:14px 16px;}
+/* Deep-linked from a notification (#comment-<txid>): a brief fade so the reader's
+   eye lands on the right comment instead of having to scan the whole thread. */
+.pow-article .commentitem.pow-jump{animation:pow-comment-in 1.6s ease;}
+@keyframes pow-comment-in{0%{background:rgba(0,255,156,.16);}100%{background:var(--panel2);}}
+html:not(.dark) .pow-article .commentitem.pow-jump{animation-name:pow-comment-in-light;}
+@keyframes pow-comment-in-light{0%{background:var(--accent-tint,#e7f0e7);}100%{background:var(--panel2);}}
 .pow-article .commenthead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
 .pow-article .commentaddr{cursor:pointer;word-break:break-all;font-size:13px;font-weight:600;color:var(--hc,var(--cyan));
   text-decoration:none;transition:text-shadow .15s;}

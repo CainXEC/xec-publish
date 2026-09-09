@@ -29,6 +29,12 @@ export default function ScrollToTopOnRouteChange() {
       return
     }
 
+    // A URL hash (e.g. a notification's #comment-<txid> or #post-<txid> deep
+    // link, or the comments section's own #comments) means something on the
+    // page wants to scroll there itself — don't yank the viewport back to top
+    // out from under it.
+    if (window.location.hash) return
+
     const scrollAllTargets = () => {
       const y = window.scrollY || window.pageYOffset || 0
       if (y > 0) {

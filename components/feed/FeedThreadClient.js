@@ -238,11 +238,14 @@ export default function FeedThreadClient({
   const [deletingRoot, setDeletingRoot] = useState(false)
   const [confirmDialog, confirmDialogNode] = useConfirmDialog()
   // Open a reply-less thread with the composer already up: "No replies yet." was a
-  // dead end, and being first to reply is the whole reason you opened it. Skipped
-  // for a deleted root (nothing to reply to). The pane keys this component by txid,
-  // so swapping threads re-evaluates it.
+  // dead end, and being first to reply is the whole reason you opened it. A forum
+  // post's comment box is ALWAYS up regardless of reply count — commenting is the
+  // primary reason to open a forum thread (Reddit-style), so it shouldn't take an
+  // extra click on 💬 the way an already-busy feed thread does. Skipped for a
+  // deleted root (nothing to reply to). The pane keys this component by txid, so
+  // swapping threads re-evaluates it.
   const [showReply, setShowReply] = useState(
-    initialReplies.length === 0 && !initialPost?.deleted,
+    (forumSlug || initialReplies.length === 0) && !initialPost?.deleted,
   )
   // Auto-opening must NOT steal focus — on mobile that would throw the keyboard up
   // over a post you came to read. Only an explicit tap on 💬 focuses the box.
@@ -355,6 +358,19 @@ export default function FeedThreadClient({
   const ancestors = initialAncestors
   const hasAncestors = ancestors.length > 0
 
+  // A reply notification links to #post-<the reply's own txid>. In a forum
+  // thread that reply is buried in ForumComments' nested tree (which owns its
+  // own jump there); everywhere else the reply IS the focused post already
+  // shown here, so just flash it — no scroll needed, it's already in view.
+  const [jumpHighlight, setJumpHighlight] = useState(false)
+  useEffect(() => {
+    if (forumSlug || !post?.txid) return
+    if (window.location.hash !== `#post-${post.txid}`) return
+    setJumpHighlight(true)
+    const t = setTimeout(() => setJumpHighlight(false), 1600)
+    return () => clearTimeout(t)
+  }, [post?.txid, forumSlug])
+
   const isOwnRoot =
     !rootDeleted && !!viewerAccountId && post?.author_account_id === viewerAccountId
 
@@ -446,7 +462,8 @@ export default function FeedThreadClient({
               it spans full width (content aligned to the dot), with the dot, byline
               and timestamp all on one line above the body. */}
           <article
-            className={`tnode focused${hasAncestors ? ' lineup' : ''}${forumSlug ? ' forumpost' : ''}`}
+            id={post?.txid ? `post-${post.txid}` : undefined}
+            className={`tnode focused${hasAncestors ? ' lineup' : ''}${forumSlug ? ' forumpost' : ''}${jumpHighlight ? ' pow-jump' : ''}`}
           >
             <div className="tbody">
               {forumSlug ? (

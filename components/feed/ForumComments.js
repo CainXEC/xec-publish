@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import FeedBody from '@/components/feed/FeedBody'
 import ComposeBox from '@/components/feed/ComposeBox'
@@ -51,14 +51,17 @@ function CommentByline({ identity, color }) {
  * — recursively — its own child comments, indented. Reddit-style: the whole
  * discussion is visible at once, not drilled into like feed replies.
  */
-function CommentNode({ comment, childrenByParent, viewerAccountId, onReplyAdded, onDeleted, depth }) {
+function CommentNode({ comment, childrenByParent, viewerAccountId, onReplyAdded, onDeleted, depth, jumpTxid }) {
   const [showReply, setShowReply] = useState(false)
   const [translated, setTranslated] = useState(null)
   const kids = childrenByParent.get(comment.txid) ?? []
   const isOwn = !!viewerAccountId && comment.author_account_id === viewerAccountId
 
   return (
-    <div className={`fcomment${depth > 0 ? ' nested' : ''}`}>
+    <div
+      id={`post-${comment.txid}`}
+      className={`fcomment${depth > 0 ? ' nested' : ''}${jumpTxid === comment.txid ? ' pow-jump' : ''}`}
+    >
       <div className="fcomment-main">
         <div className="fcomment-meta">
           <CommentByline identity={comment.displayIdentity ?? comment.author_identity} color={comment.displayColor} />
@@ -154,6 +157,7 @@ function CommentNode({ comment, childrenByParent, viewerAccountId, onReplyAdded,
               onReplyAdded={onReplyAdded}
               onDeleted={onDeleted}
               depth={depth + 1}
+              jumpTxid={jumpTxid}
             />
           ))}
         </div>
@@ -169,6 +173,24 @@ function CommentNode({ comment, childrenByParent, viewerAccountId, onReplyAdded,
  * deleted/withheld) is promoted to a top-level comment so it isn't lost.
  */
 export default function ForumComments({ replies, rootTxid, viewerAccountId, onReplyAdded, onDeleted }) {
+  // A forum-reply notification always opens the thread's ROOT (see
+  // forumRootTxid), landing on #post-<the reply's own txid> — jump straight to
+  // it and briefly highlight it once the tree is in, instead of leaving the
+  // reader to hunt for it through a nested Reddit-style thread.
+  const [jumpTxid, setJumpTxid] = useState(null)
+  useEffect(() => {
+    const hash = window.location.hash
+    if (!hash.startsWith('#post-')) return
+    const txid = hash.slice('#post-'.length)
+    const el = document.getElementById(hash.slice(1))
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setJumpTxid(txid)
+    const t = setTimeout(() => setJumpTxid(null), 1600)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replies])
+
   const { childrenByParent, roots } = useMemo(() => {
     const byTxid = new Set(replies.map((r) => r.txid))
     const map = new Map()
@@ -203,6 +225,7 @@ export default function ForumComments({ replies, rootTxid, viewerAccountId, onRe
           onReplyAdded={onReplyAdded}
           onDeleted={onDeleted}
           depth={0}
+          jumpTxid={jumpTxid}
         />
       ))}
     </div>

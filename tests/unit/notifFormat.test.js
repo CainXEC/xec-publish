@@ -107,14 +107,32 @@ describe('targetHref', () => {
     expect(targetHref(row({ type: 'follow', actor_identity: '@alice' }))).toBe('/@alice')
   })
 
-  it('a comment/unlock opens the resolved article link', () => {
-    expect(targetHref(row({ type: 'comment', articleHref: '/posts/my-piece' }))).toBe('/posts/my-piece')
+  it('unlock opens the resolved article link', () => {
     expect(targetHref(row({ type: 'unlock', articleHref: null }))).toBe('#')
   })
 
-  it('reply/quote/like/repost open the feed thread by post_txid', () => {
-    expect(targetHref(row({ type: 'reply', post_txid: 'abc' }))).toBe('/feed/abc')
+  it('a comment jumps straight to that comment; an old row with no action_txid falls back to the section', () => {
+    expect(
+      targetHref(row({ type: 'comment', articleHref: '/posts/my-piece', action_txid: 'c1' })),
+    ).toBe('/posts/my-piece#comment-c1')
+    expect(targetHref(row({ type: 'comment', articleHref: '/posts/my-piece' }))).toBe(
+      '/posts/my-piece#comments',
+    )
+    expect(targetHref(row({ type: 'comment', articleHref: null }))).toBe('#')
+  })
+
+  it('a reply opens the reply itself, not the post it replied to', () => {
+    expect(targetHref(row({ type: 'reply', post_txid: 'abc', action_txid: 'def' }))).toBe(
+      '/feed/def#post-def',
+    )
+    // an old row recorded before action_txid existed falls back to the target post
+    expect(targetHref(row({ type: 'reply', post_txid: 'abc' }))).toBe('/feed/abc#post-abc')
     expect(targetHref(row({ type: 'reply', post_txid: null }))).toBe('#')
+  })
+
+  it('quote/like/repost open the feed thread by post_txid', () => {
+    expect(targetHref(row({ type: 'quote', post_txid: 'abc' }))).toBe('/feed/abc')
+    expect(targetHref(row({ type: 'like', post_txid: 'abc' }))).toBe('/feed/abc')
   })
 
   it('an article mention opens the article; a feed mention opens the post', () => {
