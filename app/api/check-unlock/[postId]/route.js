@@ -5,25 +5,7 @@ import { signCookieValue, verifyCookieValue } from '@/lib/cookieSigner'
 import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
-
-/** All stored forms of every address linked to an account, prefix-agnostic
- *  (matches /api/me). After a change-address swap the old wallet stays linked,
- *  so unlocks it paid for keep restoring on this account. */
-async function accountAddressForms(supabase, accountId, sessionAddress) {
-  const { data: rows } = await supabase
-    .from('account_addresses')
-    .select('address')
-    .eq('account_id', accountId)
-  return [
-    ...new Set(
-      [sessionAddress, ...(rows ?? []).map((r) => String(r.address ?? ''))]
-        .filter(Boolean)
-        .map((a) => String(a).trim().toLowerCase().replace(/^ecash:/, ''))
-        .filter(Boolean)
-        .flatMap((bare) => [bare, `ecash:${bare}`]),
-    ),
-  ]
-}
+import { accountUnlockAddressForms } from '@/lib/accountUnlockAddresses'
 
 export async function GET(request, { params }) {
   const supabase = adminDb()
@@ -61,7 +43,7 @@ export async function GET(request, { params }) {
     .from('unlocks')
     .select('id, txid')
     .eq('post_id', postId)
-    .in('payer_address', await accountAddressForms(supabase, acct.accountId, acct.address))
+    .in('payer_address', await accountUnlockAddressForms(supabase, acct.accountId, acct.address))
     .limit(1)
     .maybeSingle()
 
