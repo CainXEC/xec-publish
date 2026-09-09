@@ -531,7 +531,11 @@ async function buildActivity(req: NextRequest) {
       target: snippet(p.content),
       amountXec: p.amount_sats == null ? null : p.amount_sats / 100,
       at: p.created_at,
-      href: `/feed/${p.txid}`,
+      // A reply's OWN permalink already focuses it directly; a forum reply's
+      // page resolves up to the forum root instead (Reddit-style), so it also
+      // needs the #post-<txid> anchor to scroll/highlight it there — see
+      // FeedThreadClient/ForumComments. Harmless on a plain post/quote page.
+      href: kind === "reply" ? `/feed/${p.txid}#post-${p.txid}` : `/feed/${p.txid}`,
       txid: p.txid,
     });
   }
@@ -788,7 +792,9 @@ async function buildActivity(req: NextRequest) {
       target: cp.title ?? "an article",
       amountXec: c.amount_sats == null ? null : c.amount_sats / 100,
       at: c.created_at,
-      href: `${articleHref(cp.slug, cp.legacy)}#comments`,
+      // Jump straight to this comment (ArticleComments renders #comment-<txid>
+      // on each one) instead of just the comments section.
+      href: `${articleHref(cp.slug, cp.legacy)}#comment-${c.txid}`,
       slug: cp.slug,
       txid: c.txid,
     });

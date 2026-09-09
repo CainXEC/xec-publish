@@ -293,14 +293,28 @@ export default function ActivityRail({
             // threads via onOpenThread, articles via onOpenArticle. A row is one
             // or the other, never both. Modifier / middle clicks fall through to
             // the real href (new tab, etc.); everything else opens in place.
+            // A reply/comment row's href carries a #post-<txid>/#comment-<txid>
+            // anchor now (see /api/activity) — split it off before pulling the
+            // bare txid out, and carry it along so the pane can still land on
+            // the exact spot even though swapping panes is a client-side swap,
+            // not a real navigation that would set the URL's hash on its own.
+            const [hrefPath, hrefHash] = (it.href ?? '').split('#')
             const threadTxid =
-              onOpenThread && it.href?.startsWith('/feed/') ? it.href.slice('/feed/'.length) : null
+              onOpenThread && hrefPath?.startsWith('/feed/') ? hrefPath.slice('/feed/'.length) : null
             const articleSlug = onOpenArticle && it.slug ? it.slug : null
             const openInPane =
               threadTxid || articleSlug
                 ? (e) => {
                     if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button === 1) return
                     e.preventDefault()
+                    // Always set (or clear) the hash — otherwise a hash left over
+                    // from a previous jump could linger onto an unrelated thread/
+                    // article opened next.
+                    window.history.replaceState(
+                      null,
+                      '',
+                      `${window.location.pathname}${window.location.search}${hrefHash ? `#${hrefHash}` : ''}`,
+                    )
                     if (threadTxid) onOpenThread(threadTxid)
                     else onOpenArticle(articleSlug)
                   }
