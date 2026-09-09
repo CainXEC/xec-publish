@@ -49,6 +49,9 @@ export default async function ForumPage({ params }) {
   const [{ posts, nextCursor }, runnerMap, forumRowCount] = await Promise.all([
     getForumFeedPage({
       forumId: forum.id,
+      // Match the client's default selected tab (ForumPageClient) — Top leads
+      // so it doesn't read as "New [Post]" next to Create Post.
+      sort: 'top',
       viewerAddress: acct?.address ?? '',
       viewerAccountId: acct?.accountId ?? null,
     }),

@@ -28,7 +28,9 @@ export default function ForumPageClient({
 }) {
   const [posts, setPosts] = useState(initialPosts)
   const [nextCursor, setNextCursor] = useState(initialNextCursor)
-  const [sort, setSort] = useState('new') // 'new' (chronological) | 'top' (leaderboard)
+  // 'top' (leaderboard) | 'new' (chronological) — leads with Top so the tab
+  // doesn't read as "New [Post]" next to the Create Post button.
+  const [sort, setSort] = useState('top')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [viewerAccountId, setViewerAccountId] = useState(initialViewerAccountId)
@@ -230,26 +232,6 @@ export default function ForumPageClient({
           </div>
 
           <div className="forumsort">
-            <div className="forumsort-tabs" role="tablist" aria-label="Sort forum posts">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={sort === 'new'}
-                className={`forumsort-tab${sort === 'new' ? ' on' : ''}`}
-                onClick={() => void selectSort('new')}
-              >
-                New
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={sort === 'top'}
-                className={`forumsort-tab${sort === 'top' ? ' on' : ''}`}
-                onClick={() => void selectSort('top')}
-              >
-                Top
-              </button>
-            </div>
             {signedIn ? (
               <button
                 type="button"
@@ -259,6 +241,26 @@ export default function ForumPageClient({
                 {showComposer ? 'Close' : 'Create Post'}
               </button>
             ) : null}
+            <div className="forumsort-tabs" role="tablist" aria-label="Sort forum posts">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={sort === 'top'}
+                className={`forumsort-tab${sort === 'top' ? ' on' : ''}`}
+                onClick={() => void selectSort('top')}
+              >
+                Top
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={sort === 'new'}
+                className={`forumsort-tab${sort === 'new' ? ' on' : ''}`}
+                onClick={() => void selectSort('new')}
+              >
+                New
+              </button>
+            </div>
           </div>
 
           {signedIn && showComposer ? (
