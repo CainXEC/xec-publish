@@ -4,15 +4,9 @@ import { NextResponse } from 'next/server'
 import { verifyCookieValue } from '@/lib/cookieSigner'
 import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
+import { accountUnlockAddressForms } from '@/lib/accountUnlockAddresses'
 
 const supabase = adminDb()
-
-/** All stored forms of an ecash address, prefix-agnostic (matches /api/me). */
-function addressForms(address) {
-  const a = typeof address === 'string' ? address.trim() : ''
-  if (!a) return []
-  return a.startsWith('ecash:') ? [a, a.slice('ecash:'.length)] : [a, `ecash:${a}`]
-}
 
 /** Is this session the author of the post, or an admin? */
 async function isAuthorOrAdmin(acct, postId, supabaseService) {
@@ -196,10 +190,16 @@ export async function DELETE(request, { params }) {
       canDelete = true
     } else {
       // logged-in reader — delete only their own comment. Match against the
-      // display identity AND both address forms (older comments were stamped
-      // with the raw address before handles/identity existed).
+      // display identity AND every address the account has proven (login wallet,
+      // still-linked old wallet, or Pocket) — older comments, and cookie-path
+      // comments, were stamped with the raw payer address rather than the
+      // handle/identity, so a comment made from the Pocket must still be
+      // deletable by the signed-in account that owns it.
       const owned = new Set(
-        [acct.identity, ...addressForms(acct.address)].filter(Boolean),
+        [
+          acct.identity,
+          ...(await accountUnlockAddressForms(supabaseService, acct.accountId, acct.address)),
+        ].filter(Boolean),
       )
       if (commentPayer && owned.has(commentPayer)) canDelete = true
     }
