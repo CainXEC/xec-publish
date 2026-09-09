@@ -883,7 +883,7 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 
 /* ---- article listing (profile → articles) ---- */
 .pow-feed .artlist{margin-top:16px;overflow:hidden;list-style:none;padding:0;}
-.pow-feed .artrow{padding:16px;border-bottom:1px solid var(--line);}
+.pow-feed .artrow{padding:16px;border-bottom:1px solid var(--line);cursor:pointer;}
 .pow-feed .artrow:last-child{border-bottom:none;}
 .pow-feed .artrow-title{display:inline-block;font-size:17px;font-weight:700;line-height:1.35;color:var(--text);
   transition:color .15s,text-shadow .15s;}

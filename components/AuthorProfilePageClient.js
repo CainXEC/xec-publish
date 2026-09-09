@@ -13,6 +13,7 @@ import HandleCarousel from '@/components/HandleCarousel'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
+import { isSelectingWithin, wasDrag } from '@/lib/selectionGuard'
 
 function truncateAddress(addr) {
   const t = String(addr ?? '').trim()
@@ -221,6 +222,7 @@ function articlePriceLabel(priceXec) {
   return `${formatArticleXec(priceXec)} XEC`
 }
 function ArticleRow({ post, onOpen }) {
+  const router = useRouter()
   const href = post.legacy
     ? `/${encodeURIComponent(post.slug)}`
     : `/posts/${encodeURIComponent(post.slug)}`
@@ -237,8 +239,29 @@ function ArticleRow({ post, onOpen }) {
         onOpen(post.slug)
       }
     : undefined
+  // The teaser (and the rest of the row) opens the story too — only the title
+  // itself was clickable, which read like the preview text was inert. The
+  // title's own <a> still handles its own click (real href, modifier-click
+  // support); this only fires for a click elsewhere in the row, and steps
+  // aside for a text selection so the teaser stays copyable.
+  const openRow = (e) => {
+    if (e.target.closest('a, button')) return
+    if (wasDrag(e) || isSelectingWithin(e.currentTarget)) return
+    if (onOpen) onOpen(post.slug)
+    else router.push(href)
+  }
   return (
-    <li className="artrow">
+    <li
+      className="artrow"
+      onClick={openRow}
+      role="link"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter' || e.target.closest('a, button')) return
+        if (onOpen) onOpen(post.slug)
+        else router.push(href)
+      }}
+    >
       <Link
         href={href}
         className="artrow-title"
