@@ -357,7 +357,9 @@ html:not(.dark) .pow-article .commentitem.pow-jump{animation-name:pow-comment-in
 .pow-article .cwhonote{margin:0;font-size:12.5px;color:var(--dim);}
 .pow-article .comment-replyingto{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);margin:0 0 8px;}
 .pow-article .comment-replyarrow{color:var(--dim);}
-.pow-article .comment-replyingto-who{color:var(--hc,var(--cyan));font-weight:600;}
+.pow-article .comment-replyingto-who{color:var(--hc,var(--cyan));font-weight:600;text-decoration:none;transition:text-shadow .15s;}
+.pow-article a.comment-replyingto-who{cursor:pointer;}
+.pow-article a.comment-replyingto-who:hover{text-shadow:0 0 10px rgba(61,240,255,.4);}
 .pow-article .commenttomb{color:var(--dim);font-style:italic;}
 /* pay state (Cashtab opened → polling for the on-chain payment) */
 .pow-article .commentpay{border:1px solid var(--line);background:var(--panel2);border-radius:12px;padding:16px;margin-top:10px;}
@@ -398,7 +400,8 @@ html:not(.dark) .pow-article *{text-shadow:none;}
 /* Byline handle: the account's neon swatch (carried on --hc) is too bright on
    paper — darken it toward ink on the same hue, matching the feed. */
 html:not(.dark) .pow-article .bylink,
-html:not(.dark) .pow-article .commentaddr{color:color-mix(in oklab, var(--hc,var(--cyan)) 58%, #000);}
+html:not(.dark) .pow-article .commentaddr,
+html:not(.dark) .pow-article .comment-replyingto-who{color:color-mix(in oklab, var(--hc,var(--cyan)) 58%, #000);}
 html:not(.dark) .pow-article .prose blockquote{color:#3a3d33;}
 html:not(.dark) .pow-article .commentarea::placeholder{color:#a9a597;}
 /* Prose links: underlined ink-green, no glow (the underline does the work). */

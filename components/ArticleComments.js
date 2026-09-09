@@ -512,7 +512,6 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
     setJumpTxid(txid)
     const t = setTimeout(() => setJumpTxid(null), 1600)
     return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, comments.length])
 
   // Upsert by txid: append a new comment, OR replace an existing row with the
@@ -645,6 +644,10 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
               parent && !parent.deleted && parent.color && parentWho.startsWith('@')
                 ? parent.color
                 : null
+            // Link "Replying to @X" to that commenter's profile, same as the
+            // byline — profileHref already returns null for the placeholder
+            // strings ("a deleted comment" / "a comment"), so no extra guard.
+            const parentProfileTo = parent?.deleted ? null : profileHref(parentWho)
             // "This comment is MINE" — a strict authorship match (byline handle
             // or payer address), NOT the broader delete power: the article author
             // can DELETE any comment (moderation) but is still a stranger to it
@@ -677,12 +680,22 @@ export default function ArticleComments({ postId, canComment, me, isAuthorSessio
                 {parent ? (
                   <p className="comment-replyingto">
                     <span className="comment-replyarrow">↳</span> Replying to{' '}
-                    <span
-                      className="comment-replyingto-who"
-                      style={parentColor ? { '--hc': parentColor } : undefined}
-                    >
-                      {truncateIdentity(parentWho)}
-                    </span>
+                    {parentProfileTo ? (
+                      <Link
+                        href={parentProfileTo}
+                        className="comment-replyingto-who"
+                        style={parentColor ? { '--hc': parentColor } : undefined}
+                      >
+                        {truncateIdentity(parentWho)}
+                      </Link>
+                    ) : (
+                      <span
+                        className="comment-replyingto-who"
+                        style={parentColor ? { '--hc': parentColor } : undefined}
+                      >
+                        {truncateIdentity(parentWho)}
+                      </span>
+                    )}
                   </p>
                 ) : null}
                 <div className="commenthead">
