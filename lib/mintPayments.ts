@@ -48,6 +48,17 @@ function payerOf(tx: any): string | null {
   return first ? scriptToAddress(first.outputScript) : null;
 }
 
+/** True if the mint wallet is a SPENDER here — i.e. this is one of OUR OWN txs
+ *  (a child-genesis mint, a refund, a group-UTXO split), not an incoming payment.
+ *  Those return change to the mint address, so they'd otherwise look like a
+ *  "payment to the mint address" to a naive scan. */
+function spentByAddress(tx: any, address: string): boolean {
+  for (const inp of tx.inputs ?? []) {
+    if (scriptToAddress(inp.outputScript) === address) return true;
+  }
+  return false;
+}
+
 // Recover the tagged mint UUID from a tx's OP_RETURN. Accepts BOTH layouts so
 // payments in flight across the deploy still verify (mirrors walletAuth.nonceOf):
 // the new POWR handle envelope (LOKAD | v0 | OP_9 | mintId) and the legacy bare-UUID
@@ -109,4 +120,38 @@ export async function findMintPayment(
   } catch {
     return null;
   }
+}
+
+export interface ScannedMintPayment extends DetectedPayment {
+  /** The mintId tagged in the tx's OP_RETURN, or null for a foreign/untagged tx. */
+  mintId: string | null;
+}
+
+/** Sweep recent payments to the mint address (newest first), tagging each with
+ *  the mintId recovered from its OP_RETURN. The server-side reconciler uses this
+ *  to find payments whose browser closed before the mint finished — it maps each
+ *  back to its pending_mints row and completes the delivery. Best-effort: an
+ *  empty list on any Chronik failure. */
+export async function scanMintPayments(
+  mintAddress: string,
+  sinceUnix: number,
+  limit = 50,
+): Promise<ScannedMintPayment[]> {
+  const out: ScannedMintPayment[] = [];
+  try {
+    const page = await chronik().address(mintAddress).history(0, limit);
+    for (const tx of page.txs ?? []) {
+      const seen = Number(tx.timeFirstSeen ?? 0);
+      if (seen && seen < sinceUnix) continue;
+      if (spentByAddress(tx, mintAddress)) continue; // our own mint/refund/split — not an incoming payment
+      const sats = satsToAddress(tx, mintAddress);
+      if (sats <= 0) continue; // not a payment TO the mint address
+      const payerAddress = payerOf(tx);
+      if (!payerAddress) continue;
+      out.push({ txid: tx.txid, payerAddress, sats, isFinal: txIsFinal(tx), mintId: taggedMintId(tx) });
+    }
+  } catch {
+    /* leave whatever we collected */
+  }
+  return out;
 }

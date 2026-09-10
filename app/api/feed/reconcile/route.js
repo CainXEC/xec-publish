@@ -6,6 +6,7 @@ import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { adminDb } from '@/lib/db'
 import { txFinalityState } from '@/lib/ecash/finality'
 import { pruneOldFeedNotifications } from '@/lib/feedNotifications'
+import { runMintReconcile } from '@/lib/mintReconcile'
 
 // Feed notifications never expire on their own; the cron prunes anything past
 // this age (read or unread) so the table stays bounded.
@@ -91,7 +92,14 @@ async function runSweep() {
       return { checked: 0, promoted: 0, deleted: 0, skipped: e.message }
     }),
   ])
-  return { posts, events, comments, commentEvents }
+  // Piggyback the mint delivery sweep on this same 5-min cron (no extra cron
+  // slot). Fully isolated: a mint-reconcile failure must never abort the feed
+  // finality reconcile above.
+  const mints = await runMintReconcile().catch((e) => {
+    console.error('[feed-reconcile] mint reconcile skipped', e?.message ?? e)
+    return { error: String(e?.message ?? e) }
+  })
+  return { posts, events, comments, commentEvents, mints }
 }
 
 /**

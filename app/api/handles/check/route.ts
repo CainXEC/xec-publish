@@ -43,8 +43,10 @@ export async function GET(req: NextRequest) {
   const sk = skeleton(raw);
 
   // Run the three lookups. Any hit means unavailable. A name is only "held"
-  // once a payment has landed (status='paid') — unpaid intents don't block, so
-  // nobody can squat names for free by spamming intents.
+  // once a payment has landed and CLAIMED it (status 'paid' or 'stuck') — unpaid
+  // intents don't block, so nobody can squat names for free by spamming intents.
+  // The claim persists past the quote's pay window (a paid mint being retried
+  // still owns the name), so this is not gated on expires_at.
   const [minted, reserved, pending, grantReserved] = await Promise.all([
     supabase.from("handles").select("token_id").eq("handle_skeleton", sk).limit(1).maybeSingle(),
     supabase.from("reserved_handles").select("reason").eq("handle_skeleton", sk).limit(1).maybeSingle(),
@@ -52,8 +54,7 @@ export async function GET(req: NextRequest) {
       .from("pending_mints")
       .select("id")
       .eq("handle_skeleton", sk)
-      .eq("status", "paid")
-      .gt("expires_at", new Date().toISOString())
+      .in("status", ["paid", "stuck"])
       .limit(1)
       .maybeSingle(),
     handleReservedByGrant(supabase, sk),

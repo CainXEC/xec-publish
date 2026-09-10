@@ -52,14 +52,14 @@ export async function POST(req: NextRequest) {
   const { tier, priceSats, auctionOnly } = priceForHandle(display);
   if (auctionOnly) return NextResponse.json({ ok: false, status: "auction", reason: "premium name — auction only" });
 
-  // availability (mirrors the check endpoint). A PAID hold — someone whose
-  // payment has landed and is being minted — blocks a new intent; unpaid
-  // pending rows do not (no free squat).
-  const nowIso = new Date().toISOString();
+  // availability (mirrors the check endpoint). A CLAIM — a row whose payment has
+  // landed and is being delivered ('paid') or is owed delivery ('stuck') — blocks
+  // a new intent; unpaid pending rows do not (no free squat). The claim isn't
+  // gated on expires_at: a paid mint being retried still owns the name.
   const [{ data: taken }, { data: reserved }, { data: paidHold }, grantReserved] = await Promise.all([
     supabase.from("handles").select("token_id").eq("handle_skeleton", sk).limit(1).maybeSingle(),
     supabase.from("reserved_handles").select("reason").eq("handle_skeleton", sk).limit(1).maybeSingle(),
-    supabase.from("pending_mints").select("id").eq("handle_skeleton", sk).eq("status", "paid").gt("expires_at", nowIso).limit(1).maybeSingle(),
+    supabase.from("pending_mints").select("id").eq("handle_skeleton", sk).in("status", ["paid", "stuck"]).limit(1).maybeSingle(),
     handleReservedByGrant(supabase, sk),
   ]);
   if (taken) return NextResponse.json({ ok: false, status: "taken" });

@@ -14,7 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/db";
 import { verifyMintTxid, findMintPayment } from "@/lib/mintPayments";
-import { processPaidMint } from "@/lib/mintProcessor";
+import { processPaidMint, claimPaidOrRefund } from "@/lib/mintProcessor";
 import { autoLoginByPayment } from "@/lib/payAutoLogin";
 
 export const runtime = "nodejs";
@@ -60,18 +60,17 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: true, status: "finalizing" }, { status: 202 });
     }
 
-    // record payer (delivery address) + flip to paid (guard against double-flip)
-    await supabase
-      .from("pending_mints")
-      .update({ status: "paid", payer_address: found.payerAddress, payment_txid: found.txid })
-      .eq("id", mintId)
-      .eq("status", "pending");
+    // Atomically claim the name for this payment, then deliver — or refund it if
+    // an earlier payment already claimed the name (double-buy race).
     m.payer_address = found.payerAddress; // carry the proven payer for auto-login below
+    const claimed = await claimPaidOrRefund(mintId, found.payerAddress, found.txid);
+    // Mint done: paying from your wallet doubles as login (see autoLoginMinter).
+    if (claimed.status === "minted") await autoLoginByPayment(req, m.payer_address);
+    return NextResponse.json({ ok: true, ...claimed });
   }
 
-  // paid -> run the serialized processor (mints, records, or auto-refunds)
+  // status was already 'paid' on entry (a prior poll flipped it) -> run the processor.
   const result = await processPaidMint(mintId);
-  // Mint done: paying from your wallet doubles as login (see autoLoginMinter).
   if (result.status === "minted") await autoLoginByPayment(req, m.payer_address);
   return NextResponse.json({ ok: true, ...result });
 }
