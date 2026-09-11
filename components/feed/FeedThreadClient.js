@@ -238,16 +238,12 @@ export default function FeedThreadClient({
   const [rootDeleted, setRootDeleted] = useState(Boolean(initialPost?.deleted))
   const [deletingRoot, setDeletingRoot] = useState(false)
   const [confirmDialog, confirmDialogNode] = useConfirmDialog()
-  // Open a reply-less thread with the composer already up: "No replies yet." was a
-  // dead end, and being first to reply is the whole reason you opened it. A forum
-  // post's comment box is ALWAYS up regardless of reply count — commenting is the
-  // primary reason to open a forum thread (Reddit-style), so it shouldn't take an
-  // extra click on 💬 the way an already-busy feed thread does. Skipped for a
-  // deleted root (nothing to reply to). The pane keys this component by txid, so
-  // swapping threads re-evaluates it.
-  const [showReply, setShowReply] = useState(
-    (forumSlug || initialReplies.length === 0) && !initialPost?.deleted,
-  )
+  // The reply composer is ALWAYS up on a thread page, regardless of forum-ness
+  // or how many replies already exist — replying is the primary reason you
+  // opened it, so it shouldn't take an extra click on 💬 first. Skipped only
+  // for a deleted root (nothing to reply to). The pane keys this component by
+  // txid, so swapping threads re-evaluates it.
+  const [showReply, setShowReply] = useState(!initialPost?.deleted)
   // Auto-opening must NOT steal focus — on mobile that would throw the keyboard up
   // over a post you came to read. Only an explicit tap on 💬 focuses the box.
   const [replyFocus, setReplyFocus] = useState(false)
