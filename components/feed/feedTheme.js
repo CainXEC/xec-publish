@@ -1834,14 +1834,22 @@ html:not(.dark) .pow-feed .np-entry{border-bottom-color:var(--line);}
      inset. Break it out edge-to-edge and drop the now-pointless dot/rail-line
      (there's no rail to connect to once it's flush with the replies) — font
      size is untouched (.focustitle/.focusbody stay larger), only the
-     horizontal margins change. Forum posts keep their own card look. */
-  .pow-feed .tnode.focused:not(.forumpost){ margin-left:-20px; margin-right:-20px; padding:16px; }
+     horizontal margins change. Forum posts keep their own card look. A
+     hairline below the action row (reply/react/translate) marks where the
+     post ends and the replies begin — there was no border at all before, so
+     it read as open-ended whitespace before "N REPLIES". */
+  .pow-feed .tnode.focused:not(.forumpost){
+    margin-left:-20px; margin-right:-20px; padding:16px;
+    border-bottom:1px solid var(--line);
+  }
   .pow-feed .tnode.focused:not(.forumpost) .tdot{ display:none; }
   .pow-feed .tnode.focused:not(.forumpost).lineup::before{ display:none; }
 
-  /* The "← Feed" button had more air above and below it than it needed. */
-  .pow-feed .threadhead-back{ margin-bottom:8px; }
-  .pow-feed .threadhead-back.hr-back{ padding-top:6px; padding-bottom:6px; }
+  /* The "← Feed" button: half the padding/margin it had (already reduced
+     once), and shifted 4px left so its own edge lands flush with the post
+     text below it (x=16, not the column's default 20px inset). */
+  .pow-feed .threadhead-back{ margin-left:-4px; margin-bottom:4px; }
+  .pow-feed .threadhead-back.hr-back{ padding-top:3px; padding-bottom:3px; }
 }
 
 /* Floating compose button — mobile only, cleared above the fixed bottom nav
