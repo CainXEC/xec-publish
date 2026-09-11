@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useReactionPayment } from '@/components/feed/useReactionPayment'
 import { REACTIONS } from '@/lib/reactions'
 import PocketWaitHint from '@/components/pocket/PocketWaitHint'
+import { useConfirmDialog } from '@/components/ConfirmDialog'
 
 // A handle (@name, short) shows as-is; a raw eCash address gets truncated so the
 // "who reacted" panel doesn't fill with a 40-char string per reactor.
@@ -73,6 +74,8 @@ export default function EngagementBar({
     return () => document.removeEventListener('pointerdown', onDown)
   }, [pickerOpen])
 
+  const [confirmDialog, confirmDialogNode] = useConfirmDialog()
+
   const {
     reposts,
     reposted,
@@ -84,9 +87,11 @@ export default function EngagementBar({
     notice,
     txidInput,
     setTxidInput,
+    undoing,
     startReaction,
     verifyManual,
     cancel,
+    undoRepost,
   } = useReactionPayment({
     endpointBase: '/api/feed/react',
     targetTxid,
@@ -221,11 +226,24 @@ export default function EngagementBar({
           <button
             type="button"
             className={`repostbtn${reposted ? ' on' : ''}`}
-            onClick={() => void startReaction('repost')}
-            disabled={Boolean(pending)}
+            onClick={async () => {
+              if (reposted) {
+                if (
+                  await confirmDialog(
+                    'Undo this repost? The 100 XEC payment you already made isn’t refunded — this only removes it from your reposts and this post’s count.',
+                    { confirmLabel: 'Undo repost' },
+                  )
+                ) {
+                  void undoRepost()
+                }
+                return
+              }
+              void startReaction('repost')
+            }}
+            disabled={Boolean(pending) || undoing}
             aria-pressed={reposted}
-            aria-label="Repost"
-            title={reposted ? 'You reposted this' : 'Repost · 100 XEC to the author'}
+            aria-label={reposted ? 'Undo repost' : 'Repost'}
+            title={reposted ? 'You reposted this · tap to undo' : 'Repost · 100 XEC to the author'}
           >
             🔁 {reposts > 0 ? reposts : ''}
           </button>
@@ -298,6 +316,7 @@ export default function EngagementBar({
       ) : notice ? (
         <p className="notice">{notice}</p>
       ) : null}
+      {confirmDialogNode}
     </div>
   )
 }

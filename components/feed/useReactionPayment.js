@@ -41,6 +41,21 @@ function rememberReacted(action, txid) {
     /* storage full / disabled — the server likedByViewer still covers the common case */
   }
 }
+// The undo counterpart to rememberReacted — used only for repost (the one
+// binary reaction that can be undone). Without this, the device-local memory
+// would keep re-filling `reposted` back to true on the next mount even after
+// the server-side undo succeeded (repostedByViewer || hasReacted(...) never
+// downgrades on its own — that's the whole point of the memory).
+function forgetReacted(action, txid) {
+  if (typeof window === 'undefined' || !txid || !action) return
+  try {
+    const m = loadReacted()
+    delete m[`${action}:${txid}`]
+    window.localStorage.setItem(REACTED_LS_KEY, JSON.stringify(m))
+  } catch {
+    /* best-effort */
+  }
+}
 
 /**
  * The shared paid-reaction flow (like / repost) behind both EngagementBar (feed
@@ -95,6 +110,9 @@ export function useReactionPayment({
   const [notice, setNotice] = useState('')
   const [txidInput, setTxidInput] = useState('')
   const [tipError, setTipError] = useState('')
+  // True while an undo-repost DELETE is in flight — a plain request/response,
+  // not a payment, so it doesn't touch `pending` (that panel is payment-specific).
+  const [undoing, setUndoing] = useState(false)
   const startingRef = useRef(false)
   // Mirrors startingRef as STATE so the parent can gate a tap during the brief
   // prepare window (a ref can't re-render the button). Without it, a rapid second
@@ -281,6 +299,40 @@ export function useReactionPayment({
     [pending, liked, reposted, targetTxid, endpointBase, applyReaction, revertReaction, revertReactedFill, onReacted, onReactFailed, reactedByViewer],
   )
 
+  // Withdraw a repost. The 100 XEC payment already made is permanent on-chain
+  // and is NOT refunded — this only removes the repost's effect on counts and
+  // feed placement (DELETE /api/feed/react), the same "chain stays, our
+  // bookkeeping doesn't" idea as deleting a post. Optimistic, with a revert on
+  // failure; forgetReacted clears this device's memory so a remounted button
+  // doesn't re-fill back to "reposted" on its own.
+  const undoRepost = useCallback(async () => {
+    if (undoing || !reposted) return
+    setUndoing(true)
+    setReposted(false)
+    setReposts((n) => Math.max(0, n - 1))
+    try {
+      const res = await fetch(endpointBase, {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ targetTxid }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) {
+        setReposted(true)
+        setReposts((n) => n + 1)
+        setNotice(data.error || 'Could not undo the repost. Try again.')
+        return
+      }
+      forgetReacted('repost', targetTxid)
+    } catch {
+      setReposted(true)
+      setReposts((n) => n + 1)
+      setNotice('Network hiccup — try again.')
+    } finally {
+      setUndoing(false)
+    }
+  }, [undoing, reposted, endpointBase, targetTxid])
+
   // Poll for the on-chain reaction while a payment is pending, via the shared
   // pollUntil primitive: it owns the interval, the Chronik ws nudge (confirm the
   // instant the payment lands), the 429 backoff (so a stuck poll can't burn the
@@ -373,7 +425,7 @@ export function useReactionPayment({
   return {
     likes, liked, reposts, reposted, reacted,
     pending, starting, intent, inPagePay, notice, txidInput, setTxidInput,
-    tipError,
-    startReaction, verifyManual, cancel,
+    tipError, undoing,
+    startReaction, verifyManual, cancel, undoRepost,
   }
 }
