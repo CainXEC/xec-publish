@@ -327,9 +327,9 @@ html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation-name:pocke
   outline:none;}
 .pow-feed .composetitle::placeholder{color:var(--dim);font-weight:700;}
 .pow-feed .composetitle:focus{border-bottom-color:var(--cyan);}
-.pow-feed .compose textarea{width:100%;resize:none;background:transparent;border:none;outline:none;color:var(--text);
+.pow-feed .compose textarea{width:100%;resize:none;background:var(--panel);border:none;outline:none;color:var(--text);
   font:inherit;font-size:15px;line-height:1.55;box-sizing:border-box;min-height:72px;max-height:360px;overflow-y:auto;
-  display:block;}
+  display:block;border-radius:10px;padding:10px 12px;}
 .pow-feed .compose textarea::placeholder{color:#37655a;}
 /* @mention autocomplete: anchored to the textarea's own wrapper (not the whole
    panel) so it never collides with the poll-composer block below the text.
@@ -1209,6 +1209,11 @@ html:not(.dark) .pow-feed .forumcreate-pay:disabled{box-shadow:none;}
 .pow-feed .forumhead{padding:0 4px 18px;border-bottom:1px solid var(--line);margin-bottom:16px;}
 .pow-feed .forumhead-back{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
   color:var(--cyan);margin-bottom:12px;}
+/* A standalone (non-forum) thread page's own "← Feed" — the same control
+   ThreadPane uses to close the desktop reading pane (.hr-back), but here it's
+   a real navigation (there's no pane to just close), positioned the same
+   place the forum back-link sits: above the ancestors/focused post. */
+.pow-feed .threadhead-back{display:inline-block;margin-bottom:14px;}
 .pow-feed .forumhead-name{font-size:22px;font-weight:800;color:var(--neon);margin:0;}
 .pow-feed .forumhead-title{font-size:15px;color:var(--text);margin:6px 0 0;}
 .pow-feed .forumhead-desc{font-size:13px;line-height:1.55;color:var(--dim);margin:8px 0 0;overflow-wrap:anywhere;}
@@ -1761,6 +1766,9 @@ html:not(.dark) .pow-feed .postcopy:hover{background:rgba(26,28,23,.06);}
 /* Inset fields / recessed surfaces read as a slightly darker paper, not teal. */
 html:not(.dark) .pow-feed .manualrow input,
 html:not(.dark) .pow-feed .tipfield{background:var(--panel2);}
+/* The lighter compose-field surface is a dark-mode-only legibility tweak — on
+   paper the field already reads fine against the page, so keep it plain. */
+html:not(.dark) .pow-feed .compose textarea{background:transparent;}
 html:not(.dark) .pow-feed .compose textarea::placeholder,
 html:not(.dark) .pow-feed .hr-commentarea::placeholder{color:#a9a597;}
 
@@ -1836,9 +1844,10 @@ html:not(.dark) .pow-feed .np-entry{border-bottom-color:var(--line);}
    the clear. */
 .pow-feed .feed-sheet-backdrop{ position:fixed; inset:0; z-index:90; background:rgba(0,0,0,.5);
   display:flex; align-items:flex-start; }
-.pow-feed .feed-sheet{ width:100%; background:var(--bg); border-bottom:1px solid var(--line);
-  border-radius:0 0 16px 16px; max-height:88vh; overflow:auto;
-  padding:calc(8px + env(safe-area-inset-top)) 16px 16px; }
+.pow-feed .feed-sheet{ width:100%; background:var(--bg); border:1px solid var(--line);
+  border-radius:16px; max-height:80vh; overflow:auto;
+  margin-top:calc(12px + env(safe-area-inset-top));
+  padding:8px 16px 16px; }
 .pow-feed .feed-sheet-head{ display:flex; justify-content:flex-end; padding:2px 0; }
 .pow-feed .feed-sheet-close{ background:none; border:none; color:var(--dim); cursor:pointer;
   font-size:20px; line-height:1; padding:4px 6px; }

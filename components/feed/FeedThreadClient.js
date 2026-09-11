@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { requestScrollRestoreOnNextNav } from '@/components/ScrollToTopOnRouteChange'
 import ComposeBox from '@/components/feed/ComposeBox'
 import FeedPost from '@/components/feed/FeedPost'
 import PostCopyLink from '@/components/feed/PostCopyLink'
@@ -330,6 +331,17 @@ export default function FeedThreadClient({
     [router, onOpenThread, onQuoted],
   )
 
+  // Mobile's "← Feed": there's no pane to just close (that's desktop's version
+  // of this button, in ThreadPane), so this does a real navigation back to the
+  // feed — but flags the next route change to RESTORE scroll instead of
+  // starting at the top, same as an actual back-navigation would (see
+  // ScrollToTopOnRouteChange). Only rendered on the standalone page
+  // (embedded/pane hosts already have their own "← Feed" close button).
+  const goToFeed = useCallback(() => {
+    requestScrollRestoreOnNextNav()
+    router.push('/')
+  }, [router])
+
   const post = initialPost
 
   // Toggle the "N quotes" section; fetch the quoting posts the first time it opens.
@@ -452,6 +464,10 @@ export default function FeedThreadClient({
           <Link href={`/f/${forumSlug}`} className="forumhead-back">
             ← /f/{forumSlug}
           </Link>
+        ) : !embedded ? (
+          <button type="button" className="hr-back threadhead-back" onClick={goToFeed}>
+            ← Feed
+          </button>
         ) : null}
         <div className="thread">
           {ancestors.map((a, i) => (

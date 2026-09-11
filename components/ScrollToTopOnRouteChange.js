@@ -29,6 +29,32 @@ function savePosition(pathname, y) {
   }
 }
 
+// An explicit "← Feed" control (e.g. on a mobile thread page, which has no
+// pane to just close) navigates FORWARD via router.push, not history.back —
+// so it wouldn't otherwise hit the popstate-only restore path below even
+// though the reader means the exact same thing: "take me back to the feed,
+// where I was." Call this right before that push; the next route-change
+// effect below consumes the flag once and restores like a real back-nav would.
+const FORCE_RESTORE_KEY = 'pow:forceRestoreScroll'
+
+export function requestScrollRestoreOnNextNav() {
+  try {
+    sessionStorage.setItem(FORCE_RESTORE_KEY, '1')
+  } catch {
+    /* best-effort — worst case this "← Feed" tap just lands at the top */
+  }
+}
+
+function consumeForceRestore() {
+  try {
+    if (!sessionStorage.getItem(FORCE_RESTORE_KEY)) return false
+    sessionStorage.removeItem(FORCE_RESTORE_KEY)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export default function ScrollToTopOnRouteChange() {
   const pathname = usePathname()
   // Set synchronously by the native 'popstate' event (browser back/forward),
@@ -93,8 +119,9 @@ export default function ScrollToTopOnRouteChange() {
 
     const wasPopNav = isPopNav.current
     isPopNav.current = false
+    const forced = consumeForceRestore()
 
-    if (wasPopNav) {
+    if (wasPopNav || forced) {
       const saved = readPositions()[pathname]
       if (typeof saved === 'number') {
         const restore = () => window.scrollTo({ top: saved, left: 0, behavior: 'instant' })
