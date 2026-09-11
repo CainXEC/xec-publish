@@ -14,6 +14,7 @@ import StarterXecCard from '@/components/onboarding/StarterXecCard'
 import { getSeenMap, reorderBySeen } from '@/lib/feedSeenStore'
 import { RANK_FORYOU_FEED } from '@/lib/feedMode'
 import { FEED_CSS } from '@/components/feed/feedTheme'
+import { isRestoreNavigation } from '@/components/ScrollToTopOnRouteChange'
 
 export default function FeedClient({
   initialPosts = [],
@@ -238,6 +239,43 @@ export default function FeedClient({
       [key]: typeof patch === 'function' ? patch(prev[key]) : { ...prev[key], ...patch },
     }))
   }, [])
+
+  // Mobile has no reading pane to keep the feed mounted through (see the
+  // wideShell note above) — tapping a post is a REAL navigation, so returning
+  // via "← Feed" or the back gesture remounts this component from scratch,
+  // and any "Load more" pages the reader had pulled in were plain client
+  // state, gone. Cache them in sessionStorage and, on a genuine restore
+  // navigation (isRestoreNavigation — a back/forward, or "← Feed"'s explicit
+  // signal), swap them back in ONCE hydration is done (matching the SSR
+  // markup on first paint avoids a hydration mismatch) so "page 2" is still
+  // there instead of dropping the reader back at the bottom of page 1.
+  const FEED_CACHE_KEY = 'pow:feedCache:foryou'
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isRestoreNavigation()) return
+    try {
+      const raw = sessionStorage.getItem(FEED_CACHE_KEY)
+      if (!raw) return
+      const cached = JSON.parse(raw)
+      if (Array.isArray(cached?.posts) && cached.posts.length > tabs.foryou.posts.length) {
+        patchTab('foryou', (t) => ({ ...t, posts: cached.posts, nextCursor: cached.nextCursor ?? null }))
+      }
+    } catch {
+      /* best-effort — worst case this "back" just lands on the fresh first page */
+    }
+    // Runs once on mount, right after the SSR-matching first paint.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      sessionStorage.setItem(
+        FEED_CACHE_KEY,
+        JSON.stringify({ posts: tabs.foryou.posts, nextCursor: tabs.foryou.nextCursor }),
+      )
+    } catch {
+      /* best-effort — a full sessionStorage just means no cache for the next "back" */
+    }
+  }, [tabs.foryou.posts, tabs.foryou.nextCursor])
 
   // Freshness: float posts you've already SEEN (scrolled past on a prior visit)
   // below the unseen ones, so a return visit doesn't lead with the same post. The

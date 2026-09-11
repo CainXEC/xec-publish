@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 
 // Remembers each path's scroll position for the tab's session, so a BACK
@@ -29,48 +29,63 @@ function savePosition(pathname, y) {
   }
 }
 
-// An explicit "← Feed" control (e.g. on a mobile thread page, which has no
-// pane to just close) navigates FORWARD via router.push, not history.back —
-// so it wouldn't otherwise hit the popstate-only restore path below even
-// though the reader means the exact same thing: "take me back to the feed,
-// where I was." Call this right before that push; the next route-change
-// effect below consumes the flag once and restores like a real back-nav would.
-const FORCE_RESTORE_KEY = 'pow:forceRestoreScroll'
+// Two ways a navigation can mean "take me back to where I was": a real
+// browser back/forward (a native 'popstate'), or an explicit in-page control
+// with no pane to just close (a mobile thread page's "← Feed") that instead
+// does a normal router.push and calls requestScrollRestoreOnNextNav first.
+// Both are recorded as a TIMESTAMP in sessionStorage, not a one-shot
+// "consume" flag — isRestoreNavigation() is a non-destructive peek so more
+// than one component can independently check the same navigation (this one
+// for scroll, FeedClient for its cached "Load more" pages) without a fragile
+// dependency on which of their effects happens to run first. The short
+// window is just long enough to outlast this navigation's mount + retries,
+// short enough that a deliberate click right after a back-nav isn't
+// mistaken for another restore.
+const RESTORE_SIGNAL_WINDOW_MS = 1500
+const POP_NAV_KEY = 'pow:lastPopNavAt'
+const FORCE_RESTORE_KEY = 'pow:forceRestoreScrollAt'
 
-export function requestScrollRestoreOnNextNav() {
+function markTimestamp(key) {
   try {
-    sessionStorage.setItem(FORCE_RESTORE_KEY, '1')
+    sessionStorage.setItem(key, String(Date.now()))
   } catch {
-    /* best-effort — worst case this "← Feed" tap just lands at the top */
+    /* best-effort — worst case this navigation just isn't treated as a restore */
   }
 }
 
-function consumeForceRestore() {
+function isRecent(key) {
   try {
-    if (!sessionStorage.getItem(FORCE_RESTORE_KEY)) return false
-    sessionStorage.removeItem(FORCE_RESTORE_KEY)
-    return true
+    const raw = sessionStorage.getItem(key)
+    if (!raw) return false
+    const ts = Number(raw)
+    return Number.isFinite(ts) && Date.now() - ts < RESTORE_SIGNAL_WINDOW_MS
   } catch {
     return false
   }
 }
 
+/** True when the CURRENT navigation is a "return to where I was" one. Peek,
+ *  not consume — safe to call from any number of components. */
+export function isRestoreNavigation() {
+  return isRecent(POP_NAV_KEY) || isRecent(FORCE_RESTORE_KEY)
+}
+
+export function requestScrollRestoreOnNextNav() {
+  markTimestamp(FORCE_RESTORE_KEY)
+}
+
 export default function ScrollToTopOnRouteChange() {
   const pathname = usePathname()
-  // Set synchronously by the native 'popstate' event (browser back/forward),
-  // which fires BEFORE the pathname-change effect below runs — pushState-based
-  // navigation (router.push, a <Link> click) never fires it, so this reliably
-  // tells the two apart.
-  const isPopNav = useRef(false)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
     if ('scrollRestoration' in history) {
       history.scrollRestoration = 'manual'
     }
-    const onPopState = () => {
-      isPopNav.current = true
-    }
+    // pushState-based navigation (router.push, a <Link> click) never fires
+    // 'popstate' — only a real browser back/forward does — so this reliably
+    // tells the two apart.
+    const onPopState = () => markTimestamp(POP_NAV_KEY)
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
@@ -117,11 +132,7 @@ export default function ScrollToTopOnRouteChange() {
     // out from under it.
     if (window.location.hash) return
 
-    const wasPopNav = isPopNav.current
-    isPopNav.current = false
-    const forced = consumeForceRestore()
-
-    if (wasPopNav || forced) {
+    if (isRestoreNavigation()) {
       const saved = readPositions()[pathname]
       if (typeof saved === 'number') {
         const restore = () => window.scrollTo({ top: saved, left: 0, behavior: 'instant' })
