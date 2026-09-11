@@ -45,6 +45,7 @@ export async function GET() {
     title: r.title,
     description: r.description,
     postCount: r.post_count,
+    commentCount: replyTotals[r.id] ?? 0,
     runner: runnerMap[r.runner_account_id]?.handle
       ? `@${runnerMap[r.runner_account_id].handle}`
       : null,

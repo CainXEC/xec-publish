@@ -130,6 +130,11 @@ export default function ForumDirectory({ signedIn }) {
                   <span>
                     {f.postCount} post{f.postCount === 1 ? '' : 's'}
                   </span>
+                  {f.commentCount > 0 ? (
+                    <span>
+                      {f.commentCount} comment{f.commentCount === 1 ? '' : 's'}
+                    </span>
+                  ) : null}
                   {f.runner ? <span className="forumrow-runner">runner {f.runner}</span> : null}
                 </div>
               </Link>
