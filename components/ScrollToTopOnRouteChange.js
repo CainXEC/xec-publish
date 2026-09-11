@@ -1,17 +1,73 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
+
+// Remembers each path's scroll position for the tab's session, so a BACK
+// navigation (e.g. returning from a feed post you tapped into) can restore it
+// — the mobile equivalent of desktop's reading pane, which never navigates
+// away from the feed at all and so never loses its scroll position. A forward
+// navigation (a normal link click) is unaffected — it still always starts at
+// the top, same as before.
+const STORAGE_KEY = 'pow:scrollPositions'
+
+function readPositions() {
+  try {
+    return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '{}')
+  } catch {
+    return {}
+  }
+}
+
+function savePosition(pathname, y) {
+  try {
+    const map = readPositions()
+    map[pathname] = y
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(map))
+  } catch {
+    /* sessionStorage can throw in a private/locked-down context — best-effort */
+  }
+}
 
 export default function ScrollToTopOnRouteChange() {
   const pathname = usePathname()
+  // Set synchronously by the native 'popstate' event (browser back/forward),
+  // which fires BEFORE the pathname-change effect below runs — pushState-based
+  // navigation (router.push, a <Link> click) never fires it, so this reliably
+  // tells the two apart.
+  const isPopNav = useRef(false)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
     if ('scrollRestoration' in history) {
       history.scrollRestoration = 'manual'
     }
+    const onPopState = () => {
+      isPopNav.current = true
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
   }, [])
+
+  // Continuously remember this page's scroll position (debounced to the last
+  // tick, not every frame) so it's there to restore WHENEVER the reader later
+  // navigates back to it — captured while still on the page, since by the time
+  // a route change actually fires there's nothing reliable left to read.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    let t = null
+    const onScroll = () => {
+      if (t) clearTimeout(t)
+      t = setTimeout(() => {
+        savePosition(pathname, window.scrollY || window.pageYOffset || 0)
+      }, 120)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (t) clearTimeout(t)
+    }
+  }, [pathname])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -34,6 +90,23 @@ export default function ScrollToTopOnRouteChange() {
     // page wants to scroll there itself — don't yank the viewport back to top
     // out from under it.
     if (window.location.hash) return
+
+    const wasPopNav = isPopNav.current
+    isPopNav.current = false
+
+    if (wasPopNav) {
+      const saved = readPositions()[pathname]
+      if (typeof saved === 'number') {
+        const restore = () => window.scrollTo({ top: saved, left: 0, behavior: 'instant' })
+        restore()
+        // Same retry rationale as the scroll-to-top path below: the App Router
+        // can adjust scroll a beat after the route commits.
+        const timeouts = [50, 150, 400].map((delay) => setTimeout(restore, delay))
+        return () => timeouts.forEach(clearTimeout)
+      }
+      // No remembered position for this path (e.g. the very first visit to it
+      // this session) — fall through to the normal scroll-to-top below.
+    }
 
     const scrollAllTargets = () => {
       const y = window.scrollY || window.pageYOffset || 0
