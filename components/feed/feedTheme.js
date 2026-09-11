@@ -1845,7 +1845,7 @@ html:not(.dark) .pow-feed .np-entry{border-bottom-color:var(--line);}
      "← Feed" button above it. */
   .pow-feed .tnode.focused:not(.forumpost){
     margin-left:-20px; margin-right:-20px;
-    padding:6px 16px 16px;
+    padding:10px 16px 16px;
     border-bottom:1px solid var(--line);
   }
   .pow-feed .tnode.focused:not(.forumpost) .tdot{ display:none; }
@@ -1856,12 +1856,12 @@ html:not(.dark) .pow-feed .np-entry{border-bottom-color:var(--line);}
      hidden this narrow) was leaving too much air above the "← Feed" button. */
   .pow-feed .threadwrap{ padding-top:12px; }
 
-  /* The "← Feed" button itself stays full size (.hr-back's own padding,
-     unchanged) — shifted 4px left so its edge lands flush with the post text
-     below it (x=16, not the column's default 20px inset) — and its own
-     margin-bottom dropped to 0 now that the post's padding-top above does
-     the (smaller) job of separating them. */
+  /* The "← Feed" button: shifted 4px left so its edge lands flush with the
+     post text below it (x=16, not the column's default 20px inset), and back
+     to a compact 26px tall (padding 3px top/bottom) — margin-bottom stays 0,
+     the post's own padding-top above is what sets the ~12px gap to the byline. */
   .pow-feed .threadhead-back{ margin-left:-4px; margin-bottom:0; }
+  .pow-feed .threadhead-back.hr-back{ padding-top:3px; padding-bottom:3px; }
 
   /* "N REPLIES" had more air above and below it than the tighter thread page
      around it now calls for. */
