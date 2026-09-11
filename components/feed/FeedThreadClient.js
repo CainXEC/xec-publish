@@ -496,7 +496,10 @@ export default function FeedThreadClient({
                 <span aria-hidden className="dot">
                   ·
                 </span>
-                <span className="time">{createdAt}</span>
+                <span className="time time-full">{createdAt}</span>
+                <span className="time time-relative" suppressHydrationWarning>
+                  {timeAgo(post.created_at)}
+                </span>
                 <span aria-hidden className="dot">
                   ·
                 </span>

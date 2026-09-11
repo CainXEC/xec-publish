@@ -1214,6 +1214,10 @@ html:not(.dark) .pow-feed .forumcreate-pay:disabled{box-shadow:none;}
    a real navigation (there's no pane to just close), positioned the same
    place the forum back-link sits: above the ancestors/focused post. */
 .pow-feed .threadhead-back{display:inline-block;margin-bottom:14px;}
+/* Desktop shows the focused post's full date; mobile swaps it for the same
+   relative "1h"/"3d" the feed already uses — the full date (plus the byline,
+   dots and on-chain link all on the same row) was overflowing on a phone. */
+.pow-feed .tnode.focused .time-relative{display:none;}
 .pow-feed .forumhead-name{font-size:22px;font-weight:800;color:var(--neon);margin:0;}
 .pow-feed .forumhead-title{font-size:15px;color:var(--text);margin:6px 0 0;}
 .pow-feed .forumhead-desc{font-size:13px;line-height:1.55;color:var(--dim);margin:8px 0 0;overflow-wrap:anywhere;}
@@ -1817,6 +1821,27 @@ html:not(.dark) .pow-feed .np-entry{border-bottom-color:var(--line);}
   .pow-feed .feed-main .tabs{
     margin-top:0; position:sticky; top:var(--topbar-h, 55px); z-index:40; background:var(--bg);
   }
+
+  /* The thread page's focused post shows the relative time (see .time-relative
+     above) instead of the full date, which was overflowing the meta row
+     alongside the byline + on-chain link. */
+  .pow-feed .tnode.focused .time-full{ display:none; }
+  .pow-feed .tnode.focused .time-relative{ display:inline; }
+
+  /* Align the focused post's own margins with the replies below it: it was
+     using the ancestor-rail layout (a dot + gap on top of a 10px inset),
+     landing its text noticeably further right than a reply's flat 16px
+     inset. Break it out edge-to-edge and drop the now-pointless dot/rail-line
+     (there's no rail to connect to once it's flush with the replies) — font
+     size is untouched (.focustitle/.focusbody stay larger), only the
+     horizontal margins change. Forum posts keep their own card look. */
+  .pow-feed .tnode.focused:not(.forumpost){ margin-left:-20px; margin-right:-20px; padding:16px; }
+  .pow-feed .tnode.focused:not(.forumpost) .tdot{ display:none; }
+  .pow-feed .tnode.focused:not(.forumpost).lineup::before{ display:none; }
+
+  /* The "← Feed" button had more air above and below it than it needed. */
+  .pow-feed .threadhead-back{ margin-bottom:8px; }
+  .pow-feed .threadhead-back.hr-back{ padding-top:6px; padding-bottom:6px; }
 }
 
 /* Floating compose button — mobile only, cleared above the fixed bottom nav
