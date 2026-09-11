@@ -6,7 +6,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import FeedNotifications from '@/components/feed/FeedNotifications'
 import PocketChip from '@/components/pocket/PocketChip'
 import ThemeToggle from '@/components/ThemeToggle'
-import AnimatedLogo from '@/components/AnimatedLogo'
+import WordmarkLogo from '@/components/feed/WordmarkLogo'
 import GetStartedButton, { OnboardingAutoModal } from '@/components/onboarding/GetStartedModal'
 import { armLoginLaunch } from '@/lib/ecash/loginLaunch'
 
@@ -37,14 +37,35 @@ export default function FeedTopbar({
   // since the hamburger doesn't render below 1100px (the bottom bar takes over).
   const [agentPending, setAgentPending] = useState(null)
   const rootRef = useRef(null)
+  const logoRef = useRef(null)
   const router = useRouter()
   const pathname = usePathname()
 
+  // Is this a hover-capable (desktop) pointer? Drives the wordmark's split
+  // behavior: desktop hovers to peek the balance and clicks to go home; touch has
+  // no hover, so a TAP peeks the balance instead (mobile reaches home via the
+  // bottom bar). Guarded for SSR.
+  const isHoverDevice = () =>
+    typeof window !== 'undefined' && window.matchMedia?.('(hover: hover)')?.matches
+
+  // Desktop hover → flash the balance over the sign (a 2s peek). No-op on touch
+  // (which never really "hovers") and when signed out (nothing to show).
+  const onWordmarkEnter = useCallback(() => {
+    if (isHoverDevice()) logoRef.current?.flash()
+  }, [])
+
   // The wordmark links home. If you're ALREADY home, a Link to the same route
-  // is a no-op — so intercept and hard-refresh the feed instead.
+  // is a no-op — so intercept and hard-refresh the feed instead. On touch, a tap
+  // peeks the balance (2s) instead of navigating — unless there's no balance to
+  // show (signed out), where it falls through to normal home navigation.
   const onWordmarkClick = useCallback(
     (e) => {
       setOpen(false)
+      if (!isHoverDevice() && logoRef.current?.hasBalance()) {
+        e.preventDefault()
+        logoRef.current.flash()
+        return
+      }
       if (pathname === '/') {
         e.preventDefault()
         window.location.reload()
@@ -164,8 +185,14 @@ export default function FeedTopbar({
         <FeedNotifications signedIn={signedIn} onAgentPending={setAgentPending} />
       </div>
 
-      <Link href="/" className="wordmark" onClick={onWordmarkClick} aria-label="Proof of Writing — home">
-        <AnimatedLogo />
+      <Link
+        href="/"
+        className="wordmark"
+        onClick={onWordmarkClick}
+        onMouseEnter={onWordmarkEnter}
+        aria-label="Proof of Writing — home"
+      >
+        <WordmarkLogo ref={logoRef} />
       </Link>
 
       <div className="toplinks">

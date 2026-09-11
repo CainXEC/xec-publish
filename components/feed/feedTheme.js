@@ -49,6 +49,31 @@ export const FEED_CSS = `
 .pow-feed .wordmark{font-size:clamp(17px,4vw,20px);font-weight:800;letter-spacing:.17em;text-transform:uppercase;color:var(--neon);
   text-shadow:0 0 8px rgba(0,255,156,.5);white-space:nowrap;line-height:1;
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);}
+/* Wordmark ⇄ live-balance takeover. The sign and the balance readout share the
+   centered masthead slot; WordmarkLogo cross-fades between them on a balance
+   change, then back. The balance is absolutely centered on the slot (not inset)
+   so a wide figure stays centered instead of clipping to the sign's width. */
+.pow-feed .wm-stack{position:relative;display:inline-flex;align-items:center;justify-content:center;}
+.pow-feed .wm-logo{transition:opacity .12s ease;}
+.pow-feed .wm-bal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .12s ease;
+  /* Match the AnimatedLogo sign EXACTLY so the balance reads as the same mark and
+     the crossfade doesn't shift anything but the text: same Bebas face + size
+     clamp + 0.09em tracking, and weight 400 — NOT the .wordmark's inherited 800,
+     which faux-bolds the single-weight Bebas and made the number look heavier. */
+  font-family:var(--pow-logo-font,'Bebas Neue',Impact,'Arial Narrow',sans-serif);
+  font-size:clamp(25px,2.8vw,30px);font-weight:400;letter-spacing:.09em;line-height:1;
+  /* Color + glow copied from AnimatedLogo.module.css .letter (dark): the hot
+     near-white neon (--pow-neon-hot) with the tight green glow (--pow-neon +
+     --pow-glow). Light/paper is handled below. */
+  color:#e8fff5;text-shadow:0 0 3px #00ff9c,0 0 7px rgba(0,255,156,.55);}
+.pow-feed .wm-stack.wm-bal-on .wm-logo{opacity:0;}
+.pow-feed .wm-stack.wm-bal-on .wm-bal{opacity:1;}
+/* Light/paper: match the sign's rendered ink look — ink green + a hairline
+   stroke. (The sign's own emboss text-shadow is itself killed by the blanket
+   text-shadow:none reset below, so the balance stays shadow-less too and the two
+   match; only color + stroke need setting here.) */
+html:not(.dark) .pow-feed .wm-bal{color:#0b6e43;-webkit-text-stroke:0.6px rgba(11,110,67,.35);}
 /* Topbar item placement (flex order). The pocket (order:1) sits just after the
    hamburger on the LEFT. Desktop: [hamburger][pocket] … [bell][theme].
    Mobile (<1100): hamburger gone, [bell][pocket] … [theme]. */

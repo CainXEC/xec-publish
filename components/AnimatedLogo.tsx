@@ -161,14 +161,16 @@ const AnimatedLogo = forwardRef<AnimatedLogoHandle, AnimatedLogoProps>(
     // first paint (no flash of lit text, then dark, then ignite). Gated to once
     // per full page load (module flag): a refresh replays it, SPA-nav remounts
     // don't. The dev bench passes forceAnimate to bypass the gate on every mount.
+    // Just the power-on now — the follow-up per-word flicker sweep was removed
+    // (it competed with the wordmark's balance-takeover flash). The sign lights
+    // up once and holds steady. runSweep is kept only for the dev bench's replay.
     useIsomorphicLayoutEffect(() => {
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
       if (!forceAnimate && hasIgnitedThisLoad) return;
       hasIgnitedThisLoad = true;
       setIgniting(true);
-      runSweep(IGNITE_MS + wordLetterCount * STAGGER_STEP_MS + SETTLE_MS);
       return clearTimers;
-    }, [forceAnimate, runSweep, clearTimers, wordLetterCount]);
+    }, [forceAnimate, clearTimers]);
 
     useEffect(() => clearTimers, [clearTimers]);
 

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePocket } from '@/lib/pocket/store'
-import { useRollingSats } from '@/lib/pocket/useRollingSats'
+import { useRollingSats, BALANCE_FLASH_HOLD_MS } from '@/lib/pocket/useRollingSats'
 
 // How long a touch must be held before it jumps straight to /pocket. A shorter
 // tap opens the balance card (which carries its own "Open Pocket →" button, so
@@ -67,7 +67,8 @@ export default function PocketChip() {
     pulseRef.current = pocket.spendPulse
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return undefined
     setFlash(true)
-    const id = setTimeout(() => setFlash(false), 1800)
+    // Same hold as the wordmark balance takeover so both revert together.
+    const id = setTimeout(() => setFlash(false), BALANCE_FLASH_HOLD_MS)
     return () => clearTimeout(id)
   }, [pocket.spendPulse])
 
