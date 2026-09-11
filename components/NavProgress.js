@@ -13,8 +13,18 @@ import { usePathname, useSearchParams } from 'next/navigation'
 //
 // Start signal = the click itself (the URL doesn't change until the route is
 // ready, so we can't wait for that). Completion = a pathname/search change, i.e.
-// the new route actually committed. A safety timeout hides the bar if a
-// navigation is cancelled or a click didn't lead anywhere, so it never sticks.
+// the new route actually committed. If a click never commits a route (a dropped
+// soft navigation, a cancelled load, or a slow route that outran our patience),
+// a safety timeout RESETS the bar — clears it quietly — rather than finishing it
+// to 100%: a stall that produced no page shouldn't masquerade as a success.
+//
+// The window is sized to cover a slow, COLD render of the force-dynamic pages
+// (the home feed can take a few seconds on a cold serverless start) while still
+// clearing a genuinely dropped navigation promptly instead of riding a long dead
+// timer. On a real-but-slow load that commits after this fires, the bar has
+// already cleared, so the new page simply appears with no late 100% flash.
+const STALL_TIMEOUT_MS = 8000
+
 export default function NavProgress() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -31,6 +41,14 @@ export default function NavProgress() {
     trickleRef.current = safetyRef.current = hideRef.current = null
   }
 
+  // Clear the bar WITHOUT the 100% fill — for a navigation that never committed.
+  // Distinct from finish(): reset() says "nothing happened", finish() says "done".
+  const reset = () => {
+    clearTimers()
+    setVisible(false)
+    setProgress(0)
+  }
+
   const start = () => {
     clearTimers()
     setVisible(true)
@@ -41,9 +59,9 @@ export default function NavProgress() {
     trickleRef.current = setInterval(() => {
       setProgress((p) => (p >= 90 ? p : p + Math.max(0.4, (90 - p) * 0.08)))
     }, 200)
-    // If the navigation never commits (same-page click, cancelled load), don't
-    // leave the bar hanging.
-    safetyRef.current = setTimeout(() => finish(), 12000)
+    // If the navigation never commits (dropped/cancelled load, same-page click),
+    // reset — don't leave the bar hanging, and don't fake a completion.
+    safetyRef.current = setTimeout(() => reset(), STALL_TIMEOUT_MS)
   }
 
   const finish = () => {
