@@ -38,10 +38,17 @@ export default async function LegacyAuthorProfilePage({ params }) {
       .limit(1)
 
     const currentHandle = accounts?.[0]?.display_handle ?? null
+    // authors.xec_address keeps the "ecash:" prefix; the /@ profile route wants
+    // the BARE address (the canonical form every other byline links to), so strip
+    // it — otherwise this 301s to the non-canonical /@ecash:<addr> (which still
+    // resolves, but is ugly and gets cached as the permanent target).
+    const bareAddress = author.xec_address
+      ? author.xec_address.toLowerCase().replace(/^ecash:/, '')
+      : ''
     const target = currentHandle
       ? `/@${encodeURIComponent(currentHandle)}`
-      : author.xec_address
-        ? `/@${encodeURIComponent(author.xec_address)}`
+      : bareAddress
+        ? `/@${encodeURIComponent(bareAddress)}`
         : null
 
     // permanentRedirect throws NEXT_REDIRECT — must run outside try/catch.

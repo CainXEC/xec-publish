@@ -176,8 +176,8 @@ export default async function DashboardPage() {
         color: handle ? (a.handle_color ?? null) : null,
         href: handle
           ? `/@${encodeURIComponent(handle)}`
-          : address
-            ? `/@${encodeURIComponent(address)}`
+          : bare
+            ? `/@${encodeURIComponent(bare)}`
             : null,
       })
     }
@@ -240,7 +240,11 @@ export default async function DashboardPage() {
   // account holds one, else the raw wallet address) — never the legacy
   // authors.username, which may name a handle the wallet no longer/never held.
   const identity = formatIdentity(acct.handle, acct.address)
-  const profileHref = `/@${encodeURIComponent(acct.handle ?? acct.address)}`
+  // acct.address carries the "ecash:" prefix; the /@ route wants the bare address
+  // (the canonical form), so strip it for a no-handle account's own profile link.
+  const profileHref = acct.handle
+    ? `/@${encodeURIComponent(acct.handle)}`
+    : `/@${encodeURIComponent(String(acct.address ?? '').toLowerCase().replace(/^ecash:/, ''))}`
 
   return (
     <DashboardClient
