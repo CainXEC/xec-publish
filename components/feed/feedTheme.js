@@ -1828,15 +1828,24 @@ html:not(.dark) .pow-feed .np-entry{border-bottom-color:var(--line);}
 .pow-feed .feed-fab .pnib{ fill:var(--bg); stroke:var(--bg); stroke-width:1.2; stroke-linejoin:round; }
 .pow-feed .feed-fab .pcut{ stroke:var(--neon); stroke-width:1.4; }
 
-/* Compose bottom-sheet (opened by the FAB): a backdrop with a panel that holds
-   the same ComposeBox the top of the feed used to. */
+/* Compose sheet (opened by the FAB): a backdrop with a panel that holds the
+   same ComposeBox the top of the feed used to. Anchored to the TOP of the
+   screen, not the bottom — the on-screen keyboard eats the bottom of the
+   viewport, and a bottom sheet put both the text you're typing and the Post
+   button right where the keyboard covers them. Top-anchored keeps both in
+   the clear. */
 .pow-feed .feed-sheet-backdrop{ position:fixed; inset:0; z-index:90; background:rgba(0,0,0,.5);
-  display:flex; align-items:flex-end; }
-.pow-feed .feed-sheet{ width:100%; background:var(--bg); border-top:1px solid var(--line);
-  border-radius:16px 16px 0 0; max-height:88vh; overflow:auto;
-  padding:8px 16px calc(16px + env(safe-area-inset-bottom)); }
+  display:flex; align-items:flex-start; }
+.pow-feed .feed-sheet{ width:100%; background:var(--bg); border-bottom:1px solid var(--line);
+  border-radius:0 0 16px 16px; max-height:88vh; overflow:auto;
+  padding:calc(8px + env(safe-area-inset-top)) 16px 16px; }
 .pow-feed .feed-sheet-head{ display:flex; justify-content:flex-end; padding:2px 0; }
 .pow-feed .feed-sheet-close{ background:none; border:none; color:var(--dim); cursor:pointer;
   font-size:20px; line-height:1; padding:4px 6px; }
 .pow-feed .feed-sheet-close:hover{ color:var(--text); }
+/* The Post button's own row stays pinned to the bottom of the sheet's
+   scrollable area (not the viewport) — so on a long post (or a poll, or the
+   YouTube-surcharge notice pushing things down) it's still always visible
+   without hunting for it below the fold. */
+.pow-feed .feed-sheet .composebar{ position:sticky; bottom:0; background:var(--bg); z-index:1; }
 `
