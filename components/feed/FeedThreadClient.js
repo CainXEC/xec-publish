@@ -767,7 +767,7 @@ export default function FeedThreadClient({
         <aside className="feed-left" aria-label="The front page — long-form writing">
           <ArticleRail />
         </aside>
-        <main className="wrap" style={{ paddingTop: '28px' }}>
+        <main className="wrap threadwrap">
           {/* A shared thread link is a top entry point for logged-out visitors
               (from X, etc.) — greet them with the same onboarding strip the home
               feed uses, ABOVE the post so the thread is still fully visible. The

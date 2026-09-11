@@ -309,6 +309,9 @@ html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation-name:pocke
    by body{padding-bottom} (see BottomNav) — the wrap must NOT re-reserve that
    height too, or the two stack into a big empty gap above the bar. */
 .pow-feed .wrap{max-width:640px;margin:0 auto;padding:0 20px 56px;}
+/* The thread page's own top padding (was an inline style) — a class so
+   mobile can override it below without touching every other .wrap user. */
+.pow-feed .threadwrap{padding-top:28px;}
 /* Breathing room under the sticky topbar (was an inline style on the feed's
    <main>); a class so the mobile block below can tighten it. */
 .pow-feed .feed-main{padding-top:28px;}
@@ -1837,19 +1840,32 @@ html:not(.dark) .pow-feed .np-entry{border-bottom-color:var(--line);}
      horizontal margins change. Forum posts keep their own card look. A
      hairline below the action row (reply/react/translate) marks where the
      post ends and the replies begin — there was no border at all before, so
-     it read as open-ended whitespace before "N REPLIES". */
+     it read as open-ended whitespace before "N REPLIES". padding-top is cut
+     down (not the 16px on the other three sides) to close up the gap to the
+     "← Feed" button above it. */
   .pow-feed .tnode.focused:not(.forumpost){
-    margin-left:-20px; margin-right:-20px; padding:16px;
+    margin-left:-20px; margin-right:-20px;
+    padding:6px 16px 16px;
     border-bottom:1px solid var(--line);
   }
   .pow-feed .tnode.focused:not(.forumpost) .tdot{ display:none; }
   .pow-feed .tnode.focused:not(.forumpost).lineup::before{ display:none; }
 
-  /* The "← Feed" button: half the padding/margin it had (already reduced
-     once), and shifted 4px left so its own edge lands flush with the post
-     text below it (x=16, not the column's default 20px inset). */
-  .pow-feed .threadhead-back{ margin-left:-4px; margin-bottom:4px; }
-  .pow-feed .threadhead-back.hr-back{ padding-top:3px; padding-bottom:3px; }
+  /* The thread page's own top padding (28px, tuned for desktop's rail
+     alignment — see .npaper's comment, irrelevant here since the rails are
+     hidden this narrow) was leaving too much air above the "← Feed" button. */
+  .pow-feed .threadwrap{ padding-top:12px; }
+
+  /* The "← Feed" button itself stays full size (.hr-back's own padding,
+     unchanged) — shifted 4px left so its edge lands flush with the post text
+     below it (x=16, not the column's default 20px inset) — and its own
+     margin-bottom dropped to 0 now that the post's padding-top above does
+     the (smaller) job of separating them. */
+  .pow-feed .threadhead-back{ margin-left:-4px; margin-bottom:0; }
+
+  /* "N REPLIES" had more air above and below it than the tighter thread page
+     around it now calls for. */
+  .pow-feed .replieshead{ margin:12px 0 6px; }
 }
 
 /* Floating compose button — mobile only, cleared above the fixed bottom nav
