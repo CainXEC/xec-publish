@@ -5,6 +5,7 @@ import { useReactionPayment } from '@/components/feed/useReactionPayment'
 import { REACTIONS } from '@/lib/reactions'
 import PocketWaitHint from '@/components/pocket/PocketWaitHint'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
+import { BALANCE_FLASH_HOLD_MS } from '@/lib/pocket/useRollingSats'
 
 // A handle (@name, short) shows as-is; a raw eCash address gets truncated so the
 // "who reacted" panel doesn't fill with a 40-char string per reactor.
@@ -126,12 +127,14 @@ export default function EngagementBar({
     void startReaction('like', undefined, emoji)
     // Leave the picker open a beat instead of snapping shut — room to tap a
     // second (or third) reaction in one sitting — then quietly close on its
-    // own if nothing else happens. Each reaction restarts the window.
+    // own if nothing else happens. Each reaction restarts the window. Shares
+    // its hold time with the Pocket balance flash, so the two beats feel the
+    // same across the site rather than being separate tuned literals.
     clearCloseTimer()
     closeTimerRef.current = setTimeout(() => {
       closeTimerRef.current = null
       setPickerOpen(false)
-    }, 1500)
+    }, BALANCE_FLASH_HOLD_MS)
   }
 
   // Pills: emojis with a count, most-used first.

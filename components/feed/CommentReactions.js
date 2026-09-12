@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useReactionPayment } from '@/components/feed/useReactionPayment'
 import { REACTIONS } from '@/lib/reactions'
+import { BALANCE_FLASH_HOLD_MS } from '@/lib/pocket/useRollingSats'
 
 // Handle (@name) shown as-is; a raw eCash address truncated for the who-reacted panel.
 function truncateAddress(addr) {
@@ -97,12 +98,14 @@ export default function CommentReactions({
     void startReaction('like', undefined, emoji)
     // Leave the picker open a beat instead of snapping shut — room to tap a
     // second (or third) reaction in one sitting — then quietly close on its
-    // own if nothing else happens. Each reaction restarts the window.
+    // own if nothing else happens. Each reaction restarts the window. Shares
+    // its hold time with the Pocket balance flash, so the two beats feel the
+    // same across the site rather than being separate tuned literals.
     clearCloseTimer()
     closeTimerRef.current = setTimeout(() => {
       closeTimerRef.current = null
       setPickerOpen(false)
-    }, 1500)
+    }, BALANCE_FLASH_HOLD_MS)
   }
 
   const pills = useMemo(
