@@ -14,16 +14,6 @@ const bebas = Bebas_Neue({ weight: '400', subsets: ['latin'], display: 'swap', v
 // with the Pocket chip's flash so the two revert together.
 const HOLD_MS = BALANCE_FLASH_HOLD_MS
 
-// Ignore a follow-up balance change within this window of the last flash. A
-// Pocket spend YOU make drops the balance optimistically by the amount sent, but
-// omits the network fee; ~1-2s later Chronik reconciles to the real (slightly
-// lower) balance — a second change that would otherwise flash the sign again.
-// One flash per action: this window must clear that reconciliation lag. An
-// inbound payment is a single change and is unaffected. Kept just past the hold
-// so the number the flash settles on is the reconciled one. Only gates the
-// AUTOMATIC (balance-change) path — a deliberate hover/tap always flashes.
-const RETRIGGER_DEBOUNCE_MS = HOLD_MS + 600
-
 /** sats → whole-XEC with thousands separators (matches the Pocket chip: never
  *  abbreviated, so even a 100-XEC move is a visible digit change to roll). */
 function formatXec(sats) {
@@ -34,20 +24,22 @@ function formatXec(sats) {
  * The masthead wordmark, doubling as a live balance readout. It cross-fades the
  * neon sign to the viewer's total spendable XEC (main wallet + Pocket) and back,
  * on three triggers:
- *   - the balance CHANGES (auto) — respects reduced-motion + a debounce so one
- *     action is one flash;
+ *   - the balance CHANGES (auto) — respects reduced-motion, and skips a change
+ *     that's just the Pocket's optimistic-spend overlay settling (a tx fee
+ *     correcting, not new money — see reconcileSettlePulse) so one action is
+ *     one flash;
  *   - the banner is HOVERED (desktop) or TAPPED (mobile) — driven from FeedTopbar
  *     via the imperative `flash()` handle, a deliberate reveal that always fires.
  * `hasBalance()` lets the tap handler know whether there's anything to show (so a
  * signed-out tap can fall through to normal home navigation instead).
  */
 const WordmarkLogo = forwardRef(function WordmarkLogo(_props, ref) {
-  const { totalSats } = useSelfBalanceSats()
+  const { totalSats, reconcileSettlePulse } = useSelfBalanceSats()
   const rolled = useRollingSats(totalSats)
   const [showBalance, setShowBalance] = useState(false)
   const prevRef = useRef(null)
   const timerRef = useRef(null)
-  const lastFireRef = useRef(0)
+  const settlePulseRef = useRef(reconcileSettlePulse)
   // Latest total in a ref so the imperative handle (read at hover/tap time, after
   // commit) sees the current value without the handle being rebuilt each change.
   const totalSatsRef = useRef(null)
@@ -72,21 +64,29 @@ const WordmarkLogo = forwardRef(function WordmarkLogo(_props, ref) {
   )
 
   // Automatic flash on a real balance change (unsolicited motion → reduced-motion
-  // and the reconciliation debounce both apply here, unlike a hover/tap).
+  // applies here, unlike a hover/tap, and a Pocket-spend settle is skipped —
+  // see reconcileSettlePulse).
   useEffect(() => {
     if (totalSats == null) return
     const prev = prevRef.current
     prevRef.current = totalSats
     if (prev == null || prev === totalSats) return
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return
-    const now = Date.now()
-    if (now - lastFireRef.current < RETRIGGER_DEBOUNCE_MS) return
-    lastFireRef.current = now
+    // A Pocket spend's optimistic drop omits the network fee; when the overlay
+    // later settles to the reconciled figure — the ws nudge usually catches it
+    // in ~1-2s, but a missed nudge falls back to a 20s safety timer — that's
+    // this SAME totalSats change, just late, not a new action. A fixed-window
+    // debounce can't cover a delay that long without also swallowing a
+    // genuinely new, unrelated balance change, so key off the store's own
+    // pulse instead of elapsed time.
+    const settled = reconcileSettlePulse !== settlePulseRef.current
+    settlePulseRef.current = reconcileSettlePulse
+    if (settled) return
     // Reacting to an external system (the live balance) crossing to a new value —
     // the legit "sync from a subscription" case (flash() sets state internally).
     // eslint-disable-next-line react-hooks/set-state-in-effect
     flash()
-  }, [totalSats, flash])
+  }, [totalSats, reconcileSettlePulse, flash])
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
 
