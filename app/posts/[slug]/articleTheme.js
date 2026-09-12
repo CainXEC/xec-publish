@@ -327,12 +327,13 @@ html:not(.dark) .pow-article .commentitem.pow-jump{animation-name:pow-comment-in
 /* Hidden by default; revealed on hover/focus of .creactwrap (like the feed).
    Same fixed 2-rows-of-4 grid as the feed's .reactpicker, not a single pill-
    shaped row — a transparent ::after bridges the gap so the pointer can
-   travel button→picker. */
+   travel button→picker. Visibility is driven ENTIRELY by the .open class
+   (JS-controlled state, incl. hover via onMouseEnter/onMouseLeave) — not raw
+   CSS :hover/:focus-within — so a timed auto-close can't be overridden by the
+   mouse just sitting over the wrap. */
 .pow-article .creactpicker{display:none;position:absolute;bottom:calc(100% + 8px);left:0;z-index:30;
   grid-template-columns:repeat(4,auto);gap:2px;background:var(--panel);border:1px solid var(--line);
   border-radius:12px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.28);}
-.pow-article .creactwrap:hover .creactpicker,
-.pow-article .creactwrap:focus-within .creactpicker,
 .pow-article .creactwrap.open .creactpicker{display:grid;}
 .pow-article .creactpicker::after{content:"";position:absolute;top:100%;left:0;right:0;height:8px;}
 .pow-article .creactopt{background:none;border:none;font-size:22px;line-height:1;padding:4px;

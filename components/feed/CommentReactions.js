@@ -152,10 +152,23 @@ export default function CommentReactions({
   return (
     <span className="creact">
       {!isOwn ? (
-        // The picker reveals on HOVER / focus of this wrap (CSS), like the feed —
-        // a transparent bridge spans the gap so the pointer can travel from the
-        // button up into the picker without the hover dropping.
-        <span className={`creactwrap${pickerOpen ? ' open' : ''}`} ref={wrapRef}>
+        // The picker reveals on HOVER of this wrap — via JS (mouseenter/leave),
+        // not CSS :hover, like the feed — so visibility is entirely governed by
+        // `pickerOpen` and an auto-close timer can actually close it even while
+        // the mouse hasn't moved. A transparent CSS bridge still spans the gap
+        // so the pointer can travel from the button up into the picker.
+        <span
+          className={`creactwrap${pickerOpen ? ' open' : ''}`}
+          ref={wrapRef}
+          onMouseEnter={() => {
+            clearCloseTimer()
+            setPickerOpen(true)
+          }}
+          onMouseLeave={() => {
+            clearCloseTimer()
+            setPickerOpen(false)
+          }}
+        >
           <button
             type="button"
             className="creactbtn"

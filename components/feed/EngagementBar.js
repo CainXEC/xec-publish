@@ -183,11 +183,32 @@ export default function EngagementBar({
   return (
     <div className="engage">
       <div className="engagebar">
-        {/* The picker reveals on hover / focus of this wrap (CSS), like the old
-            tip menu — a transparent bridge spans the gap so the pointer can
-            travel from the button up into the picker without the hover dropping.
+        {/* The picker reveals on hover of this wrap — via JS (mouseenter/leave),
+            not CSS :hover, so visibility is entirely governed by `pickerOpen` and
+            an auto-close timer can actually close it even while the mouse hasn't
+            moved. A transparent CSS bridge still spans the gap so the pointer can
+            travel from the button up into the picker without "leaving" the wrap.
             A tap toggles `.open` for touch, where there's no hover. */}
-        <span className={`reactwrap${pickerOpen ? ' open' : ''}`} ref={wrapRef}>
+        <span
+          className={`reactwrap${pickerOpen ? ' open' : ''}`}
+          ref={wrapRef}
+          onMouseEnter={
+            isOwnPost
+              ? undefined
+              : () => {
+                  clearCloseTimer()
+                  setPickerOpen(true)
+                }
+          }
+          onMouseLeave={
+            isOwnPost
+              ? undefined
+              : () => {
+                  clearCloseTimer()
+                  setPickerOpen(false)
+                }
+          }
+        >
           <button
             type="button"
             className={`reactbtn${isOwnPost && whoOpen ? ' on' : ''}`}
