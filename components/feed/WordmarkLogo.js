@@ -2,7 +2,7 @@
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { Bebas_Neue } from 'next/font/google'
-import AnimatedLogo from '@/components/AnimatedLogo'
+import AnimatedLogo, { IGNITION_TOTAL_MS } from '@/components/AnimatedLogo'
 import { useSelfBalanceSats } from '@/lib/useSelfBalanceSats'
 import { useRollingSats, BALANCE_FLASH_HOLD_MS } from '@/lib/pocket/useRollingSats'
 
@@ -64,14 +64,22 @@ const WordmarkLogo = forwardRef(function WordmarkLogo(_props, ref) {
   )
 
   // Automatic flash on a real balance change (unsolicited motion → reduced-motion
-  // applies here, unlike a hover/tap, and a Pocket-spend settle is skipped —
-  // see reconcileSettlePulse).
+  // applies here, unlike a hover/tap, an in-flight sign entrance holds it off,
+  // and a Pocket-spend settle is skipped — see reconcileSettlePulse).
   useEffect(() => {
     if (totalSats == null) return
     const prev = prevRef.current
     prevRef.current = totalSats
     if (prev == null || prev === totalSats) return
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return
+    // On a fresh page load the main-wallet balance and the Pocket's often
+    // resolve a beat apart (whichever loads second bumps totalSats again) —
+    // right as AnimatedLogo's own ~3s entrance is still lighting up. Showing
+    // the balance takeover mid-ignition read as the balance "beating" the sign.
+    // performance.now() is time since THIS PAGE LOAD, not since mount — on an
+    // in-app navigation (no re-ignition; see hasIgnitedThisLoad) it's already
+    // well past this window, so nothing is held off there.
+    if (performance.now() < IGNITION_TOTAL_MS) return
     // A Pocket spend's optimistic drop omits the network fee; when the overlay
     // later settles to the reconciled figure — the ws nudge usually catches it
     // in ~1-2s, but a missed nudge falls back to a 20s safety timer — that's

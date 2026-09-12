@@ -33,6 +33,14 @@ const BLIP_THROTTLE_MS = 3000;
 
 const DEFAULT_WORDS: [string, string, string] = ['PROOF', 'OF', 'WRITING'];
 
+// Total time from mount until the (default-words) sign is fully lit and has
+// held for a beat — the same math `replay()` uses to know when ignition is
+// truly done. Exported so a sibling that shares the masthead (the wordmark's
+// balance takeover) can hold off until the entrance finishes, instead of the
+// two competing for the same few seconds after a fresh page load.
+export const IGNITION_TOTAL_MS =
+  IGNITE_MS + DEFAULT_WORDS.join('').length * STAGGER_STEP_MS + SETTLE_MS;
+
 // Plays once per full page load. A MODULE-level flag (not sessionStorage): a
 // real refresh re-evaluates the module and replays the entrance, while in-app
 // (SPA) navigations that remount the header — FeedTopbar is rendered per-page,
