@@ -65,14 +65,28 @@ export default function EngagementBar({
   // chip. An outside pointerdown closes it.
   const [pickerOpen, setPickerOpen] = useState(false)
   const wrapRef = useRef(null)
+  // Auto-close timer after a tap-reaction (see react() below) — cleared
+  // whenever the picker closes some other way, so a stale timeout can't fire
+  // and re-close a picker the viewer has since reopened.
+  const closeTimerRef = useRef(null)
+  const clearCloseTimer = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }
   useEffect(() => {
     if (!pickerOpen) return undefined
     const onDown = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setPickerOpen(false)
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        clearCloseTimer()
+        setPickerOpen(false)
+      }
     }
     document.addEventListener('pointerdown', onDown)
     return () => document.removeEventListener('pointerdown', onDown)
   }, [pickerOpen])
+  useEffect(() => clearCloseTimer, [])
 
   const [confirmDialog, confirmDialogNode] = useConfirmDialog()
 
@@ -108,9 +122,16 @@ export default function EngagementBar({
     // slow Cashtab-tab path; a Pocket reaction never sets it, so you can react
     // again the instant the previous one is signed.
     if (pending || starting) return
-    setPickerOpen(false)
     bump(emoji, +1) // optimistic
     void startReaction('like', undefined, emoji)
+    // Leave the picker open a beat instead of snapping shut — room to tap a
+    // second (or third) reaction in one sitting — then quietly close on its
+    // own if nothing else happens. Each reaction restarts the window.
+    clearCloseTimer()
+    closeTimerRef.current = setTimeout(() => {
+      closeTimerRef.current = null
+      setPickerOpen(false)
+    }, 1500)
   }
 
   // Pills: emojis with a count, most-used first.
@@ -177,7 +198,14 @@ export default function EngagementBar({
             title={
               isOwnPost ? 'See who reacted' : reacted ? 'You reacted · React again · 100 XEC' : 'React · 100 XEC'
             }
-            onClick={isOwnPost ? toggleWho : () => setPickerOpen((v) => !v)}
+            onClick={
+              isOwnPost
+                ? toggleWho
+                : () => {
+                    clearCloseTimer()
+                    setPickerOpen((v) => !v)
+                  }
+            }
           >
             {/* Filled heart once you've reacted, so you can tell you already did.
                 The ︎ (text variation selector) forces MONOCHROME presentation

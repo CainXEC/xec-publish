@@ -68,20 +68,41 @@ export default function CommentReactions({
   // where there's no hover. Outside pointerdown closes it.
   const [pickerOpen, setPickerOpen] = useState(false)
   const wrapRef = useRef(null)
+  // Auto-close timer after a tap-reaction (see react() below) — cleared
+  // whenever the picker closes some other way, so a stale timeout can't fire
+  // and re-close a picker the viewer has since reopened.
+  const closeTimerRef = useRef(null)
+  const clearCloseTimer = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }
   useEffect(() => {
     if (!pickerOpen) return undefined
     const onDown = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setPickerOpen(false)
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        clearCloseTimer()
+        setPickerOpen(false)
+      }
     }
     document.addEventListener('pointerdown', onDown)
     return () => document.removeEventListener('pointerdown', onDown)
   }, [pickerOpen])
+  useEffect(() => clearCloseTimer, [])
 
   const react = (emoji) => {
     if (pending || starting || isOwn) return
-    setPickerOpen(false)
     bump(emoji, +1) // optimistic
     void startReaction('like', undefined, emoji)
+    // Leave the picker open a beat instead of snapping shut — room to tap a
+    // second (or third) reaction in one sitting — then quietly close on its
+    // own if nothing else happens. Each reaction restarts the window.
+    clearCloseTimer()
+    closeTimerRef.current = setTimeout(() => {
+      closeTimerRef.current = null
+      setPickerOpen(false)
+    }, 1500)
   }
 
   const pills = useMemo(
@@ -143,7 +164,10 @@ export default function CommentReactions({
             aria-expanded={pickerOpen}
             aria-label="React · 100 XEC"
             title={reacted ? 'You reacted · React again · 100 XEC' : 'React · 100 XEC'}
-            onClick={() => setPickerOpen((v) => !v)}
+            onClick={() => {
+              clearCloseTimer()
+              setPickerOpen((v) => !v)
+            }}
           >
             {/* Filled once you've reacted; the text variation selector keeps it
                 monochrome (the icon's dim color), never the red heart emoji. */}
