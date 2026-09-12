@@ -368,12 +368,19 @@ export default function FeedThreadClient({
 
   // A reply notification links to #post-<the reply's own txid>. In a forum
   // thread that reply is buried in ForumComments' nested tree (which owns its
-  // own jump there); everywhere else the reply IS the focused post already
-  // shown here, so just flash it — no scroll needed, it's already in view.
+  // own jump there, below). Everywhere else the reply IS the focused post
+  // rendered here — but "the focused post" isn't necessarily at the top of the
+  // page: any ancestors above it push it down, and a client-side <Link>
+  // transition (how every notification click actually gets here) doesn't
+  // reliably auto-scroll to a URL hash the way a full page load does. So scroll
+  // it into view ourselves, same as the forum case, instead of assuming it's
+  // already in the viewport.
   const [jumpHighlight, setJumpHighlight] = useState(false)
   useEffect(() => {
     if (forumSlug || !post?.txid) return
     if (window.location.hash !== `#post-${post.txid}`) return
+    const el = document.getElementById(`post-${post.txid}`)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     setJumpHighlight(true)
     const t = setTimeout(() => setJumpHighlight(false), 1600)
     return () => clearTimeout(t)
