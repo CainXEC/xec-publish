@@ -89,11 +89,6 @@ export function useReactionPayment({
   // optimistic pill. Binary like (comments) + repost pass no emoji and ignore these.
   onReacted = null,
   onReactFailed = null,
-  // Fired the instant a Pocket reaction BROADCASTS (tx signed + sent) — the same
-  // moment the Pocket balance drops and its flash begins. Lets a caller anchor a
-  // beat (e.g. auto-closing the emoji picker) to the flash instead of to the tap,
-  // which is a whole /prepare + sign earlier. Only the Pocket instant path fires it.
-  onPaid = null,
 }) {
   const [likes, setLikes] = useState(likeCount)
   const [reposts, setReposts] = useState(repostCount)
@@ -247,7 +242,6 @@ export function useReactionPayment({
             cashtabUrl: data.cashtabUrl,
           }).then((r) => {
             if (r.ok) {
-              onPaid?.() // broadcast → balance drops → flash begins; sync a beat to it
               rememberReacted('react', targetTxid)
               confirmReactionInBackground({
                 endpointBase,
@@ -302,7 +296,7 @@ export function useReactionPayment({
         setStarting(false)
       }
     },
-    [pending, liked, reposted, targetTxid, endpointBase, applyReaction, revertReaction, revertReactedFill, onReacted, onReactFailed, onPaid, reactedByViewer],
+    [pending, liked, reposted, targetTxid, endpointBase, applyReaction, revertReaction, revertReactedFill, onReacted, onReactFailed, reactedByViewer],
   )
 
   // Withdraw a repost. The 100 XEC payment already made is permanent on-chain

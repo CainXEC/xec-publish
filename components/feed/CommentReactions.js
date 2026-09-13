@@ -46,10 +46,6 @@ export default function CommentReactions({
       return next
     })
 
-  // Stable handle so the reaction hook (configured just below) can trigger the
-  // close scheduler, which is defined further down alongside the picker's timer.
-  const scheduleCloseRef = useRef(null)
-
   const {
     reacted,
     pending,
@@ -68,7 +64,6 @@ export default function CommentReactions({
     reactedByViewer,
     onReacted: () => {}, // pill already bumped optimistically; server reconciles
     onReactFailed: (emoji) => bump(emoji, -1), // payment cancelled/failed → undo
-    onPaid: () => scheduleCloseRef.current?.(), // Pocket broadcast → realign to the flash
   })
 
   // The picker reveals on HOVER on desktop (CSS); a TAP toggles it open for touch,
@@ -88,9 +83,8 @@ export default function CommentReactions({
       closeTimerRef.current = null
     }
   }
-  // Auto-close held for the SAME beat as the Pocket balance flash. Fallback from
-  // the tap in react(); re-run from the hook's onPaid at the Pocket broadcast (when
-  // the balance drops + flashes) so the picker and the flash revert together.
+  // Auto-close the picker a fixed BALANCE_FLASH_HOLD_MS after the tap — the same
+  // linger the desktop picker uses.
   const scheduleClose = useCallback(() => {
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
     closeTimerRef.current = setTimeout(() => {
@@ -98,10 +92,6 @@ export default function CommentReactions({
       setPickerOpen(false)
     }, BALANCE_FLASH_HOLD_MS)
   }, [])
-  // Keep the bridge ref pointed at the latest scheduleClose (stable, so once).
-  useEffect(() => {
-    scheduleCloseRef.current = scheduleClose
-  }, [scheduleClose])
   useEffect(() => {
     if (!pickerOpen) return undefined
     const onDown = (e) => {
@@ -119,9 +109,8 @@ export default function CommentReactions({
     if (pending || starting || isOwn) return
     bump(emoji, +1) // optimistic
     void startReaction('like', undefined, emoji)
-    // Fallback close beat (from the tap); for a Pocket reaction the hook's onPaid
-    // re-runs scheduleClose at the broadcast so the picker reverts in sync with the
-    // balance flash rather than a /prepare + sign earlier.
+    // Quietly auto-close a fixed BALANCE_FLASH_HOLD_MS after the tap (same linger
+    // as the desktop picker) — room to tap a second reaction before it closes.
     scheduleClose()
   }
 

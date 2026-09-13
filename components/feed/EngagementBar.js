@@ -82,12 +82,10 @@ export default function EngagementBar({
       closeTimerRef.current = null
     }
   }
-  // Schedule the picker's quiet auto-close, held for the SAME beat as the Pocket
-  // balance flash (BALANCE_FLASH_HOLD_MS). Called from react() as a fallback (from
-  // the tap) and again from the reaction hook's onPaid the instant a Pocket
-  // reaction broadcasts — the moment the balance drops and its flash begins — so
-  // the picker and the flash revert together instead of the picker closing a whole
-  // /prepare + sign earlier.
+  // Schedule the picker's quiet auto-close: a fixed BALANCE_FLASH_HOLD_MS beat
+  // from the tap — the same linger the desktop picker uses. (We briefly anchored
+  // this to the Pocket broadcast to match the balance flash exactly, but that
+  // landed a beat LATE on touch, so it's back to the plain fixed linger.)
   const scheduleClose = useCallback(() => {
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
     closeTimerRef.current = setTimeout(() => {
@@ -134,7 +132,6 @@ export default function EngagementBar({
     reactedByViewer,
     onReacted: () => {}, // pill already bumped optimistically; server reconciles
     onReactFailed: (emoji) => bump(emoji, -1), // payment cancelled/failed → undo
-    onPaid: scheduleClose, // Pocket broadcast → realign the auto-close to the flash
   })
 
   const react = (emoji) => {
@@ -145,11 +142,9 @@ export default function EngagementBar({
     if (pending || starting) return
     bump(emoji, +1) // optimistic
     void startReaction('like', undefined, emoji)
-    // Leave the picker open a beat instead of snapping shut — room to tap a
-    // second (or third) reaction in one sitting — then quietly close on its own.
-    // This is the fallback beat (from the tap); for a Pocket reaction the hook's
-    // onPaid re-runs scheduleClose at the broadcast so the picker reverts in sync
-    // with the balance flash rather than a /prepare + sign earlier.
+    // Leave the picker open a beat instead of snapping shut — room to tap a second
+    // (or third) reaction in one sitting — then quietly close on its own, a fixed
+    // BALANCE_FLASH_HOLD_MS after the tap (the same linger as the desktop picker).
     scheduleClose()
   }
 
