@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useReactionPayment } from '@/components/feed/useReactionPayment'
 import { useCanHover } from '@/lib/useCanHover'
 import { REACTIONS } from '@/lib/reactions'
@@ -46,6 +46,10 @@ export default function CommentReactions({
       return next
     })
 
+  // Stable handle so the reaction hook (configured just below) can trigger the
+  // close scheduler, which is defined further down alongside the picker's timer.
+  const scheduleCloseRef = useRef(null)
+
   const {
     reacted,
     pending,
@@ -64,6 +68,7 @@ export default function CommentReactions({
     reactedByViewer,
     onReacted: () => {}, // pill already bumped optimistically; server reconciles
     onReactFailed: (emoji) => bump(emoji, -1), // payment cancelled/failed → undo
+    onPaid: () => scheduleCloseRef.current?.(), // Pocket broadcast → realign to the flash
   })
 
   // The picker reveals on HOVER on desktop (CSS); a TAP toggles it open for touch,
@@ -83,6 +88,20 @@ export default function CommentReactions({
       closeTimerRef.current = null
     }
   }
+  // Auto-close held for the SAME beat as the Pocket balance flash. Fallback from
+  // the tap in react(); re-run from the hook's onPaid at the Pocket broadcast (when
+  // the balance drops + flashes) so the picker and the flash revert together.
+  const scheduleClose = useCallback(() => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+    closeTimerRef.current = setTimeout(() => {
+      closeTimerRef.current = null
+      setPickerOpen(false)
+    }, BALANCE_FLASH_HOLD_MS)
+  }, [])
+  // Keep the bridge ref pointed at the latest scheduleClose (stable, so once).
+  useEffect(() => {
+    scheduleCloseRef.current = scheduleClose
+  }, [scheduleClose])
   useEffect(() => {
     if (!pickerOpen) return undefined
     const onDown = (e) => {
@@ -100,16 +119,10 @@ export default function CommentReactions({
     if (pending || starting || isOwn) return
     bump(emoji, +1) // optimistic
     void startReaction('like', undefined, emoji)
-    // Leave the picker open a beat instead of snapping shut — room to tap a
-    // second (or third) reaction in one sitting — then quietly close on its
-    // own if nothing else happens. Each reaction restarts the window. Shares
-    // its hold time with the Pocket balance flash, so the two beats feel the
-    // same across the site rather than being separate tuned literals.
-    clearCloseTimer()
-    closeTimerRef.current = setTimeout(() => {
-      closeTimerRef.current = null
-      setPickerOpen(false)
-    }, BALANCE_FLASH_HOLD_MS)
+    // Fallback close beat (from the tap); for a Pocket reaction the hook's onPaid
+    // re-runs scheduleClose at the broadcast so the picker reverts in sync with the
+    // balance flash rather than a /prepare + sign earlier.
+    scheduleClose()
   }
 
   const pills = useMemo(
