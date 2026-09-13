@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useReactionPayment } from '@/components/feed/useReactionPayment'
+import { useCanHover } from '@/lib/useCanHover'
 import { REACTIONS } from '@/lib/reactions'
 import PocketWaitHint from '@/components/pocket/PocketWaitHint'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
@@ -65,6 +66,11 @@ export default function EngagementBar({
   // TAP on the trigger also toggles it open (.open class) — same as the Pocket
   // chip. An outside pointerdown closes it.
   const [pickerOpen, setPickerOpen] = useState(false)
+  // Only drive the picker from mouseenter/leave on hover-capable devices. On a
+  // touch phone the emulated mouseenter on tap would open then the click would
+  // toggle it back shut — the "have to tap twice" bug — so there the tap goes
+  // straight through onClick.
+  const canHover = useCanHover()
   const wrapRef = useRef(null)
   // Auto-close timer after a tap-reaction (see react() below) — cleared
   // whenever the picker closes some other way, so a stale timeout can't fire
@@ -196,20 +202,20 @@ export default function EngagementBar({
           className={`reactwrap${pickerOpen ? ' open' : ''}`}
           ref={wrapRef}
           onMouseEnter={
-            isOwnPost
-              ? undefined
-              : () => {
+            !isOwnPost && canHover
+              ? () => {
                   clearCloseTimer()
                   setPickerOpen(true)
                 }
+              : undefined
           }
           onMouseLeave={
-            isOwnPost
-              ? undefined
-              : () => {
+            !isOwnPost && canHover
+              ? () => {
                   clearCloseTimer()
                   setPickerOpen(false)
                 }
+              : undefined
           }
         >
           <button

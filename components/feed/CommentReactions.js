@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useReactionPayment } from '@/components/feed/useReactionPayment'
+import { useCanHover } from '@/lib/useCanHover'
 import { REACTIONS } from '@/lib/reactions'
 import { BALANCE_FLASH_HOLD_MS } from '@/lib/pocket/useRollingSats'
 
@@ -68,6 +69,9 @@ export default function CommentReactions({
   // The picker reveals on HOVER on desktop (CSS); a TAP toggles it open for touch,
   // where there's no hover. Outside pointerdown closes it.
   const [pickerOpen, setPickerOpen] = useState(false)
+  // Hover-open only on hover-capable devices; on touch the tap goes through
+  // onClick (else the emulated mouseenter+click cancel out — "tap twice" bug).
+  const canHover = useCanHover()
   const wrapRef = useRef(null)
   // Auto-close timer after a tap-reaction (see react() below) — cleared
   // whenever the picker closes some other way, so a stale timeout can't fire
@@ -163,14 +167,22 @@ export default function CommentReactions({
         <span
           className={`creactwrap${pickerOpen ? ' open' : ''}`}
           ref={wrapRef}
-          onMouseEnter={() => {
-            clearCloseTimer()
-            setPickerOpen(true)
-          }}
-          onMouseLeave={() => {
-            clearCloseTimer()
-            setPickerOpen(false)
-          }}
+          onMouseEnter={
+            canHover
+              ? () => {
+                  clearCloseTimer()
+                  setPickerOpen(true)
+                }
+              : undefined
+          }
+          onMouseLeave={
+            canHover
+              ? () => {
+                  clearCloseTimer()
+                  setPickerOpen(false)
+                }
+              : undefined
+          }
         >
           <button
             type="button"
