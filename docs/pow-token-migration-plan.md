@@ -3,7 +3,7 @@
 Migrate the original **POW SLP** token (1,000,000 supply, 0 decimals) to a new
 **POW ALP** token, then use a capped pool to grow Proof of Writing: a time-released
 incentive that rewards bringing in *real* new users, backed by real demand for the
-token (a "boost to promote" sink + fee-funded buyback-burn).
+token (POW-spent-on boosts + handle mints, recycled back into the reward pool).
 
 This is a spec to build from, grounded in primitives this repo already has. It
 can live in this repo (reusing them directly) or a sibling app that imports the
@@ -57,8 +57,8 @@ same libs.
 2. **Split treasury conceptually** (same wallet, tracked in the DB, or two wallets
    for cleaner separation):
    - `swap_reserve` = 400M — funds outgoing swap sends (Part A).
-   - `incentive` = 600M — funds the quarterly growth incentive + boost-burn/buyback
-     accounting (Part B).
+   - `incentive` = 600M — funds the quarterly growth incentive, and receives
+     recycled POW from boosts + handle mints (Part B).
    Two separate wallets is cleaner for accounting and blast-radius; one wallet with
    DB-tracked buckets is simpler. **Recommend two wallets.**
 3. **Burn the founder's ~600K old POW SLP** (a burn tx from the wallet that holds
@@ -139,11 +139,23 @@ Mirrors the existing **verify → gate finality → deliver → record** pattern
 extraction, [lib/ecash/finality.ts](../lib/ecash/finality.ts) for the gate,
 [lib/mintProcessor.ts](../lib/mintProcessor.ts) for build/broadcast).
 
-**Trigger:** the client watches the swap address over Chronik
-([lib/ecash/watchPaymentAddress.ts](../lib/ecash/watchPaymentAddress.ts)); on a tx
-touching it, the client POSTs `{ txid }`. The server **never trusts the client** —
-it re-fetches and re-validates everything from Chronik. (The reconciler also finds
-deposits the client never reported.)
+**Trigger — server-driven, not page-driven.** The swap must complete whether or
+not anyone has the site open, so detection lives on the server, not in a browser:
+
+- **Primary:** a server-side Chronik websocket subscription on the swap address
+  (same [watchPaymentAddress.ts](../lib/ecash/watchPaymentAddress.ts) primitive,
+  run server-side) fires the swap on any inbound tx — within ~1s of the deposit.
+- **Backstop:** the cron reconciler (§7) sweeps the address for any POW SLP UTXO
+  with no `pow_swaps` row and processes it. This alone is sufficient for
+  correctness; the ws is just the fast path.
+- **Optional accelerant:** when a *logged-in* user has the explainer page open, the
+  page MAY POST `{ txid }` on its own ws detection to nudge an immediate run. It is
+  never required, and the server **never trusts it** — it re-fetches and
+  re-validates everything from Chronik regardless.
+
+The invariant: a holder can send POW from any wallet, with no proofofwriting tab
+open ever, and still get their ALP back within seconds (ws) or by the next cron
+tick (backstop).
 
 Steps (all idempotent, keyed on `deposit_txid`):
 1. **Fetch the tx** from Chronik. Reject if not found.
@@ -174,21 +186,38 @@ or a double-mint.
 
 ---
 
-## 6. Client swap page — `/pow-swap`
+## 6. Client swap page — `/pow-swap` (a static explainer, not a tracker)
 
-Logged-in not required (it's an on-chain action), but a Cashtab-driven UX matching
-the rest of the site:
-- Show the **swap address** + a **Cashtab "Swap" button** with a prefilled BIP21
-  for an SLP send of the old POW token (reuse [lib/ecash/cashtabPay.ts](../lib/ecash/cashtabPay.ts)
-  patterns; extension path + web-tab fallback).
-- After the send, **watch the address** over the shared Chronik ws; on detection,
-  POST the txid to `/api/pow-swap` and show live status:
-  `detected → confirming (finality) → ALP sent ✓`.
-- Copy: "Send your original POW. You'll receive 1,000 new POW per old token,
-  usually within a few seconds. Your old tokens are burned in the process."
-- Handle the **no-Cashtab / wrong-token** cases with clear instructions.
+**Decision:** the page's job is to explain the swap and hand over the deposit
+address. It does **not** need to launch Cashtab or track progress — the user's own
+wallet is the proof. The ALP simply arrives back in the sending wallet within
+seconds (the server worker in §5 does the work regardless of the page). This keeps
+Phase 1 small and avoids depending on a Cashtab token-send *deep link*, which
+doesn't reliably pre-fill on the web today (only the extension `sendToken` path or
+a manual token-page send does — a Phase 2 concern, not needed here).
 
-Expected wall-clock: ws detect (~1s) + finality (~2–3s) + ALP send (~1s) ≈ **4–6s**.
+**What the page shows (all static / read-only):**
+- What the migration is and why (gratitude token → durable ALP version), and that
+  it's founder-run and safe to use.
+- The **rate** (1 old POW → 1,000 new POW), both **token IDs**, and the **deposit
+  address** with a **QR code** to scan from any eCash wallet.
+- **Instructions:** "Send your original POW to this address from any eCash wallet.
+  Your new POW arrives back in the *same* wallet within seconds. Your old tokens are
+  burned in the process — no deadline, swap anytime."
+- **Safety copy:** swap from a wallet you control (e.g. Cashtab), never an exchange;
+  the ALP returns to the address the POW came from.
+
+**Optional enhancement — logged-in status strip (fast-follow, not blocking):**
+For a signed-in viewer only, show a small "your recent swaps" list. It works by
+matching a deposit's `sender_address` against the account's proven addresses
+([lib/accountUnlockAddresses.js](../lib/accountUnlockAddresses.js) — the same
+all-addresses set used for unlock gates, incl. the Pocket), so no address entry is
+needed. Anonymous users see none of this and just watch their wallet. This is the
+*only* place `pow_swaps` is ever surfaced to a user; for everyone else the table is
+purely the server's idempotency ledger (§4).
+
+Expected wall-clock the user sees in their wallet: ws detect (~1s) + finality
+(~2–3s) + ALP send (~1s) ≈ **4–6s**.
 
 ---
 
@@ -213,15 +242,32 @@ holders who closed the tab before delivery:
 # Part B — POW demand & the growth-incentive program
 
 The 600M only drives growth if POW is *wanted*. So Part B has two halves: first
-give POW **real demand** (sinks), then **emit it to reward real new users**.
-Emission without sinks is a faucet — recipients dump, price → 0, incentive dead.
-The governing constraint: **emission (≤100M/quarter) must be credibly offset by
-sinks (burns).** Start emission conservative; scale only as sinks prove real.
+give POW **real utility** (things you spend it on), then **emit it to reward real
+new users**. The design is a **circulating utility token, not a deflationary one**:
+POW is earned for growth, spent on boosts + handle mints, and that spend **recycles
+back into the reward pool** to be earned again. No burn-to-zero, no buyback, no
+scarcity pump — value is anchored to what POW *does*. Start emission conservative;
+the recycling loop then extends the runway without minting anything new.
 
 ## 8. The demand side — why anyone wants POW
 
-Tradability (the Cashtab **ALP AMM**) is the *venue*, not the demand. Demand comes
-from POW capturing a slice of the platform's own economics, via two burns:
+Demand comes from **utility, not scarcity**: POW *does things you'd otherwise pay
+XEC for* — it promotes your writing and mints your handle. That intrinsic use is a
+healthier, more durable, and legally safer basis than a "number-go-up" story.
+Tradability (the Cashtab **ALP AMM**) is just the *venue* that lets earners who
+won't use their POW sell it to people who want to use it.
+
+**Recycle, not burn (the core model).** Spent POW is **not destroyed** — it flows
+back into the reward pool and is re-distributed. Earn POW (grow the community) →
+spend POW (get seen / claim a handle) → it **refills the pool** → someone else
+earns it → … A closed loop: POW circulates forever, its velocity *is* platform
+activity, and it never depletes. Burning-on-use would be self-defeating here — a
+fixed supply burned as it's spent means success consumes the token, and deflation
+makes people *hoard* rather than spend the very sinks you want used. (An optional
+*small* burn fraction — say 5–10% of spend — is fine for a mild scarcity tilt; the
+default is recycle.)
+
+Two utility sinks feed that loop:
 
 ### 8.1 Boost sink — "spend POW to promote a post"
 Grounded in the existing ranker ([lib/feedRanking.js](../lib/feedRanking.js)): the
@@ -248,25 +294,43 @@ and saturating** so nothing dominates. The boost lives in that same currency:
 - **Pricing:** start **flat tiered** (Bronze/Silver/Gold = higher ceiling + longer
   window), priced in POW. No auctions in v1 (complexity); revisit once POW's value
   settles.
-- **Spent POW is BURNED.** It's already POW, so "feed the buyback" doesn't apply
-  (buyback converts XEC→POW). Burning boost-spend makes every promotion directly
-  deflationary — the cleanest offset to emission. Track burns publicly.
+- **Spent POW is RECYCLED** into the reward pool (§9.2), not burned — so promoting
+  a post funds the next wave of growth rewards instead of shrinking the supply.
+  (Optionally burn a small fraction for a mild scarcity tilt; recycle the rest.)
 - **Anti-abuse:** boosting buys *placement only*, never organic rank — self-dealing
   engagement still fails the cluster filter. Boosting your own post to farm rewards
   doesn't pay, because rewards are tied to *others'* real activity (§9.1), not to
   reach you bought.
 
-### 8.2 Buyback-and-burn — value accrual
-Commit a **transparent, fixed slice of platform fee revenue (XEC)** to periodically
-**buy POW off the ALP AMM and burn it** (a cron: accumulate earmarked XEC →
-market-buy POW → burn → publish the burn txids). Effect: more platform usage →
-scarcer POW → holders (airdrop recipients, referrers, boosters) share in the
-growth → reason to *hold*. This is the answer to "why would anyone want it":
+### 8.2 Handle-mint sink — "mint your handle with POW"
+The second use: let POW pay for handle NFT mints (which today cost XEC). This gives
+POW a concrete second reason to exist and ties it to the identity system.
 
-> **Spend POW to get your writing seen; hold POW to share in the platform's growth.**
+- **Keep the XEC path — add POW as an alternative or a discount**, not a full
+  replacement. Handle-mint XEC is real platform revenue; going POW-only forfeits
+  it. Options: pay in XEC *or* POW; a POW discount on the XEC price; or POW unlocks
+  a special tier. Decide consciously (§13) — this trades cash revenue for token
+  utility.
+- **Spent POW recycles** into the reward pool, same as boosts.
+- Reuses the existing mint pipeline ([lib/mintProcessor.ts](../lib/mintProcessor.ts))
+  — only the *payment* leg changes (accept a POW send instead of / alongside XEC).
 
-Two independent deflationary forces (boost burns + fee buyback burns) push against
-the airdrop emission. Keep all three numbers visible.
+### 8.3 The recycling loop — why it's sustainable (not deflationary)
+POW spent on boosts (§8.1) and handle mints (§8.2) returns to the **reward pool**
+that funds the growth incentive (§9.2). So the token is a **circulating internal
+economy**, not a shrinking asset:
+
+> **Earn POW by growing the community; spend it to get seen and to claim a handle;
+> it refills the pool and is earned again.**
+
+This is deliberately **not** a buyback/value-accrual design. An earlier draft
+proposed buying POW with fee revenue and burning it — dropped, because that
+optimizes *holder price* (a store-of-value / investment framing), which is not the
+goal and is the piece most likely to draw securities scrutiny. POW's value is
+anchored to **what it does** (≈ the XEC it saves you to boost/mint), which the AMM
+prices naturally. Two benefits of recycling over emitting-only: the pool is
+**self-sustaining** (spending refills it) and the incentive **runway extends past
+the initial 600M** without minting anything new (supply stays fixed at 1B).
 
 ---
 
@@ -294,9 +358,13 @@ Goal (stated): **real new users, pure growth — not one person with 1000 accoun
 - **Caps:** per-referrer per-quarter cap; exclude `is_ai` accounts.
 
 ### 9.2 Quarterly emission + claim
-- **Fixed budget per quarter** (~100M) from the `incentive` wallet, split
-  **pro-rata by each participant's referral+activity score that quarter**, weighted
-  heavily toward qualified referrals (the growth goal).
+- **The reward pool** is the `incentive` wallet's balance: seeded by the 600M, then
+  **topped up by recycled POW** from boosts + handle mints (§8.3). Early quarters
+  draw mostly on the 600M; as usage grows, recycling carries more of the load, so
+  the program can outlast the initial pool without minting anything new.
+- **Fixed budget per quarter** (~100M, or "pool balance ÷ remaining quarters"),
+  split **pro-rata by each participant's referral+activity score that quarter**,
+  weighted heavily toward qualified referrals (the growth goal).
 - **Self-balancing flywheel:** fewer participants → bigger per-person rewards
   (front-loads early adopters); auto-scales down as the crowd grows.
 - **Per-account cap** (e.g. ≤2–3% of the quarter's budget) so **newcomers can win
@@ -314,15 +382,15 @@ Goal (stated): **real new users, pure growth — not one person with 1000 accoun
   deliver + reconciler as the swap.
 
 ### 9.3 Framing & risk — read before launch
-- Keep the public framing **utility + gratitude** ("use POW to get seen; earn it by
-  growing the community"), **not** "buy POW and profit." Buyback + value-accrual
-  mechanics can read as a security / investment contract in some jurisdictions.
-  *Not legal advice* — talk to a lawyer before leaning on the buyback narrative
-  publicly.
+- Keep the public framing **utility + gratitude** ("use POW to get seen and to mint
+  a handle; earn it by growing the community"), **not** "buy POW and profit."
+  Recycling (vs. buyback/burn) keeps the design on the utility side of that line —
+  there's no mechanism engineered to enrich holders. *Not legal advice* — a quick
+  lawyer check on the token framing before public launch is still worth it.
 - **Seed AMM liquidity** (POW+XEC) or the market is unusably thin/volatile early.
 - **Don't over-engineer for ~200 users.** The MVP that creates real pull is just
-  boost-to-promote (§8.1) + fee buyback-burn (§8.2) + the referral emission
-  (§9.1–9.2). Perks/governance later, if ever.
+  boost-to-promote (§8.1) + handle-mint-with-POW (§8.2) + the referral emission
+  (§9.1–9.2), all feeding the recycling loop (§8.3). Perks/governance later, if ever.
 
 ---
 
@@ -352,10 +420,11 @@ Goal (stated): **real new users, pure growth — not one person with 1000 accoun
   filtering (§9.1); still cap per-referrer per-quarter and alert on anomalies.
 - **Boost gaming:** boosting buys placement, not organic rank; self-engagement
   still fails the cluster filter (§8.1). Always render the "Boosted" label.
-- **Buyback slippage/front-running:** thin AMM → size buys sensibly, consider
-  TWAP-style splitting, and publish txids after (not intentions before).
-- **Emission > sinks:** the standing risk. Monitor emitted vs. burned each quarter;
-  hold emission back if sinks lag.
+- **Recycle accounting:** spent-POW must actually land back in the `incentive`
+  pool (§8.3); track recycled-in vs. rewarded-out so the loop is auditable and the
+  pool can't silently drain. If you keep a small burn fraction, publish those txids.
+- **Pool runway:** watch pool balance vs. remaining planned quarters; recycling
+  should carry more of the load over time, but hold emission back if it lags.
 
 ---
 
@@ -380,21 +449,26 @@ Goal (stated): **real new users, pure growth — not one person with 1000 accoun
 **Part A — migration (ship first, self-contained):**
 1. **Token:** genesis 1B ALP (2 dec, no baton); burn the founder's 600K old SLP;
    fund XEC; record both tokenIds. *(On-chain, one-time.)*
-2. **Swap core:** `sql/pow_migration.sql`; `/api/pow-swap` (verify→finality→send→
-   burn); the reconciler entry. Test on a tiny amount end-to-end.
-3. **Swap page:** `/pow-swap` with the Cashtab button + ws status.
+2. **Swap core (the essential part):** `sql/pow_migration.sql`; the
+   verify→finality→send→burn logic; a **server-side ws watcher** on the swap
+   address + the reconciler entry (§5, §7) so swaps complete with no page open;
+   `/api/pow-swap` as the shared handler + optional logged-in accelerant. Test on a
+   tiny amount end-to-end.
+3. **Explainer page:** static `/pow-swap` — rate, token IDs, deposit address + QR,
+   instructions, safety copy (§6). Optional logged-in "recent swaps" strip as a
+   fast-follow.
 4. **Ops:** balance/finality monitoring + alerts; a public migration page at the
    genesis `url` explaining the 1:1000 swap.
 
 **Part B — demand + growth (follows):**
 5. **Demand MVP:** boost-to-promote (§8.1) — `pow_boosts` table, the `boostBoost`
-   ranker term + "Boosted" label, a Cashtab pay-in-POW-and-burn flow. Seed AMM
-   liquidity.
-6. **Buyback-burn (§8.2):** a cron that market-buys POW with earmarked fee XEC and
-   burns it; publish txids.
+   ranker term + "Boosted" label, a Cashtab pay-in-POW flow whose POW lands in the
+   `incentive` pool (recycle). Seed AMM liquidity.
+6. **Handle-mint-with-POW (§8.2):** accept a POW send as payment (or discount) on
+   the existing mint path; recycled to the pool. *(Decide XEC-or-POW first, §13.)*
 7. **Referral + emission (§9):** `/?ref=` capture; `pow_reward_epochs` /
    `pow_reward_claims`; quarterly scoring (cluster-filtered, capped); the
-   per-quarter claim page. Reuse the deliver+reconciler.
+   per-quarter claim page; recycled-POW top-up accounting. Reuse the deliver+reconciler.
 
 ---
 
@@ -402,7 +476,10 @@ Goal (stated): **real new users, pure growth — not one person with 1000 accoun
 
 - **Boost pricing & tiers** (§8.1): flat tiers vs. later auction; exact
   `BOOST_MAX_HOURS` / window / POW prices (tune with the other ranker weights).
-- **Buyback share** (§8.2): what % of fee revenue funds buyback-burn, and cadence.
+- **Handle-mint-with-POW** (§8.2): XEC-or-POW vs. a POW discount vs. a POW-only
+  tier — how much XEC revenue you're willing to trade for token utility.
+- **Recycle vs. small burn** (§8.3): recycle 100% of spend, or burn a small
+  fraction (5–10%) for a mild scarcity tilt.
 - **Referral reward basis** (§9.1): a cut of referee platform fees vs. POW scaled
   to referee spend; the qualification threshold; per-referrer cap.
 - **Emission schedule** (§9.2): per-quarter budget, number of quarters, per-account
@@ -412,4 +489,5 @@ Goal (stated): **real new users, pure growth — not one person with 1000 accoun
 - **Where it lives:** a route set in this repo vs. a sibling app importing the libs.
 - **What gives POW lasting value beyond the MVP sinks** (perks, governance) — later.
 - **Exact ALP metadata** (tokenName, ticker casing, url target).
-- **Legal review** of the buyback / value-accrual framing before public launch.
+- **Legal review** of the token framing before public launch (lighter now that
+  there's no buyback, but still worth a quick check).
