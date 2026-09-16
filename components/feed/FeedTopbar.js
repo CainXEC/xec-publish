@@ -41,10 +41,10 @@ export default function FeedTopbar({
   const router = useRouter()
   const pathname = usePathname()
 
-  // Is this a hover-capable (desktop) pointer? Drives the wordmark's split
-  // behavior: desktop hovers to peek the balance and clicks to go home; touch has
-  // no hover, so a TAP peeks the balance instead (mobile reaches home via the
-  // bottom bar). Guarded for SSR.
+  // Is this a hover-capable (desktop) pointer? Desktop HOVERS the wordmark to peek
+  // the balance and CLICKS to go home. Touch has no hover, so a tap just goes home
+  // like any home link (the balance still auto-flashes on a real change, and the
+  // Pocket chip peeks it on mobile). Guarded for SSR.
   const isHoverDevice = () =>
     typeof window !== 'undefined' && window.matchMedia?.('(hover: hover)')?.matches
 
@@ -54,18 +54,14 @@ export default function FeedTopbar({
     if (isHoverDevice()) logoRef.current?.flash()
   }, [])
 
-  // The wordmark links home. If you're ALREADY home, a Link to the same route
-  // is a no-op — so intercept and hard-refresh the feed instead. On touch, a tap
-  // peeks the balance (2s) instead of navigating — unless there's no balance to
-  // show (signed out), where it falls through to normal home navigation.
+  // The wordmark links home — a single tap/click, same as the bottom bar's Feed
+  // button. If you're ALREADY home, a Link to the same route is a no-op, so
+  // intercept and hard-refresh the feed instead. (Touch used to peek the balance
+  // here instead of navigating, which made the banner take two taps to reach
+  // home — the peek stays on desktop hover, onWordmarkEnter.)
   const onWordmarkClick = useCallback(
     (e) => {
       setOpen(false)
-      if (!isHoverDevice() && logoRef.current?.hasBalance()) {
-        e.preventDefault()
-        logoRef.current.flash()
-        return
-      }
       if (pathname === '/') {
         e.preventDefault()
         window.location.reload()

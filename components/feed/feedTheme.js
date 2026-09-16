@@ -299,6 +299,12 @@ html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation-name:pocke
 .pow-feed .notifpage-row:hover{background:rgba(0,255,156,.06);}
 .pow-feed .notifpage-row.unread{background:rgba(0,255,156,.08);}
 .pow-feed .notifpage-row.unread:hover{background:rgba(0,255,156,.12);}
+/* Loading skeleton (app/notifications/loading.js): static dim placeholders — no
+   shimmer, just instant "your tap landed" feedback while the page renders. */
+.pow-feed .notif-sk{display:block;background:var(--line);border-radius:6px;opacity:.5;}
+.pow-feed .notif-sk-glyph{width:22px;height:22px;border-radius:50%;flex:none;margin-top:1px;}
+.pow-feed .notif-sk-line{height:11px;margin:0 0 9px;}
+.pow-feed .notif-sk-line:last-child{margin-bottom:0;}
 /* Type glyph gutter: a mono mark that lets the list scan at a glance. Dim by
    default (a quiet "nod" for reactions/reposts); the conversational rows tint it. */
 .pow-feed .notifpage-glyph{flex:none;width:18px;text-align:center;font-size:15px;line-height:1.6;

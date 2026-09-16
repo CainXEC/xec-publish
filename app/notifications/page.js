@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { after } from 'next/server'
 import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { getFeedNotifications, markFeedNotificationsRead } from '@/lib/feedNotifications'
@@ -33,7 +34,13 @@ export default async function NotificationsPage() {
           .then((r) => r.count ?? 0)
       : Promise.resolve(null),
   ])
-  if (unreadCount > 0) await markFeedNotificationsRead(supabase, acct.accountId)
+  // Don't block the render on the read-marking WRITE — the render already
+  // captured the pre-mark state above (so it still highlights what was unread).
+  // Flush the page first, then mark read via after(); the tap feels instant
+  // instead of waiting on a write before anything appears.
+  if (unreadCount > 0) {
+    after(() => markFeedNotificationsRead(supabase, acct.accountId))
+  }
 
   return (
     <div className="pow-feed">
