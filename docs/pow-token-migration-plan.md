@@ -239,13 +239,16 @@ changing it later is a one-line edit.
 - **Push** POW to each account's **current primary address** (the DB primary, kept
   current across address changes). Every account has one (wallet-only auth); the
   Pocket is never a payout target, only an earning source.
-- **Minimum-payout threshold = 1 POW (DECIDED).** POW is 0-decimal, so allocations
-  are floored to whole tokens; anyone whose floored share is **< 1 POW** earns
-  nothing that week and their share **rolls forward**. This doubles as the dust
-  floor (never send less than 1 whole token).
-- **Rounding remainder rolls forward.** Flooring every share leaves the pool slightly
-  under-distributed each week (sum of floors < pool); carry the remainder into next
-  week's pool rather than inventing a tie-break.
+- **Minimum payout = 1 POW (DECIDED).** POW is 0-decimal, so allocations are floored
+  to whole tokens (1 POW is also the dust floor — never send less than a whole token).
+- **The flooring leftover rounds up the closest sub-1 accounts (DECIDED).** Flooring
+  every share leaves the pool under-distributed (sum of floors < pool). That leftover
+  is handed out **1 POW each to the sub-1-POW accounts closest to 1** (largest
+  fractional share first), until it runs out — rounding the most-shortchanged small
+  accounts up to 1, so the full pool reaches **more** real participants rather than
+  the whales. It's the least gameable option (a slot needs real fees, and slots are
+  nearest-first and capped by the leftover). Anything still left after that (or a week
+  with no sub-1 accounts) **rolls forward** as next week's carryover.
 - **Batch SLP sends** (~19 token outputs per tx), so a few hundred recipients = a
   handful of txs.
 - **No per-account cap for the September test weeks (DECIDED)** — run pure pro-rata

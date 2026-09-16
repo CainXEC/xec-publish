@@ -6,9 +6,12 @@
 //    allocation = floor( (pool + carryover) × feeSats / totalFeeSats )
 //
 //  POW is 0-decimal, so every award is floored to a whole token. DECIDED rules:
-//    • minimum payout = 1 POW — a floored share < 1 is dropped and rolls forward.
-//    • the flooring remainder (pool minus the sum of floors) also rolls forward.
-//  Both roll-forwards are returned as `carryoverAtoms` for next week's epoch.
+//    • minimum payout = 1 POW.
+//    • the leftover (pool minus the sum of floors) is handed out 1 POW each to the
+//      sub-1-POW accounts CLOSEST to 1 (largest fractional share first) — rounding
+//      the most-shortchanged small accounts UP to 1, spreading the pool to more
+//      real participants rather than the whales. Anything still left after that
+//      (or if there were no sub-1 accounts) rolls forward as `carryoverAtoms`.
 //
 //  READ-ONLY: pure computation + a primary-address lookup. No writes, no sends.
 // =============================================================================
@@ -79,24 +82,38 @@ export async function allocate(
   const addrMap = await primaryAddresses(Array.from(perAccount.keys()));
 
   const claims: RewardClaim[] = [];
+  // Accounts that scored but floored to 0 (raw in (0,1)) — candidates for the
+  // leftover top-up, kept with their raw fraction so we can favour the closest to 1.
+  const subMin: { accountId: string; feeSats: number; raw: number; toAddress: string }[] = [];
   let paidAtoms = 0;
-  let droppedSubMin = 0;
   let missingAddress = 0;
 
   for (const [accountId, feeSats] of perAccount) {
     const raw = (distributableAtoms * feeSats) / totalFeeSats;
     const atoms = Math.floor(raw);
-    if (atoms < 1) {
-      droppedSubMin += 1; // rolls forward
-      continue;
-    }
     const toAddress = addrMap.get(accountId);
     if (!toAddress) {
       missingAddress += 1; // can't pay without a primary address; rolls forward
       continue;
     }
-    claims.push({ accountId, feeSats, allocationAtoms: atoms, toAddress });
-    paidAtoms += atoms;
+    if (atoms >= 1) {
+      claims.push({ accountId, feeSats, allocationAtoms: atoms, toAddress });
+      paidAtoms += atoms;
+    } else if (raw > 0) {
+      subMin.push({ accountId, feeSats, raw, toAddress });
+    }
+  }
+
+  // Hand the flooring leftover out, 1 POW each, to the sub-1 accounts CLOSEST to 1.
+  let remainder = distributableAtoms - paidAtoms;
+  subMin.sort((a, b) => b.raw - a.raw);
+  let toppedUp = 0;
+  for (const s of subMin) {
+    if (remainder < 1) break;
+    claims.push({ accountId: s.accountId, feeSats: s.feeSats, allocationAtoms: 1, toAddress: s.toAddress });
+    paidAtoms += 1;
+    remainder -= 1;
+    toppedUp += 1;
   }
 
   // Largest weight first — nicer to read, and the natural order to send in.
@@ -106,8 +123,8 @@ export async function allocate(
     claims,
     distributableAtoms,
     paidAtoms,
-    carryoverAtoms: distributableAtoms - paidAtoms,
-    droppedSubMin,
+    carryoverAtoms: remainder, // whatever's left after topping up the closest sub-1 accounts
+    droppedSubMin: subMin.length - toppedUp,
     missingAddress,
   };
 }
