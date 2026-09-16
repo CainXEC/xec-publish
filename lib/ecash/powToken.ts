@@ -169,6 +169,34 @@ export async function sendAlp(
 }
 
 /**
+ * Send a token to MANY recipients in ONE tx (the weekly reward payout). SLP Type 1
+ * caps a send at 19 token outputs, so the caller MUST batch ≤19 recipients per
+ * call. ecash-wallet auto-adds token change back to the sending wallet. Defaults
+ * to SLP fungible (POW); pass ALP_TOKEN_TYPE_STANDARD for an ALP token.
+ */
+export async function sendTokenBatch(
+  wallet: Wallet,
+  p: { tokenId: string; recipients: { address: string; atoms: bigint }[]; tokenType?: TokenType },
+): Promise<{ txid: string; txids: string[] }> {
+  if (p.recipients.length === 0) throw new Error('sendTokenBatch: no recipients')
+  if (p.recipients.length > 19) throw new Error('sendTokenBatch: >19 recipients (SLP cap) — batch upstream')
+  await wallet.sync()
+  const outputs: any[] = [{ sats: 0n }] // mandatory blank OP_RETURN slot
+  for (const r of p.recipients) {
+    if (r.atoms <= 0n) throw new Error('sendTokenBatch: non-positive atoms for ' + r.address)
+    outputs.push({ sats: DUST, address: r.address, tokenId: p.tokenId, atoms: r.atoms, isMintBaton: false })
+  }
+  const action = {
+    outputs,
+    tokenActions: [{ type: 'SEND', tokenId: p.tokenId, tokenType: p.tokenType ?? SLP_TOKEN_TYPE_FUNGIBLE }],
+  }
+  const built: any = wallet.action(action as any).build()
+  const resp: any = await built.broadcast()
+  const txids = broadcastTxids(resp)
+  return { txid: txids[txids.length - 1], txids }
+}
+
+/**
  * Burn ALL of a token the wallet currently holds. A BURN action with no SEND (and
  * no token outputs) burns every input of that tokenId — see ecash-lib BurnAction.
  * `burnAtoms` must equal the total held, so we read it from Chronik first. Used to

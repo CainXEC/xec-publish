@@ -37,10 +37,13 @@ const chronik = () => (_chronik ??= new ChronikClient(CHRONIK_URLS));
 // Platform-controlled XEC revenue sinks. Every fee-bearing action (unlocks,
 // posts, reactions, comments, forum fees) pays its cut to the platform fee
 // address; NFT-mint revenue lands at the mint wallet address. We scan BOTH and
-// attribute receipts to the paying account.
-const SOURCE_ADDRESSES = [process.env.PLATFORM_XEC_ADDRESS, process.env.MINT_PAYMENT_ADDRESS]
-  .map((a) => a?.trim())
-  .filter((a): a is string => !!a);
+// attribute receipts to the paying account. Read at CALL time (not module load)
+// so a script that populates env after importing this module still works.
+function sourceAddresses(): string[] {
+  return [process.env.PLATFORM_XEC_ADDRESS, process.env.MINT_PAYMENT_ADDRESS]
+    .map((a) => a?.trim())
+    .filter((a): a is string => !!a);
+}
 
 // Accounts that never earn (the founder is the SOURCE of the pool, not a
 // recipient). Comma-separated account UUIDs.
@@ -130,21 +133,19 @@ async function scanReceipts(address: string, startUtc: Date, endUtc: Date): Prom
   return out;
 }
 
-/** feed_events txids among `txids` that are 👎 downvotes — excluded from the tally. */
-async function downvoteTxids(txids: string[]): Promise<Set<string>> {
+// Cap for .in() lists — a large IN() is sent as a GET query string and a big one
+// overflows the request URL (fetch throws before it reaches PostgREST).
+const IN_CHUNK = 100;
+
+/** All 👎 downvote txids — excluded from the tally. Fetched directly (they're
+ *  rare) and intersected in memory, rather than sending every receipt txid in a
+ *  huge IN() list that would overflow the request URL. */
+async function downvoteTxids(): Promise<Set<string>> {
   const found = new Set<string>();
   const db = adminDb();
-  // Chunk the IN() so a big week doesn't blow the query size.
-  for (let i = 0; i < txids.length; i += 300) {
-    const chunk = txids.slice(i, i + 300);
-    const { data, error } = await db
-      .from("feed_events")
-      .select("txid")
-      .eq("emoji", "👎")
-      .in("txid", chunk);
-    if (error) throw new Error(`downvoteTxids: ${error.message}`);
-    for (const r of data ?? []) found.add(r.txid as string);
-  }
+  const { data, error } = await db.from("feed_events").select("txid").eq("emoji", "👎");
+  if (error) throw new Error(`downvoteTxids: ${error.message}`);
+  for (const r of data ?? []) if (r.txid) found.add(r.txid as string);
   return found;
 }
 
@@ -163,21 +164,22 @@ export interface WeekTally {
  * allocation are resolved by the caller; this stays a pure measurement.
  */
 export async function tallyWeekRevenue(startUtc: Date, endUtc: Date): Promise<WeekTally> {
-  if (SOURCE_ADDRESSES.length === 0) {
+  const addresses = sourceAddresses();
+  if (addresses.length === 0) {
     throw new Error("no reward source addresses set (PLATFORM_XEC_ADDRESS / MINT_PAYMENT_ADDRESS)");
   }
   const db = adminDb();
 
   const receipts = (
-    await Promise.all(SOURCE_ADDRESSES.map((addr) => scanReceipts(addr, startUtc, endUtc)))
+    await Promise.all(addresses.map((addr) => scanReceipts(addr, startUtc, endUtc)))
   ).flat();
-  const dv = await downvoteTxids(receipts.map((r) => r.txid));
+  const dv = await downvoteTxids();
 
   // address -> account_id (proven addresses only; unproven senders can't be paid)
   const senders = Array.from(new Set(receipts.map((r) => r.sender)));
   const addrToAccount = new Map<string, string>();
-  for (let i = 0; i < senders.length; i += 300) {
-    const chunk = senders.slice(i, i + 300);
+  for (let i = 0; i < senders.length; i += IN_CHUNK) {
+    const chunk = senders.slice(i, i + IN_CHUNK);
     const { data, error } = await db
       .from("account_addresses")
       .select("address, account_id")
@@ -190,8 +192,8 @@ export async function tallyWeekRevenue(startUtc: Date, endUtc: Date): Promise<We
 
   // account -> cluster (COALESCE(cluster_id, account_id)); default self.
   const cluster = new Map<string, string>();
-  for (let i = 0; i < accountIds.length; i += 300) {
-    const chunk = accountIds.slice(i, i + 300);
+  for (let i = 0; i < accountIds.length; i += IN_CHUNK) {
+    const chunk = accountIds.slice(i, i + IN_CHUNK);
     const { data, error } = await db
       .from("account_links")
       .select("account_id, cluster_id")
@@ -203,8 +205,8 @@ export async function tallyWeekRevenue(startUtc: Date, endUtc: Date): Promise<We
 
   // is_ai house accounts (excluded as earners).
   const aiAccounts = new Set<string>();
-  for (let i = 0; i < accountIds.length; i += 300) {
-    const chunk = accountIds.slice(i, i + 300);
+  for (let i = 0; i < accountIds.length; i += IN_CHUNK) {
+    const chunk = accountIds.slice(i, i + IN_CHUNK);
     const { data, error } = await db
       .from("accounts")
       .select("id, authors!inner(is_ai)")

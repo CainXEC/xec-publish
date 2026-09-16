@@ -11,19 +11,9 @@
 //  NEXT_PUBLIC_SUPABASE_URL + the service key). Reads .env.local if present.
 // =============================================================================
 
-import { readFileSync } from "node:fs";
-
-// Best-effort .env.local load so the script "just works" locally (read-only).
-try {
-  for (const line of readFileSync(".env.local", "utf8").split("\n")) {
-    const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/.exec(line);
-    if (m && !process.env[m[1]]) {
-      process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
-    }
-  }
-} catch {
-  /* no .env.local — rely on the exported environment */
-}
+// MUST be first — populates process.env from .env.local before any env-reading
+// module (lib/db, the tally) evaluates. See the module's own note.
+import "./_loadEnvLocal";
 
 import { lastCompleteWeek, weekBoundsForKey } from "@/lib/powRewards/isoWeek";
 import { tallyWeekRevenue } from "@/lib/powRewards/tallyWeek";
@@ -39,9 +29,27 @@ const short = (id: string) => `${id.slice(0, 8)}…`;
 
 async function main() {
   const weekArg = arg("week");
-  const bounds = weekArg ? weekBoundsForKey(weekArg) : lastCompleteWeek();
+  const fromArg = arg("from");
+  const days = Number(arg("days") ?? 0);
   const pool = Number(arg("pool") ?? 1000);
   const carry = Number(arg("carry") ?? 0);
+
+  let bounds: { isoWeek: string; startUtc: Date; endUtc: Date };
+  if (fromArg) {
+    const startUtc = new Date(fromArg);
+    const endUtc = new Date(startUtc.getTime() + (days || 7) * 86_400_000);
+    bounds = { isoWeek: `custom ${days || 7}d`, startUtc, endUtc };
+  } else if (days) {
+    // Rolling window ending at the top of the current UTC hour.
+    const endUtc = new Date();
+    endUtc.setUTCMinutes(0, 0, 0);
+    const startUtc = new Date(endUtc.getTime() - days * 86_400_000);
+    bounds = { isoWeek: `rolling ${days}d`, startUtc, endUtc };
+  } else if (weekArg) {
+    bounds = weekBoundsForKey(weekArg);
+  } else {
+    bounds = lastCompleteWeek();
+  }
 
   console.log(`\nPOW weekly rewards — DRY RUN (nothing is written or sent)`);
   console.log(`Week ${bounds.isoWeek}: ${bounds.startUtc.toISOString()} → ${bounds.endUtc.toISOString()}`);
