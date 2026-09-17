@@ -1,123 +1,241 @@
 // =============================================================================
 //  lib/powRewards/freezeWeek.ts
-//  Freeze a week's reward tally into the DB: compute the per-account allocation
-//  (rolling in the prior week's carryover) and write pow_reward_epochs +
-//  pow_reward_claims (status 'pending'). See docs/pow-token-migration-plan.md §5.
+//  Turn a week's raw Contribution-Score components into POW allocations, and
+//  freeze them into pow_reward_epochs / pow_reward_claims. See §22 of the plan.
 //
-//  IDEMPOTENT: once an epoch is past 'open' (i.e. 'tallied'/'paying'/'done') a
-//  re-run is a no-op that returns the existing claims — it will NOT re-tally or
-//  clobber rows that may already be paid. `force` re-tallies an existing epoch
-//  (use only before any payment has gone out).
+//  Pipeline:
+//    scoreWeek → per-component SHARE (user / component total) → weighted
+//    contribution share (0.35/0.35/0.30) → renormalise to the active dimensions →
+//    10% per-user cap (iterative redistribution) → × pool → floor to whole POW →
+//    round the flooring leftover up to the closest sub-1 accounts → claims.
 //
-//  WRITES the DB, but never sends tokens — that's payWeek.ts.
+//  previewWeek() runs the whole pipeline WITHOUT writing; freezeWeek() writes.
+//  Neither sends tokens — that's payWeek.ts. freezeWeek is idempotent (a re-run on
+//  an already-frozen epoch is a no-op unless `force`).
 // =============================================================================
 
 import { adminDb } from "@/lib/db";
 import { weekBoundsFor, type WeekBounds } from "./isoWeek";
-import { tallyWeekRevenue } from "./tallyWeek";
-import { allocate, type RewardClaim } from "./allocate";
+import { loadConfig, type RewardConfig } from "./config";
+import { scoreWeek, type Activity } from "./score";
+import { primaryAddresses } from "./accounts";
 
-export interface FreezeResult {
+const SCALE = 1000; // display scale for score "points" (share × weight × SCALE)
+
+export interface FrozenClaim {
+  accountId: string;
+  allocationAtoms: number;
+  toAddress: string;
+  economicScore: number;
+  creationScore: number;
+  engagementScore: number;
+  contributionScore: number;
+  capped: boolean;
+  activity: Activity;
+}
+export interface WeekComputation {
   isoWeek: string;
-  alreadyFrozen: boolean;
   poolAtoms: number;
   carryInAtoms: number;
+  distributableAtoms: number;
   carryoverAtoms: number;
-  totalFeeSats: number;
-  claims: RewardClaim[];
+  totals: { economic: number; creation: number; engagement: number; contribution: number };
+  claims: FrozenClaim[];
+  config: RewardConfig;
+}
+export interface FreezeResult extends WeekComputation {
+  alreadyFrozen: boolean;
 }
 
-/** ISO week key immediately before `b`. */
+/** Cap each share at `cap` (fraction of pool), redistributing excess to the
+ *  uncapped proportionally; iterate until stable. Input/҃output sum ≤ 1. */
+function capShares(input: Map<string, number>, cap: number): { shares: Map<string, number>; capped: Set<string> } {
+  const shares = new Map(input);
+  const capped = new Set<string>();
+  for (let iter = 0; iter < 1000; iter++) {
+    const over = [...shares].filter(([k, v]) => !capped.has(k) && v > cap + 1e-12);
+    if (over.length === 0) break;
+    let excess = 0;
+    for (const [k, v] of over) { excess += v - cap; shares.set(k, cap); capped.add(k); }
+    const uncapped = [...shares].filter(([k]) => !capped.has(k));
+    const uncappedSum = uncapped.reduce((a, [, v]) => a + v, 0);
+    if (uncappedSum <= 0) break; // everyone capped — remainder simply won't distribute
+    for (const [k, v] of uncapped) shares.set(k, v + excess * (v / uncappedSum));
+  }
+  return { shares, capped };
+}
+
+/** Compute the full allocation for a week (no DB writes). */
+export async function computeWeek(bounds: WeekBounds, carryInAtoms: number, cfg: RewardConfig): Promise<WeekComputation> {
+  const pool = cfg.weeklyPoolAtoms;
+  const distributable = pool + carryInAtoms;
+  const scores = await scoreWeek(bounds.startUtc, bounds.endUtc, cfg);
+
+  let tEcon = 0, tCre = 0, tEng = 0;
+  for (const s of scores.values()) { tEcon += s.economicRaw; tCre += s.creationRaw; tEng += s.engagementRaw; }
+  const w = cfg.weights;
+
+  // Weighted contribution share per account (loyalty = 1.0 in Phase 1).
+  interface Row { accountId: string; econ: number; cre: number; eng: number; contrib: number; activity: Activity }
+  const rows: Row[] = [];
+  let tContrib = 0;
+  for (const s of scores.values()) {
+    const econS = tEcon > 0 ? s.economicRaw / tEcon : 0;
+    const creS = tCre > 0 ? s.creationRaw / tCre : 0;
+    const engS = tEng > 0 ? s.engagementRaw / tEng : 0;
+    const econ = w.economic * econS;
+    const cre = w.creation * creS;
+    const eng = w.engagement * engS;
+    const contrib = econ + cre + eng;
+    if (contrib <= 0) continue;
+    rows.push({ accountId: s.accountId, econ, cre, eng, contrib, activity: s.activity });
+    tContrib += contrib;
+  }
+
+  const totals = {
+    economic: round2(w.economic * SCALE),
+    creation: round2(w.creation * SCALE),
+    engagement: round2(w.engagement * SCALE),
+    contribution: round2(tContrib * SCALE),
+  };
+
+  if (rows.length === 0 || tContrib <= 0) {
+    return { isoWeek: bounds.isoWeek, poolAtoms: pool, carryInAtoms, distributableAtoms: distributable, carryoverAtoms: distributable, totals, claims: [], config: cfg };
+  }
+
+  // Normalise to sum 1 across active accounts, then cap.
+  const shares = new Map<string, number>();
+  for (const r of rows) shares.set(r.accountId, r.contrib / tContrib);
+  const { shares: capShare, capped } = capShares(shares, cfg.maxUserShare);
+
+  // Primary addresses for payout.
+  const addrs = await primaryAddresses(rows.map((r) => r.accountId));
+
+  // rawPow = share × distributable; floor; then round leftover up to closest sub-1.
+  interface Alloc extends Row { toAddress: string; raw: number; floor: number; capped: boolean }
+  const allocs: Alloc[] = [];
+  for (const r of rows) {
+    const toAddress = addrs.get(r.accountId);
+    if (!toAddress) continue; // no primary address → skip, its share rolls forward
+    const raw = (capShare.get(r.accountId) ?? 0) * distributable;
+    allocs.push({ ...r, toAddress, raw, floor: Math.floor(raw), capped: capped.has(r.accountId) });
+  }
+  let paid = allocs.reduce((a, x) => a + x.floor, 0);
+  let leftover = distributable - paid;
+  // sub-1 accounts (floor 0, raw>0) closest to 1 first
+  const subMin = allocs.filter((a) => a.floor < 1 && a.raw > 0).sort((a, b) => b.raw - a.raw);
+  const toppedUp = new Set<string>();
+  for (const a of subMin) { if (leftover < 1) break; a.floor = 1; toppedUp.add(a.accountId); leftover -= 1; paid += 1; }
+
+  const claims: FrozenClaim[] = allocs
+    .filter((a) => a.floor >= 1)
+    .map((a) => ({
+      accountId: a.accountId,
+      allocationAtoms: a.floor,
+      toAddress: a.toAddress,
+      economicScore: round2(a.econ * SCALE),
+      creationScore: round2(a.cre * SCALE),
+      engagementScore: round2(a.eng * SCALE),
+      contributionScore: round2(a.contrib * SCALE),
+      capped: a.capped,
+      activity: a.activity,
+    }))
+    .sort((x, y) => y.allocationAtoms - x.allocationAtoms || y.contributionScore - x.contributionScore);
+
+  return {
+    isoWeek: bounds.isoWeek,
+    poolAtoms: pool,
+    carryInAtoms,
+    distributableAtoms: distributable,
+    carryoverAtoms: leftover,
+    totals,
+    claims,
+    config: cfg,
+  };
+}
+
+function round2(n: number): number { return Math.round(n * 100) / 100; }
+
 function priorWeekKey(b: WeekBounds): string {
   return weekBoundsFor(new Date(b.startUtc.getTime() - 1)).isoWeek;
 }
 
-export async function freezeWeek(
-  bounds: WeekBounds,
-  basePoolAtoms: number,
-  opts: { force?: boolean } = {},
-): Promise<FreezeResult> {
+/** Compute the week WITHOUT writing (uses the live config + prior-week carryover). */
+export async function previewWeek(bounds: WeekBounds): Promise<WeekComputation> {
+  const cfg = await loadConfig();
+  const { data: prior } = await adminDb().from("pow_reward_epochs").select("carryover_atoms").eq("iso_week", priorWeekKey(bounds)).maybeSingle();
+  return computeWeek(bounds, prior?.carryover_atoms ?? 0, cfg);
+}
+
+/** Freeze the week into the DB (idempotent). */
+export async function freezeWeek(bounds: WeekBounds, opts: { force?: boolean } = {}): Promise<FreezeResult> {
   const db = adminDb();
   const now = new Date().toISOString();
 
-  const { data: existing } = await db
-    .from("pow_reward_epochs")
-    .select("*")
-    .eq("iso_week", bounds.isoWeek)
-    .maybeSingle();
-
+  const { data: existing } = await db.from("pow_reward_epochs").select("*").eq("iso_week", bounds.isoWeek).maybeSingle();
   if (existing && !opts.force && existing.status !== "open") {
-    // Already frozen — return what's there, don't re-tally (avoids clobbering sends).
-    const { data: claims } = await db
-      .from("pow_reward_claims")
-      .select("account_id, fee_sats, allocation_atoms, to_address")
+    const { data: claims } = await db.from("pow_reward_claims")
+      .select("account_id, allocation_atoms, to_address, economic_score, creation_score, engagement_score, contribution_score, capped, activity")
       .eq("iso_week", bounds.isoWeek);
     return {
       isoWeek: bounds.isoWeek,
       alreadyFrozen: true,
       poolAtoms: existing.pool_atoms,
       carryInAtoms: 0,
+      distributableAtoms: existing.pool_atoms + (existing.carryover_atoms ?? 0),
       carryoverAtoms: existing.carryover_atoms,
-      totalFeeSats: existing.total_fee_sats ?? 0,
+      totals: { economic: 0, creation: 0, engagement: 0, contribution: existing.total_contribution ?? 0 },
       claims: (claims ?? []).map((c) => ({
-        accountId: c.account_id,
-        feeSats: c.fee_sats,
-        allocationAtoms: c.allocation_atoms,
-        toAddress: c.to_address,
+        accountId: c.account_id, allocationAtoms: c.allocation_atoms, toAddress: c.to_address,
+        economicScore: c.economic_score ?? 0, creationScore: c.creation_score ?? 0, engagementScore: c.engagement_score ?? 0,
+        contributionScore: c.contribution_score ?? 0, capped: c.capped ?? false, activity: (c.activity ?? {}) as Activity,
       })),
+      config: (existing.config ?? {}) as RewardConfig,
     };
   }
 
-  // Roll in the prior week's leftover (remainder + sub-1-POW shares).
-  const { data: prior } = await db
-    .from("pow_reward_epochs")
-    .select("carryover_atoms")
-    .eq("iso_week", priorWeekKey(bounds))
-    .maybeSingle();
-  const carryIn = prior?.carryover_atoms ?? 0;
+  const cfg = await loadConfig();
+  const { data: prior } = await db.from("pow_reward_epochs").select("carryover_atoms").eq("iso_week", priorWeekKey(bounds)).maybeSingle();
+  const comp = await computeWeek(bounds, prior?.carryover_atoms ?? 0, cfg);
 
-  const tally = await tallyWeekRevenue(bounds.startUtc, bounds.endUtc);
-  const alloc = await allocate(tally, basePoolAtoms, carryIn);
-
-  const { error: eErr } = await db.from("pow_reward_epochs").upsert(
-    {
-      iso_week: bounds.isoWeek,
-      week_start: bounds.startUtc.toISOString(),
-      week_end: bounds.endUtc.toISOString(),
-      pool_atoms: basePoolAtoms,
-      carryover_atoms: alloc.carryoverAtoms,
-      total_fee_sats: tally.totalFeeSats,
-      status: "tallied",
-      computed_at: now,
-      updated_at: now,
-    },
-    { onConflict: "iso_week" },
-  );
+  const { error: eErr } = await db.from("pow_reward_epochs").upsert({
+    iso_week: bounds.isoWeek,
+    week_start: bounds.startUtc.toISOString(),
+    week_end: bounds.endUtc.toISOString(),
+    pool_atoms: comp.poolAtoms,
+    carryover_atoms: comp.carryoverAtoms,
+    total_fee_sats: comp.claims.reduce((a, c) => a + Math.round((c.activity.platformXec ?? 0) * 100), 0),
+    total_economic: comp.totals.economic,
+    total_creation: comp.totals.creation,
+    total_engagement: comp.totals.engagement,
+    total_contribution: comp.totals.contribution,
+    config: comp.config,
+    status: "tallied",
+    computed_at: now,
+    updated_at: now,
+  }, { onConflict: "iso_week" });
   if (eErr) throw new Error(`freezeWeek epoch: ${eErr.message}`);
 
-  if (alloc.claims.length) {
-    const rows = alloc.claims.map((c) => ({
+  if (comp.claims.length) {
+    const rows = comp.claims.map((c) => ({
       iso_week: bounds.isoWeek,
       account_id: c.accountId,
-      fee_sats: c.feeSats,
+      fee_sats: Math.round((c.activity.platformXec ?? 0) * 100),
       allocation_atoms: c.allocationAtoms,
       to_address: c.toAddress,
+      economic_score: c.economicScore,
+      creation_score: c.creationScore,
+      engagement_score: c.engagementScore,
+      loyalty_mult: 1.0,
+      contribution_score: c.contributionScore,
+      capped: c.capped,
+      activity: c.activity,
       status: "pending",
       updated_at: now,
     }));
-    const { error: cErr } = await db
-      .from("pow_reward_claims")
-      .upsert(rows, { onConflict: "iso_week,account_id" });
+    const { error: cErr } = await db.from("pow_reward_claims").upsert(rows, { onConflict: "iso_week,account_id" });
     if (cErr) throw new Error(`freezeWeek claims: ${cErr.message}`);
   }
 
-  return {
-    isoWeek: bounds.isoWeek,
-    alreadyFrozen: false,
-    poolAtoms: basePoolAtoms,
-    carryInAtoms: carryIn,
-    carryoverAtoms: alloc.carryoverAtoms,
-    totalFeeSats: tally.totalFeeSats,
-    claims: alloc.claims,
-  };
+  return { ...comp, alreadyFrozen: false };
 }
