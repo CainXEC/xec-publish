@@ -57,6 +57,9 @@ export type ActivityItem = {
   /** Who/what the action touched: a post author byline, article title, or handle. */
   target: string | null;
   amountXec: number | null;
+  /** POW amount for a POW-paid mint (mutually exclusive with amountXec). Lets the
+   *  rail show "10 POW" instead of the XEC-equivalent for POW mints. */
+  amountPow?: number | null;
   at: string;
   href: string;
   /** For article rows (unlock/publish/comment/comment_like): the post slug, so a
@@ -728,7 +731,22 @@ async function buildActivity(req: NextRequest) {
 
   // ---- handle mints — the minted name is the story ----
   type MintRow = { token_id: string; handle: string; tier: string | null; created_at: string };
-  for (const m of (mintsQ.data ?? []) as MintRow[]) {
+  const siteMints = (mintsQ.data ?? []) as MintRow[];
+  // Pay method (POW vs XEC) lives on the mint feed card's card_meta; the handles
+  // table doesn't carry it. Batch-fetch it so a POW mint shows POW, not the
+  // XEC-equivalent that priceForHandle would compute.
+  const mintMeta = new Map<string, { payWith?: string; powAtoms?: number; priceXec?: number }>();
+  if (siteMints.length) {
+    const { data: cards } = await supabase
+      .from("feed_posts")
+      .select("txid, card_meta")
+      .eq("card_kind", "handle_mint")
+      .in("txid", siteMints.map((m) => m.token_id));
+    for (const c of cards ?? []) if (c.card_meta) mintMeta.set(c.txid as string, c.card_meta as { payWith?: string; powAtoms?: number; priceXec?: number });
+  }
+  for (const m of siteMints) {
+    const meta = mintMeta.get(m.token_id);
+    const isPow = meta?.payWith === "pow";
     items.push({
       id: `mt:${m.token_id}`,
       kind: "mint",
@@ -737,7 +755,8 @@ async function buildActivity(req: NextRequest) {
       // A mint row names the handle, not an account — no owner to block against.
       actorAccountId: null,
       target: null,
-      amountXec: priceForHandle(m.handle).priceXec,
+      amountXec: isPow ? null : (meta?.priceXec ?? priceForHandle(m.handle).priceXec),
+      amountPow: isPow ? (meta?.powAtoms ?? null) : null,
       at: m.created_at,
       // The "minted" verb links to the @proofofwriting announcement card, not
       // the handle's profile (that's what actorHref is for) — the mint feed
@@ -753,12 +772,13 @@ async function buildActivity(req: NextRequest) {
   //      (set on both paid mints and free claims); render like the site-wide rows. ----
   type ScopedMintRow = {
     txid: string;
-    card_meta: { handle?: string; tier?: string; priceXec?: number; minterAddress?: string } | null;
+    card_meta: { handle?: string; tier?: string; payWith?: string; powAtoms?: number; priceXec?: number; minterAddress?: string } | null;
     created_at: string;
   };
   for (const m of (scopedMintsQ.data ?? []) as ScopedMintRow[]) {
     const handle = m.card_meta?.handle;
     if (!handle) continue;
+    const isPow = m.card_meta?.payWith === "pow";
     items.push({
       id: `mt:${m.txid}`,
       kind: "mint",
@@ -766,7 +786,8 @@ async function buildActivity(req: NextRequest) {
       actorHref: `/@${encodeURIComponent(handle)}`,
       actorAccountId: null,
       target: null,
-      amountXec: priceForHandle(handle).priceXec,
+      amountXec: isPow ? null : (m.card_meta?.priceXec ?? priceForHandle(handle).priceXec),
+      amountPow: isPow ? (m.card_meta?.powAtoms ?? null) : null,
       at: m.created_at,
       // Same as the site-wide mint rows above: "minted" links to the
       // announcement card (this row's own txid IS that card's txid), not the

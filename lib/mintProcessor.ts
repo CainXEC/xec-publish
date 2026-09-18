@@ -202,8 +202,16 @@ async function finalizeDelivered(
     if (!existingCard) {
       const official = await resolveOfficialAccount(supabase);
       if (official) {
+        // Label the card by how it was ACTUALLY paid — a POW mint must not show
+        // the XEC-equivalent. card_meta carries payWith + the paid amount so every
+        // consumer (feed card, activity rail) shows the right unit.
+        const isPow = m.pay_token === "pow";
         const priceXec = Number(m.expected_sats) / 100;
-        const content = `@${m.handle} minted · ${priceXec.toLocaleString("en-US")} XEC`;
+        const powAtoms = Number(m.expected_atoms ?? 0);
+        const priceLabel = isPow
+          ? `${powAtoms.toLocaleString("en-US")} POW`
+          : `${priceXec.toLocaleString("en-US")} XEC`;
+        const content = `@${m.handle} minted · ${priceLabel}`;
         await supabase.from("feed_posts").insert({
           txid: childTokenId,
           action: 1,
@@ -211,7 +219,9 @@ async function finalizeDelivered(
           content_hash: contentHashHex(content),
           card_kind: "handle_mint",
           image_url: imageUrl,
-          card_meta: { handle: m.handle, tier, priceXec, minterAddress: m.payer_address },
+          card_meta: isPow
+            ? { handle: m.handle, tier, payWith: "pow", powAtoms, minterAddress: m.payer_address }
+            : { handle: m.handle, tier, payWith: "xec", priceXec, minterAddress: m.payer_address },
           author_account_id: official.accountId,
           author_identity: `@${OFFICIAL_HANDLE}`,
           payer_address: official.address,

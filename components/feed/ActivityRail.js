@@ -46,6 +46,7 @@ const VERB = {
 }
 
 const fmtXec = (n) => `${Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 })} XEC`
+const fmtPow = (n) => `${Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 })} POW`
 
 function timeAgo(iso) {
   const t = Date.parse(iso)
@@ -347,7 +348,8 @@ export default function ActivityRail({
                 </Link>
               </div>
               <span className="arow-meta">
-                {it.amountXec != null ? <span className="arow-amt">{fmtXec(it.amountXec)}</span> : null}
+                {it.amountPow != null ? <span className="arow-amt">{fmtPow(it.amountPow)}</span>
+                  : it.amountXec != null ? <span className="arow-amt">{fmtXec(it.amountXec)}</span> : null}
                 <span className="arow-time">{timeAgo(it.at)}</span>
                 {it.txid ? (
                   <a
