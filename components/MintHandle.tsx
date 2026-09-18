@@ -18,8 +18,8 @@ import { watchPaymentAddress, prewarmPaymentWatch } from "@/lib/ecash/watchPayme
 import { payWithCashtab, beginCashtabPayment, completeCashtabPayment, abortCashtabPayment } from "@/lib/ecash/cashtabPay";
 import MintCounter from "@/components/MintCounter";
 
-type Availability = { available?: boolean; status: string; priceXec?: number; tier?: string; auctionOnly?: boolean; reason?: string };
-type Intent = { mintId: string; handle: string; amountXec: string; address: string; bip21Url: string; expiresAt: string };
+type Availability = { available?: boolean; status: string; priceXec?: number; powAtoms?: number; tier?: string; auctionOnly?: boolean; reason?: string };
+type Intent = { mintId: string; handle: string; amountXec?: string; powAtoms?: number; payWith?: "xec" | "pow"; address: string; bip21Url: string; expiresAt: string };
 
 const STATUS_COPY: Record<string, string> = {
   invalid: "Letters, numbers and single underscores only — 1 to 15 characters.",
@@ -42,6 +42,10 @@ export default function MintHandle({
   autoFocus?: boolean;
 }) {
   const [handle, setHandle] = useState("");
+  // Pay a mint in XEC (default) or POW. POW requires login (an SLP send can't
+  // carry the mintId tag, so the server matches by the account's proven addresses),
+  // so the toggle only appears when signedIn.
+  const [payWith, setPayWith] = useState<"xec" | "pow">("xec");
   const [avail, setAvail] = useState<Availability | null>(null);
   const [checking, setChecking] = useState(false);
   const [phase, setPhase] = useState<"choose" | "pay" | "done">("choose");
@@ -145,7 +149,7 @@ export default function MintHandle({
       const r = await fetch("/api/mint/intent", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ handle: display }),
+        body: JSON.stringify({ handle: display, payWith }),
       });
       const j = await r.json();
       if (!j.ok) {
@@ -153,23 +157,26 @@ export default function MintHandle({
         setNotice(STATUS_COPY[j.status] ?? j.reason ?? j.error ?? "Couldn't start the mint. Try again.");
         return;
       }
-      // Money-flow guard: the amount we're about to hand Cashtab MUST equal the
-      // price the page showed. The two come from separate round-trips (check
-      // vs intent); they should never disagree, but if they ever do — a stale
-      // cached bundle, a future regression, anything — refuse rather than
-      // silently overcharge (a user reported a 10K quote that hit Cashtab as
-      // 1M). The server price stays authoritative; this only blocks a mismatch.
-      const shownXec = avail?.available ? Number(avail.priceXec) : null;
-      const payXec = Number(j.amountXec);
-      if (
-        shownXec != null && Number.isFinite(shownXec) && Number.isFinite(payXec) &&
-        payXec !== shownXec
-      ) {
-        abortCashtabPayment(gesture);
-        setNotice(
-          `Price mismatch: the page showed ${shownXec.toLocaleString()} XEC but the mint would charge ${payXec.toLocaleString()} XEC. Refresh the page and try again.`,
-        );
-        return;
+      // Money-flow guard (XEC only): the amount we're about to hand Cashtab MUST
+      // equal the price the page showed. The two come from separate round-trips
+      // (check vs intent); they should never disagree, but if they ever do — a
+      // stale cached bundle, a future regression, anything — refuse rather than
+      // silently overcharge (a user reported a 10K quote that hit Cashtab as 1M).
+      // For POW the amount is a floor the server re-checks and there's no decimal
+      // mis-shift class of bug, so this XEC guard is skipped.
+      if (j.payWith !== "pow") {
+        const shownXec = avail?.available ? Number(avail.priceXec) : null;
+        const payXec = Number(j.amountXec);
+        if (
+          shownXec != null && Number.isFinite(shownXec) && Number.isFinite(payXec) &&
+          payXec !== shownXec
+        ) {
+          abortCashtabPayment(gesture);
+          setNotice(
+            `Price mismatch: the page showed ${shownXec.toLocaleString()} XEC but the mint would charge ${payXec.toLocaleString()} XEC. Refresh the page and try again.`,
+          );
+          return;
+        }
       }
       setIntent(j);
       setPhase("pay");
@@ -186,7 +193,7 @@ export default function MintHandle({
       abortCashtabPayment(gesture);
       setNotice("Network hiccup — try again.");
     }
-  }, [display, avail]);
+  }, [display, avail, payWith]);
 
   // Re-open Cashtab from the pay screen (intent already in hand): extension if
   // present, else a web tab — exactly one, never both.
@@ -370,13 +377,44 @@ export default function MintHandle({
           <div className="statusline" role="status">
             {!display ? <span className="muted">Pick a name to begin.</span>
               : checking ? <span className="muted">Checking…</span>
-              : avail?.available ? <span className="ok">Available — {avail.priceXec?.toLocaleString()} XEC · {avail.tier}</span>
+              : avail?.available ? (
+                <span className="ok">
+                  Available — {avail.priceXec?.toLocaleString()} XEC
+                  {signedIn && avail.powAtoms ? ` or ${avail.powAtoms.toLocaleString()} POW` : ""} · {avail.tier}
+                </span>
+              )
               : avail ? <span className="no">{STATUS_COPY[avail.status] ?? avail.reason ?? "Unavailable."}</span>
               : null}
           </div>
 
+          {/* Pay-with toggle — POW requires login, so only offer it when signed in. */}
+          {signedIn && avail?.available && (
+            <div className="paywith" role="radiogroup" aria-label="Pay with">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={payWith === "xec"}
+                className={`paywith-opt${payWith === "xec" ? " on" : ""}`}
+                onClick={() => setPayWith("xec")}
+              >
+                Pay with XEC
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={payWith === "pow"}
+                className={`paywith-opt${payWith === "pow" ? " on" : ""}`}
+                onClick={() => setPayWith("pow")}
+              >
+                Pay with POW
+              </button>
+            </div>
+          )}
+
           <button className="cta" disabled={!canMint} onClick={startMint}>
-            {canMint ? `Mint @${display}` : "Mint"}
+            {canMint
+              ? `Mint @${display}${payWith === "pow" && avail?.powAtoms ? ` · ${avail.powAtoms.toLocaleString()} POW` : ""}`
+              : "Mint"}
           </button>
           {notice && <p className="notice">{notice}</p>}
         </>
@@ -434,7 +472,7 @@ export default function MintHandle({
             </div>
           ) : (
             <>
-              <p className="payhead">Send <strong>{intent.amountXec} XEC</strong> to mint <strong>@{intent.handle}</strong></p>
+              <p className="payhead">Send <strong>{intent.payWith === "pow" ? `${(intent.powAtoms ?? 0).toLocaleString()} POW` : `${intent.amountXec} XEC`}</strong> to mint <strong>@{intent.handle}</strong></p>
               <div className="qr"><QRCodeSVG value={intent.bip21Url} size={188} bgColor="#dffff2" fgColor="#05130d" /></div>
               <button type="button" className="cta" onClick={openCashtab}>Open in Cashtab</button>
               <p className="addr" title={intent.address}>{intent.address}</p>
@@ -535,6 +573,10 @@ const CSS = `
 .pow-mint .cta:hover{background:var(--neon);color:#04120c;box-shadow:0 0 30px rgba(0,255,156,.5);}
 .pow-mint .cta:active{transform:translateY(1px);}
 .pow-mint .cta:disabled{background:transparent;border-color:var(--line);color:var(--dim);box-shadow:none;cursor:not-allowed;}
+.pow-mint .paywith{display:flex;gap:8px;margin:0 0 14px;}
+.pow-mint .paywith-opt{flex:1;background:transparent;color:var(--dim);border:1px solid var(--line);border-radius:9px;padding:9px;font:inherit;font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;transition:color .15s,border-color .15s,box-shadow .15s;}
+.pow-mint .paywith-opt.on{color:var(--neon);border-color:var(--neon);box-shadow:0 0 14px rgba(0,255,156,.14);}
+.pow-mint .paywith-opt:hover{color:var(--neon);}
 .pow-mint .notice{color:var(--no);font-size:14px;margin:14px 0 0;}
 
 .pow-mint .pay .payhead{font-size:15px;margin:0 0 18px;color:var(--text);}

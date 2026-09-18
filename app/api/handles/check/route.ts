@@ -97,8 +97,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, available: false, status: "pending" });
   }
 
-  // available — price it
-  const { tier, priceXec, priceSats, auctionOnly } = priceForHandle(display);
+  // available — price it (XEC + the POW alternative)
+  const { tier, priceXec, priceSats, powAtoms, auctionOnly } = priceForHandle(display);
   return NextResponse.json({
     ok: true,
     available: true,
@@ -107,6 +107,7 @@ export async function GET(req: NextRequest) {
     tier,
     priceXec,
     priceSats,
+    powAtoms,
     auctionOnly,
   });
 }
