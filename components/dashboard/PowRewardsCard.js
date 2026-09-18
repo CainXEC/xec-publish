@@ -51,7 +51,10 @@ export default function PowRewardsCard() {
 
   const d = state.status === 'done' ? state.data : null
   const found = d?.ok && d.found
-  const excluded = state.status === 'done' && d?.ok && d.found === false && d.reason === 'excluded'
+  // Excluded-from-earning (founder / house). The API returns a self-view (real
+  // score, found:true) plus this flag, so the card shows the breakdown for
+  // reference under a note rather than hiding.
+  const excluded = d?.excluded === true
 
   return (
     <div className="powcard">
@@ -72,8 +75,8 @@ export default function PowRewardsCard() {
 
       {excluded && (
         <p className="powcard-note">
-          Your account funds the weekly reward pool, so it’s excluded from earning —
-          the POW goes to the community. You still power the whole thing. 🙏
+          Your account funds the reward pool, so it’s excluded from earning — the
+          score below is shown for your reference only. 🙏
         </p>
       )}
       {state.status === 'done' && !found && !excluded && d?.reason === 'no_activity' && (

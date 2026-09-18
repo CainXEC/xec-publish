@@ -102,6 +102,9 @@ export async function runningScoreboard(topN = 10, now: Date = new Date()): Prom
 export interface AccountScoreView {
   found: boolean;
   reason?: "excluded" | "no_activity";
+  /** true if this account is excluded from EARNING (founder/house) — a found+excluded
+   *  view is a self-view the account can see but that never counts toward rewards. */
+  excluded?: boolean;
   isoWeek?: string;
   asOf?: string;
   accountId?: string;
@@ -115,12 +118,52 @@ export interface AccountScoreView {
   activity?: ContributionRow["activity"];
 }
 
-/** One account's week-to-date standing (powers "tag the herald" + self-serve). */
+// Self-view board for EXCLUDED accounts: recomputed WITH the account included so
+// the founder can still see their own standing. Cached per effective account (the
+// includeIds compute is a second full scoring pass, so don't run it every load).
+const selfCache = new Map<string, { at: number; asOf: string; isoWeek: string; rows: ContributionRow[] }>();
+
+/** One account's week-to-date standing (powers "tag the herald" + self-serve). An
+ *  excluded account (founder/house) gets a `excluded:true` SELF-VIEW — its real
+ *  score, for its own eyes, that never counts toward rewards. */
 export async function accountScoreLookup(accountId: string, now: Date = new Date()): Promise<AccountScoreView> {
-  const board = await computeBoard(now);
   const resolver = await buildResolver([accountId]);
-  if (resolver.excluded(accountId)) return { found: false, reason: "excluded" };
   const eff = resolver.eff(accountId);
+
+  // ---- excluded self-view: recompute the board WITH this account included ----
+  if (resolver.excluded(accountId)) {
+    let sv = selfCache.get(eff);
+    if (!sv || Date.now() - sv.at >= BOARD_TTL_MS) {
+      const cfg = await loadConfig();
+      const wk = weekBoundsFor(now);
+      const scores = await scoreWeek(wk.startUtc, now, cfg, new Set([eff, accountId]));
+      const { rows } = contributionRows(scores, cfg);
+      sv = { at: Date.now(), asOf: now.toISOString(), isoWeek: wk.isoWeek, rows };
+      selfCache.set(eff, sv);
+    }
+    const idx = sv.rows.findIndex((r) => r.accountId === eff);
+    if (idx === -1) return { found: false, reason: "no_activity", excluded: true, isoWeek: sv.isoWeek, asOf: sv.asOf, participants: sv.rows.length };
+    const r = sv.rows[idx];
+    const handle = (await handlesFor([eff])).get(eff) ?? null;
+    return {
+      found: true,
+      excluded: true,
+      isoWeek: sv.isoWeek,
+      asOf: sv.asOf,
+      accountId: eff,
+      handle,
+      rank: idx + 1,
+      participants: sv.rows.length,
+      contributionScore: r.contributionScore,
+      economicScore: r.economicScore,
+      creationScore: r.creationScore,
+      engagementScore: r.engagementScore,
+      activity: r.activity,
+    };
+  }
+
+  // ---- normal path: read the shared cached board ----
+  const board = await computeBoard(now);
   const idx = board.rows.findIndex((r) => r.accountId === eff);
   if (idx === -1) return { found: false, reason: "no_activity", isoWeek: board.isoWeek, asOf: board.asOf, participants: board.rows.length };
   const r = board.rows[idx];

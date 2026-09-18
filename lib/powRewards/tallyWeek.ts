@@ -163,7 +163,13 @@ export interface WeekTally {
  * mint revenue). Returns a map of effective-account-id → sats. Payout addresses /
  * allocation are resolved by the caller; this stays a pure measurement.
  */
-export async function tallyWeekRevenue(startUtc: Date, endUtc: Date): Promise<WeekTally> {
+// `includeIds` force-counts specific accounts that would otherwise be excluded
+// (founder self-view only — never passed by the real board/payout). Empty = normal.
+export async function tallyWeekRevenue(
+  startUtc: Date,
+  endUtc: Date,
+  includeIds: Set<string> = new Set(),
+): Promise<WeekTally> {
   const addresses = sourceAddresses();
   if (addresses.length === 0) {
     throw new Error("no reward source addresses set (PLATFORM_XEC_ADDRESS / MINT_PAYMENT_ADDRESS)");
@@ -230,9 +236,11 @@ export async function tallyWeekRevenue(startUtc: Date, endUtc: Date): Promise<We
       skippedUnattributed += 1;
       continue; // sender not a proven address of any account
     }
-    if (aiAccounts.has(acct)) continue; // house/AI supporter
     const eff = effAccount(acct);
-    if (excluded.has(acct) || excluded.has(eff)) continue; // founder / excluded
+    if (!includeIds.has(acct) && !includeIds.has(eff)) {
+      if (aiAccounts.has(acct)) continue; // house/AI supporter
+      if (excluded.has(acct) || excluded.has(eff)) continue; // founder / excluded
+    }
     perAccount.set(eff, (perAccount.get(eff) ?? 0) + r.sats);
     totalFeeSats += r.sats;
     receiptCount += 1;

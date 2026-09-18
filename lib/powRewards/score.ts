@@ -51,13 +51,18 @@ function emptyActivity(): Activity {
   return { platformXec: 0, articles: 0, feedPosts: 0, replies: 0, quotes: 0, reposts: 0, unlocksMade: 0, unlocksReceived: 0, uniqueCounterparties: 0 };
 }
 
-export async function scoreWeek(startUtc: Date, endUtc: Date, cfg: RewardConfig): Promise<Map<string, AccountScore>> {
+export async function scoreWeek(
+  startUtc: Date,
+  endUtc: Date,
+  cfg: RewardConfig,
+  includeIds: Set<string> = new Set(), // force-include (founder self-view only)
+): Promise<Map<string, AccountScore>> {
   const db = adminDb();
   const startISO = startUtc.toISOString();
   const endISO = endUtc.toISOString();
 
   // ---- Economic: on-chain platform+mint XEC per effective account ----
-  const econTally = await tallyWeekRevenue(startUtc, endUtc); // already excluded/clustered
+  const econTally = await tallyWeekRevenue(startUtc, endUtc, includeIds); // already excluded/clustered
   const econ = econTally.perAccount; // Map<effAccount, sats>
 
   // ---- Pull the week's creation + engagement rows ----
@@ -103,7 +108,7 @@ export async function scoreWeek(startUtc: Date, endUtc: Date, cfg: RewardConfig)
   for (const v of authorAcct.values()) allAccts.add(v);
   for (const v of payerAcct.values()) allAccts.add(v);
   for (const v of txAuthorAcct.values()) allAccts.add(v);
-  const R = await buildResolver(Array.from(allAccts));
+  const R = await buildResolver(Array.from(allAccts), includeIds);
 
   const scores = new Map<string, AccountScore>();
   const ensure = (effId: string): AccountScore => {

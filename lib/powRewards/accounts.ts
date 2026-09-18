@@ -28,8 +28,13 @@ export interface AccountResolver {
   excluded: (accountId: string) => boolean;
 }
 
-/** Build a resolver over the given account ids (clusters + is_ai + env excludes). */
-export async function buildResolver(accountIds: string[]): Promise<AccountResolver> {
+/** Build a resolver over the given account ids (clusters + is_ai + env excludes).
+ *  `includeIds` force-includes accounts that would otherwise be excluded (founder
+ *  self-view only — never passed by the real board/payout). Empty = normal. */
+export async function buildResolver(
+  accountIds: string[],
+  includeIds: Set<string> = new Set(),
+): Promise<AccountResolver> {
   const db = adminDb();
   const ids = Array.from(new Set(accountIds));
   const cluster = new Map<string, string>();
@@ -47,7 +52,10 @@ export async function buildResolver(accountIds: string[]): Promise<AccountResolv
 
   const excludedEnv = excludedAccountIds();
   const eff = (id: string) => cluster.get(id) ?? id;
-  const excluded = (id: string) => ai.has(id) || excludedEnv.has(id) || excludedEnv.has(eff(id));
+  const excluded = (id: string) => {
+    if (includeIds.has(id) || includeIds.has(eff(id))) return false; // self-view override
+    return ai.has(id) || excludedEnv.has(id) || excludedEnv.has(eff(id));
+  };
   return { eff, excluded };
 }
 
