@@ -266,14 +266,15 @@ changing it later is a one-line edit.
   Pocket is never a payout target, only an earning source.
 - **Minimum payout = 1 POW (DECIDED).** POW is 0-decimal, so allocations are floored
   to whole tokens (1 POW is also the dust floor — never send less than a whole token).
-- **The flooring leftover rounds up the closest sub-1 accounts (DECIDED).** Flooring
-  every share leaves the pool under-distributed (sum of floors < pool). That leftover
-  is handed out **1 POW each to the sub-1-POW accounts closest to 1** (largest
-  fractional share first), until it runs out — rounding the most-shortchanged small
-  accounts up to 1, so the full pool reaches **more** real participants rather than
-  the whales. It's the least gameable option (a slot needs real fees, and slots are
-  nearest-first and capped by the leftover). Anything still left after that (or a week
-  with no sub-1 accounts) **rolls forward** as next week's carryover.
+- **The flooring leftover is fully distributed each week (DECIDED).** Flooring every
+  share leaves the pool under-distributed (sum of floors < pool). The leftover is
+  handed out in two passes so the **whole pool goes out**: (1) **1 POW each to the
+  sub-1-POW accounts closest to 1** (largest fractional share first) — rounding the
+  most-shortchanged small accounts up to 1, spreading to more participants; then (2)
+  any still-remaining leftover as **+1 POW to the largest fractional remainders among
+  UNCAPPED accounts** (Hamilton's method), skipping accounts at the 10% cap. Only ≤1
+  extra per account, so no uncapped account can cross the cap. Carryover is then only
+  the rare all-capped / empty-dimension case.
 - **Batch SLP sends** (~19 token outputs per tx), so a few hundred recipients = a
   handful of txs.
 - **No per-account cap for the September test weeks (DECIDED)** — run pure pro-rata

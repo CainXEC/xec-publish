@@ -99,6 +99,18 @@ export async function computeWeek(bounds: WeekBounds, carryInAtoms: number, cfg:
   const subMin = allocs.filter((a) => a.floor < 1 && a.raw > 0).sort((a, b) => b.raw - a.raw);
   for (const a of subMin) { if (leftover < 1) break; a.floor = 1; leftover -= 1; paid += 1; }
 
+  // Distribute any STILL-remaining leftover so the FULL pool goes out each week:
+  // +1 POW to the largest fractional remainders among uncapped accounts (Hamilton's
+  // method), skipping capped ones (already at the 10% ceiling). Only ≤1 extra per
+  // account (leftover < account count), so no uncapped account can cross the cap.
+  // carryover is then only the rare all-capped / empty-dimension case.
+  if (leftover >= 1) {
+    const byFrac = allocs
+      .filter((a) => a.floor >= 1 && !a.capped)
+      .sort((a, b) => b.raw - b.floor - (a.raw - a.floor));
+    for (const a of byFrac) { if (leftover < 1) break; a.floor += 1; leftover -= 1; paid += 1; }
+  }
+
   const claims: FrozenClaim[] = allocs
     .filter((a) => a.floor >= 1)
     .map((a) => ({
@@ -185,6 +197,12 @@ export async function freezeWeek(bounds: WeekBounds, opts: { force?: boolean } =
     updated_at: now,
   }, { onConflict: "iso_week" });
   if (eErr) throw new Error(`freezeWeek epoch: ${eErr.message}`);
+
+  // A re-tally (force, or a still-'open' epoch) can DROP accounts (e.g. a newly
+  // excluded one) or change amounts — clear stale PENDING claims first so a
+  // removed account can't keep an orphan claim. Only ever deletes 'pending' rows;
+  // 'sent'/'sending' are never touched (force is a pre-payout correction).
+  await db.from("pow_reward_claims").delete().eq("iso_week", bounds.isoWeek).eq("status", "pending");
 
   if (comp.claims.length) {
     const rows = comp.claims.map((c) => ({

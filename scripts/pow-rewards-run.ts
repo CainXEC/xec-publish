@@ -72,7 +72,7 @@ async function main() {
     process.exit(1);
   }
 
-  const frozen = await freezeWeek(bounds);
+  const frozen = await freezeWeek(bounds, { force: has("force") });
   console.log(
     frozen.alreadyFrozen
       ? `Epoch ${frozen.isoWeek} already frozen — using existing ${frozen.claims.length} claims.`
