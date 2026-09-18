@@ -347,6 +347,20 @@ export async function claimPaidOrRefund(
   payerAddress: string,
   paymentTxid: string,
 ): Promise<{ status: string; childTokenId?: string; error?: string }> {
+  // ONE payment funds ONE mint. An XEC payment carries a unique mintId tag so this
+  // never trips; a POW (SLP) send has no tag, so the sender+amount matcher can
+  // re-detect the SAME payment for another pending intent from the same wallet.
+  // Refuse to claim a payment already consumed by a DIFFERENT mint — and do NOT
+  // refund (there was no real second payment); the intent simply expires unpaid.
+  const { data: consumed } = await supabase
+    .from("pending_mints")
+    .select("id")
+    .eq("payment_txid", paymentTxid)
+    .neq("id", mintId)
+    .limit(1)
+    .maybeSingle();
+  if (consumed) return { status: "awaiting_payment", error: "payment already used for another mint" };
+
   const { error } = await supabase
     .from("pending_mints")
     .update({ status: "paid", payer_address: payerAddress, payment_txid: paymentTxid })
@@ -355,9 +369,20 @@ export async function claimPaidOrRefund(
     .select("id");
 
   if (error) {
-    // Unique-violation on the active-claim index → another payment already claimed
-    // this name. This one lost the race and can never be delivered → refund it.
     if (error.code === "23505") {
+      // Two different unique indexes can trip here — handle them oppositely:
+      //  • payment_txid reuse (a POW send re-detected for another intent): there
+      //    was no real second payment, so DON'T refund — fail the intent unpaid.
+      if ((error.message || "").includes("payment_txid")) {
+        await supabase
+          .from("pending_mints")
+          .update({ status: "failed", error: "payment already used for another mint" })
+          .eq("id", mintId)
+          .eq("status", "pending");
+        return { status: "awaiting_payment", error: "payment already used for another mint" };
+      }
+      //  • active-claim index (handle_skeleton): a real second payment for a name
+      //    already claimed → this one lost the race and is refunded.
       await supabase
         .from("pending_mints")
         .update({ status: "contended", payer_address: payerAddress, payment_txid: paymentTxid, error: "name was claimed by an earlier payment" })
