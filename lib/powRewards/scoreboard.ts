@@ -15,8 +15,18 @@ import { weekBoundsFor } from "./isoWeek";
 import { loadConfig } from "./config";
 import { scoreWeek } from "./score";
 import { contributionRows, type ContributionRow } from "./contribution";
-import { buildResolver, handlesFor } from "./accounts";
+import { buildResolver, handlesFor, primaryAddresses } from "./accounts";
 import { adminDb } from "@/lib/db";
+
+/** "@handle" if held, else a truncated ecash address — the public display identity. */
+function displayIdentity(handle: string | null, address: string | undefined): string {
+  if (handle) return `@${handle}`;
+  if (address) {
+    const bare = address.replace(/^ecash:/, "");
+    return `${bare.slice(0, 8)}…${bare.slice(-4)}`;
+  }
+  return "an eCash writer";
+}
 
 interface Board {
   isoWeek: string;
@@ -44,6 +54,8 @@ export interface ScoreboardEntry {
   rank: number;
   accountId: string;
   handle: string | null;
+  /** "@handle" or a truncated address — ready to show in a post. */
+  display: string;
   contributionScore: number;
   economicScore: number;
   creationScore: number;
@@ -62,16 +74,21 @@ export interface Scoreboard {
 export async function runningScoreboard(topN = 10, now: Date = new Date()): Promise<Scoreboard> {
   const board = await computeBoard(now);
   const shown = board.rows.slice(0, topN);
-  const handles = await handlesFor(shown.map((r) => r.accountId));
-  const top: ScoreboardEntry[] = shown.map((r, i) => ({
-    rank: i + 1,
-    accountId: r.accountId,
-    handle: handles.get(r.accountId) ?? null,
-    contributionScore: r.contributionScore,
-    economicScore: r.economicScore,
-    creationScore: r.creationScore,
-    engagementScore: r.engagementScore,
-  }));
+  const ids = shown.map((r) => r.accountId);
+  const [handles, addrs] = await Promise.all([handlesFor(ids), primaryAddresses(ids)]);
+  const top: ScoreboardEntry[] = shown.map((r, i) => {
+    const handle = handles.get(r.accountId) ?? null;
+    return {
+      rank: i + 1,
+      accountId: r.accountId,
+      handle,
+      display: displayIdentity(handle, addrs.get(r.accountId)),
+      contributionScore: r.contributionScore,
+      economicScore: r.economicScore,
+      creationScore: r.creationScore,
+      engagementScore: r.engagementScore,
+    };
+  });
   return {
     isoWeek: board.isoWeek,
     asOf: board.asOf,
@@ -127,9 +144,10 @@ export async function accountScoreLookup(accountId: string, now: Date = new Date
 export interface WeeklySummary {
   isoWeek: string;
   finalized: boolean;
+  paid: boolean;
   totalPow: number;
   recipients: number;
-  top: { rank: number; accountId: string; handle: string | null; pow: number; contributionScore: number; capped: boolean }[];
+  top: { rank: number; accountId: string; handle: string | null; display: string; pow: number; contributionScore: number; capped: boolean }[];
 }
 
 /** A finalized week's aggregate + top rewardees (from the frozen claims). */
@@ -144,19 +162,27 @@ export async function weeklySummary(isoWeek: string, topN = 10): Promise<WeeklyS
   const rows = claims ?? [];
   const totalPow = rows.reduce((a, c) => a + (c.allocation_atoms as number), 0);
   const shown = rows.slice(0, topN);
-  const handles = await handlesFor(shown.map((c) => c.account_id as string));
+  const ids = shown.map((c) => c.account_id as string);
+  const [handles, addrs] = await Promise.all([handlesFor(ids), primaryAddresses(ids)]);
   return {
     isoWeek,
     finalized: !!epoch && ["tallied", "paying", "done"].includes(epoch.status),
+    // paid = the payout actually completed (epoch 'done'); the herald announces the
+    // weekly rewardees only once this is true, not merely when the tally is frozen.
+    paid: epoch?.status === "done",
     totalPow,
     recipients: rows.length,
-    top: shown.map((c, i) => ({
-      rank: i + 1,
-      accountId: c.account_id as string,
-      handle: handles.get(c.account_id as string) ?? null,
-      pow: c.allocation_atoms as number,
-      contributionScore: (c.contribution_score as number) ?? 0,
-      capped: (c.capped as boolean) ?? false,
-    })),
+    top: shown.map((c, i) => {
+      const handle = handles.get(c.account_id as string) ?? null;
+      return {
+        rank: i + 1,
+        accountId: c.account_id as string,
+        handle,
+        display: displayIdentity(handle, addrs.get(c.account_id as string)),
+        pow: c.allocation_atoms as number,
+        contributionScore: (c.contribution_score as number) ?? 0,
+        capped: (c.capped as boolean) ?? false,
+      };
+    }),
   };
 }
