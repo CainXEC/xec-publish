@@ -7,6 +7,7 @@ import { FEED_CSS } from '@/components/feed/feedTheme'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import FeedPost from '@/components/feed/FeedPost'
 import UnlockIcon from '@/components/UnlockIcon'
+import PowRewardsCard from '@/components/dashboard/PowRewardsCard'
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { supabase } from '@/lib/supabase-browser'
 import { fetchAllUnlockCountRows } from '@/lib/supabaseUnlockCounts'
@@ -753,6 +754,8 @@ export default function DashboardClient({
               Edit Profile
             </Link>
           </div>
+
+          <PowRewardsCard />
         </div>
 
         <div className="tabs" role="tablist">
