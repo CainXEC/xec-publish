@@ -160,7 +160,16 @@ export default function ComposeBox({
     setPollOptions((prev) => (prev.length > 2 ? prev.filter((_, idx) => idx !== i) : prev))
 
   useEffect(() => {
-    if (autoFocus) textareaRef.current?.focus()
+    if (!autoFocus) return
+    const el = textareaRef.current
+    el?.focus()
+    // Belt-and-suspenders for the visualViewport resize handler below: if the
+    // keyboard is ALREADY open (switching straight from one inline reply to
+    // another further down the feed), no resize event fires to trigger that
+    // handler, so this covers the first-mount case directly.
+    requestAnimationFrame(() => {
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
   }, [autoFocus])
 
   // Auto-grow the composer to fit what you're typing (up to a cap, then scroll),
@@ -191,13 +200,19 @@ export default function ComposeBox({
 
   // The keyboard opening/closing resizes the visual viewport — re-cap for the new
   // space, and keep a focused composer in view so it isn't left under the keyboard.
+  // `block:'center'` (not 'nearest') deliberately overshoots: an inline reply/quote
+  // composer mounts wherever its post happens to sit in a long feed, often low on
+  // screen, and 'nearest' only scrolled the minimum to clear the keyboard — which
+  // left the box straddling the keyboard's top edge, half hidden. Centering it in
+  // whatever visual viewport remains puts the whole box safely above the keyboard
+  // on the first open, no manual scroll needed.
   useEffect(() => {
     const vv = typeof window !== 'undefined' ? window.visualViewport : null
     if (!vv) return
     const onViewportChange = () => {
       autosize()
       if (document.activeElement === textareaRef.current) {
-        textareaRef.current?.scrollIntoView({ block: 'nearest' })
+        textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       }
     }
     vv.addEventListener('resize', onViewportChange)
