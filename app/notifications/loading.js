@@ -10,7 +10,13 @@ export default function NotificationsLoading() {
     <div className="pow-feed">
       <style>{FEED_CSS}</style>
       <FeedTopbar signedIn isAuthor={false} />
-      <main className="wrap" style={{ paddingTop: '28px' }}>
+      <main className="wrap notif-page">
+        {/* Static tab placeholders so the skeleton's layout matches the real page
+            (same spacing) and only the rows fill in. */}
+        <div className="tabs" aria-hidden="true">
+          <span className="tab on">All notifications</span>
+          <span className="tab">Mentions</span>
+        </div>
         <ul className="notifpage-list" aria-hidden="true">
           {Array.from({ length: 6 }).map((_, i) => (
             <li key={i}>

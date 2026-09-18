@@ -509,6 +509,11 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
   padding:12px 0;transition:color .15s,border-color .15s;}
 .pow-feed .tab:hover{color:var(--cyan);}
 .pow-feed .tab.on{color:var(--neon);border-bottom-color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.4);}
+/* Notifications page: tuck the tabs up near the topbar so the empty space ABOVE
+   them ~matches the gap BELOW their line (.notifpage-list's 16px top margin). The
+   base .tabs margin-top (20px) is shared with the feed, so scope this override —
+   and the wrap carries no top padding here, so 16px is the whole gap. */
+.pow-feed .notif-page .tabs{margin-top:16px;}
 
 /* ---- new posts pill ----
    A sleek glass pill that drops in once (one-shot entrance — no ambient loop,

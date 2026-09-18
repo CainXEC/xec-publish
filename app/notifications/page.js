@@ -46,7 +46,7 @@ export default async function NotificationsPage() {
     <div className="pow-feed">
       <style>{FEED_CSS}</style>
       <FeedTopbar signedIn isAuthor={Boolean(acct.authorId)} />
-      <main className="wrap" style={{ paddingTop: '28px' }}>
+      <main className="wrap notif-page">
         <NotificationsPageClient
           initialItems={notifications}
           initialCursor={nextCursor}
