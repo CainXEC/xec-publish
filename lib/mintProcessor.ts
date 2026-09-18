@@ -22,6 +22,7 @@ import { ChronikClient } from "chronik-client";
 import { skeleton } from "./handleSkeleton";
 import { priceForHandle } from "./handlePricing";
 import { loadMintWallet, mintHandleChild } from "./mintHandleChild";
+import { SLP_TOKEN_TYPE_FUNGIBLE } from "ecash-lib";
 import { hostAsciiCard } from "./nft-art/hostAsciiCard"; // best-effort image host (Gen 1 ASCII card, seed = mint txid)
 import { mintCapSoldOut, recordMintAgainstCap } from "./mintCap";
 import { handleReservedByGrant } from "./grantReservation";
@@ -63,11 +64,36 @@ async function releaseMintLock(holder: string) {
   await supabase.from("mint_lock").update({ locked_until: null, holder: null }).eq("id", 1).eq("holder", holder);
 }
 
-async function refund(wallet: any, toAddress: string, sats: number): Promise<string | null> {
+const POW_TOKEN_ID =
+  process.env.POW_TOKEN_ID || "f36e1b3d9a2aaf74f132fef3834e9743b945a667a4204e761b85f2e7b65fd41a";
+
+function txidOf(resp: any): string | null {
+  if (Array.isArray(resp?.broadcasted) && resp.broadcasted.length) return resp.broadcasted[resp.broadcasted.length - 1];
+  if (Array.isArray(resp)) return resp[resp.length - 1] ?? null;
+  return resp?.txid ?? (typeof resp === "string" ? resp : null);
+}
+
+/** Refund the buyer. Branches on how they paid: a POW mint returns the POW atoms
+ *  (an SLP send of the received token), an XEC mint returns the sats. Best-effort
+ *  (null on failure → caller records 'failed' and the reconciler can retry). */
+async function refund(wallet: any, m: any): Promise<string | null> {
   try {
-    const built: any = wallet.action({ outputs: [{ address: toAddress, sats: BigInt(sats) }] }).build();
-    const resp: any = await built.broadcast();
-    return Array.isArray(resp) ? resp[resp.length - 1] : (resp?.txid ?? resp ?? null);
+    if (m.pay_token === "pow") {
+      const atoms = BigInt(m.expected_atoms ?? 0);
+      if (atoms <= 0n || !m.payer_address) return null;
+      const built: any = wallet
+        .action({
+          outputs: [
+            { sats: 0n }, // OP_RETURN slot for the token action
+            { sats: 546n, address: m.payer_address, tokenId: POW_TOKEN_ID, atoms, isMintBaton: false },
+          ],
+          tokenActions: [{ type: "SEND", tokenId: POW_TOKEN_ID, tokenType: SLP_TOKEN_TYPE_FUNGIBLE }],
+        })
+        .build();
+      return txidOf(await built.broadcast());
+    }
+    const built: any = wallet.action({ outputs: [{ address: m.payer_address, sats: BigInt(m.expected_sats) }] }).build();
+    return txidOf(await built.broadcast());
   } catch {
     return null;
   }
@@ -79,7 +105,7 @@ async function refundUnavailable(
   m: any,
   reason: string,
 ): Promise<{ status: string; error?: string }> {
-  const refundTxid = await refund(await synced(wallet), m.payer_address, Number(m.expected_sats));
+  const refundTxid = await refund(await synced(wallet), m);
   await supabase
     .from("pending_mints")
     .update({ status: refundTxid ? "refunded" : "failed", refund_txid: refundTxid, error: reason })
@@ -356,7 +382,7 @@ export async function claimPaidOrRefund(
 export async function refundContended(mintId: string): Promise<{ status: string; error?: string }> {
   const { data: m } = await supabase
     .from("pending_mints")
-    .select("expected_sats, payer_address, status")
+    .select("expected_sats, payer_address, status, pay_token, expected_atoms")
     .eq("id", mintId)
     .maybeSingle();
   if (!m) return { status: "not_found" };
@@ -369,7 +395,7 @@ export async function refundContended(mintId: string): Promise<{ status: string;
       mnemonic: process.env.MINT_WALLET_MNEMONIC,
       skHex: process.env.MINT_WALLET_SK,
     });
-    const refundTxid = await refund(await synced(wallet), m.payer_address, Number(m.expected_sats));
+    const refundTxid = await refund(await synced(wallet), m);
     if (!refundTxid) return { status: "contended", error: "refund broadcast failed; will retry" };
     await supabase
       .from("pending_mints")

@@ -13,7 +13,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/db";
-import { verifyMintTxid, findMintPayment } from "@/lib/mintPayments";
+import { verifyMintTxid, findMintPayment, verifyPowMintTxid, findPowMintPayment } from "@/lib/mintPayments";
 import { processPaidMint, claimPaidOrRefund } from "@/lib/mintProcessor";
 import { autoLoginByPayment } from "@/lib/payAutoLogin";
 
@@ -43,12 +43,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, status: "expired" });
   }
 
-  // awaiting payment -> look for it (matched by the mintId OP_RETURN tag)
+  // awaiting payment -> look for it. XEC matches on the mintId OP_RETURN tag; a
+  // POW (SLP) payment can't carry that tag, so it matches by SENDER ∈ the
+  // account's proven addresses (recorded on the row) with atoms ≥ expected_atoms.
   if (m.status === "pending") {
     const since = Math.floor(new Date(m.created_at).getTime() / 1000);
-    const found = txid
-      ? await verifyMintTxid(txid, MINT_ADDRESS, Number(m.expected_sats), mintId)
-      : await findMintPayment(MINT_ADDRESS, mintId, Number(m.expected_sats), since);
+    const isPow = m.pay_token === "pow";
+    const found = isPow
+      ? txid
+        ? await verifyPowMintTxid(txid, MINT_ADDRESS, BigInt(m.expected_atoms ?? 0), m.expected_payers ?? [])
+        : await findPowMintPayment(MINT_ADDRESS, BigInt(m.expected_atoms ?? 0), m.expected_payers ?? [], since)
+      : txid
+        ? await verifyMintTxid(txid, MINT_ADDRESS, Number(m.expected_sats), mintId)
+        : await findMintPayment(MINT_ADDRESS, mintId, Number(m.expected_sats), since);
 
     if (!found) return NextResponse.json({ ok: true, status: "awaiting_payment" });
 

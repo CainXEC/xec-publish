@@ -13,12 +13,16 @@ import { encodeFeedOpReturnRaw, FEED_ACTION } from "@/lib/feedProtocol";
 import { rateLimit, getClientIp } from "@/lib/rateLimit";
 import { mintCapSoldOut } from "@/lib/mintCap";
 import { handleReservedByGrant } from "@/lib/grantReservation";
+import { getAuthedAccount } from "@/lib/authHelpers";
+import { accountUnlockAddressForms } from "@/lib/accountUnlockAddresses";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const supabase = adminDb();
 const MINT_ADDRESS = process.env.MINT_PAYMENT_ADDRESS!; // the mint wallet's ecash: address
+const POW_TOKEN_ID =
+  process.env.POW_TOKEN_ID || "f36e1b3d9a2aaf74f132fef3834e9743b945a667a4204e761b85f2e7b65fd41a";
 const PAY_WINDOW_MINUTES = 15;
 
 export async function POST(req: NextRequest) {
@@ -41,7 +45,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { handle } = await req.json().catch(() => ({}));
+  const { handle, payWith } = await req.json().catch(() => ({}));
   if (!handle) return NextResponse.json({ ok: false, error: "missing handle" }, { status: 400 });
 
   const syntaxErr = validateHandleSyntax(handle);
@@ -49,7 +53,7 @@ export async function POST(req: NextRequest) {
 
   const display = displayHandle(handle);
   const sk = skeleton(handle);
-  const { tier, priceSats, auctionOnly } = priceForHandle(display);
+  const { tier, priceSats, powAtoms, auctionOnly } = priceForHandle(display);
   if (auctionOnly) return NextResponse.json({ ok: false, status: "auction", reason: "premium name — auction only" });
 
   // availability (mirrors the check endpoint). A CLAIM — a row whose payment has
@@ -72,10 +76,55 @@ export async function POST(req: NextRequest) {
   // mintProcessor under the global mint_lock. No-op pre-launch.
   if (await mintCapSoldOut()) return NextResponse.json({ ok: false, status: "sold_out", reason: "The collection is sold out." });
 
-  // flat per-tier price — disambiguation is now the op_return_raw (mintId), not amount.
-  const expectedSats = priceSats;
   // Payment window (not a name hold): pay before this or the quote goes stale.
   const expiresAt = new Date(Date.now() + PAY_WINDOW_MINUTES * 60_000).toISOString();
+
+  // ---- POW payment path -----------------------------------------------------
+  // An SLP token send can't carry the mintId OP_RETURN tag the XEC path matches
+  // on, so a POW mint REQUIRES login and is matched by SENDER ∈ the account's
+  // proven addresses (recorded on the row). See docs/pow-token-migration-plan.md §3.
+  if (payWith === "pow") {
+    const acct = await getAuthedAccount();
+    if (!acct) return NextResponse.json({ ok: false, error: "Log in to pay with POW." }, { status: 401 });
+    const expectedPayers = await accountUnlockAddressForms(supabase, acct.accountId, acct.address);
+    const { data: powRow, error: powErr } = await supabase
+      .from("pending_mints")
+      .insert({
+        handle: display,
+        handle_skeleton: sk,
+        price_sats: priceSats,
+        expected_sats: priceSats, // kept for record; POW matching uses expected_atoms
+        pay_token: "pow",
+        expected_atoms: powAtoms,
+        expected_payers: expectedPayers,
+        status: "pending",
+        expires_at: expiresAt,
+      })
+      .select("id")
+      .single();
+    if (powErr || !powRow) {
+      return NextResponse.json({ ok: false, status: "pending", reason: "name is being minted right now" });
+    }
+    // RAW token BIP21 — Cashtab takes the bip21 value verbatim; the token link must
+    // NOT be URL-encoded (see the deep-link investigation). Client builds
+    // https://cashtab.com/#/send?bip21=<this>. No op_return_raw (SLP has no room).
+    const bip21 = `${MINT_ADDRESS}?token_id=${POW_TOKEN_ID}&token_decimalized_qty=${powAtoms}`;
+    return NextResponse.json({
+      ok: true,
+      mintId: powRow.id,
+      handle: display,
+      tier,
+      payWith: "pow",
+      powAtoms,
+      address: MINT_ADDRESS,
+      bip21Url: bip21,
+      expiresAt,
+    });
+  }
+
+  // ---- XEC payment path (default) -------------------------------------------
+  // flat per-tier price — disambiguation is the op_return_raw (mintId), not amount.
+  const expectedSats = priceSats;
 
   // Create the payment-tracking row. Multiple unpaid intents for the same name
   // may coexist now (the name is only held once one is paid); a real DB error is

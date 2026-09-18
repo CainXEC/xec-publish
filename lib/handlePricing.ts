@@ -14,10 +14,18 @@ export interface HandlePrice {
   tier: Tier;
   priceXec: number;
   priceSats: number;
+  /** Alternative price in POW (the existing SLP token, 0 decimals → whole tokens
+   *  == atoms). Same 1:10:100 tier ratio as XEC. Paying in POW is itself the
+   *  discount (a token received for free), so no separate discount is applied. */
+  powAtoms: number;
   /** Retained for API compatibility with the mint/claim flows. Always false now
    *  (no auction-only tier). Kept so callers that read it don't need changes. */
   auctionOnly: boolean;
 }
+
+// POW price per tier (atoms; POW is 0-decimal). See docs/pow-token-migration-plan.md §3.
+const POW_ATOMS: Record<Tier, number> = { short: 1000, mid: 100, base: 10 };
+
 export function priceForHandle(handle: string): HandlePrice {
   const n = handle.length;
   let tier: Tier;
@@ -32,5 +40,5 @@ export function priceForHandle(handle: string): HandlePrice {
     tier = "base";
     priceXec = 10_000;
   }
-  return { tier, priceXec, priceSats: priceXec * 100, auctionOnly: false };
+  return { tier, priceXec, priceSats: priceXec * 100, powAtoms: POW_ATOMS[tier], auctionOnly: false };
 }

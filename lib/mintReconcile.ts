@@ -18,7 +18,7 @@
 // =============================================================================
 
 import { adminDb } from "@/lib/db";
-import { scanMintPayments } from "@/lib/mintPayments";
+import { scanMintPayments, findPowMintPayment } from "@/lib/mintPayments";
 import { processPaidMint, claimPaidOrRefund, refundContended } from "@/lib/mintProcessor";
 
 const MINT_ADDRESS = process.env.MINT_PAYMENT_ADDRESS;
@@ -85,6 +85,34 @@ export async function runMintReconcile(): Promise<MintReconcileResult> {
       budget -= 1;
       out.detected += 1;
       tally((await claimPaidOrRefund(p.mintId, p.payerAddress, p.txid)).status);
+    }
+  }
+
+  // ---- Pass B2: undetected POW (SLP) payments for still-'pending' pow rows ----
+  // POW sends carry no mintId tag, so they aren't in scanMintPayments; match each
+  // open pow intent by its recorded proven-payer set (the closed-tab case).
+  if (budget > 0 && MINT_ADDRESS) {
+    const cutoff = new Date(Date.now() - SCAN_LOOKBACK_HOURS * 3600 * 1000).toISOString();
+    const { data: powRows } = await supabase
+      .from("pending_mints")
+      .select("id, expected_atoms, expected_payers, created_at")
+      .eq("status", "pending")
+      .eq("pay_token", "pow")
+      .gte("created_at", cutoff)
+      .limit(MAX_DELIVERIES_PER_RUN * 2);
+    for (const row of powRows ?? []) {
+      if (budget <= 0) { out.skippedBusy = true; break; }
+      const since = Math.floor(new Date(row.created_at as string).getTime() / 1000);
+      const found = await findPowMintPayment(
+        MINT_ADDRESS,
+        BigInt((row.expected_atoms as number) ?? 0),
+        (row.expected_payers as string[]) ?? [],
+        since,
+      );
+      if (!found || !found.isFinal) continue;
+      budget -= 1;
+      out.detected += 1;
+      tally((await claimPaidOrRefund(row.id as string, found.payerAddress, found.txid)).status);
     }
   }
 
