@@ -42,13 +42,9 @@ export default function PowRewardsCard() {
     return () => { active = false }
   }, [])
 
-  // Don't clutter the dashboard for accounts that can't earn (founder / house AI).
-  if (state.status === 'done' && state.data?.ok && state.data.found === false && state.data.reason === 'excluded') {
-    return null
-  }
-
   const d = state.status === 'done' ? state.data : null
   const found = d?.ok && d.found
+  const excluded = state.status === 'done' && d?.ok && d.found === false && d.reason === 'excluded'
 
   return (
     <div className="powcard">
@@ -67,7 +63,13 @@ export default function PowRewardsCard() {
       {state.status === 'loading' && <p className="powcard-muted">Loading your standing…</p>}
       {state.status === 'error' && <p className="powcard-muted">Couldn’t load your rewards standing.</p>}
 
-      {state.status === 'done' && !found && d?.reason === 'no_activity' && (
+      {excluded && (
+        <p className="powcard-note">
+          Your account funds the weekly reward pool, so it’s excluded from earning —
+          the POW goes to the community. You still power the whole thing. 🙏
+        </p>
+      )}
+      {state.status === 'done' && !found && !excluded && d?.reason === 'no_activity' && (
         <p className="powcard-note">
           No contribution yet this week. Publish, unlock a writer, reply, or bring in
           genuine activity — POW rewards the people who make Proof of Writing more
