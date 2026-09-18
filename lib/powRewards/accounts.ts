@@ -77,6 +77,19 @@ export async function authorToAccount(authorIds: string[]): Promise<Map<string, 
   return map;
 }
 
+/** account_id → display handle (null if none). For leaderboard/reply display. */
+export async function handlesFor(accountIds: string[]): Promise<Map<string, string | null>> {
+  const db = adminDb();
+  const uniq = Array.from(new Set(accountIds));
+  const map = new Map<string, string | null>();
+  for (let i = 0; i < uniq.length; i += IN_CHUNK) {
+    const chunk = uniq.slice(i, i + IN_CHUNK);
+    const { data } = await db.from("accounts").select("id, display_handle").in("id", chunk);
+    for (const r of data ?? []) map.set(r.id as string, (r.display_handle as string) || null);
+  }
+  return map;
+}
+
 /** account_id → its primary (payout) address. */
 export async function primaryAddresses(accountIds: string[]): Promise<Map<string, string>> {
   const db = adminDb();

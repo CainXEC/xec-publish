@@ -18,9 +18,8 @@ import { adminDb } from "@/lib/db";
 import { weekBoundsFor, type WeekBounds } from "./isoWeek";
 import { loadConfig, type RewardConfig } from "./config";
 import { scoreWeek, type Activity } from "./score";
+import { contributionRows } from "./contribution";
 import { primaryAddresses } from "./accounts";
-
-const SCALE = 1000; // display scale for score "points" (share × weight × SCALE)
 
 export interface FrozenClaim {
   accountId: string;
@@ -71,74 +70,47 @@ export async function computeWeek(bounds: WeekBounds, carryInAtoms: number, cfg:
   const distributable = pool + carryInAtoms;
   const scores = await scoreWeek(bounds.startUtc, bounds.endUtc, cfg);
 
-  let tEcon = 0, tCre = 0, tEng = 0;
-  for (const s of scores.values()) { tEcon += s.economicRaw; tCre += s.creationRaw; tEng += s.engagementRaw; }
-  const w = cfg.weights;
+  const { rows, totalContribShareRaw, totals } = contributionRows(scores, cfg);
 
-  // Weighted contribution share per account (loyalty = 1.0 in Phase 1).
-  interface Row { accountId: string; econ: number; cre: number; eng: number; contrib: number; activity: Activity }
-  const rows: Row[] = [];
-  let tContrib = 0;
-  for (const s of scores.values()) {
-    const econS = tEcon > 0 ? s.economicRaw / tEcon : 0;
-    const creS = tCre > 0 ? s.creationRaw / tCre : 0;
-    const engS = tEng > 0 ? s.engagementRaw / tEng : 0;
-    const econ = w.economic * econS;
-    const cre = w.creation * creS;
-    const eng = w.engagement * engS;
-    const contrib = econ + cre + eng;
-    if (contrib <= 0) continue;
-    rows.push({ accountId: s.accountId, econ, cre, eng, contrib, activity: s.activity });
-    tContrib += contrib;
-  }
-
-  const totals = {
-    economic: round2(w.economic * SCALE),
-    creation: round2(w.creation * SCALE),
-    engagement: round2(w.engagement * SCALE),
-    contribution: round2(tContrib * SCALE),
-  };
-
-  if (rows.length === 0 || tContrib <= 0) {
+  if (rows.length === 0 || totalContribShareRaw <= 0) {
     return { isoWeek: bounds.isoWeek, poolAtoms: pool, carryInAtoms, distributableAtoms: distributable, carryoverAtoms: distributable, totals, claims: [], config: cfg };
   }
 
   // Normalise to sum 1 across active accounts, then cap.
   const shares = new Map<string, number>();
-  for (const r of rows) shares.set(r.accountId, r.contrib / tContrib);
+  for (const r of rows) shares.set(r.accountId, r.contribShareRaw / totalContribShareRaw);
   const { shares: capShare, capped } = capShares(shares, cfg.maxUserShare);
 
   // Primary addresses for payout.
   const addrs = await primaryAddresses(rows.map((r) => r.accountId));
 
   // rawPow = share × distributable; floor; then round leftover up to closest sub-1.
-  interface Alloc extends Row { toAddress: string; raw: number; floor: number; capped: boolean }
+  interface Alloc { row: (typeof rows)[number]; toAddress: string; raw: number; floor: number; capped: boolean }
   const allocs: Alloc[] = [];
   for (const r of rows) {
     const toAddress = addrs.get(r.accountId);
     if (!toAddress) continue; // no primary address → skip, its share rolls forward
     const raw = (capShare.get(r.accountId) ?? 0) * distributable;
-    allocs.push({ ...r, toAddress, raw, floor: Math.floor(raw), capped: capped.has(r.accountId) });
+    allocs.push({ row: r, toAddress, raw, floor: Math.floor(raw), capped: capped.has(r.accountId) });
   }
   let paid = allocs.reduce((a, x) => a + x.floor, 0);
   let leftover = distributable - paid;
   // sub-1 accounts (floor 0, raw>0) closest to 1 first
   const subMin = allocs.filter((a) => a.floor < 1 && a.raw > 0).sort((a, b) => b.raw - a.raw);
-  const toppedUp = new Set<string>();
-  for (const a of subMin) { if (leftover < 1) break; a.floor = 1; toppedUp.add(a.accountId); leftover -= 1; paid += 1; }
+  for (const a of subMin) { if (leftover < 1) break; a.floor = 1; leftover -= 1; paid += 1; }
 
   const claims: FrozenClaim[] = allocs
     .filter((a) => a.floor >= 1)
     .map((a) => ({
-      accountId: a.accountId,
+      accountId: a.row.accountId,
       allocationAtoms: a.floor,
       toAddress: a.toAddress,
-      economicScore: round2(a.econ * SCALE),
-      creationScore: round2(a.cre * SCALE),
-      engagementScore: round2(a.eng * SCALE),
-      contributionScore: round2(a.contrib * SCALE),
+      economicScore: a.row.economicScore,
+      creationScore: a.row.creationScore,
+      engagementScore: a.row.engagementScore,
+      contributionScore: a.row.contributionScore,
       capped: a.capped,
-      activity: a.activity,
+      activity: a.row.activity,
     }))
     .sort((x, y) => y.allocationAtoms - x.allocationAtoms || y.contributionScore - x.contributionScore);
 
@@ -153,8 +125,6 @@ export async function computeWeek(bounds: WeekBounds, carryInAtoms: number, cfg:
     config: cfg,
   };
 }
-
-function round2(n: number): number { return Math.round(n * 100) / 100; }
 
 function priorWeekKey(b: WeekBounds): string {
   return weekBoundsFor(new Date(b.startUtc.getTime() - 1)).isoWeek;
