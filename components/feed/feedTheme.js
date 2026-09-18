@@ -1924,6 +1924,9 @@ html:not(.dark) .pow-feed .np-entry{border-bottom-color:var(--line);}
 .pow-feed .feed-fab svg{ width:30px; height:30px; }
 .pow-feed .feed-fab .pnib{ fill:var(--bg); stroke:var(--bg); stroke-width:1.2; stroke-linejoin:round; }
 .pow-feed .feed-fab .pcut{ stroke:var(--neon); stroke-width:1.4; }
+/* Fixed to the corner, so it can otherwise sit on top of an inline reply/quote
+   composer's own Pay button once that composer scrolls itself into view. */
+.pow-feed .feed-fab.compose-active{ display:none; }
 
 /* Compose sheet (opened by the FAB): a backdrop with a panel that holds the
    same ComposeBox the top of the feed used to. Anchored to the TOP of the

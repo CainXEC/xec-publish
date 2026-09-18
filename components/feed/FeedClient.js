@@ -58,6 +58,41 @@ export default function FeedClient({
   // Mobile: the top composer is hidden and replaced by a floating pen-nib button
   // that opens the composer as a bottom sheet. Desktop keeps the inline composer.
   const [composeOpen, setComposeOpen] = useState(false)
+  // The FAB is FIXED to the bottom-right corner — but an inline reply/quote
+  // composer (opened from a post further down the feed) now scrolls itself to
+  // the middle of the screen so the keyboard can't cut it off (see ComposeBox),
+  // which can land its own Pay button right under the FAB. Hide the FAB for as
+  // long as any composer on the page is focused (same pow:composer-focus/blur
+  // signal BottomNav already uses to get out of the way), so it never overlaps
+  // the very button it exists to reach for.
+  const [composerActive, setComposerActive] = useState(false)
+  useEffect(() => {
+    let hideTimer = null
+    let focusCount = 0
+    const apply = (active) => {
+      if (hideTimer) {
+        clearTimeout(hideTimer)
+        hideTimer = null
+      }
+      if (active) setComposerActive(true)
+      else hideTimer = setTimeout(() => setComposerActive(false), 80)
+    }
+    const onFocus = () => {
+      focusCount += 1
+      apply(true)
+    }
+    const onBlur = () => {
+      focusCount = Math.max(0, focusCount - 1)
+      if (focusCount === 0) apply(false)
+    }
+    window.addEventListener('pow:composer-focus', onFocus)
+    window.addEventListener('pow:composer-blur', onBlur)
+    return () => {
+      window.removeEventListener('pow:composer-focus', onFocus)
+      window.removeEventListener('pow:composer-blur', onBlur)
+      if (hideTimer) clearTimeout(hideTimer)
+    }
+  }, [])
   const paneOpenRef = useRef(false)
   const feedScrollRef = useRef(0)
   // The pane is a WIDE-SHELL behavior: on phones a post click must keep
@@ -711,11 +746,13 @@ export default function FeedClient({
 
       {/* Mobile compose button (CSS-hidden ≥600px): the POWR pen-nib on a neon
           disc, opening the composer as a bottom sheet. Hidden on the Forums tab,
-          where posting happens inside a forum, not globally. */}
+          where posting happens inside a forum, not globally — and hidden while
+          ANY composer is focused (see composerActive above), so it can't sit on
+          top of a reply/quote composer's own Pay button. */}
       {scope !== 'forums' ? (
         <button
           type="button"
-          className="feed-fab"
+          className={`feed-fab${composerActive ? ' compose-active' : ''}`}
           aria-label="New post"
           onClick={() => setComposeOpen(true)}
         >
