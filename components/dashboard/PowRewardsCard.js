@@ -11,21 +11,28 @@ import { useEffect, useState } from 'react'
 // into POW when the week closes, so a mid-week POW figure would be misleading.
 // Rank + "unique users engaged" nudge the behaviour the score rewards.
 
+// No border/background of its own — this sits directly in the dashboard's
+// .dashpanel (which already has its own border), so its own box used to draw
+// a redundant nested frame. It's now a plain section like "Your Library" /
+// "Your Articles" (title styled the same way), with only the Economic/
+// Creation/Engagement cells kept as their own tiles — same treatment as the
+// stat tiles above it (.dashstat), just smaller.
 const POWCARD_CSS = `
-.powcard{margin-top:18px;padding:16px 18px;border:1px solid color-mix(in srgb, currentColor 16%, transparent);border-radius:12px}
+.powcard{margin-top:20px}
 .powcard-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.powcard-title{font-weight:700;letter-spacing:.01em}
-.powcard-week{opacity:.55;font-size:12.5px}
-.powcard-rank{font-size:13px;opacity:.8;font-variant-numeric:tabular-nums}
-.powcard-cells{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 6px}
-.powcard-cell{padding:9px 11px;border:1px solid color-mix(in srgb, currentColor 12%, transparent);border-radius:9px;text-align:center}
-.powcard-cell .l{display:block;font-size:11.5px;opacity:.55;margin-bottom:3px}
-.powcard-cell .v{display:block;font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
-.powcard-total{margin-top:8px;font-size:14px}
-.powcard-total b{font-variant-numeric:tabular-nums}
-.powcard-act{margin-top:8px;font-size:12.5px;opacity:.7;line-height:1.5}
-.powcard-note{margin-top:10px;font-size:13px;opacity:.7}
-.powcard-muted{opacity:.6;font-size:13px}
+.powcard-title{margin:0;font-size:14px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
+  color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.3)}
+.powcard-week{color:var(--dim);font-size:12.5px}
+.powcard-rank{color:var(--dim);font-size:13px;font-variant-numeric:tabular-nums}
+.powcard-cells{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0 0}
+.powcard-cell{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px 11px;text-align:center}
+.powcard-cell .l{display:block;font-size:11.5px;color:var(--dim);margin-bottom:3px}
+.powcard-cell .v{display:block;font-size:19px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.powcard-total{margin:12px 0 0;font-size:14px;color:var(--text)}
+.powcard-total b{color:var(--neon);font-variant-numeric:tabular-nums}
+.powcard-act{margin:8px 0 0;font-size:12.5px;color:var(--dim);line-height:1.5}
+.powcard-note{margin:10px 0 0;font-size:13px;color:var(--dim)}
+.powcard-muted{margin:10px 0 0;color:var(--dim);font-size:13px}
 `
 
 const n1 = (x) => (typeof x === 'number' ? x.toFixed(1) : '—')
