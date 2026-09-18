@@ -1941,6 +1941,13 @@ html:not(.dark) .pow-feed .np-entry{border-bottom-color:var(--line);}
 .pow-feed .feed-sheet-close{ background:none; border:none; color:var(--dim); cursor:pointer;
   font-size:20px; line-height:1; padding:4px 6px; }
 .pow-feed .feed-sheet-close:hover{ color:var(--text); }
+/* ComposeBox's own .panel styling (border + shadow + 16px padding) drew a
+   SECOND bordered box nested inside the sheet's — the sheet is already the
+   one box this needs. Flatten it flush so there's a single frame: more room
+   for the textarea, and the toolbar row below no longer sits inset from the
+   sheet's true edge (which read as lopsided against the close X). */
+.pow-feed .feed-sheet .panel.compose{ border:none; box-shadow:none; background:transparent; padding:0; }
+.pow-feed .feed-sheet .compose textarea{ background:transparent; }
 /* The Post button's own row stays pinned to the bottom of the sheet's
    scrollable area (not the viewport) — so on a long post (or a poll, or the
    YouTube-surcharge notice pushing things down) it's still always visible
