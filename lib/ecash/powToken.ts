@@ -26,6 +26,7 @@ import {
   SLP_TOKEN_TYPE_FUNGIBLE,
   payment,
   fromHex,
+  Script,
   type TokenType,
 } from 'ecash-lib'
 import { encodeOutputScript, getOutputScriptFromAddress } from 'ecashaddrjs'
@@ -184,7 +185,16 @@ export async function sendTokenBatch(
   const outputs: any[] = [{ sats: 0n }] // mandatory blank OP_RETURN slot
   for (const r of p.recipients) {
     if (r.atoms <= 0n) throw new Error('sendTokenBatch: non-positive atoms for ' + r.address)
-    outputs.push({ sats: DUST, address: r.address, tokenId: p.tokenId, atoms: r.atoms, isMintBaton: false })
+    // A token SEND output must carry a SCRIPT, not an address — unlike GENESIS,
+    // ecash-wallet's SEND path does not derive the script from an address
+    // ("Token send output must have a script defined"). Build it from the addr.
+    outputs.push({
+      sats: DUST,
+      script: Script.fromAddress(prefixed(r.address)),
+      tokenId: p.tokenId,
+      atoms: r.atoms,
+      isMintBaton: false,
+    })
   }
   const action = {
     outputs,
