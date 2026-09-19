@@ -200,6 +200,8 @@ export default function PocketChip() {
         {tryItDismissed ? (
           <span className="pocket-tip" role="tooltip">Load your Pocket once and pay instantly</span>
         ) : null}
+      </div>
+    )
   }
 
   const handlePointerDown = (e) => {
