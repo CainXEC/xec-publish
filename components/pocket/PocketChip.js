@@ -180,7 +180,7 @@ export default function PocketChip() {
   if (!hasPocket) {
     return (
       <div className="pocketbtn-wrap">
-        {/* One-shot "TRY IT" pill above the chip (dismissed once setup is opened). */}
+        {/* One-shot "TRY IT" pill under the chip (dismissed once setup is opened). */}
         {!tryItDismissed ? (
           <span className="pocket-tryit" aria-hidden>Try it</span>
         ) : null}
@@ -194,10 +194,12 @@ export default function PocketChip() {
         >
           <PocketIcon />
         </button>
-        {/* Desktop hover nudge — CSS reveals it only on hover-capable devices. */}
-        <span className="pocket-tip" role="tooltip">Load your Pocket once and pay instantly</span>
-      </div>
-    )
+        {/* Desktop hover nudge — CSS reveals it only on hover-capable devices.
+            Shown once the "Try it" pill is gone, so the two never occupy the same
+            spot below the chip at once. */}
+        {tryItDismissed ? (
+          <span className="pocket-tip" role="tooltip">Load your Pocket once and pay instantly</span>
+        ) : null}
   }
 
   const handlePointerDown = (e) => {

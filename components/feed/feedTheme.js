@@ -277,14 +277,16 @@ html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation-name:pocke
    a neon pill with a down-caret pointing at the chip. One-shot entrance, no loop —
    matches the masthead motion language. Decorative (pointer-events:none) so it
    never intercepts the chip's own click; dismissed for good once setup is opened. */
-.pow-feed .pocket-tryit{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+.pow-feed .pocket-tryit{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);
   z-index:60;white-space:nowrap;pointer-events:none;
   font-size:9.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
   color:#04140d;background:var(--neon);border-radius:6px;padding:3px 7px;
   box-shadow:0 0 10px rgba(0,255,156,.45);
   animation:pocket-tryit-in .5s cubic-bezier(.2,.7,.2,1) both;}
-.pow-feed .pocket-tryit::after{content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);
-  border:4px solid transparent;border-top-color:var(--neon);}
+/* Caret points UP at the chip: the pill sits BELOW it, because the sticky topbar
+   is pinned to top:0 and a pill ABOVE the chip clips off the top of the viewport. */
+.pow-feed .pocket-tryit::after{content:"";position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+  border:4px solid transparent;border-bottom-color:var(--neon);}
 @keyframes pocket-tryit-in{from{opacity:0;transform:translate(-50%,-4px);}to{opacity:1;transform:translate(-50%,0);}}
 html:not(.dark) .pow-feed .pocket-tryit{color:#fdfcf8;box-shadow:0 0 0 1px var(--neon);}
 @media (prefers-reduced-motion: reduce){.pow-feed .pocket-tryit{animation:none;}}
