@@ -282,6 +282,38 @@ export default function DashboardClient({
   const [librarySort, setLibrarySort] = useState('recent')
   // Which list is open under the stat band: null | 'followers' | 'following' | 'blocked'
   const [panelOpen, setPanelOpen] = useState(null)
+  // Inline unblock from the Blocked panel (same /api/feed/block toggle the profile
+  // settings page uses). A local copy of the list so an unblocked row drops out
+  // without a page reload; the stat count reads from it too.
+  const [blockedList, setBlockedList] = useState(blocked ?? [])
+  const [unblockingId, setUnblockingId] = useState(null)
+  const [unblockError, setUnblockError] = useState(null)
+
+  async function handleUnblock(accountId) {
+    setUnblockError(null)
+    setUnblockingId(accountId)
+    try {
+      const res = await fetch('/api/feed/block', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ blockedAccountId: accountId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.ok && data.blocked === false) {
+        setBlockedList((prev) => prev.filter((b) => b.id !== accountId))
+        // Let other surfaces (e.g. the live rail) react without a reload.
+        window.dispatchEvent(
+          new CustomEvent('pow:block-changed', { detail: { accountId, blocked: false } }),
+        )
+      } else {
+        setUnblockError(data.error || 'Could not unblock. Try again.')
+      }
+    } catch {
+      setUnblockError('Could not unblock. Try again.')
+    } finally {
+      setUnblockingId(null)
+    }
+  }
   const sortedLibrary = useMemo(() => {
     const rows = [...library]
     if (librarySort === 'spent') {
@@ -686,7 +718,7 @@ export default function DashboardClient({
               onClick={() => setPanelOpen((cur) => (cur === 'blocked' ? null : 'blocked'))}
             >
               <span className="dashstat-label">Blocked</span>
-              <span className="dashstat-value">{blocked.length.toLocaleString()}</span>
+              <span className="dashstat-value">{blockedList.length.toLocaleString()}</span>
             </button>
           </div>
 
@@ -695,7 +727,7 @@ export default function DashboardClient({
               <p className="dashfollows-title">
                 {panelOpen === 'followers' ? 'Followers' : panelOpen === 'following' ? 'Following' : 'Blocked'}
               </p>
-              {(panelOpen === 'followers' ? followers : panelOpen === 'following' ? following : blocked)
+              {(panelOpen === 'followers' ? followers : panelOpen === 'following' ? following : blockedList)
                 .length === 0 ? (
                 <p className="dashfollows-empty">
                   {panelOpen === 'followers'
@@ -705,29 +737,42 @@ export default function DashboardClient({
                       : "You haven't blocked anyone."}
                 </p>
               ) : (
-                <ul className="dashfollows-list">
-                  {/* Blocked accounts link straight to their profile, same as
-                      followers/following — the profile's own Block/Unblock button
-                      (only shown to the blocker) is where you'd undo it, so there's
-                      no separate inline "Unblock" here. */}
-                  {(panelOpen === 'followers' ? followers : panelOpen === 'following' ? following : blocked).map(
-                    (a) => (
-                      <li key={a.id}>
-                        {a.href ? (
-                          <Link
-                            href={a.href}
-                            className="dashfollow"
-                            style={a.color ? { '--hc': a.color } : undefined}
-                          >
-                            {a.display}
-                          </Link>
-                        ) : (
-                          <span className="dashfollow">{a.display}</span>
-                        )}
-                      </li>
-                    ),
-                  )}
-                </ul>
+                <>
+                  {panelOpen === 'blocked' && unblockError ? (
+                    <p className="dashunblock-err" role="alert">{unblockError}</p>
+                  ) : null}
+                  <ul className="dashfollows-list">
+                    {/* Blocked rows carry an inline Unblock button (the same
+                        /api/feed/block toggle); followers/following are plain links. */}
+                    {(panelOpen === 'followers' ? followers : panelOpen === 'following' ? following : blockedList).map(
+                      (a) => (
+                        <li key={a.id} className={panelOpen === 'blocked' ? 'dashblocked-item' : undefined}>
+                          {a.href ? (
+                            <Link
+                              href={a.href}
+                              className="dashfollow"
+                              style={a.color ? { '--hc': a.color } : undefined}
+                            >
+                              {a.display}
+                            </Link>
+                          ) : (
+                            <span className="dashfollow">{a.display}</span>
+                          )}
+                          {panelOpen === 'blocked' ? (
+                            <button
+                              type="button"
+                              className="dashunblock"
+                              onClick={() => void handleUnblock(a.id)}
+                              disabled={unblockingId === a.id}
+                            >
+                              {unblockingId === a.id ? 'Unblocking…' : 'Unblock'}
+                            </button>
+                          ) : null}
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                </>
               )}
             </div>
           ) : null}

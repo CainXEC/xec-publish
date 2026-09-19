@@ -1615,6 +1615,14 @@ html:not(.dark) .pow-feed .topbar{background:rgba(246,244,237,.85);}
 .pow-feed .dashfollows-list{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px 18px;}
 .pow-feed .dashfollow{font-size:13.5px;font-weight:700;color:var(--hc,var(--text));word-break:break-all;}
 .pow-feed a.dashfollow:hover{color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.35);}
+/* A blocked row pairs the name with an inline Unblock control. */
+.pow-feed .dashblocked-item{display:inline-flex;align-items:center;gap:9px;}
+.pow-feed .dashunblock{font-size:11px;letter-spacing:.04em;text-transform:uppercase;font-weight:700;
+  color:var(--dim);background:transparent;border:1px solid var(--line);border-radius:999px;
+  padding:2px 9px;cursor:pointer;line-height:1.5;}
+.pow-feed .dashunblock:hover:not(:disabled){color:var(--neon);border-color:var(--neon);}
+.pow-feed .dashunblock:disabled{opacity:.6;cursor:default;}
+.pow-feed .dashunblock-err{margin:0 0 8px;font-size:12.5px;color:var(--no);}
 
 /* ---- the reading pane: a front-page story open in the feed's center column.
    Article typography rides in a neutralized .pow-article scope host. ---- */
