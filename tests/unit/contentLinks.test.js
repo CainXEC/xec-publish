@@ -1,5 +1,26 @@
 import { describe, it, expect } from 'vitest'
-import { tokenizeContent, tokenizeUrls, externalUrlHref, powInternalHref } from '@/lib/contentLinks'
+import {
+  tokenizeContent,
+  tokenizeUrls,
+  externalUrlHref,
+  powInternalHref,
+  textMayContainLink,
+} from '@/lib/contentLinks'
+
+describe('textMayContainLink', () => {
+  it('matches a scheme URL, a mention, and a BARE known domain', () => {
+    expect(textMayContainLink('see https://x.com/a')).toBe(true)
+    expect(textMayContainLink('hi @alice')).toBe(true)
+    expect(textMayContainLink('see www.proofofwriting.com/26')).toBe(true)
+    expect(textMayContainLink('proof at explorer.e.cash/tx/abc')).toBe(true)
+  })
+
+  it('rejects plain text with none of those', () => {
+    expect(textMayContainLink('just some words')).toBe(false)
+    expect(textMayContainLink('')).toBe(false)
+    expect(textMayContainLink(null)).toBe(false)
+  })
+})
 
 describe('powInternalHref', () => {
   it('accepts the known live path prefixes', () => {

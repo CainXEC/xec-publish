@@ -44,6 +44,16 @@ describe('transformArticleBodyLinks — feed link parity in article bodies', () 
     expect(out).toContain('href="/@alice"')
   })
 
+  it('linkifies a BARE (scheme-less) on-site URL in a text node, not just "https://" ones', () => {
+    // Regression: the walker's "cheap pre-filter" used to require "https://" or
+    // "@", so a bare "www.proofofwriting.com/26" (no scheme) never even reached
+    // tokenizeContent and stayed permanently plain text.
+    const out = transformArticleBodyLinks('<p>see www.proofofwriting.com/26 here</p>')
+    expect(out).toContain('data-pow')
+    expect(out).toContain('href="/26"')
+    expect(sanitizePostBodyHtml(out)).toContain('href="/26"')
+  })
+
   it('marks a link to a legacy root permalink (bare /<slug>) as data-pow', () => {
     // Imported archive posts live at bare "/26" (app/[slug]/page.js), not
     // "/posts/26" — the editor auto-links it while composing, and it must
