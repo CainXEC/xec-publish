@@ -44,6 +44,16 @@ describe('transformArticleBodyLinks — feed link parity in article bodies', () 
     expect(out).toContain('href="/@alice"')
   })
 
+  it('marks a link to a legacy root permalink (bare /<slug>) as data-pow', () => {
+    // Imported archive posts live at bare "/26" (app/[slug]/page.js), not
+    // "/posts/26" — the editor auto-links it while composing, and it must
+    // survive publish (and the read-time sanitizer) as a real link.
+    const out = transformArticleBodyLinks('<p><a href="https://www.proofofwriting.com/26">x</a></p>')
+    expect(out).toContain('data-pow')
+    expect(out).toContain('href="/26"')
+    expect(sanitizePostBodyHtml(out)).toContain('href="/26"')
+  })
+
   it('does not double-linkify text already inside an anchor', () => {
     const out = transformArticleBodyLinks('<a href="https://x.com/a">@alice</a>')
     // the @alice inside the (now external) anchor stays its text, not a nested link

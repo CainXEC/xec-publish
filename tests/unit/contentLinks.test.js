@@ -1,5 +1,28 @@
 import { describe, it, expect } from 'vitest'
-import { tokenizeContent, tokenizeUrls, externalUrlHref } from '@/lib/contentLinks'
+import { tokenizeContent, tokenizeUrls, externalUrlHref, powInternalHref } from '@/lib/contentLinks'
+
+describe('powInternalHref', () => {
+  it('accepts the known live path prefixes', () => {
+    expect(powInternalHref('/posts/hello')).toBe('/posts/hello')
+    expect(powInternalHref('/feed/' + 'a'.repeat(64))).toBe('/feed/' + 'a'.repeat(64))
+    expect(powInternalHref('/@alice')).toBe('/@alice')
+  })
+
+  it('accepts a legacy root permalink (bare /<slug>) — app/[slug]/page.js', () => {
+    expect(powInternalHref('/26')).toBe('/26')
+    expect(powInternalHref('https://proofofwriting.com/26')).toBe('/26')
+    expect(powInternalHref('https://www.proofofwriting.com/00')).toBe('/00')
+  })
+
+  it('rejects a protocol-relative path (open-redirect shape) and off-host URLs', () => {
+    expect(powInternalHref('//evil.com')).toBeNull()
+    expect(powInternalHref('https://evil.com/26')).toBeNull()
+  })
+
+  it('rejects a multi-segment path with no recognized prefix', () => {
+    expect(powInternalHref('/foo/bar')).toBeNull()
+  })
+})
 
 describe('externalUrlHref', () => {
   it('accepts X / Twitter hosts (incl. www/mobile/m), returns the absolute URL', () => {
