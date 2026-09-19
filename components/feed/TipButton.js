@@ -59,6 +59,17 @@ export default function TipButton({ toAccountId }) {
           <span aria-hidden className="likeico">♡</span>{' '}
           {pending ? 'Sending…' : justTipped ? 'Tipped ✓' : 'Tip'}
         </button>
+        {/* The in-page paths (Pocket, or the Cashtab extension's own approval
+            popup) show no separate pending panel — but the extension can leave
+            this stuck on "Sending…" if closing/rejecting its popup doesn't
+            resolve as a clean "denied" (it may resolve as 'timeout'/'error'
+            instead, which deliberately keeps polling since the tx might still
+            land). Without this, that's a hard refresh to escape. */}
+        {pending && inPagePay ? (
+          <button type="button" onClick={cancel} className="linkbtn tipcancel">
+            Cancel
+          </button>
+        ) : null}
         {!pending && !justTipped ? (
           <div className="tipmenu" role="menu">
             <p className="tiptitle">Tip this author · 100% goes to them</p>

@@ -893,7 +893,8 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
    address — see .profaddrrow above). */
 .pow-feed .profactions{display:flex;align-items:center;flex-wrap:wrap;gap:14px;margin:14px 0 0;}
 .pow-feed .profactions .proffollow,.pow-feed .profactions .proffollowers.standalone{margin-top:0;}
-.pow-feed .tipwrap{display:inline-flex;}
+.pow-feed .tipwrap{display:inline-flex;align-items:center;gap:8px;}
+.pow-feed .tipcancel{font-size:12px;}
 /* The feed like menu opens UPWARD (the like button sits at the bottom of a post).
    The profile Tip button sits near the TOP of the page under a sticky header, so
    an upward menu would render behind it — flip this one to open DOWNWARD, and move
