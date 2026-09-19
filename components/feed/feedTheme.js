@@ -273,6 +273,21 @@ html:not(.dark) .pow-feed .pocketbtn.pocketbtn-empty.beckon{animation-name:pocke
   box-shadow:0 0 0 1px var(--neon),0 8px 22px rgba(0,0,0,.45);}
 .pow-feed .pocketbtn-wrap.flash .pocket-bal-amt{color:var(--neon);}
 .pow-feed .pocketbtn-wrap.flash .pocketbtn{border-color:var(--neon);box-shadow:0 0 16px rgba(0,255,156,.3);}
+/* "TRY IT" discovery badge floating ABOVE the empty Pocket chip (BlitzChips-style):
+   a neon pill with a down-caret pointing at the chip. One-shot entrance, no loop —
+   matches the masthead motion language. Decorative (pointer-events:none) so it
+   never intercepts the chip's own click; dismissed for good once setup is opened. */
+.pow-feed .pocket-tryit{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  z-index:60;white-space:nowrap;pointer-events:none;
+  font-size:9.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  color:#04140d;background:var(--neon);border-radius:6px;padding:3px 7px;
+  box-shadow:0 0 10px rgba(0,255,156,.45);
+  animation:pocket-tryit-in .5s cubic-bezier(.2,.7,.2,1) both;}
+.pow-feed .pocket-tryit::after{content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);
+  border:4px solid transparent;border-top-color:var(--neon);}
+@keyframes pocket-tryit-in{from{opacity:0;transform:translate(-50%,-4px);}to{opacity:1;transform:translate(-50%,0);}}
+html:not(.dark) .pow-feed .pocket-tryit{color:#fdfcf8;box-shadow:0 0 0 1px var(--neon);}
+@media (prefers-reduced-motion: reduce){.pow-feed .pocket-tryit{animation:none;}}
 .pow-feed .notifbadge{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;
   display:inline-flex;align-items:center;justify-content:center;border-radius:9px;
   background:var(--no);color:#0b0304;font-size:10px;font-weight:800;line-height:1;

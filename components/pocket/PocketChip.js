@@ -1,9 +1,40 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePocket } from '@/lib/pocket/store'
 import { useRollingSats, BALANCE_FLASH_HOLD_MS } from '@/lib/pocket/useRollingSats'
+
+// One-time "TRY IT" badge dismissal, backed by localStorage and read through
+// useSyncExternalStore (SSR-safe: the server snapshot hides it, so there's no
+// hydration mismatch, and no set-state-in-effect). Opening Pocket setup calls
+// dismissTryIt() once and it never shows again.
+const TRYIT_KEY = 'pow_pocket_tryit'
+const tryItListeners = new Set()
+function subscribeTryIt(cb) {
+  tryItListeners.add(cb)
+  return () => tryItListeners.delete(cb)
+}
+function getTryItDismissed() {
+  try {
+    return localStorage.getItem(TRYIT_KEY) === 'done'
+  } catch {
+    return false // storage blocked (private mode) → still show it
+  }
+}
+// SSR/first paint: render it dismissed (hidden) so it can't flash for someone
+// who already dismissed it; the client snapshot reveals it for a fresh viewer.
+function getTryItDismissedServer() {
+  return true
+}
+function dismissTryIt() {
+  try {
+    localStorage.setItem(TRYIT_KEY, 'done')
+  } catch {
+    /* private mode — it may reappear next load, which is harmless */
+  }
+  for (const cb of tryItListeners) cb()
+}
 
 // How long a touch must be held before it jumps straight to /pocket. A shorter
 // tap opens the balance card (which carries its own "Open Pocket →" button, so
@@ -130,6 +161,16 @@ export default function PocketChip() {
     return () => clearTimeout(id)
   }, [beckon, beckonGen])
 
+  // One-shot "TRY IT" discovery badge on the EMPTY chip — shown to people who
+  // haven't set up a Pocket, dismissed for good once they open setup. Read via
+  // useSyncExternalStore so it's SSR-safe (server renders it hidden, no hydration
+  // mismatch) without a set-state-in-effect.
+  const tryItDismissed = useSyncExternalStore(
+    subscribeTryIt,
+    getTryItDismissed,
+    getTryItDismissedServer,
+  )
+
   const status = pocket.status
   if (status !== 'ready' && status !== 'none') return null
   const hasPocket = status === 'ready'
@@ -139,12 +180,16 @@ export default function PocketChip() {
   if (!hasPocket) {
     return (
       <div className="pocketbtn-wrap">
+        {/* One-shot "TRY IT" pill above the chip (dismissed once setup is opened). */}
+        {!tryItDismissed ? (
+          <span className="pocket-tryit" aria-hidden>Try it</span>
+        ) : null}
         <button
           type="button"
           key={beckonGen}
           className={`pocketbtn pocketbtn-empty${beckon ? ' beckon' : ''}`}
           aria-label="Set up a Pocket — one-tap likes, replies and unlocks."
-          onClick={openPocket}
+          onClick={() => { dismissTryIt(); openPocket() }}
           onContextMenu={(e) => e.preventDefault()}
         >
           <PocketIcon />
