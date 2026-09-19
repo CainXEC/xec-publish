@@ -212,6 +212,15 @@ export default function NewPostForm({
     }
 
     try {
+      // Title required — surfaced inline (above the button), same as the body
+      // check below. The <input> intentionally drops `required` so the browser's
+      // native validation bubble (which anchors to the off-screen title field,
+      // appearing to point at the banner) never fires.
+      if (!title.trim()) {
+        setSubmitError('Title is required')
+        return
+      }
+
       const price = Number(priceXec)
       if (Number.isNaN(price) || price < 100) {
         setSubmitError('Minimum price is 100 XEC')
@@ -341,7 +350,6 @@ export default function NewPostForm({
                 id="title"
                 name="title"
                 type="text"
-                required
                 maxLength={POST_TITLE_MAX}
                 value={title}
                 onChange={(e) => {
