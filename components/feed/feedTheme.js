@@ -778,6 +778,8 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .whorow{display:flex;align-items:baseline;gap:8px;font-size:12.5px;}
 .pow-feed .whoemoji{font-size:15px;flex-shrink:0;line-height:1;}
 .pow-feed .whonames{color:var(--text);word-break:break-word;line-height:1.45;}
+.pow-feed .wholink{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line);}
+.pow-feed .wholink:hover{color:var(--neon);border-bottom-color:currentColor;}
 .pow-feed .whonote{margin:0;font-size:12.5px;color:var(--dim);}
 
 /* like → tip menu: quick presets + a custom amount, floating above the button.

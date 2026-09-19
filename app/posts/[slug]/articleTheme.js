@@ -355,6 +355,8 @@ html:not(.dark) .pow-article .commentitem.pow-jump{animation-name:pow-comment-in
 .pow-article .cwhorow{display:flex;align-items:baseline;gap:8px;font-size:12.5px;}
 .pow-article .cwhoemoji{font-size:15px;flex-shrink:0;line-height:1;}
 .pow-article .cwhonames{color:var(--text);word-break:break-word;line-height:1.45;}
+.pow-article .cwholink{color:var(--text);text-decoration:none;border-bottom:1px solid var(--line);}
+.pow-article .cwholink:hover{color:var(--neon);border-bottom-color:currentColor;}
 .pow-article .cwhonote{margin:0;font-size:12.5px;color:var(--dim);}
 .pow-article .comment-replyingto{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);margin:0 0 8px;}
 .pow-article .comment-replyarrow{color:var(--dim);}

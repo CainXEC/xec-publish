@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useReactionPayment } from '@/components/feed/useReactionPayment'
 import { useCanHover } from '@/lib/useCanHover'
@@ -14,6 +15,17 @@ function truncateAddress(addr) {
   const t = String(addr ?? '').trim()
   if (t.length <= 16) return t
   return `${t.slice(0, 10)}…${t.slice(-4)}`
+}
+
+// Canonical profile link for a reactor identity. actor_identity is either a
+// "@handle" or an "ecash:…" address; both resolve at /@<bare> (a raw address is
+// a real profile too). Mirrors targetHref() in lib/notifFormat.js.
+function profileHref(identity) {
+  const id = String(identity ?? '')
+    .replace(/^@/, '')
+    .replace(/^ecash:/i, '')
+    .trim()
+  return id ? `/@${encodeURIComponent(id)}` : null
 }
 
 /**
@@ -186,10 +198,12 @@ export default function EngagementBar({
     return [...byEmoji.entries()]
       .map(([emoji, counts]) => {
         const total = [...counts.values()].reduce((n, v) => n + v, 0)
-        const label = [...counts.entries()]
-          .map(([identity, n]) => truncateAddress(identity) + (n > 1 ? ` (${n})` : ''))
-          .join(', ')
-        return { emoji, label, total }
+        const names = [...counts.entries()].map(([identity, n]) => ({
+          identity,
+          href: profileHref(identity),
+          display: truncateAddress(identity) + (n > 1 ? ` (${n})` : ''),
+        }))
+        return { emoji, names, total }
       })
       .sort((a, b) => b.total - a.total)
   }, [who])
@@ -256,10 +270,23 @@ export default function EngagementBar({
                 ) : who === 'error' ? (
                   <p className="whonote">Couldn’t load reactions.</p>
                 ) : whoGroups && whoGroups.length > 0 ? (
-                  whoGroups.map(({ emoji, label }) => (
+                  whoGroups.map(({ emoji, names }) => (
                     <div className="whorow" key={emoji}>
                       <span className="whoemoji" aria-hidden>{emoji}</span>
-                      <span className="whonames">{label}</span>
+                      <span className="whonames">
+                        {names.map((nm, i) => (
+                          <span key={nm.identity}>
+                            {i > 0 ? ', ' : ''}
+                            {nm.href ? (
+                              <Link href={nm.href} className="wholink" title={nm.identity}>
+                                {nm.display}
+                              </Link>
+                            ) : (
+                              nm.display
+                            )}
+                          </span>
+                        ))}
+                      </span>
                     </div>
                   ))
                 ) : (
