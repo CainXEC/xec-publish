@@ -370,7 +370,20 @@ export default function EngagementBar({
         </button>
       ))}
 
-      {pending && intent && !inPagePay ? (
+      {/* The in-page paths (Pocket, or the Cashtab extension's own approval
+          popup) show no separate pending panel — but the extension can leave
+          this stuck if closing/rejecting its popup doesn't resolve as a clean
+          "denied" (it may resolve as 'timeout'/'error' instead, which
+          deliberately keeps polling since the tx might still land). Without
+          this, that's a hard refresh to escape. */}
+      {pending && inPagePay ? (
+        <span className="reactcancelrow">
+          {notice ? <span className="notice">{notice}</span> : null}
+          <button type="button" onClick={cancel} className="linkbtn">
+            Cancel
+          </button>
+        </span>
+      ) : pending && intent && !inPagePay ? (
         <div className="reactpay">
           <p className="poll">
             Confirm <strong>{intent.amountXec} XEC</strong> in Cashtab to{' '}

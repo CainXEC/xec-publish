@@ -733,6 +733,11 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .reactpay .poll{margin:0;}
 .pow-feed .reactpay .manual{margin-top:14px;}
 .pow-feed .engage .notice{flex-basis:100%;width:100%;}
+/* The in-page (Pocket/extension) pending escape hatch — a plain "Cancel" next
+   to whatever's mid-payment, no full pending-panel needed (see EngagementBar).
+   .notice inside already gets flex-basis:100% from the rule above, so a
+   present notice stacks above the Cancel rather than squeezing beside it. */
+.pow-feed .reactcancelrow{flex-basis:100%;width:100%;display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:6px;}
 
 /* Emoji reactions: per-emoji counts + the picker popover (replaces like/tip menu).
    A pill reads like the reply/repost counts — no circle — and each is its OWN

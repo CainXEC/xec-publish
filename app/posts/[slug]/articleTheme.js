@@ -305,6 +305,9 @@ html:not(.dark) .pow-article .commentitem.pow-jump{animation-name:pow-comment-in
 .pow-article .clike-cancel{background:none;border:none;color:var(--dim);font:inherit;font-size:12px;cursor:pointer;
   margin-top:8px;text-decoration:underline;}
 .pow-article .clike-notice{margin:8px 0 0;font-size:12px;color:var(--no);}
+/* The in-page (Pocket/extension) pending escape hatch — a plain "Cancel" next
+   to whatever's mid-payment, no full .clikepay panel needed (see CommentReactions). */
+.pow-article .clikecancelrow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;}
 
 /* Emoji reactions on a comment (CommentReactions) — the comment analogue of the
    feed EngagementBar picker + pills, styled for the article/paper scope.

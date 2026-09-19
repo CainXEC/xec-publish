@@ -281,6 +281,12 @@ export function useReactionPayment({
           } else if (!r.ok && r.reason === 'pocket_error') {
             setInPagePay(false)
             setNotice(r.message || 'Pocket couldn’t send — use Open Cashtab below.')
+          } else if (!r.ok && (r.reason === 'timeout' || r.reason === 'error')) {
+            // Closing/rejecting the extension popup doesn't always resolve as a
+            // clean 'denied' — the tx may still land, so keep polling instead of
+            // reverting, but say something (the inPagePay Cancel button otherwise
+            // has no explanation for why it's suddenly there).
+            setNotice('Cashtab didn’t respond — still watching for the payment.')
           }
         })
         setIntent({ ...data, emoji })
