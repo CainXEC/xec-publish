@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import BellIcon from '@/components/BellIcon'
 import { onNotificationsReadElsewhere } from '@/lib/notifSync'
+import { useTitleNotificationBadge } from '@/lib/useTitleNotificationBadge'
+import { useFaviconNotificationBadge } from '@/lib/useFaviconNotificationBadge'
 
 const POLL_MS = 60_000
 
@@ -67,11 +69,18 @@ export default function FeedNotifications({ signedIn = false, onAgentPending }) 
     return onNotificationsReadElsewhere(() => setUnread(0))
   }, [signedIn])
 
-  if (!signedIn) return null
-
   // The badge is unread notifications + pending agent drafts (admin only) —
   // the queue part survives mark-read; only judging the drafts clears it.
-  const badgeCount = unread + (agentPending ?? 0)
+  const badgeCount = signedIn ? unread + (agentPending ?? 0) : 0
+
+  // X-style tab signals, mirrored from the same count and called before the
+  // signed-out early return so hook order stays stable (badgeCount is 0 when
+  // signed out → plain title, normal favicon): the "(N)" title badge, plus the
+  // "lit" (inverted) favicon while anything is unread.
+  useTitleNotificationBadge(badgeCount)
+  useFaviconNotificationBadge(badgeCount > 0)
+
+  if (!signedIn) return null
 
   return (
     <Link
