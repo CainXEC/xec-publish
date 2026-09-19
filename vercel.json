@@ -2,6 +2,7 @@
   "regions": ["sfo1"],
   "crons": [
     { "path": "/api/feed/reconcile", "schedule": "*/5 * * * *" },
-    { "path": "/api/cron/pow-payout", "schedule": "0 0 * * 1" }
+    { "path": "/api/cron/pow-payout", "schedule": "0 0 * * 1" },
+    { "path": "/api/cron/herald-trigger", "schedule": "0 0 * * *" }
   ]
 }
