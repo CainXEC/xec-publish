@@ -22,6 +22,8 @@ import { NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { adminDb } from "@/lib/db";
 import { fetchAllUnlockCountRows } from "@/lib/supabaseUnlockCounts";
+import { getAuthedAccount } from "@/lib/authHelpers";
+import { blockedAccountIds } from "@/lib/feedBlocks";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -70,6 +72,11 @@ type RailStory = {
   readMinutes: number | null;
   at: string;
   author: string;
+  // The author's ACCOUNT id (accounts.id), resolved from posts.author_id via the
+  // accounts join already done for bylines. Used server-side to drop stories by
+  // authors the viewer has blocked; also carried in the response like the feed
+  // exposes author_account_id per post.
+  authorAccountId: string | null;
   // Unlock count over the selected window (all-time for 'all'/'latest'). The
   // ranking basis for the most-read ranges; shown as "N reads".
   count: number;
@@ -163,16 +170,20 @@ async function buildRailList(range: RangeKey): Promise<RailStory[]> {
   // ---- author bylines: account display handle, else the author's address ----
   const authorIds = [...new Set(posts.map((p) => p.author_id).filter(Boolean))] as string[];
   const byline = new Map<string, string>();
+  // author_id → account id (accounts.id), for the block filter in GET. Populated
+  // from the SAME accounts lookup the bylines use — no extra query.
+  const accountByAuthor = new Map<string, string>();
   if (authorIds.length > 0) {
     const [{ data: accounts }, { data: authors }] = await Promise.all([
-      supabase.from("accounts").select("author_id, display_handle").in("author_id", authorIds),
+      supabase.from("accounts").select("id, author_id, display_handle").in("author_id", authorIds),
       supabase.from("authors").select("id, xec_address").in("id", authorIds),
     ]);
     for (const a of (authors ?? []) as Array<{ id: string; xec_address: string | null }>) {
       if (a.xec_address) byline.set(a.id, shortAddr(a.xec_address));
     }
-    for (const a of (accounts ?? []) as Array<{ author_id: string; display_handle: string | null }>) {
+    for (const a of (accounts ?? []) as Array<{ id: string; author_id: string; display_handle: string | null }>) {
       if (a.display_handle) byline.set(a.author_id, `@${a.display_handle}`);
+      accountByAuthor.set(a.author_id, a.id);
     }
   }
 
@@ -186,6 +197,7 @@ async function buildRailList(range: RangeKey): Promise<RailStory[]> {
     readMinutes: p.reading_time_minutes,
     at: p.published_at ?? p.created_at ?? new Date(0).toISOString(),
     author: (p.author_id ? byline.get(p.author_id) : null) ?? "an author",
+    authorAccountId: (p.author_id ? accountByAuthor.get(p.author_id) : null) ?? null,
     count: count.get(p.id) ?? 0,
     comments: comments.get(p.id) ?? 0,
   }));
@@ -212,5 +224,25 @@ export async function GET(request: Request) {
     ["articles-rail", range],
     { tags: [ARTICLES_RAIL_CACHE_TAG], revalidate: 60 },
   )();
-  return NextResponse.json({ ok: true, range, stories: list });
+
+  // Per-viewer block filter ON TOP of the shared cache — the same shape the feed
+  // uses (getCachedForYouPage): the heavy list is computed once for everyone;
+  // only this cheap filter is per-request. Drop stories by an author the viewer
+  // has blocked (either direction), so blocked writers don't reach the browser —
+  // no client-side flash. Logged-out visitors have no blocks and skip it; any
+  // read failure falls back to the public list (never worse than today).
+  let stories = list;
+  try {
+    const acct = await getAuthedAccount();
+    if (acct?.accountId) {
+      const blocked = await blockedAccountIds(supabase, acct.accountId);
+      if (blocked.size > 0) {
+        stories = list.filter((s) => !(s.authorAccountId && blocked.has(s.authorAccountId)));
+      }
+    }
+  } catch {
+    /* no session / read failure → serve the unfiltered public list */
+  }
+
+  return NextResponse.json({ ok: true, range, stories });
 }
