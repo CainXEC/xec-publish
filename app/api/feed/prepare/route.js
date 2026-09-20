@@ -5,6 +5,7 @@ import { rateLimit, getClientIp } from '@/lib/rateLimit'
 import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { priceFeedPost } from '@/lib/feedPricing'
+import { normalizePoll } from '@/lib/feedPoll'
 import { computePaymentSplit, buildPaywallBip21, buildPublishFeeBip21 } from '@/lib/paymentSplit'
 import { contentHashHex, encodeFeedOpReturnRaw, FEED_ACTION } from '@/lib/feedProtocol'
 import { feeRecipientForTarget } from '@/lib/forums'
@@ -44,7 +45,10 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Unsupported action' }, { status: 400 })
   }
 
-  const priced = priceFeedPost(body?.content, { action })
+  // A poll's choices are billed on top of the question. Normalize the same way
+  // confirm (and the DB) will, so the amount built here matches verification.
+  const poll = body?.poll != null ? normalizePoll(body.poll) : null
+  const priced = priceFeedPost(body?.content, { action, pollOptions: poll?.options })
   if (!priced.ok) {
     return NextResponse.json({ error: priced.error, chars: priced.chars }, { status: 400 })
   }

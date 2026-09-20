@@ -78,17 +78,11 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Unsupported action' }, { status: 400 })
   }
 
-  const priced = priceFeedPost(body?.content, { action })
-  if (!priced.ok) {
-    return NextResponse.json({ error: priced.error }, { status: 400 })
-  }
-  const content = body.content
-  const { costXec } = priced
-  const contentHash = contentHashHex(content)
-
-  // A poll rides on a top-level POST: the question is `content` (priced +
-  // hashed like any post), the options + eligibility live in card_meta. The
-  // server re-normalizes so a client can't inject option ids or extra fields.
+  // A poll rides on a top-level POST: the question is `content` (priced + hashed
+  // like any post), the options + eligibility live in card_meta. Normalize FIRST
+  // so the option characters fold into the price below — the amount the client
+  // paid (built by /prepare from the same normalized options) then verifies. The
+  // re-normalize also stops a client injecting option ids or extra fields.
   let cardKind = null
   let cardMeta = null
   if (body?.poll != null) {
@@ -104,6 +98,14 @@ export async function POST(request) {
     }
     cardKind = 'poll'
   }
+
+  const priced = priceFeedPost(body?.content, { action, pollOptions: cardMeta?.options })
+  if (!priced.ok) {
+    return NextResponse.json({ error: priced.error }, { status: 400 })
+  }
+  const content = body.content
+  const { costXec } = priced
+  const contentHash = contentHashHex(content)
 
   const supabase = adminDb()
 

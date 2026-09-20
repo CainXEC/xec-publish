@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { priceFeedPost, FEED_MAX_CHARS, FEED_YOUTUBE_SURCHARGE_XEC } from '@/lib/feedPricing'
+import { normalizePoll } from '@/lib/feedPoll'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import EmojiPicker from '@/components/EmojiPicker'
 import EcashIcon from '@/components/EcashIcon'
@@ -134,15 +135,21 @@ export default function ComposeBox({
   const bodyClean = content.trim()
   const outgoingContent = withTitle ? combineForumContent(titleClean, bodyClean) : bodyClean
 
-  const priced = priceFeedPost(outgoingContent, { action })
-  const chars = priced.chars
-  const overCap = chars > FEED_MAX_CHARS
-  const titleValid = !withTitle || titleClean.length > 0
-
   // Polls are top-level posts only. Need 2+ non-empty options to be valid.
   const pollAllowed = action === 'post' && !withTitle
   const pollActive = pollAllowed && pollMode
   const pollCleanOptions = pollOptions.map((o) => o.trim()).filter(Boolean)
+  // A poll's choices are billed on top of the question. Normalize them the SAME
+  // way the server will (collapse/trim/dedupe/clamp) so the amount shown here
+  // equals what /prepare builds and /confirm verifies.
+  const pollPricingOptions = pollActive
+    ? normalizePoll({ options: pollCleanOptions.map((text) => ({ text })) })?.options ?? undefined
+    : undefined
+
+  const priced = priceFeedPost(outgoingContent, { action, pollOptions: pollPricingOptions })
+  const chars = priced.chars
+  const overCap = chars > FEED_MAX_CHARS
+  const titleValid = !withTitle || titleClean.length > 0
   const pollValid = !pollActive || pollCleanOptions.length >= 2
   const canSubmit = priced.ok && pollValid && titleValid && !submitting
   // The Pay control starts as a plain icon-only square; once the post is actually
@@ -335,7 +342,9 @@ export default function ComposeBox({
         const res = await fetch('/api/feed/prepare', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ content: outgoingContent, action, parentTxid, quotedTxid, forumId }),
+          // pollRef (snapshotted above) rides along so /prepare bills the poll's
+          // choices — the built amount must include them or confirm's floor fails.
+          body: JSON.stringify({ content: outgoingContent, action, parentTxid, quotedTxid, forumId, poll: pollRef.current }),
         })
         data = await res.json()
         if (!res.ok || !data.ok) {

@@ -30,12 +30,12 @@ describe('priceFeedPost', () => {
   })
 
   it('charges the 100 XEC floor for short posts', () => {
-    expect(priceFeedPost('hi')).toEqual({ ok: true, chars: 2, costXec: FEED_MIN_XEC, youtube: false })
+    expect(priceFeedPost('hi')).toEqual({ ok: true, chars: 2, pollChars: 0, costXec: FEED_MIN_XEC, youtube: false })
   })
 
   it('charges 1 XEC per character above the floor', () => {
     const content = 'x'.repeat(150)
-    expect(priceFeedPost(content)).toEqual({ ok: true, chars: 150, costXec: 150, youtube: false })
+    expect(priceFeedPost(content)).toEqual({ ok: true, chars: 150, pollChars: 0, costXec: 150, youtube: false })
   })
 
   it('accepts a post exactly at the cap', () => {
@@ -43,6 +43,7 @@ describe('priceFeedPost', () => {
     expect(priceFeedPost(atCap)).toEqual({
       ok: true,
       chars: FEED_MAX_CHARS,
+      pollChars: 0,
       costXec: FEED_MAX_CHARS,
       youtube: false,
     })
@@ -54,6 +55,33 @@ describe('priceFeedPost', () => {
     expect(res.ok).toBe(false)
     expect(res.chars).toBe(FEED_MAX_CHARS + 1)
     expect(res.error).toMatch(/exceeds/i)
+  })
+})
+
+describe('priceFeedPost — poll choices', () => {
+  it('bills the poll choices on top of the question (accepts strings or {text})', () => {
+    const q = 'x'.repeat(120) // above the 100 floor so additions are visible
+    const opts = ['Yes', 'Nope', 'Maybe'] // 3 + 4 + 5 = 12 chars
+    expect(priceFeedPost(q, { action: 'post', pollOptions: opts }).costXec).toBe(120 + 12)
+    // Same total whether options are plain strings or the stored {text} shape.
+    const objOpts = opts.map((text) => ({ text }))
+    expect(priceFeedPost(q, { action: 'post', pollOptions: objOpts }).costXec).toBe(120 + 12)
+  })
+
+  it('reports pollChars and leaves the body `chars` (counter) unchanged', () => {
+    const r = priceFeedPost('x'.repeat(120), { action: 'post', pollOptions: ['ab', 'cde'] })
+    expect(r.chars).toBe(120) // body only — the composer counter
+    expect(r.pollChars).toBe(5) // 2 + 3
+    expect(r.costXec).toBe(125)
+  })
+
+  it('counts poll characters toward the 100 XEC floor', () => {
+    // Short question + short options still stays at the floor.
+    expect(priceFeedPost('Best?', { action: 'post', pollOptions: ['A', 'B'] }).costXec).toBe(FEED_MIN_XEC)
+  })
+
+  it('is a no-op when no poll options are passed (pollChars 0)', () => {
+    expect(priceFeedPost('x'.repeat(150), { action: 'post' }).pollChars).toBe(0)
   })
 })
 
