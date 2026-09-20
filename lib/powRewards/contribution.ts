@@ -24,6 +24,10 @@ export interface ContributionRow {
   engagementScore: number;
   contributionScore: number; // sum of the three (display)
   contribShareRaw: number; // weighted share (pre-normalization) — used for allocation
+  // true = founder/house/excluded: shown on the display board for reference but
+  // never eligible to earn. Only ever true on the all-accounts display board; the
+  // payout board contains no such rows.
+  excluded: boolean;
   activity: Activity;
 }
 
@@ -36,8 +40,17 @@ export interface ContributionResult {
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
 export function contributionRows(scores: Map<string, AccountScore>, cfg: RewardConfig): ContributionResult {
+  // Normalise each component over the ELIGIBLE (earning) accounts only. On the
+  // payout board every row is eligible, so this is a no-op there. On the display
+  // board it keeps an eligible account's score identical to its payout basis —
+  // adding the founder/house rows for reference never dilutes everyone else's
+  // numbers. An excluded account is then scored against that same eligible total
+  // (its share can exceed a weight — that's honest: it out-contributed the pool).
   let tEcon = 0, tCre = 0, tEng = 0;
-  for (const s of scores.values()) { tEcon += s.economicRaw; tCre += s.creationRaw; tEng += s.engagementRaw; }
+  for (const s of scores.values()) {
+    if (s.rewardExcluded) continue;
+    tEcon += s.economicRaw; tCre += s.creationRaw; tEng += s.engagementRaw;
+  }
   const w = cfg.weights;
 
   const rows: ContributionRow[] = [];
@@ -55,9 +68,11 @@ export function contributionRows(scores: Map<string, AccountScore>, cfg: RewardC
       engagementScore: r2(eng * SCORE_SCALE),
       contributionScore: r2(contrib * SCORE_SCALE),
       contribShareRaw: contrib,
+      excluded: s.rewardExcluded,
       activity: s.activity,
     });
-    total += contrib;
+    // Allocation total counts eligible rows only (excluded rows never earn).
+    if (!s.rewardExcluded) total += contrib;
   }
   rows.sort((a, b) => b.contributionScore - a.contributionScore);
   return {

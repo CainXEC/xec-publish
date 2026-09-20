@@ -39,6 +39,10 @@ export interface AccountScore {
   economicRaw: number;
   creationRaw: number;
   engagementRaw: number;
+  // true = founder/house/env-excluded (can't earn). Only ever set when scoring
+  // with includeAll (the display board); the payout board drops these rows so it
+  // never appears there. Downstream normalisation/tagging reads it.
+  rewardExcluded: boolean;
   activity: Activity;
 }
 
@@ -55,14 +59,14 @@ export async function scoreWeek(
   startUtc: Date,
   endUtc: Date,
   cfg: RewardConfig,
-  includeIds: Set<string> = new Set(), // force-include (founder self-view only)
+  includeAll = false, // display board: score EVERY account (excluded ones tagged, not dropped)
 ): Promise<Map<string, AccountScore>> {
   const db = adminDb();
   const startISO = startUtc.toISOString();
   const endISO = endUtc.toISOString();
 
   // ---- Economic: on-chain platform+mint XEC per effective account ----
-  const econTally = await tallyWeekRevenue(startUtc, endUtc, includeIds); // already excluded/clustered
+  const econTally = await tallyWeekRevenue(startUtc, endUtc, includeAll); // excluded/clustered unless includeAll
   const econ = econTally.perAccount; // Map<effAccount, sats>
 
   // ---- Pull the week's creation + engagement rows ----
@@ -108,12 +112,12 @@ export async function scoreWeek(
   for (const v of authorAcct.values()) allAccts.add(v);
   for (const v of payerAcct.values()) allAccts.add(v);
   for (const v of txAuthorAcct.values()) allAccts.add(v);
-  const R = await buildResolver(Array.from(allAccts), includeIds);
+  const R = await buildResolver(Array.from(allAccts), includeAll);
 
   const scores = new Map<string, AccountScore>();
   const ensure = (effId: string): AccountScore => {
     let s = scores.get(effId);
-    if (!s) { s = { accountId: effId, economicRaw: 0, creationRaw: 0, engagementRaw: 0, activity: emptyActivity() }; scores.set(effId, s); }
+    if (!s) { s = { accountId: effId, economicRaw: 0, creationRaw: 0, engagementRaw: 0, rewardExcluded: R.rewardExcluded(effId), activity: emptyActivity() }; scores.set(effId, s); }
     return s;
   };
   // Resolve a raw account to its (non-excluded) score row, or null if it can't earn.

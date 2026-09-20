@@ -24,16 +24,23 @@ export function excludedAccountIds(): Set<string> {
 export interface AccountResolver {
   /** account id → effective (cluster) id. */
   eff: (accountId: string) => string;
-  /** true if this account (or its cluster) must not earn (is_ai or excluded). */
+  /** Reward-eligibility GATE used to drop rows: true = must not earn. Respects
+   *  `includeAll` (returns false for everyone when the caller wants all accounts,
+   *  e.g. the display scoreboard). */
   excluded: (accountId: string) => boolean;
+  /** The TRUE exclusion rule (is_ai / founder / env), IGNORING `includeAll` — so a
+   *  display board that includes everyone can still TAG which rows can't earn. */
+  rewardExcluded: (accountId: string) => boolean;
 }
 
 /** Build a resolver over the given account ids (clusters + is_ai + env excludes).
- *  `includeIds` force-includes accounts that would otherwise be excluded (founder
- *  self-view only — never passed by the real board/payout). Empty = normal. */
+ *  `includeAll` = include everyone in the tally regardless of exclusion (the
+ *  display scoreboard: show every account's score, even the founder/house, who
+ *  are still tagged `rewardExcluded` so they never actually earn). The real
+ *  payout leaves it false. */
 export async function buildResolver(
   accountIds: string[],
-  includeIds: Set<string> = new Set(),
+  includeAll = false,
 ): Promise<AccountResolver> {
   const db = adminDb();
   const ids = Array.from(new Set(accountIds));
@@ -52,11 +59,10 @@ export async function buildResolver(
 
   const excludedEnv = excludedAccountIds();
   const eff = (id: string) => cluster.get(id) ?? id;
-  const excluded = (id: string) => {
-    if (includeIds.has(id) || includeIds.has(eff(id))) return false; // self-view override
-    return ai.has(id) || excludedEnv.has(id) || excludedEnv.has(eff(id));
-  };
-  return { eff, excluded };
+  const rewardExcluded = (id: string) =>
+    ai.has(id) || excludedEnv.has(id) || excludedEnv.has(eff(id));
+  const excluded = (id: string) => (includeAll ? false : rewardExcluded(id));
+  return { eff, excluded, rewardExcluded };
 }
 
 /** address → account_id for the given addresses (proven addresses only). */

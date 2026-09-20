@@ -163,12 +163,13 @@ export interface WeekTally {
  * mint revenue). Returns a map of effective-account-id → sats. Payout addresses /
  * allocation are resolved by the caller; this stays a pure measurement.
  */
-// `includeIds` force-counts specific accounts that would otherwise be excluded
-// (founder self-view only — never passed by the real board/payout). Empty = normal.
+// `includeAll` counts EVERY account's revenue, ignoring the is_ai/founder/env
+// exclusions (the display scoreboard, which shows all scores). The real payout
+// leaves it false so excluded accounts contribute nothing to an earner's tally.
 export async function tallyWeekRevenue(
   startUtc: Date,
   endUtc: Date,
-  includeIds: Set<string> = new Set(),
+  includeAll = false,
 ): Promise<WeekTally> {
   const addresses = sourceAddresses();
   if (addresses.length === 0) {
@@ -237,7 +238,7 @@ export async function tallyWeekRevenue(
       continue; // sender not a proven address of any account
     }
     const eff = effAccount(acct);
-    if (!includeIds.has(acct) && !includeIds.has(eff)) {
+    if (!includeAll) {
       if (aiAccounts.has(acct)) continue; // house/AI supporter
       if (excluded.has(acct) || excluded.has(eff)) continue; // founder / excluded
     }
