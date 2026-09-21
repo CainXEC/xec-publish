@@ -3,6 +3,6 @@
   "crons": [
     { "path": "/api/feed/reconcile", "schedule": "*/5 * * * *" },
     { "path": "/api/cron/pow-payout", "schedule": "0 0 * * 1" },
-    { "path": "/api/cron/herald-trigger", "schedule": "0 0 * * *" }
+    { "path": "/api/cron/herald-trigger", "schedule": "10 0 * * *" }
   ]
 }
