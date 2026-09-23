@@ -1975,12 +1975,17 @@ html:not(.dark) .pow-feed .np-entry{border-bottom-color:var(--line);}
    the clear. */
 .pow-feed .feed-sheet-backdrop{ position:fixed; inset:0; z-index:90; background:rgba(0,0,0,.5);
   display:flex; align-items:flex-start; }
-.pow-feed .feed-sheet{ width:100%; background:var(--bg); border:1px solid var(--line);
+.pow-feed .feed-sheet{ position:relative; width:100%; background:var(--bg); border:1px solid var(--line);
   border-radius:16px; max-height:80vh; overflow:auto;
   margin-top:calc(12px + env(safe-area-inset-top));
-  padding:8px 16px 16px; }
-.pow-feed .feed-sheet-head{ display:flex; justify-content:flex-end; padding:2px 0; }
-.pow-feed .feed-sheet-close{ background:none; border:none; color:var(--dim); cursor:pointer;
+  padding:16px 16px 16px; }
+/* The close X floats in the top-right corner instead of taking a full row of its
+   own — that row pushed the compose text (and the centered "posting…" message)
+   noticeably down the sheet. The head stays as the button's anchor but collapses
+   to zero height, so the content starts near the top, level with the X. */
+.pow-feed .feed-sheet-head{ height:0; padding:0; }
+.pow-feed .feed-sheet-close{ position:absolute; top:8px; right:10px; z-index:3;
+  background:none; border:none; color:var(--dim); cursor:pointer;
   font-size:20px; line-height:1; padding:4px 6px; }
 .pow-feed .feed-sheet-close:hover{ color:var(--text); }
 /* ComposeBox's own .panel styling (border + shadow + 16px padding) drew a
@@ -1990,6 +1995,12 @@ html:not(.dark) .pow-feed .np-entry{border-bottom-color:var(--line);}
    sheet's true edge (which read as lopsided against the close X). */
 .pow-feed .feed-sheet .panel.compose{ border:none; box-shadow:none; background:transparent; padding:0; }
 .pow-feed .feed-sheet .compose textarea{ background:transparent; }
+/* The pay / "Posting your post…" state renders in the SAME sheet but as
+   .panel.pay, which the compose rule above doesn't cover — so it kept its own
+   border+shadow and drew the identical nested box we just removed from compose.
+   Flatten it flush too, and give the short centered message some vertical room
+   (28px) so it reads as breathing space, not a cramped box. */
+.pow-feed .feed-sheet .panel.pay{ border:none; box-shadow:none; background:transparent; padding:28px 0; }
 /* The Post button's own row stays pinned to the bottom of the sheet's
    scrollable area (not the viewport) — so on a long post (or a poll, or the
    YouTube-surcharge notice pushing things down) it's still always visible
