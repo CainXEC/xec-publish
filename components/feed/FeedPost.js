@@ -672,7 +672,12 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
       <div className="actions">
         <button
           type="button"
-          onClick={() => setShowReply((s) => !s)}
+          // Reply and quote are mutually exclusive — opening one closes the other
+          // so only a single composer is ever open under a post. Two inline boxes
+          // stacked (a reply composer above a quote composer) read as one
+          // confusing double-window. Clearing the other is a no-op when it's
+          // already closed, so it's safe to do unconditionally.
+          onClick={() => { setShowReply((s) => !s); setShowQuote(false) }}
           className="replybtn"
           aria-label="Reply"
           title="Reply"
@@ -690,7 +695,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
             // viewer-state overlay) == "you've reacted" — fills the trigger, cross-device.
             reactedByViewer={Boolean(post.likedByViewer)}
             isOwnPost={isOwn}
-            onQuote={() => setShowQuote((s) => !s)}
+            onQuote={() => { setShowQuote((s) => !s); setShowReply(false) }}
           />
         ) : null}
         {!post.deleted && body ? (

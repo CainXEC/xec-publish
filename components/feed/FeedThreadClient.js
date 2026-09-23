@@ -575,7 +575,12 @@ export default function FeedThreadClient({
                 <button
                   type="button"
                   onClick={() => {
+                    // Reply and quote are mutually exclusive — opening reply closes
+                    // any open quote composer so only one box shows at a time (two
+                    // stacked composers read as a confusing double-window). Clearing
+                    // quote is a no-op when it's already closed.
                     setShowReply((s) => !s)
+                    setShowQuote(false)
                     setReplyFocus(true) // an explicit tap puts the caret in the box
                   }}
                   className="replybtn"
@@ -593,7 +598,7 @@ export default function FeedThreadClient({
                     repostedByViewer={Boolean(post.repostedByViewer)}
                     reactedByViewer={Boolean(post.likedByViewer)}
                     isOwnPost={isOwnRoot}
-                    onQuote={() => setShowQuote((s) => !s)}
+                    onQuote={() => { setShowQuote((s) => !s); setShowReply(false) }}
                     canQuote={!forumSlug}
                     canRepost={!forumSlug}
                   />
