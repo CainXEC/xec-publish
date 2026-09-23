@@ -523,6 +523,12 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .tabs{display:flex;gap:0;margin-top:20px;border-bottom:1px solid var(--line);}
 .pow-feed .tab{flex:1;background:none;border:none;border-bottom:2px solid transparent;color:var(--dim);
   font:inherit;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;
+  /* text-align:center is a UA default for <button> but NOT for <span>. The loading
+     skeleton renders these tabs as spans (app/notifications/loading.js) and the live
+     page as buttons, so without this the labels flashed left-aligned during the
+     skeleton, then jumped to center when the real buttons mounted. Set it here so
+     both spellings center identically. */
+  text-align:center;
   padding:12px 0;transition:color .15s,border-color .15s;}
 .pow-feed .tab:hover{color:var(--cyan);}
 .pow-feed .tab.on{color:var(--neon);border-bottom-color:var(--neon);text-shadow:0 0 8px rgba(0,255,156,.4);}

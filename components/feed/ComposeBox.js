@@ -216,9 +216,22 @@ export default function ComposeBox({
   useEffect(() => {
     const vv = typeof window !== 'undefined' ? window.visualViewport : null
     if (!vv) return
+    let prevHeight = vv.height
     const onViewportChange = () => {
       autosize()
-      if (document.activeElement === textareaRef.current) {
+      const next = vv.height
+      // Only pull the composer into view when the viewport genuinely SHRANK — a
+      // real keyboard opening drops the visual viewport by hundreds of px. Firing
+      // the scroll on every resize was a feedback loop: the smooth scroll (and the
+      // textarea auto-growing as you type) moves the page, the mobile URL bar
+      // hides/shows and a desktop scrollbar appears/disappears in response, each of
+      // those re-fires `resize`, and we scrolled again — so the whole screen
+      // juddered up and down, worse the more you typed (a taller box = a bigger
+      // recenter each pass). A ~120px floor ignores that chrome jitter and the
+      // keyboard closing (a grow), leaving only the one keyboard-open scroll.
+      const shrankForKeyboard = next < prevHeight - 120
+      prevHeight = next
+      if (shrankForKeyboard && document.activeElement === textareaRef.current) {
         textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       }
     }

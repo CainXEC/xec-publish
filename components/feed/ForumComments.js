@@ -78,7 +78,13 @@ function CommentNode({ comment, childrenByParent, viewerAccountId, onReplyAdded,
           >
             on-chain
           </a>
-          <PostCopyLink txid={comment.txid} />
+          {/* Push the copy-link to the far right of the meta row, matching a feed
+              post (FeedPost.js) — the shared .postactions cluster owns the
+              margin-left:auto. Without it the button sat immediately after
+              "on-chain" on the left. */}
+          <span className="postactions">
+            <PostCopyLink txid={comment.txid} />
+          </span>
         </div>
 
         {comment.deleted ? (
