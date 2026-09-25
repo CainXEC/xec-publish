@@ -609,9 +609,8 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .repostedby-who{color:var(--hc,var(--dim));font-weight:600;transition:color .15s;}
 .pow-feed a.repostedby-who:hover{color:var(--cyan);}
 .pow-feed .postmeta{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
-/* Follower count sits right after the handle; the +/menu follows it (both pulled
-   left, out of the right-aligned .postactions cluster). */
-.pow-feed .followcount{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;white-space:nowrap;margin-left:-2px;}
+/* Follow/block "+" menu sits right after the handle, pulled left out of the
+   right-aligned .postactions cluster. */
 .pow-feed .postmeta > .postmenu{margin-left:0;}
 .pow-feed .byline{font-size:15px;font-weight:700;color:var(--hc,var(--neon));text-shadow:0 0 8px rgba(0,255,156,.35);transition:text-shadow .15s;}
 .pow-feed .byline:hover{text-shadow:0 0 14px rgba(0,255,156,.6);}
