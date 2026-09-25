@@ -35,16 +35,19 @@ export async function GET(request) {
   // the on-chain post is. Callers (feedOgMetadata) already clip at a word — this
   // is the backstop for a hand-built or older-cached URL, and it clips at a word
   // too so no path can cut mid-word.
-  const text = truncateAtWord(normalizeOgText(rawText), 280)
+  // A shorter preview keeps a long post from shrinking to an unreadable size —
+  // it clips at a word and appends … (the full post is one tap away on-site).
+  const text = truncateAtWord(normalizeOgText(rawText), 240)
 
   // Scale the body to fit: shrink for long posts (char count) AND for many-line
   // posts (line count), whichever forces smaller, so a bulleted post can't push
   // its own text off the card. Sizes are for the 1200x630 canvas (half the old
-  // 2400x1260 — the 2x card took ~4s and overran social crawlers' timeout).
+  // 2400x1260 — the 2x card took ~4s and overran social crawlers' timeout). Tuned
+  // to stay large enough to read on a phone even at the longest length.
   const len = text.length
   const lineCount = text.split('\n').length
-  const byLen = len > 220 ? 27 : len > 140 ? 34 : len > 70 ? 44 : len > 30 ? 54 : 66
-  const byLines = lineCount >= 9 ? 27 : lineCount >= 7 ? 34 : lineCount >= 6 ? 44 : lineCount >= 5 ? 54 : 66
+  const byLen = len > 180 ? 37 : len > 120 ? 44 : len > 60 ? 52 : len > 25 ? 60 : 70
+  const byLines = lineCount >= 9 ? 33 : lineCount >= 7 ? 41 : lineCount >= 6 ? 47 : lineCount >= 5 ? 55 : 70
   const bodySize = Math.min(byLen, byLines)
 
   let fonts = []
@@ -86,7 +89,7 @@ export async function GET(request) {
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
-              padding: '48px 56px',
+              padding: '38px 56px',
               backgroundColor: BG,
               backgroundImage:
                 'radial-gradient(750px 410px at 50% 0%, rgba(0,255,156,0.10), rgba(7,11,10,0) 68%)',
@@ -124,7 +127,7 @@ export async function GET(request) {
               }}
             >
               {author || isAi ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
                   {author ? (
                     <div
                       style={{
