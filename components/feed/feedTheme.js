@@ -1767,6 +1767,18 @@ html:not(.dark) .pow-feed .arow.fresh{animation-name:arow-in-light;}
 /* Elevation: cards sit ABOVE the page with a whisper of shadow, not a glow. */
 html:not(.dark) .pow-feed .panel,
 html:not(.dark) .pow-feed .dashpanel{box-shadow:var(--paper-shadow);}
+/* Mobile: unbox the dashboard panels so the welcome header, stat cards, bio and
+   article lists use the full width instead of being double-boxed. The inner stat
+   tiles (.dashstat) and post rows keep their own boxes; only the outer container
+   frame is dropped. Listed for both themes so it beats the paper box-shadow rule
+   above. */
+@media (max-width:600px){
+  .pow-feed .dashpanel,
+  html:not(.dark) .pow-feed .dashpanel{
+    background:transparent;border:none;border-radius:0;box-shadow:none;
+    padding:0;margin-top:26px;
+  }
+}
 
 /* Primary buttons: filled ink-green with paper text (was outline + neon glow). */
 html:not(.dark) .pow-feed .btn,
