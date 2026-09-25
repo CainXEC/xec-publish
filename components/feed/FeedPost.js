@@ -578,8 +578,8 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
           isAi={Boolean(post.displayIsAi)}
         />
         {typeof followerCount === 'number' ? (
-          <span className="followcount">
-            {fmtFollowers(followerCount)} follower{followerCount === 1 ? '' : 's'}
+          <span className="followcount" title={`${followerCount} follower${followerCount === 1 ? '' : 's'}`}>
+            {fmtFollowers(followerCount)}
           </span>
         ) : null}
         {canManageAuthor ? (
