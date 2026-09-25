@@ -191,8 +191,7 @@ const SHELL_CSS = `
   width:100vw; margin-left:calc(50% - 50vw); min-height:100dvh; box-sizing:border-box;
   background-color:var(--bg);
   background-image:
-    radial-gradient(1200px 480px at 50% -8%, rgba(0,255,156,.12), transparent 62%),
-    repeating-linear-gradient(0deg, rgba(0,255,156,.035) 0 1px, transparent 1px 3px);
+    radial-gradient(1200px 480px at 50% -8%, rgba(0,255,156,.12), transparent 62%);
   color:var(--text);
   font-family:'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   padding:0 0 110px;
