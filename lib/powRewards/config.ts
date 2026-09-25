@@ -35,7 +35,11 @@ export const DEFAULT_CONFIG: RewardConfig = {
   // + XEC directly (94% of reads), so the publish baseline is a modest 20 points.
   weights: { economic: 0.2, creation: 0.4, engagement: 0.4 },
   economicCurve: "sqrt",
-  creationPoints: { article: 20, feedPost: 10, reply: 5, repost: 5, quote: 15 },
+  // A feed post earns 0 for existing — its reward comes from the engagement it
+  // attracts (reactions/replies credit the author). Replies earn a small 2 (they
+  // already earn engagement on both sides), so volume can't top the board — only
+  // content people actually engage with does. Articles keep their real baseline.
+  creationPoints: { article: 20, feedPost: 0, reply: 2, repost: 5, quote: 15 },
   creationCategoryCap: 500,
   engagementPoints: { unlock: 10, reply: 3, quote: 4, repost: 2, reaction: 1 },
   repeatDecay: [1.0, 0.5, 0.25, 0.1],
