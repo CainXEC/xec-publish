@@ -50,6 +50,20 @@ export function lastCompleteWeek(now: Date = new Date()): WeekBounds {
   return weekBoundsFor(new Date(now.getTime() - 7 * DAY_MS));
 }
 
+export interface DayBounds {
+  date: string; // 'YYYY-MM-DD' (UTC)
+  startUtc: Date; // inclusive
+  endUtc: Date; // exclusive
+}
+
+/** The most recent COMPLETE UTC day relative to `now` (i.e. "yesterday"):
+ *  [yesterday 00:00, today 00:00). The herald's daily post reads this. */
+export function lastCompleteDay(now: Date = new Date()): DayBounds {
+  const endUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())); // today 00:00
+  const startUtc = new Date(endUtc.getTime() - DAY_MS);
+  return { date: startUtc.toISOString().slice(0, 10), startUtc, endUtc };
+}
+
 /** Parse a 'YYYY-Www' key back to its UTC bounds (for re-running a named week). */
 export function weekBoundsForKey(isoWeek: string): WeekBounds {
   const m = /^(\d{4})-W(\d{2})$/.exec(isoWeek);

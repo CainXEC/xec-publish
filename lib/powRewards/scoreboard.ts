@@ -110,6 +110,75 @@ export async function runningScoreboard(topN = 10, now: Date = new Date()): Prom
   };
 }
 
+// Fixed windows (a completed day/week) have STABLE bounds, so a per-window cache
+// keyed on those bounds actually hits (unlike the live week-to-date board, whose
+// end = now). Same TTL. The herald reads these once/day, so this mostly guards
+// against the public endpoint being hit repeatedly for the same window.
+const windowCache = new Map<string, { at: number; rows: ContributionRow[] }>();
+
+async function rankedRowsFor(startUtc: Date, endUtc: Date): Promise<ContributionRow[]> {
+  const key = `${startUtc.toISOString()}|${endUtc.toISOString()}`;
+  const hit = windowCache.get(key);
+  if (hit && Date.now() - hit.at < BOARD_TTL_MS) return hit.rows;
+  const cfg = await loadConfig();
+  const scores = await scoreWeek(startUtc, endUtc, cfg, true); // includeAll → excluded rows tagged
+  const { rows } = contributionRows(scores, cfg);
+  if (windowCache.size > 32) windowCache.clear(); // bound memory; windows are few
+  windowCache.set(key, { at: Date.now(), rows });
+  return rows;
+}
+
+async function toEntries(shown: ContributionRow[]): Promise<ScoreboardEntry[]> {
+  const ids = shown.map((r) => r.accountId);
+  const [handles, addrs] = await Promise.all([handlesFor(ids), primaryAddresses(ids)]);
+  return shown.map((r, i) => {
+    const handle = handles.get(r.accountId) ?? null;
+    return {
+      rank: i + 1,
+      accountId: r.accountId,
+      handle,
+      display: displayIdentity(handle, addrs.get(r.accountId)),
+      contributionScore: r.contributionScore,
+      economicScore: r.economicScore,
+      creationScore: r.creationScore,
+      engagementScore: r.engagementScore,
+      excluded: r.excluded, // always false in a public board (excluded rows filtered)
+    };
+  });
+}
+
+export interface WindowScoreboard extends Scoreboard {
+  window: "day" | "week"; // which completed window this covers
+  label: string; // human label: the date ('YYYY-MM-DD') for a day, isoWeek for a week
+  date?: string; // present for a day window
+}
+
+/** Top-N leaderboard over a COMPLETED, fixed window (a whole day or week) — the
+ *  herald's daily/weekly posts. Same eligibility rules as the live board: excluded
+ *  (founder/house) accounts are scored but never shown publicly. */
+export async function windowScoreboard(
+  startUtc: Date,
+  endUtc: Date,
+  topN: number,
+  meta: { window: "day" | "week"; label: string; isoWeek: string; date?: string },
+): Promise<WindowScoreboard> {
+  const rows = await rankedRowsFor(startUtc, endUtc);
+  const eligible = rows.filter((r) => !r.excluded);
+  const shown = eligible.slice(0, topN);
+  const top = await toEntries(shown);
+  return {
+    window: meta.window,
+    label: meta.label,
+    date: meta.date,
+    isoWeek: meta.isoWeek,
+    asOf: endUtc.toISOString(),
+    participants: eligible.length,
+    top,
+    cutoffScore: shown.length ? shown[shown.length - 1].contributionScore : null,
+    others: Math.max(0, eligible.length - shown.length),
+  };
+}
+
 export interface AccountScoreView {
   found: boolean;
   reason?: "no_activity";
