@@ -77,10 +77,13 @@ export interface Scoreboard {
   others: number; // eligible accounts below the shown top
 }
 
-/** Live top-N leaderboard for the current (in-progress) week. */
+/** Live top-N leaderboard for the current (in-progress) week. Excluded accounts
+ *  (founder/house) are scored on the shared board only for their OWN dashboard
+ *  self-view — they never appear on this PUBLIC scoreboard. */
 export async function runningScoreboard(topN = 10, now: Date = new Date()): Promise<Scoreboard> {
   const board = await computeBoard(now);
-  const shown = board.rows.slice(0, topN);
+  const eligible = board.rows.filter((r) => !r.excluded);
+  const shown = eligible.slice(0, topN);
   const ids = shown.map((r) => r.accountId);
   const [handles, addrs] = await Promise.all([handlesFor(ids), primaryAddresses(ids)]);
   const top: ScoreboardEntry[] = shown.map((r, i) => {
@@ -94,16 +97,16 @@ export async function runningScoreboard(topN = 10, now: Date = new Date()): Prom
       economicScore: r.economicScore,
       creationScore: r.creationScore,
       engagementScore: r.engagementScore,
-      excluded: r.excluded,
+      excluded: r.excluded, // always false here (excluded rows are filtered out)
     };
   });
   return {
     isoWeek: board.isoWeek,
     asOf: board.asOf,
-    participants: board.rows.length,
+    participants: eligible.length,
     top,
     cutoffScore: shown.length ? shown[shown.length - 1].contributionScore : null,
-    others: Math.max(0, board.rows.length - shown.length),
+    others: Math.max(0, eligible.length - shown.length),
   };
 }
 
@@ -128,18 +131,24 @@ export interface AccountScoreView {
 }
 
 /** One account's week-to-date standing (powers the dashboard "Your POW" card).
- *  The shared board now includes EVERY account, so an excluded account (founder/
- *  house) is simply found there with `excluded:true` — its real score ranked
- *  among everyone, shown for reference. No separate self-view pass needed. */
+ *  The shared board includes EVERY account, so an excluded account (founder/house)
+ *  is found there with `excluded:true` and can see its OWN score for reference,
+ *  even though it never appears on the public scoreboard. Rank/participants are
+ *  computed over the ELIGIBLE set so a normal user's dashboard rank matches the
+ *  public board (an excluded viewer sees where its score WOULD sit). */
 export async function accountScoreLookup(accountId: string, now: Date = new Date()): Promise<AccountScoreView> {
   const resolver = await buildResolver([accountId]); // resolve the account's cluster rep
   const eff = resolver.eff(accountId);
   const board = await computeBoard(now);
+  const eligible = board.rows.filter((row) => !row.excluded);
   const idx = board.rows.findIndex((r) => r.accountId === eff);
   if (idx === -1) {
-    return { found: false, reason: "no_activity", isoWeek: board.isoWeek, asOf: board.asOf, participants: board.rows.length };
+    return { found: false, reason: "no_activity", isoWeek: board.isoWeek, asOf: board.asOf, participants: eligible.length };
   }
   const r = board.rows[idx];
+  const rank = r.excluded
+    ? eligible.filter((row) => row.contributionScore > r.contributionScore).length + 1
+    : eligible.findIndex((row) => row.accountId === eff) + 1;
   const handle = (await handlesFor([eff])).get(eff) ?? null;
   return {
     found: true,
@@ -148,8 +157,8 @@ export async function accountScoreLookup(accountId: string, now: Date = new Date
     asOf: board.asOf,
     accountId: eff,
     handle,
-    rank: idx + 1,
-    participants: board.rows.length,
+    rank,
+    participants: eligible.length,
     contributionScore: r.contributionScore,
     economicScore: r.economicScore,
     creationScore: r.creationScore,
