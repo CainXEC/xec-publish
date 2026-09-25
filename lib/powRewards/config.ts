@@ -30,9 +30,12 @@ export interface RewardConfig {
 
 export const DEFAULT_CONFIG: RewardConfig = {
   weeklyPoolAtoms: 1000,
-  weights: { economic: 0.35, creation: 0.35, engagement: 0.3 },
+  // Contribution over spend: economy 20%, creation + engagement 40% each. Articles
+  // earn their real POW through readership (unlocks credit the author engagement)
+  // + XEC directly (94% of reads), so the publish baseline is a modest 20 points.
+  weights: { economic: 0.2, creation: 0.4, engagement: 0.4 },
   economicCurve: "sqrt",
-  creationPoints: { article: 100, feedPost: 10, reply: 5, repost: 5, quote: 15 },
+  creationPoints: { article: 20, feedPost: 10, reply: 5, repost: 5, quote: 15 },
   creationCategoryCap: 500,
   engagementPoints: { unlock: 10, reply: 3, quote: 4, repost: 2, reaction: 1 },
   repeatDecay: [1.0, 0.5, 0.25, 0.1],
