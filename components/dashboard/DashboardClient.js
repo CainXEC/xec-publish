@@ -656,7 +656,7 @@ export default function DashboardClient({
         <div className="dashpanel">
           <div className="dashtop">
             <h1 className="dashwelcome">
-              Welcome{' '}
+              Hi{' '}
               <Link
                 href={profileHref}
                 style={identity?.startsWith('@') && handleColor ? { '--hc': handleColor } : undefined}
