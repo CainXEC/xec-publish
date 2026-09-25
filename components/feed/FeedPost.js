@@ -109,6 +109,13 @@ function Byline({ identity, color, isAi = false }) {
   )
 }
 
+// Compact follower count for the byline (1 → "1", 1200 → "1.2k", 12000 → "12k").
+function fmtFollowers(n) {
+  if (n < 1000) return String(n)
+  const k = n / 1000
+  return `${k >= 10 ? Math.round(k) : k.toFixed(1).replace(/\.0$/, '')}k`
+}
+
 /**
  * Overflow "+" menu on someone else's post: the single home for the two
  * relationship actions — Follow/Unfollow and Block. Both are session-authorized
@@ -116,7 +123,7 @@ function Byline({ identity, color, isAi = false }) {
  * the feed drops the account's posts immediately. Only rendered for a signed-in
  * viewer on another account's live post (unblocking is done from the profile).
  */
-function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked }) {
+function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked, onFollowChange }) {
   const [open, setOpen] = useState(false)
   const [following, setFollowing] = useState(Boolean(initialFollowing))
   const [busyFollow, setBusyFollow] = useState(false)
@@ -148,6 +155,7 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
     const next = !following
     setBusyFollow(true)
     setFollowing(next) // optimistic
+    onFollowChange?.(next ? 1 : -1) // optimistic follower-count bump
     try {
       const res = await fetch('/api/feed/follow', {
         method: 'POST',
@@ -157,15 +165,17 @@ function PostMenu({ authorAccountId, authorLabel, initialFollowing, onBlocked })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) {
         setFollowing(!next) // revert
+        onFollowChange?.(next ? -1 : 1) // revert the count bump
       } else if (typeof data.following === 'boolean') {
         setFollowing(data.following)
       }
     } catch {
       setFollowing(!next) // revert
+      onFollowChange?.(next ? -1 : 1) // revert the count bump
     } finally {
       setBusyFollow(false)
     }
-  }, [busyFollow, following, authorAccountId])
+  }, [busyFollow, following, authorAccountId, onFollowChange])
 
   const block = useCallback(async () => {
     if (busyBlock) return
@@ -280,6 +290,18 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   // feed instead of being navigated to the thread page.
   const [newReplies, setNewReplies] = useState([])
   const [confirmDialog, confirmDialogNode] = useConfirmDialog()
+  // Author's follower count, shown next to the byline. Seeded from the server
+  // payload; re-synced if the prop changes (feed rows can be re-decorated), and
+  // bumped optimistically when the viewer follows/unfollows via the + menu.
+  const [followerCount, setFollowerCount] = useState(
+    typeof post.authorFollowerCount === 'number' ? post.authorFollowerCount : null,
+  )
+  useEffect(() => {
+    setFollowerCount(typeof post.authorFollowerCount === 'number' ? post.authorFollowerCount : null)
+  }, [post.authorFollowerCount])
+  const bumpFollowerCount = useCallback((delta) => {
+    setFollowerCount((c) => (typeof c === 'number' ? Math.max(0, c + delta) : c))
+  }, [])
 
   const body = typeof post.content === 'string' ? post.content : ''
   // A YouTube link embeds a player on posts, quotes, top-level forum posts, AND
@@ -555,6 +577,20 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
           color={post.displayColor}
           isAi={Boolean(post.displayIsAi)}
         />
+        {typeof followerCount === 'number' ? (
+          <span className="followcount">
+            {fmtFollowers(followerCount)} follower{followerCount === 1 ? '' : 's'}
+          </span>
+        ) : null}
+        {canManageAuthor ? (
+          <PostMenu
+            authorAccountId={post.author_account_id}
+            authorLabel={authorLabel}
+            initialFollowing={Boolean(post.followedByViewer)}
+            onBlocked={onBlocked}
+            onFollowChange={bumpFollowerCount}
+          />
+        ) : null}
         <span aria-hidden className="dot">
           ·
         </span>
@@ -594,14 +630,6 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
             />
           ) : null}
           {!post.deleted ? <PostCopyLink txid={post.txid} /> : null}
-          {canManageAuthor ? (
-            <PostMenu
-              authorAccountId={post.author_account_id}
-              authorLabel={authorLabel}
-              initialFollowing={Boolean(post.followedByViewer)}
-              onBlocked={onBlocked}
-            />
-          ) : null}
         </span>
       </div>
 
