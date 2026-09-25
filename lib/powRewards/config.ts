@@ -1,11 +1,34 @@
 // =============================================================================
 //  lib/powRewards/config.ts
 //  Tunable reward parameters (§23/§27). Loaded from pow_reward_config('active')
-//  so pool/weights/points/cap change WITHOUT a deploy; DEFAULT_CONFIG is the
-//  fallback + the shape. Each frozen epoch snapshots the exact config it used.
+//  so pool/weights/points change WITHOUT a deploy; DEFAULT_CONFIG is the fallback
+//  + the shape. Each frozen epoch snapshots the exact config it used.
+//
+//  Scoring model (see score.ts): there is NO reward for the act of creating.
+//  Every cross-user interaction (unlock / reply / quote / repost / reaction /
+//  comment / comment-reply / comment-like) credits TWO people with the SAME
+//  points, from interactionPoints:
+//     • the ACTOR (you engaging someone)      → ENGAGEMENT
+//     • the content OWNER (you being engaged) → CREATION
+//  So "creation" = the value your work drew (engagement received) and
+//  "engagement" = the value you gave others (engagement made). Unlocks are the
+//  core loop, so they're worth the most.
 // =============================================================================
 
 import { adminDb } from "@/lib/db";
+
+/** Points per cross-user interaction type. Each interaction awards this to BOTH
+ *  the actor (as engagement) and the content owner (as creation). */
+export interface InteractionPoints {
+  unlock: number; // pay to read an article — the core loop, worth the most
+  comment: number; // top-level comment on an article
+  commentReply: number; // reply to a comment
+  quote: number; // quote-post of a feed post
+  reply: number; // reply to a feed post
+  commentLike: number; // paid like on a comment
+  repost: number; // repost of a feed post
+  reaction: number; // emoji reaction on a feed post
+}
 
 export interface RewardConfig {
   /** Weekly POW pool in atoms (POW is 0-decimal → whole tokens). */
@@ -13,14 +36,12 @@ export interface RewardConfig {
   /** Must sum to 1.0 — the share of the pool each dimension controls. */
   weights: { economic: number; creation: number; engagement: number };
   economicCurve: "sqrt"; // only sqrt for now
-  /** Creation points per action. */
-  creationPoints: { article: number; feedPost: number; reply: number; repost: number; quote: number };
-  /** Per-category weekly ceiling on creation points (anti-spam). */
-  creationCategoryCap: number;
-  /** Engagement points per cross-user interaction type. */
-  engagementPoints: { unlock: number; reply: number; quote: number; repost: number; reaction: number };
-  /** Repeat-counterparty decay: Nth interaction with the SAME counterparty this
-   *  week is worth repeatDecay[min(N, len-1)] (favours breadth over repetition). */
+  /** Points per cross-user interaction (see InteractionPoints). */
+  interactionPoints: InteractionPoints;
+  /** Repeat-counterparty decay: the Nth interaction between the SAME two
+   *  accounts this week is worth repeatDecay[min(N, len-1)] (favours breadth of
+   *  genuine users over hammering one account — applies to BOTH the actor's
+   *  engagement and the owner's creation from that interaction). */
   repeatDecay: number[];
   /** Hard cap: no account gets more than this fraction of the pool. */
   maxUserShare: number;
@@ -30,18 +51,16 @@ export interface RewardConfig {
 
 export const DEFAULT_CONFIG: RewardConfig = {
   weeklyPoolAtoms: 1000,
-  // Contribution over spend: economy 20%, creation + engagement 40% each. Articles
-  // earn their real POW through readership (unlocks credit the author engagement)
-  // + XEC directly (94% of reads), so the publish baseline is a modest 20 points.
+  // Economy 20%, creation + engagement 40% each. Creation (engagement your work
+  // received) and engagement (engagement you gave) are two sides of the same
+  // interactions, so weighting them equally keeps making valued things and
+  // showing up for others in balance.
   weights: { economic: 0.2, creation: 0.4, engagement: 0.4 },
   economicCurve: "sqrt",
-  // A feed post earns 0 for existing — its reward comes from the engagement it
-  // attracts (reactions/replies credit the author). Replies earn a small 2 (they
-  // already earn engagement on both sides), so volume can't top the board — only
-  // content people actually engage with does. Articles keep their real baseline.
-  creationPoints: { article: 20, feedPost: 0, reply: 2, repost: 5, quote: 15 },
-  creationCategoryCap: 500,
-  engagementPoints: { unlock: 10, reply: 3, quote: 4, repost: 2, reaction: 1 },
+  // Unlocks lead by a wide margin — paying to read a whole article is the
+  // strongest signal of value on the platform. Comments (real writing about
+  // writing) beat feed quotes/replies, which beat one-tap reposts/reactions.
+  interactionPoints: { unlock: 15, comment: 5, commentReply: 4, quote: 4, reply: 3, commentLike: 2, repost: 2, reaction: 1 },
   repeatDecay: [1.0, 0.5, 0.25, 0.1],
   maxUserShare: 0.1,
   loyaltyMultMax: 1.2,
@@ -57,8 +76,7 @@ export async function loadConfig(): Promise<RewardConfig> {
       ...DEFAULT_CONFIG,
       ...c,
       weights: { ...DEFAULT_CONFIG.weights, ...(c.weights ?? {}) },
-      creationPoints: { ...DEFAULT_CONFIG.creationPoints, ...(c.creationPoints ?? {}) },
-      engagementPoints: { ...DEFAULT_CONFIG.engagementPoints, ...(c.engagementPoints ?? {}) },
+      interactionPoints: { ...DEFAULT_CONFIG.interactionPoints, ...(c.interactionPoints ?? {}) },
       repeatDecay: c.repeatDecay ?? DEFAULT_CONFIG.repeatDecay,
     };
   } catch {

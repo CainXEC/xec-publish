@@ -9,8 +9,9 @@
 //  This is an ABSOLUTE, ACCUMULATING score: it is a weighted sum of your own
 //  activity points, NOT a share of everyone's total. So it only ever climbs as
 //  you do more through the week (it never drops because someone else got busy),
-//  and it resets each week because scoring is always week-to-date. The 35/35/30
-//  weights keep the three activity types in their intended balance.
+//  and it resets each week because scoring is always week-to-date. The weights
+//  (economic / creation / engagement) keep the three dimensions in balance —
+//  creation = engagement your work received, engagement = engagement you gave.
 //
 //  Rewards: the fixed weekly POW pool is still split PRO-RATA by this score
 //  (freezeWeek: each earner's allocation ∝ contribShareRaw), so a bigger score is

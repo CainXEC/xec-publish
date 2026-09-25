@@ -100,6 +100,7 @@ export default function PowRewardsCard() {
               {' · '}{d.activity.articles} article{d.activity.articles === 1 ? '' : 's'}
               {' · '}{d.activity.feedPosts} post{d.activity.feedPosts === 1 ? '' : 's'}
               {' · '}{d.activity.replies} repl{d.activity.replies === 1 ? 'y' : 'ies'}
+              {typeof d.activity.comments === 'number' ? `${' · '}${d.activity.comments} comment${d.activity.comments === 1 ? '' : 's'}` : ''}
               {' · '}{d.activity.unlocksMade}/{d.activity.unlocksReceived} unlocks made/received
               {' · '}<b>{d.activity.uniqueCounterparties}</b> unique users engaged
             </p>
