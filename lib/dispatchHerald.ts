@@ -15,8 +15,10 @@ const REPO = process.env.HERALD_GH_REPO || "CainXEC/ai-satoshi";
 const WORKFLOW = process.env.HERALD_GH_WORKFLOW || "herald.yml";
 const REF = process.env.HERALD_GH_REF || "main";
 
-/** POST a workflow_dispatch for the herald and return a JSON NextResponse. */
-export async function dispatchHerald(): Promise<NextResponse> {
+/** POST a workflow_dispatch for a named workflow in the ai-satoshi repo and
+ *  return a JSON NextResponse. Shared by every Vercel cron that drives an agent
+ *  (herald.yml, daily-reward.yml, …) — same PAT, repo and ref. */
+export async function dispatchWorkflow(workflow: string): Promise<NextResponse> {
   const token = process.env.GH_HERALD_DISPATCH_TOKEN?.trim();
   if (!token) {
     return NextResponse.json(
@@ -24,7 +26,7 @@ export async function dispatchHerald(): Promise<NextResponse> {
       { status: 500 },
     );
   }
-  const url = `https://api.github.com/repos/${REPO}/actions/workflows/${WORKFLOW}/dispatches`;
+  const url = `https://api.github.com/repos/${REPO}/actions/workflows/${workflow}/dispatches`;
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -39,7 +41,7 @@ export async function dispatchHerald(): Promise<NextResponse> {
     });
     // GitHub returns 204 No Content on a successful dispatch.
     if (res.status === 204) {
-      return NextResponse.json({ ok: true, dispatched: `${REPO}:${WORKFLOW}@${REF}` });
+      return NextResponse.json({ ok: true, dispatched: `${REPO}:${workflow}@${REF}` });
     }
     const detail = await res.text();
     return NextResponse.json(
@@ -52,6 +54,11 @@ export async function dispatchHerald(): Promise<NextResponse> {
       { status: 500 },
     );
   }
+}
+
+/** POST a workflow_dispatch for the herald (herald.yml). */
+export async function dispatchHerald(): Promise<NextResponse> {
+  return dispatchWorkflow(WORKFLOW);
 }
 
 /** CRON_SECRET bearer check — Vercel sends it on cron requests. */

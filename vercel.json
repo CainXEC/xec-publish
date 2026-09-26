@@ -4,6 +4,7 @@
     { "path": "/api/feed/reconcile", "schedule": "*/5 * * * *" },
     { "path": "/api/cron/pow-payout", "schedule": "0 0 * * 1" },
     { "path": "/api/cron/herald-trigger", "schedule": "0 0 * * *" },
-    { "path": "/api/cron/herald-weekly", "schedule": "10 0 * * 1" }
+    { "path": "/api/cron/herald-weekly", "schedule": "10 0 * * 1" },
+    { "path": "/api/cron/patron-daily-reward", "schedule": "5 0 * * *" }
   ]
 }
