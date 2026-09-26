@@ -43,6 +43,17 @@ export interface RewardConfig {
    *  genuine users over hammering one account — applies to BOTH the actor's
    *  engagement and the owner's creation from that interaction). */
   repeatDecay: number[];
+  /** Anti-farming: the ENGAGEMENT dimension (what you GIVE — unlocking, replying,
+   *  commenting on others) gets diminishing returns above this raw-point knee.
+   *  Below it, engagement counts linearly; above it, it grows as sqrt(knee·raw),
+   *  so mass-unlocking/commenting can't linearly buy the leaderboard. CREATION
+   *  (being engaged WITH) stays linear — being widely read is the signal we want.
+   *  0 disables the curve. ~150 ≈ ten full-value unlocks in a week. */
+  engagementSoftCapRaw: number;
+  /** A comment (article comment or comment-reply) must have at least this many
+   *  trimmed characters to earn ANY scoring points, on either side — a one-word
+   *  "nice" shouldn't move rank. It still posts and still pays the author. */
+  minCommentChars: number;
   /** Hard cap: no account gets more than this fraction of the pool. */
   maxUserShare: number;
   /** Loyalty multiplier ceiling (Phase 3; unused = 1.0 for now). */
@@ -62,6 +73,8 @@ export const DEFAULT_CONFIG: RewardConfig = {
   // writing) beat feed quotes/replies, which beat one-tap reposts/reactions.
   interactionPoints: { unlock: 15, comment: 5, commentReply: 4, quote: 4, reply: 3, commentLike: 2, repost: 2, reaction: 1 },
   repeatDecay: [1.0, 0.5, 0.25, 0.1],
+  engagementSoftCapRaw: 150,
+  minCommentChars: 15,
   maxUserShare: 0.1,
   loyaltyMultMax: 1.2,
 };

@@ -56,7 +56,7 @@ interface FeedPostRow { action: number; author_account_id: string | null; parent
 interface ArticleRow { author_id: string | null; published_at: string | null }
 interface FeedEventRow { action: number; actor_account_id: string | null; target_txid: string | null; emoji: string | null; created_at: string }
 interface UnlockRow { payer_address: string | null; post_id: string | null; unlocked_at: string }
-interface CommentRow { action: number | null; author_account_id: string | null; post_id: string | null; parent_txid: string | null; txid: string | null; created_at: string }
+interface CommentRow { action: number | null; author_account_id: string | null; post_id: string | null; parent_txid: string | null; txid: string | null; content: string | null; created_at: string }
 interface CommentEventRow { action: number; actor_account_id: string | null; target_txid: string | null; created_at: string }
 
 function emptyActivity(): Activity {
@@ -83,7 +83,7 @@ export async function scoreWeek(
     db.from("posts").select("author_id, published_at").eq("published", true).gte("published_at", startISO).lt("published_at", endISO),
     db.from("feed_events").select("action, actor_account_id, target_txid, emoji, created_at").gte("created_at", startISO).lt("created_at", endISO),
     db.from("unlocks").select("payer_address, post_id, unlocked_at").gte("unlocked_at", startISO).lt("unlocked_at", endISO),
-    db.from("comments").select("action, author_account_id, post_id, parent_txid, txid, created_at").gte("created_at", startISO).lt("created_at", endISO).not("txid", "is", null).is("deleted_at", null),
+    db.from("comments").select("action, author_account_id, post_id, parent_txid, txid, content, created_at").gte("created_at", startISO).lt("created_at", endISO).not("txid", "is", null).is("deleted_at", null),
     db.from("comment_events").select("action, actor_account_id, target_txid, created_at").gte("created_at", startISO).lt("created_at", endISO),
   ]);
   const fposts = (fpostsData ?? []) as FeedPostRow[];
@@ -222,9 +222,13 @@ export async function scoreWeek(
     if (e.action === 4) ints.push({ ts: Date.parse(e.created_at), actor: e.actor_account_id, owner, points: ip.repost, kind: "other" });
     else if (e.action === 5 && e.emoji !== "👎") ints.push({ ts: Date.parse(e.created_at), actor: e.actor_account_id, owner, points: ip.reaction, kind: "other" });
   }
-  // Article comments: commenter (actor) ↔ article author / parent-comment author (owner)
+  // Article comments: commenter (actor) ↔ article author / parent-comment author (owner).
+  // A too-short comment (a one-word "nice") earns nothing on either side — it still
+  // posts and pays the author, it just doesn't move the leaderboard.
+  const minCommentChars = cfg.minCommentChars ?? 0;
   for (const c of comments) {
     if (!c.author_account_id) continue;
+    if (minCommentChars > 0 && [...(c.content ?? "").trim()].length < minCommentChars) continue;
     if (c.action === 10) {
       const authorId = postAuthorId.get(c.post_id ?? "");
       const owner = authorId ? authorAcct.get(authorId) : undefined;
@@ -266,6 +270,17 @@ export async function scoreWeek(
     if (it.kind === "unlock") { ensure(a).activity.unlocksMade += 1; ensure(o).activity.unlocksReceived += 1; }
   }
   for (const [a, set] of uniqueCp) { const s = scores.get(a); if (s) s.activity.uniqueCounterparties = set.size; }
+
+  // Anti-farming: diminishing returns on ENGAGEMENT (the giving side). Below the
+  // knee it's linear; above it grows as sqrt(knee·raw) — concave, so unlocking/
+  // commenting on ever more accounts yields ever less rank. Creation (being
+  // engaged WITH) is intentionally left linear. Same shape as the economic curve.
+  const knee = cfg.engagementSoftCapRaw ?? 0;
+  if (knee > 0) {
+    for (const s of scores.values()) {
+      if (s.engagementRaw > knee) s.engagementRaw = Math.sqrt(knee * s.engagementRaw);
+    }
+  }
 
   // Drop rows with no contribution at all (e.g. an account that only appeared as a
   // same-cluster counterparty).
