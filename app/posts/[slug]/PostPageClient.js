@@ -262,7 +262,10 @@ export default function PostPageClient({
 
   const getCurrentPageUrl = useCallback(() => {
     if (typeof window === 'undefined') return ''
-    return window.location.href
+    // Canonical article link: drop any ?query / #hash — e.g. the #comment-… anchor
+    // a comment notification adds — so "Copy link" / "Share" always yield the
+    // article itself, never a deep link to one comment.
+    return `${window.location.origin}${window.location.pathname}`
   }, [])
 
   const handleSharePow = useCallback(() => {
