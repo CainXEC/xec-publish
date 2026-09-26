@@ -609,7 +609,7 @@ export default function AuthorProfilePageClient({
                 </span>
               ) : null}
               <span className="profprev-count">
-                {' '}({handleHistory.totalHandles} handles)
+                {' '}({handleHistory.totalHandles} handles used)
               </span>
             </p>
           ) : null}
