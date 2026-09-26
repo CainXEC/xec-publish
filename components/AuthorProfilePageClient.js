@@ -347,6 +347,7 @@ export default function AuthorProfilePageClient({
   handleColor = null,
   isAi = false,
   bio = null,
+  handleHistory = null,
   holderAddress = null,
   handleCards = [],
   handleCardsSlot = null,
@@ -598,6 +599,20 @@ export default function AuthorProfilePageClient({
               </span>
             ) : null}
           </h1>
+
+          {handleHistory?.previous ? (
+            <p className="profprev">
+              Previously: <span className="profprev-h">{handleHistory.previous}</span>
+              {handleHistory.changedLabel ? (
+                <span className="profprev-date" title={handleHistory.changedIso ?? undefined}>
+                  {' · '}changed {handleHistory.changedLabel}
+                </span>
+              ) : null}
+              <span className="profprev-count">
+                {' '}({handleHistory.totalHandles} handles)
+              </span>
+            </p>
+          ) : null}
 
           {holderAddress ? (
             <span className="profaddrrow">

@@ -906,6 +906,10 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .profname{margin:0;font-size:30px;font-weight:800;letter-spacing:.02em;color:var(--hc,var(--neon));
   text-shadow:0 0 14px rgba(0,255,156,.45);word-break:break-word;}
 .pow-feed .profname.isaddr{font-size:18px;letter-spacing:0;color:var(--cyan);text-shadow:0 0 12px rgba(61,240,255,.4);}
+/* "Previously known as" — a quiet line right under the byline for churned handles. */
+.pow-feed .profprev{margin:6px 0 0;font-size:12.5px;color:var(--dim);word-break:break-word;}
+.pow-feed .profprev-h{color:var(--text);font-weight:600;}
+.pow-feed .profprev-count{color:var(--dim);}
 /* The address + Tip button share one row right under the byline; each child's
    own top margin is reset here so the ROW carries that spacing instead (else
    they'd double up). */

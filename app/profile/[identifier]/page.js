@@ -10,6 +10,7 @@ import { getAuthedAccount } from '@/lib/authHelpers'
 import { adminDb } from '@/lib/db'
 import { viewerBlocksAccount } from '@/lib/feedBlocks'
 import { viewerFollowsAccount, followerCountForAccount } from '@/lib/profileSocial'
+import { getHandleHistory } from '@/lib/handleHistory'
 import { profileOpenGraphMetadata } from '@/lib/profileOgMetadata'
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.proofofwriting.com'
@@ -111,7 +112,7 @@ export default async function ProfilePage({ params }) {
     accountId: profileAccountId,
     author: resolved.author,
   })
-  const [followerCount, feed, initialFollowing, initialBlocked] = await Promise.all([
+  const [followerCount, feed, initialFollowing, initialBlocked, handleHistory] = await Promise.all([
     followerCountForAccount(profileAccountId),
     profileAccountId
       ? getCachedAccountFeedPage({ accountId: profileAccountId, viewerAddress, viewerAccountId })
@@ -120,6 +121,7 @@ export default async function ProfilePage({ params }) {
     profileAccountId
       ? viewerBlocksAccount(adminDb(), viewerAccountId, profileAccountId)
       : Promise.resolve(false),
+    getHandleHistory(profileAccountId, resolved.identity),
   ])
 
   // Byline = the account's LIVE identity: "@handle" if held, else the raw address.
@@ -147,6 +149,7 @@ export default async function ProfilePage({ params }) {
       handleColor={resolved.handleColor}
       isAi={resolved.author?.is_ai === true}
       bio={resolved.author?.bio ?? null}
+      handleHistory={handleHistory}
       holderAddress={resolved.holderAddress}
       handleCardsSlot={
         <Suspense
