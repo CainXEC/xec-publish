@@ -18,10 +18,10 @@
 //    • alts — each account is collapsed to its cluster (account_links); a cluster
 //      is one earner.
 //
-//  Two on-chain revenue sinks are scanned: the platform fee address
-//  (PLATFORM_XEC_ADDRESS — unlock/post/reaction/comment/forum cuts) and the mint
-//  wallet (MINT_PAYMENT_ADDRESS — NFT mint revenue). Token-bearing outputs are
-//  skipped, so a future POW-paid mint's token/dust never counts as XEC revenue.
+//  One on-chain revenue sink is scanned: the platform fee address
+//  (PLATFORM_XEC_ADDRESS — unlock/post/reaction/comment/forum cuts). Handle-mint
+//  revenue (MINT_PAYMENT_ADDRESS) is deliberately NOT counted, so minting/churning
+//  handles can't buy leaderboard rank. Token-bearing outputs are skipped too.
 //
 //  READ-ONLY: this module computes, it never writes the DB or sends anything.
 // =============================================================================
@@ -34,13 +34,16 @@ import { CHRONIK_URLS } from "@/lib/ecash/chronikEndpoints";
 let _chronik: ChronikClient | null = null;
 const chronik = () => (_chronik ??= new ChronikClient(CHRONIK_URLS));
 
-// Platform-controlled XEC revenue sinks. Every fee-bearing action (unlocks,
-// posts, reactions, comments, forum fees) pays its cut to the platform fee
-// address; NFT-mint revenue lands at the mint wallet address. We scan BOTH and
-// attribute receipts to the paying account. Read at CALL time (not module load)
-// so a script that populates env after importing this module still works.
+// Platform-controlled XEC revenue sink for the economic score: the platform FEE
+// address, which every fee-bearing action (unlocks, posts, reactions, comments,
+// tips-to-platform, forum fees) pays its cut to. We deliberately DO NOT scan the
+// mint wallet (MINT_PAYMENT_ADDRESS): counting handle-mint payments let people
+// buy leaderboard rank by minting/churning handles, which is a collectible
+// purchase, not contribution to others. Economic score = genuine platform
+// economic activity your engagement generated, nothing else. Read at CALL time
+// (not module load) so a script that populates env after import still works.
 function sourceAddresses(): string[] {
-  return [process.env.PLATFORM_XEC_ADDRESS, process.env.MINT_PAYMENT_ADDRESS]
+  return [process.env.PLATFORM_XEC_ADDRESS]
     .map((a) => a?.trim())
     .filter((a): a is string => !!a);
 }
@@ -173,7 +176,7 @@ export async function tallyWeekRevenue(
 ): Promise<WeekTally> {
   const addresses = sourceAddresses();
   if (addresses.length === 0) {
-    throw new Error("no reward source addresses set (PLATFORM_XEC_ADDRESS / MINT_PAYMENT_ADDRESS)");
+    throw new Error("no reward source address set (PLATFORM_XEC_ADDRESS)");
   }
   const db = adminDb();
 
