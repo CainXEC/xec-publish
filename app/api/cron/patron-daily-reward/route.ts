@@ -1,10 +1,11 @@
 // =============================================================================
 //  app/api/cron/patron-daily-reward/route.ts
-//  DAILY 00:01 UTC trigger for the POW daily prize: dispatches the patron's
+//  DAILY 00:00 UTC trigger for the POW daily prize: dispatches the patron's
 //  daily-reward.yml workflow (ai-satoshi), which tips the just-completed UTC
-//  day's #1 Contribution-Score account from the PATRON wallet. Runs just after
-//  the day closes — the completed-day board is frozen the instant the clock
-//  passes 00:00, and the scorer reads 0-conf records, so no buffer is needed.
+//  day's #1 Contribution-Score account from the PATRON wallet. Fires on the same
+//  tick as herald-trigger — safe: the completed-day board is frozen the instant
+//  the clock passes 00:00 (so both agree on the winner), it's a separate workflow/
+//  wallet/spend-log, and it no-ops on Monday (Sunday's #1 is the weekly prize).
 //
 //  The workflow itself no-ops on Monday (Sunday's #1 is a weekly prize) and does
 //  nothing unless DAILY_REWARD_ENABLED=1 and the patron wallet is funded — this
