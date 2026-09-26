@@ -254,7 +254,13 @@ export async function scoreWeek(
   const decayAt = (n: number) => cfg.repeatDecay[Math.min(n, cfg.repeatDecay.length - 1)];
   const noteCp = (a: string, o: string) => { let set = uniqueCp.get(a); if (!set) { set = new Set(); uniqueCp.set(a, set); } set.add(o); };
   for (const it of ints) {
-    if (R.excluded(it.actor) || R.excluded(it.owner)) continue;
+    // Use the TRUE exclusion rule (rewardExcluded), NOT the includeAll-aware
+    // excluded(): a founder/is_ai account must never credit the OTHER party — on
+    // the display board OR the payout — else interacting with an excluded account
+    // would inflate a user's SHOWN rank above what they're actually paid. When
+    // includeAll is off these are identical, so the payout is unchanged; this only
+    // brings the display board (includeAll=true) into line with it.
+    if (R.rewardExcluded(it.actor) || R.rewardExcluded(it.owner)) continue;
     const a = R.eff(it.actor);
     const o = R.eff(it.owner);
     if (a === o) continue; // self / same cluster
