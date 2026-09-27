@@ -14,7 +14,7 @@ export default function OnboardingStrip() {
     <div className="onboard-strip">
       <style>{STRIP_CSS}</style>
       <span className="onboard-strip-text">
-        New to Proof of Writing? It runs on eCash — get started free in 3 steps.
+        New to Proof of Writing? Get 1,000 XEC + 10 POW free — start in 3 steps.
       </span>
       <GetStartedButton className="onboard-strip-btn">Get started</GetStartedButton>
     </div>

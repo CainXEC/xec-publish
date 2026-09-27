@@ -76,9 +76,9 @@ export function GetStartedModal({ open, onClose }) {
             <div className="ob-body">
               <h3 className="ob-h">Create your eCash wallet</h3>
               <p className="ob-p">
-                Cashtab is your key to this platform. It&rsquo;s an open source web wallet and
-                new users can claim <strong>42 XEC free</strong>. Claim your free XEC, save your
-                seed phrase, then come back to this page and proceed to step 2.
+                Cashtab is your key to this platform. It&rsquo;s an open source web wallet, and
+                every new wallet can claim <strong>42 XEC free</strong>. Make a new wallet, claim
+                its free 42 XEC, save your seed phrase, then come back here for step 2.
               </p>
               <button type="button" className="ob-btn" onClick={openCashtab}>
                 Get Cashtab →
@@ -100,10 +100,12 @@ export function GetStartedModal({ open, onClose }) {
           <li className="ob-step">
             <span className="ob-num" aria-hidden>3</span>
             <div className="ob-body">
-              <h3 className="ob-h">Get XEC</h3>
+              <h3 className="ob-h">Claim your welcome gift</h3>
               <p className="ob-p">
-                Once you&rsquo;re in, click on the Share on X button and we&rsquo;ll send you
-                enough XEC to start posting.
+                Once you&rsquo;re in, tap <strong>Claim</strong> at the top of the feed to get{' '}
+                <strong>1,000 XEC + 10 POW</strong>{' '}free — enough to post, react, unlock stories,
+                and mint your own @handle. (A limited number of gifts go out each day; if
+                they&rsquo;re gone, the faucet resets at 00:00 UTC.)
               </p>
             </div>
           </li>

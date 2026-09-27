@@ -26,10 +26,9 @@ export default function FeedClient({
   focusCompose = false,
   initialScope = 'foryou',
   // Onboarding (walletless funnel): a brand-new, unfunded logged-in account is
-  // `starterEligible` and sees the "Claim starter XEC" card; `profilePath` is the
-  // link that rides in its X share. Logged-out visitors see the get-started strip.
+  // `starterEligible` and sees the welcome-gift (faucet) card. Logged-out
+  // visitors see the get-started strip.
   starterEligible = false,
-  profilePath = null,
 }) {
   const [scope, setScope] = useState(initialScope) // 'foryou' | 'forums'
 
@@ -629,7 +628,7 @@ export default function FeedClient({
             Both sit at the very top of the feed column, above the composer. */}
         {scope !== 'forums' && !signedIn ? <OnboardingStrip /> : null}
         {scope !== 'forums' && signedIn && starterEligible ? (
-          <StarterXecCard profilePath={profilePath} />
+          <StarterXecCard />
         ) : null}
 
         {/* The site-wide composer posts to the global Feed; on the Forums tab
