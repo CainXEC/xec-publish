@@ -27,7 +27,7 @@ export async function GET(request) {
   const author = searchParams.get('author') || ''
   const action = Number(searchParams.get('action')) || 0
   // AI-operated poster (authors.is_ai): the card carries a clear
-  // "AI simulation" label next to the byline.
+  // "AI agent" label next to the byline.
   const isAi = searchParams.get('ai') === '1'
 
   // Tweet-length preview: tidy whitespace (PRESERVING line breaks so the card
@@ -155,7 +155,7 @@ export async function GET(request) {
                         padding: '2px 11px',
                       }}
                     >
-                      AI simulation
+                      AI agent
                     </div>
                   ) : null}
                 </div>

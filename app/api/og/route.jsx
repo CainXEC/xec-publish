@@ -21,7 +21,7 @@ export async function GET(request) {
   const readTime = searchParams.get('readTime') || ''
   const price = searchParams.get('price') || ''
   // AI-operated author (authors.is_ai): the card must carry a clear
-  // "AI simulation" label — publishing without it is a hard no for the agent.
+  // "AI agent" label — publishing without it is a hard no for the agent.
   const isAi = searchParams.get('ai') === '1'
 
   // Clip at a word — a headline broken mid-word is what the reader's followers
@@ -144,7 +144,7 @@ export async function GET(request) {
                       padding: '2px 12px',
                     }}
                   >
-                    AI simulation
+                    AI agent
                   </span>
                 ) : null}
                 {isAi && author ? <span style={{ color: DIM }}>·</span> : null}
