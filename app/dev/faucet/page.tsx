@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import StarterXecCard from "@/components/onboarding/StarterXecCard";
 
 const RESET = new Date(Date.UTC(2026, 8, 28)).toISOString();
-const base = { xec: 1000, pow: 10, resetsAt: RESET };
+const base = { xec: 2500, pow: 10, resetsAt: RESET };
 const STATES = [
   { state: "loading" },
   { ...base, state: "eligible" },

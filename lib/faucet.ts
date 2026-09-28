@@ -1,5 +1,5 @@
 // =============================================================================
-//  lib/faucet.ts — the new-user welcome faucet (1,000 XEC + 10 POW).
+//  lib/faucet.ts — the new-user welcome faucet (2,500 XEC + 10 POW).
 //
 //  Flow: a newcomer makes a Cashtab wallet and claims Cashtab's free 42 XEC
 //  (captcha-gated by Cashtab), logs in here with it (6 XEC challenge), then taps
@@ -55,7 +55,7 @@ export interface FaucetConfig {
 
 export const DEFAULT_FAUCET_CONFIG: FaucetConfig = {
   enabled: true,
-  xecPerClaim: 1000,
+  xecPerClaim: 2500, // room to post/react/unlock AND fund the Pocket's 1,000 XEC preset
   powPerClaim: 10, // == the base-tier handle price in POW
   dailyXecCap: 10000,
   dailyPowCap: 100,

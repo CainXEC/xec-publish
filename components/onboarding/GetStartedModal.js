@@ -103,8 +103,8 @@ export function GetStartedModal({ open, onClose }) {
               <h3 className="ob-h">Claim your welcome gift</h3>
               <p className="ob-p">
                 Once you&rsquo;re in, tap <strong>Claim</strong> at the top of the feed to get{' '}
-                <strong>1,000 XEC + 10 POW</strong>{' '}free — enough to post, react, unlock stories,
-                and mint your own @handle. (A limited number of gifts go out each day; if
+                <strong>2,500 XEC + 10 POW</strong>{' '}free — enough to post, react, unlock stories,
+                try one-tap payments with your Pocket, and mint your own @handle. (A limited number of gifts go out each day; if
                 they&rsquo;re gone, the faucet resets at 00:00 UTC.)
               </p>
             </div>

@@ -56,7 +56,7 @@ export default function StarterXecCard({ preview = null } = {}) {
     }
   }, [preview])
 
-  const xec = Number(s.xec ?? 1000).toLocaleString('en-US')
+  const xec = Number(s.xec ?? 2500).toLocaleString('en-US')
   const pow = Number(s.pow ?? 10).toLocaleString('en-US')
   const gift = `${xec} XEC + ${pow} POW`
 
@@ -70,8 +70,8 @@ export default function StarterXecCard({ preview = null } = {}) {
       <>
         <h3 className="starter-h">Your welcome gift is ready</h3>
         <p className="starter-p">
-          Claim <strong>{gift}</strong>{' '}free — enough to post, react, unlock stories, and
-          mint your own @handle with the POW.
+          Claim <strong>{gift}</strong>{' '}free — enough to post, react, unlock stories, try
+          one-tap payments with your Pocket, and mint your own @handle with the POW.
         </p>
         <button type="button" className="starter-btn" onClick={claim} disabled={busy}>
           {busy ? 'Sending…' : `Claim ${gift}`}
@@ -84,11 +84,17 @@ export default function StarterXecCard({ preview = null } = {}) {
         <h3 className="starter-h">Welcome gift sent 🎉</h3>
         <p className="starter-p">
           <strong>{gift}</strong>{' '}{s.state === 'sent' ? 'just landed in' : 'went to'}{' '}your
-          Cashtab wallet. Your {pow} POW mints a free handle (11–15 characters).
+          Cashtab wallet. Your {pow} POW mints a free handle (11–15 characters), and a
+          1,000 XEC top-up sets up your Pocket for one-tap payments.
         </p>
-        <Link href="/claim-handle" className="starter-btn">
-          Mint your handle →
-        </Link>
+        <div className="starter-ctas">
+          <Link href="/claim-handle" className="starter-btn">
+            Mint your handle →
+          </Link>
+          <Link href="/pocket" className="starter-btn ghost">
+            Set up your Pocket →
+          </Link>
+        </div>
         {s.txid ? (
           <a
             className="starter-tx"
@@ -180,6 +186,9 @@ const STARTER_CSS = `
 }
 .starter-btn:hover { box-shadow: 0 0 12px rgba(0,255,156,.25); }
 .starter-btn:disabled { opacity: .6; cursor: wait; box-shadow: none; }
+.starter-ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.starter-btn.ghost { border-color: var(--line, #444); color: var(--dim, #aaa); }
+.starter-btn.ghost:hover { box-shadow: none; border-color: var(--neon, #7CFF6B); color: var(--neon, #7CFF6B); }
 .starter-tx { display: block; margin-top: 10px; font-size: 12px; color: var(--dim, #aaa); }
 .starter-tx:hover { color: var(--cyan, #3df0ff); }
 .starter-err { margin: 10px 0 0; font-size: 12.5px; color: var(--no, #ff5c6c); }
