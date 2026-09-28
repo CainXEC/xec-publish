@@ -57,7 +57,7 @@ export const DEFAULT_FAUCET_CONFIG: FaucetConfig = {
   enabled: true,
   xecPerClaim: 2500, // room to post/react/unlock AND fund the Pocket's 1,000 XEC preset
   powPerClaim: 10, // == the base-tier handle price in POW
-  dailyXecCap: 10000,
+  dailyXecCap: 25000, // 10 claims/day at 2,500
   dailyPowCap: 100,
   sourceAddress: "ecash:qzppgpav9xfls6zzyuqy7syxpqhnlqqa5u68m4qw6l",
   sourceMinSats: 4200,
