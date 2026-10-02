@@ -504,6 +504,12 @@ html:not(.dark) .pow-feed .poll-res.mine .poll-res-fill{background:rgba(18,112,6
 .pow-feed .pay{padding:20px;text-align:center;}
 .pow-feed .payhead{font-size:14px;margin:0 0 16px;color:var(--text);}
 .pow-feed .payhead strong{color:var(--neon);}
+/* Pocket "Posting your post/reply…" state: a single short line. Center it in the
+   box both ways — the plain .poll carries a 12px top margin (for the Cashtab
+   panel, where it sits under .payhead) that otherwise pushed this lone line below
+   true vertical center. A min-height gives it a deliberate, consistent box. */
+.pow-feed .pay.posting{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:120px;}
+.pow-feed .pay.posting .poll{margin:0;}
 .pow-feed .qr{display:inline-block;padding:12px;background:#dffff2;border-radius:12px;margin:0 0 16px;
   box-shadow:0 0 0 1px var(--neon),0 0 24px rgba(0,255,156,.28);}
 .pow-feed .poll{font-size:13px;color:var(--text);margin:12px 0 0;}

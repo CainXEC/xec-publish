@@ -578,7 +578,7 @@ export default function ComposeBox({
     // "posting…" (the optimistic post, when enabled, is already showing above).
     if (payViaPocket) {
       return (
-        <div className="panel pay">
+        <div className="panel pay posting">
           <p className="poll">Posting your {noun}…</p>
           {notice ? <p className="notice">{notice}</p> : null}
         </div>
