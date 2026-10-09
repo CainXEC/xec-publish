@@ -79,7 +79,13 @@ function caretCoordinates(textarea, index) {
 
   mirror.textContent = textarea.value.slice(0, index)
   const marker = document.createElement('span')
-  marker.textContent = '​'
+  // Put the character AT `index` (the "@") INSIDE the marker so it wraps exactly
+  // like the real textarea. An empty marker placed after text ending in a space
+  // sat at the END of the previous line — a trailing space doesn't wrap on its
+  // own — so an "@" that starts a soft-wrapped line was reported at the far right
+  // of the line above, flinging the dropdown off-screen. Measuring the "@" itself
+  // lands on the wrapped line where it actually renders.
+  marker.textContent = textarea.value.charAt(index) || '​'
   mirror.appendChild(marker)
 
   const lineHeight = parseFloat(style.lineHeight) || marker.offsetHeight
@@ -122,7 +128,14 @@ export function useMentionSuggest(textareaRef, { onSelect } = {}) {
     setRange({ start, end: caret })
     // Anchor to the "@" itself, not the caret — so the dropdown stays put as
     // more letters are typed instead of creeping right with the query.
-    setCoords(caretCoordinates(el, start))
+    const c = caretCoordinates(el, start)
+    // Safety net: an "@" genuinely near the right edge would still push the
+    // 240px-wide list off the right of the field. Clamp its left so the whole
+    // list stays within the field width (it then sits below-and-left of the "@").
+    const fieldW = el.offsetWidth
+    const listW = Math.min(240, fieldW)
+    c.left = Math.max(0, Math.min(c.left, fieldW - listW))
+    setCoords(c)
   }, [textareaRef])
 
   // Fetch suggestions for the active query (debounced). Bare "@" (query === '')
