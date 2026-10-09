@@ -712,6 +712,14 @@ export default function MarketplaceClient({
   const [mintedLoading, setMintedLoading] = useState(false);
   const reqSeq = useRef(0);
 
+  // Client-side paging for the For-sale + holder views. Those lists arrive in a
+  // single response (the Agora chain read / the held-handles read), so the cost
+  // that grows with the collection isn't the fetch — it's rendering every card
+  // (each paints an image). Cap how many we render and reveal more on demand, so
+  // the first paint stays fast no matter how many handles are minted/listed. The
+  // All-minted view has its own SERVER pagination (fetchMinted) and ignores this.
+  const [visible, setVisible] = useState(PAGE_SIZE);
+
   // Debounce typed search so we don't hit the API per keystroke.
   const [debouncedQ, setDebouncedQ] = useState(query);
   useEffect(() => {
@@ -840,6 +848,21 @@ export default function MarketplaceClient({
     }));
   }, [holder, heldItems, view, listings, minted, listedPrice, listedSeller, tier, q, sort]);
 
+  // For-sale + holder views are client-paged; All-minted is server-paged (so it's
+  // rendered in full — `minted` only ever holds the pages already fetched).
+  const clientPaged = view !== "all" || Boolean(holder);
+  const shownItems = useMemo(
+    () => (items && clientPaged ? items.slice(0, visible) : items),
+    [items, clientPaged, visible]
+  );
+  const clientHasMore = Boolean(clientPaged && items && items.length > visible);
+
+  // Any change that rebuilds the list (view, holder, filters, sort) resets the
+  // client page back to the first batch.
+  useEffect(() => {
+    setVisible(PAGE_SIZE);
+  }, [view, holder, tier, q, sort]);
+
   // ---- offer interest counts (public, batched per page of cards) ----
   const [offerCounts, setOfferCounts] = useState<Record<string, number>>({});
   const [openOffer, setOpenOffer] = useState<string | null>(null);
@@ -867,9 +890,11 @@ export default function MarketplaceClient({
   useEffect(() => {
     // Both unlisted AND listed cards can carry offers now (a listed handle takes
     // "offer below the ask"), so fetch interest counts for every card on the page.
-    const ids = (items ?? []).map((it) => it.tokenId);
+    // Scoped to the cards actually RENDERED (shownItems), so a big client-paged
+    // list doesn't request counts for cards still behind "Load more".
+    const ids = (shownItems ?? []).map((it) => it.tokenId);
     void refreshCounts(ids);
-  }, [items, refreshCounts]);
+  }, [shownItems, refreshCounts]);
 
   const loading = holder
     ? heldItems === null
@@ -967,7 +992,7 @@ export default function MarketplaceClient({
       ) : (
         <>
           <div className="mkgrid">
-            {items.map((it) => (
+            {(shownItems ?? []).map((it) => (
               <Card
                 key={it.tokenId}
                 item={it}
@@ -983,12 +1008,18 @@ export default function MarketplaceClient({
             ))}
           </div>
           {view === "all" && !holder && hasMore ? (
+            // All-minted: fetch the next SERVER page.
             <button
               className="mkmore"
               disabled={mintedLoading}
               onClick={() => fetchMinted(minted?.length ?? 0, false)}
             >
               {mintedLoading ? "Loading…" : "Load more"}
+            </button>
+          ) : clientHasMore ? (
+            // For-sale / holder: reveal the next client batch of the already-loaded list.
+            <button className="mkmore" onClick={() => setVisible((v) => v + PAGE_SIZE)}>
+              Load more
             </button>
           ) : null}
         </>
