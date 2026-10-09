@@ -24,12 +24,14 @@ export function excludedAccountIds(): Set<string> {
 export interface AccountResolver {
   /** account id → effective (cluster) id. */
   eff: (accountId: string) => string;
-  /** Reward-eligibility GATE used to drop rows: true = must not earn. Respects
-   *  `includeAll` (returns false for everyone when the caller wants all accounts,
-   *  e.g. the display scoreboard). */
+  /** Exclusion gate used to drop rows. With `includeAll` (the for-fun display /
+   *  herald board) only the house AI bots (is_ai) are excluded — every real
+   *  account, founder included, is kept; otherwise it's the full is_ai / founder /
+   *  env rule. */
   excluded: (accountId: string) => boolean;
-  /** The TRUE exclusion rule (is_ai / founder / env), IGNORING `includeAll` — so a
-   *  display board that includes everyone can still TAG which rows can't earn. */
+  /** Same rule as `excluded`: under `includeAll` only is_ai is excluded, so a real
+   *  account's interactions credit the counterparty (score.ts skips interactions
+   *  touching a rewardExcluded account — i.e. ones involving a bot). */
   rewardExcluded: (accountId: string) => boolean;
 }
 
@@ -59,9 +61,18 @@ export async function buildResolver(
 
   const excludedEnv = excludedAccountIds();
   const eff = (id: string) => cluster.get(id) ?? id;
-  const rewardExcluded = (id: string) =>
+  // The full exclusion rule (is_ai house accounts / founder / env list).
+  const isExcluded = (id: string) =>
     ai.has(id) || excludedEnv.has(id) || excludedEnv.has(eff(id));
-  const excluded = (id: string) => (includeAll ? false : rewardExcluded(id));
+  // `includeAll` is the for-fun display/herald board: include every REAL account —
+  // the founder (@cain) and the env-listed ones too, so they're scored, their
+  // interactions credit the counterparty, and they're shown — but STILL keep the
+  // house AI bots (is_ai) off, the same way they're kept out of feed ranking
+  // (an [AI] agent shouldn't top a "who's scoring most" board). The rewards
+  // program is retired; this board is bragging-rights only. The payout path
+  // leaves includeAll false, so the full rule still stands there if ever run.
+  const rewardExcluded = (id: string) => (includeAll ? ai.has(id) : isExcluded(id));
+  const excluded = rewardExcluded;
   return { eff, excluded, rewardExcluded };
 }
 
