@@ -121,6 +121,12 @@ export default function ComposeBox({
   // payment lifecycle; released only when we're back to a fresh composer.
   const submitLockRef = useRef(false)
   const textareaRef = useRef(null)
+  // A zero-height sentinel at the very bottom of the composer (below the Pay
+  // button row). We scroll THIS into view — not the textarea — when the keyboard
+  // opens, so the Pay button is never left hidden under it. Centering the textarea
+  // (what this used to do) left the button, which sits below the textarea and the
+  // quoted embed, below the fold on an inline reply/quote composer.
+  const composerBottomRef = useRef(null)
 
   // What actually goes on chain: for a forum post, title + body combined; else
   // just the body. Priced + hashed + sent as one blob.
@@ -173,9 +179,11 @@ export default function ComposeBox({
     // Belt-and-suspenders for the visualViewport resize handler below: if the
     // keyboard is ALREADY open (switching straight from one inline reply to
     // another further down the feed), no resize event fires to trigger that
-    // handler, so this covers the first-mount case directly.
+    // handler, so this covers the first-mount case directly. Scroll the composer's
+    // BOTTOM into view (not the textarea's center) so the Pay button lands above
+    // the keyboard — centering the textarea left the button below the fold.
     requestAnimationFrame(() => {
-      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      ;(composerBottomRef.current ?? el)?.scrollIntoView({ behavior: 'smooth', block: 'end' })
     })
   }, [autoFocus])
 
@@ -203,16 +211,27 @@ export default function ComposeBox({
 
   useEffect(() => {
     autosize()
+    // As the box grows while typing, the Pay button (just below this sentinel) can
+    // drift back under the keyboard. Re-reveal it — but only when the sentinel has
+    // actually dropped below the visible (visual) viewport, so we don't yank the
+    // view on every keystroke. Instant (no smooth) to stay unobtrusive. Desktop has
+    // no keyboard inset (vv === window), so this is effectively mobile-only.
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null
+    if (vv && document.activeElement === textareaRef.current) {
+      const rect = composerBottomRef.current?.getBoundingClientRect()
+      if (rect && rect.bottom > vv.offsetTop + vv.height - 4) {
+        composerBottomRef.current.scrollIntoView({ block: 'end' })
+      }
+    }
   }, [content, autosize])
 
   // The keyboard opening/closing resizes the visual viewport — re-cap for the new
   // space, and keep a focused composer in view so it isn't left under the keyboard.
-  // `block:'center'` (not 'nearest') deliberately overshoots: an inline reply/quote
-  // composer mounts wherever its post happens to sit in a long feed, often low on
-  // screen, and 'nearest' only scrolled the minimum to clear the keyboard — which
-  // left the box straddling the keyboard's top edge, half hidden. Centering it in
-  // whatever visual viewport remains puts the whole box safely above the keyboard
-  // on the first open, no manual scroll needed.
+  // We scroll the composer's BOTTOM sentinel (block:'end'), not the textarea, so
+  // the Pay button — which sits below the textarea and the quoted embed — always
+  // lands just above the keyboard. The caret (at the bottom of the capped textarea,
+  // right above the button) stays visible too. Centering the textarea instead left
+  // the button hidden under the keyboard on an inline reply/quote composer.
   useEffect(() => {
     const vv = typeof window !== 'undefined' ? window.visualViewport : null
     if (!vv) return
@@ -232,7 +251,7 @@ export default function ComposeBox({
       const shrankForKeyboard = next < prevHeight - 120
       prevHeight = next
       if (shrankForKeyboard && document.activeElement === textareaRef.current) {
-        textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        ;(composerBottomRef.current ?? textareaRef.current)?.scrollIntoView({ behavior: 'smooth', block: 'end' })
       }
     }
     vv.addEventListener('resize', onViewportChange)
@@ -829,6 +848,10 @@ export default function ComposeBox({
         </p>
       ) : null}
       {notice ? <p className="notice">{notice}</p> : null}
+      {/* Scroll target: sits below the Pay button so scrolling it to the bottom of
+          the visual viewport keeps the button clear of the keyboard. scrollMarginBottom
+          leaves a little breathing room above the keyboard's top edge. */}
+      <div ref={composerBottomRef} aria-hidden style={{ height: 0, scrollMarginBottom: '12px' }} />
     </div>
   )
 }
