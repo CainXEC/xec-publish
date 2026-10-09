@@ -6,6 +6,7 @@ import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { formatIdentity } from '@/lib/formatIdentity'
 import { getWriteSidebarData } from '@/lib/getWriteSidebarData'
+import { restoreArticleBodyForEditing } from '@/lib/articleBodyLinks'
 
 // A neon shell matching the editor's pow-feed theme, for the not-found / error
 // states that render instead of the form.
@@ -71,9 +72,14 @@ export default async function EditPostPage({ params }) {
   })
   const identity = formatIdentity(acct.handle, acct.address)
 
+  // Turn any stored YouTube embed back into its watch-URL so the editor keeps it
+  // (TipTap has no node for the embed iframe and would otherwise drop it); the
+  // publish transform re-embeds it on save.
+  const editablePost = { ...post, body: restoreArticleBodyForEditing(post.body) }
+
   return (
     <NewPostForm
-      existingPost={post}
+      existingPost={editablePost}
       sidebar={sidebar}
       identity={identity}
       handleColor={acct.handle ? acct.handleColor : null}
