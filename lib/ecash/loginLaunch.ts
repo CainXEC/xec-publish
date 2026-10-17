@@ -71,3 +71,68 @@ export function takeLoginReturnWindow(): Window | null {
   returnWindow = null
   return w
 }
+
+// ---------------------------------------------------------------------------
+//  Getting the user off the Cashtab PAYMENT tab once login lands.
+//
+//  The designed flow: Cashtab sends, shows its success screen, then calls
+//  window.close() itself (~2.1s after the broadcast) — the tab closes and the
+//  user drops back onto POW. That works wherever the browser lets a script
+//  close a window it opened (Android Chrome, desktop, iOS Safari). iOS Chrome
+//  ignores the close and strands the user on Cashtab, so there we have to
+//  navigate the tab to POW ourselves.
+//
+//  We can't tell those apart up front, and login is 0-conf — POW sees the
+//  payment ~1s after the send, BEFORE Cashtab's close fires. Navigating the tab
+//  right away therefore beat Cashtab's own close everywhere: on Android the
+//  Cashtab tab turned into POW instead of closing, so it looked like Cashtab
+//  had opened in the same tab. So: give Cashtab a grace window to close itself,
+//  and take the tab over only if it's still open after that.
+// ---------------------------------------------------------------------------
+
+/** How long Cashtab gets to close its own tab (its success screen is 2.1s). */
+export const PAYMENT_TAB_CLOSE_GRACE_MS = 3000
+
+function isGone(w: Window): boolean {
+  try {
+    return w.closed
+  } catch {
+    return true // no longer reachable — nothing we could navigate anyway
+  }
+}
+
+/**
+ * Resolves once the payment tab has closed itself ('closed') or, if it's still
+ * open after the grace window, once we've pointed it at POW ('redirected').
+ * 'none' when there's no tab to deal with. Callers navigate themselves AFTER
+ * this — navigating away first would kill the timer.
+ */
+export function handBackPaymentWindow(
+  w: Window | null,
+  powUrl: string,
+  { graceMs = PAYMENT_TAB_CLOSE_GRACE_MS, pollMs = 200 } = {},
+): Promise<'none' | 'closed' | 'redirected'> {
+  if (!w) return Promise.resolve('none')
+  if (isGone(w)) return Promise.resolve('closed')
+  return new Promise((resolve) => {
+    // Elapsed time, not tick count: a backgrounded tab's interval is throttled
+    // (≈1/s), so ticks under-count the wait.
+    const startedAt = Date.now()
+    const id = setInterval(() => {
+      if (isGone(w)) {
+        clearInterval(id)
+        resolve('closed')
+        return
+      }
+      if (Date.now() - startedAt >= graceMs) {
+        clearInterval(id)
+        try {
+          w.location.href = powUrl
+        } catch {
+          /* cross-origin navigation blocked — the POW tab still redirects itself */
+        }
+        resolve('redirected')
+      }
+    }, pollMs)
+  })
+}

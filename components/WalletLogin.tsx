@@ -17,7 +17,7 @@ import {
   abortCashtabPayment,
   type CashtabGesture,
 } from "@/lib/ecash/cashtabPay";
-import { takeLoginLaunch, takeLoginReturnWindow } from "@/lib/ecash/loginLaunch";
+import { takeLoginLaunch, takeLoginReturnWindow, handBackPaymentWindow } from "@/lib/ecash/loginLaunch";
 
 type Started = {
   ok: true;
@@ -44,10 +44,11 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
   // login lands, so the self-closing payment tab drops back onto POW, not
   // Cashtab. Null for a normal login (no second tab). See loginLaunch.
   const returnWinRef = useRef<Window | null>(null);
-  // The Cashtab PAYMENT tab itself. On iOS Chrome it doesn't self-close after
-  // the send — the user is left sitting on it — so once login lands we navigate
-  // THIS window to POW too (see the poll). Keeping the handle is the only lever
-  // we have: iOS won't let us close or focus a tab.
+  // The Cashtab PAYMENT tab itself. Cashtab closes it after the send where the
+  // browser allows; on iOS Chrome it doesn't, leaving the user on it — so once
+  // login lands we navigate THIS window to POW if it's still open after a grace
+  // window (see the poll + handBackPaymentWindow). Keeping the handle is the
+  // only lever we have: iOS won't let us close or focus a tab.
   const payWinRef = useRef<Window | null>(null);
 
   // Cashtab web deep link — RAW bip21 (no encodeURIComponent), carries the nonce.
@@ -133,30 +134,30 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
         const j = await r.json();
         if (j.ok && j.accountId) {
           setPhase("done");
-          // Onboarding (iOS): after paying, the user is stranded on a Cashtab tab
-          // — the payment tab doesn't self-close reliably, and iOS won't let us
-          // close or focus tabs. But we CAN navigate a window we opened. So now
-          // that we're logged in, point BOTH Cashtab tabs we hold — the payment
-          // tab (where the user actually is) and the leftover "Get Cashtab" tab —
-          // at a signed-in POW (home, top of feed). Whichever they're looking at
-          // flips to POW. Cross-origin nav of a window you opened is allowed;
-          // guarded so a block just leaves the POW /login tab to redirect itself.
-          if (typeof window !== "undefined") {
-            const powUrl = new URL(redirectTo, window.location.origin).href;
-            for (const w of [payWinRef.current, returnWinRef.current]) {
-              if (w && !w.closed) {
-                try {
-                  w.location.href = powUrl;
-                } catch {
-                  /* cross-origin navigation blocked */
-                }
-              }
+          const powUrl = new URL(redirectTo, window.location.origin).href;
+          // Onboarding (iOS): the leftover "Get Cashtab" tab is what a
+          // self-closing payment tab drops back onto, and iOS won't let us close
+          // or focus it — but we CAN navigate a window we opened. Point it at a
+          // signed-in POW now, before the payment tab closes onto it.
+          const rw = returnWinRef.current;
+          returnWinRef.current = null;
+          if (rw && !rw.closed) {
+            try {
+              rw.location.href = powUrl;
+            } catch {
+              /* cross-origin navigation blocked */
             }
           }
+          // The payment tab: let Cashtab close it itself (the user lands back
+          // here, on POW); only if it's still open after the grace window (iOS
+          // Chrome ignores the close) do we turn it into POW. Then hard-navigate
+          // so every component re-reads auth via /api/me — after, not before, or
+          // leaving this page would cancel the grace timer.
+          const pw = payWinRef.current;
           payWinRef.current = null;
-          returnWinRef.current = null;
-          // hard navigation so every component re-reads auth via /api/me
-          setTimeout(() => { if (typeof window !== "undefined") window.location.assign(redirectTo); }, 600);
+          void handBackPaymentWindow(pw, powUrl).then(() => {
+            setTimeout(() => window.location.assign(redirectTo), 600);
+          });
           return { done: true };
         }
         if (j.status === "pocket_address") {
