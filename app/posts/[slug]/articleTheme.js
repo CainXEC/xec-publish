@@ -145,6 +145,21 @@ export const ARTICLE_CSS = `
 .pow-article .prose hr{border:none;border-top:1px solid var(--line);margin:2em 0;}
 .pow-article .prose ul,.pow-article .prose ol{padding-left:1.4em;margin:0 0 1.1em;}
 .pow-article .prose li{margin:.3em 0;}
+/* Tables. The table itself is a block that scrolls sideways; the rows inside
+   size to their content up to the column width, so short tables stay compact,
+   long text wraps, and a table with many columns scrolls instead of crushing
+   them on a phone. Cell text is left-aligned, never justified. */
+.pow-article .prose table{display:block;max-width:100%;overflow-x:auto;margin:1.4em 0;
+  border-collapse:collapse;font-size:.92em;line-height:1.55;}
+.pow-article .prose thead,.pow-article .prose tr{border:0;}
+.pow-article .prose th,.pow-article .prose td{border:1px solid var(--line);padding:.5em .8em;
+  min-width:6em;vertical-align:top;text-align:left;
+  /* .prose sets word-break:break-word, which in a table lets columns shrink
+     until words split mid-letter. Keep words whole; a wide table scrolls. */
+  word-break:normal;}
+.pow-article .prose th{background:var(--panel2);color:var(--text);font-weight:700;}
+.pow-article .prose th p,.pow-article .prose td p{margin:0;text-align:inherit;hyphens:manual;}
+.pow-article .prose th p + p,.pow-article .prose td p + p{margin-top:.5em;}
 
 /* ---- paywall / unlock ---- */
 .pow-article .paywrap{padding:24px 0 6px;text-align:center;}

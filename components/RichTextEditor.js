@@ -9,6 +9,7 @@ import { CharacterCount } from '@tiptap/extensions/character-count'
 import { POST_BODY_PLAIN_MAX } from '@/lib/postFieldLimits'
 import { charCounterClassName } from '@/lib/charCounterClassName'
 import { PaywallBreak } from '@/lib/tiptap/PaywallBreak'
+import { ArticleTableExtensions } from '@/lib/tiptap/ArticleTable'
 import { powInternalHref } from '@/lib/contentLinks'
 import EmojiPicker from '@/components/EmojiPicker'
 
@@ -66,6 +67,20 @@ function docHasPaywallBreak(node) {
   return node.content.some((child) => docHasPaywallBreak(child))
 }
 
+// True when the table holding the cursor starts with a header row — drives the
+// Header toggle's on/off look (toggleHeaderRow flips row 1 between th and td).
+function tableHasHeaderRow(editor) {
+  const { $from } = editor.state.selection
+  for (let d = $from.depth; d > 0; d--) {
+    const node = $from.node(d)
+    if (node.type.name === 'table') {
+      const firstRow = node.firstChild
+      return !!firstRow && firstRow.childCount > 0 && firstRow.firstChild.type.name === 'tableHeader'
+    }
+  }
+  return false
+}
+
 export default function RichTextEditor({
   content = '',
   onChange,
@@ -103,6 +118,7 @@ export default function RichTextEditor({
         mode: 'textSize',
       }),
       PaywallBreak,
+      ...ArticleTableExtensions,
     ],
     [maxPlainTextChars],
   )
@@ -142,6 +158,7 @@ export default function RichTextEditor({
   const countLabel = charCount.toLocaleString('en-US')
   const counterClass = charCounterClassName(charCount, maxPlainTextChars, BODY_WARN_WITHIN)
   const hasPaywallBreak = editor ? docHasPaywallBreak(editor.getJSON()) : false
+  const inTable = editor ? editor.isActive('table') : false
 
   if (!editor) {
     return (
@@ -236,12 +253,24 @@ export default function RichTextEditor({
           </ToolbarButton>
           <ToolbarSeparator />
           <ToolbarButton
+            title={inTable ? 'Already in a table' : 'Insert table'}
+            disabled={inTable}
+            onAction={() =>
+              editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+            }
+          >
+            ▦ Table
+          </ToolbarButton>
+          <ToolbarSeparator />
+          <ToolbarButton
             title={
               hasPaywallBreak
                 ? 'Paywall marker already exists'
-                : 'Insert paywall marker'
+                : inTable
+                  ? 'Move the cursor out of the table to place the paywall'
+                  : 'Insert paywall marker'
             }
-            disabled={hasPaywallBreak}
+            disabled={hasPaywallBreak || inTable}
             onAction={() =>
               editor
                 .chain()
@@ -280,6 +309,57 @@ export default function RichTextEditor({
             onPick={(emoji) => editor.chain().focus().insertContent(emoji).run()}
           />
         </div>
+        {inTable ? (
+          <div
+            className="z-10 flex flex-wrap items-center gap-1 border-b border-[#e3dfd2] bg-[#f6f4ec] px-2 py-1.5 dark:border-zinc-700 dark:bg-zinc-900/60"
+            role="toolbar"
+            aria-label="Table"
+          >
+            <ToolbarButton
+              title="Add a row below"
+              disabled={!editor.can().addRowAfter()}
+              onAction={() => editor.chain().focus().addRowAfter().run()}
+            >
+              + Row
+            </ToolbarButton>
+            <ToolbarButton
+              title="Add a column to the right"
+              disabled={!editor.can().addColumnAfter()}
+              onAction={() => editor.chain().focus().addColumnAfter().run()}
+            >
+              + Col
+            </ToolbarButton>
+            <ToolbarButton
+              title="Delete this row"
+              disabled={!editor.can().deleteRow()}
+              onAction={() => editor.chain().focus().deleteRow().run()}
+            >
+              − Row
+            </ToolbarButton>
+            <ToolbarButton
+              title="Delete this column"
+              disabled={!editor.can().deleteColumn()}
+              onAction={() => editor.chain().focus().deleteColumn().run()}
+            >
+              − Col
+            </ToolbarButton>
+            <ToolbarSeparator />
+            <ToolbarButton
+              title="Make the first row a header row"
+              active={tableHasHeaderRow(editor)}
+              onAction={() => editor.chain().focus().toggleHeaderRow().run()}
+            >
+              Header
+            </ToolbarButton>
+            <ToolbarSeparator />
+            <ToolbarButton
+              title="Delete the whole table"
+              onAction={() => editor.chain().focus().deleteTable().run()}
+            >
+              Delete table
+            </ToolbarButton>
+          </div>
+        ) : null}
         <div
           className="rte-scroll touch-pan-y flex-1 overflow-y-auto"
           style={{ WebkitOverflowScrolling: 'touch' }}

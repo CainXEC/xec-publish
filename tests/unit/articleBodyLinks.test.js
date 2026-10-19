@@ -85,6 +85,14 @@ describe('transformArticleBodyLinks — feed link parity in article bodies', () 
     expect(out).not.toContain('<p>') // the paragraph was replaced by the embed
   })
 
+  it('leaves a YouTube URL inside a table cell as text (no player in a cell)', () => {
+    const out = transformArticleBodyLinks(
+      '<table><tbody><tr><td><p>https://youtu.be/dQw4w9WgXcQ</p></td></tr></tbody></table>',
+    )
+    expect(out).not.toContain('ytembed')
+    expect(out).toContain('<td><p>https://youtu.be/dQw4w9WgXcQ</p></td>')
+  })
+
   it('embeds an inline YouTube URL, keeping the surrounding prose', () => {
     const out = transformArticleBodyLinks('<p>Watch https://youtu.be/dQw4w9WgXcQ — great</p>')
     expect(out).toContain('ytembed')

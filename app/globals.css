@@ -269,6 +269,60 @@ body {
   text-decoration: underline;
 }
 
+/* Tables — laid out like the reader's (app/posts/[slug]/articleTheme.js): the
+   table is a block that scrolls sideways, its rows size to their content up to
+   the editor's width, and a table with many columns scrolls rather than
+   squeezing them into slivers on a phone. */
+.rich-text-editor .tiptap table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+}
+
+.rich-text-editor .tiptap th,
+.rich-text-editor .tiptap td {
+  position: relative;
+  min-width: 6em;
+  border: 1px solid #d6d1c2;
+  padding: 0.35rem 0.5rem;
+  vertical-align: top;
+}
+
+.rich-text-editor .tiptap th {
+  background: #f1eee4;
+  font-weight: 700;
+  text-align: left;
+}
+
+.rich-text-editor .tiptap th p,
+.rich-text-editor .tiptap td p {
+  margin: 0;
+}
+
+/* prosemirror-tables marks drag-selected cells with .selectedCell. */
+.rich-text-editor .tiptap .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(18, 112, 60, 0.12);
+  pointer-events: none;
+}
+
+.dark .rich-text-editor .tiptap th,
+.dark .rich-text-editor .tiptap td {
+  border-color: #3f3f46;
+}
+
+.dark .rich-text-editor .tiptap th {
+  background: #18181b;
+}
+
+.dark .rich-text-editor .tiptap .selectedCell::after {
+  background: rgba(52, 211, 153, 0.15);
+}
+
 /* The editor body scroll container. Left unstyled it falls back to the raw OS
    scrollbar (a chunky bar that, with "always show scrollbars" on, reserves space
    and can sit on the panel's leading edge). Force a thin, subtle, self-themed

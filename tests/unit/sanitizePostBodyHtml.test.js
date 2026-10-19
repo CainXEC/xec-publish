@@ -106,4 +106,42 @@ describe('sanitizePostBodyHtml', () => {
       expect(out).toContain('hi')
     })
   })
+  describe('tables', () => {
+    // What the editor's getHTML() emits for a 2×2 table with a header row.
+    const EDITOR_TABLE =
+      '<table style="min-width: 50px"><colgroup><col style="min-width: 25px"><col style="min-width: 25px"></colgroup>' +
+      '<tbody><tr><th colspan="1" rowspan="1"><p>Name</p></th><th colspan="1" rowspan="1"><p>Price</p></th></tr>' +
+      '<tr><td colspan="1" rowspan="1"><p>Handle</p></td><td colspan="1" rowspan="1"><p style="text-align: right">10,000 XEC</p></td></tr></tbody></table>'
+
+    it('keeps the table, header and cells, dropping editor-only widths', () => {
+      const out = sanitizePostBodyHtml(EDITOR_TABLE)
+      expect(out).toContain('<table><tbody><tr><th colspan="1" rowspan="1"><p>Name</p></th>')
+      expect(out).toContain('<td colspan="1" rowspan="1"><p style="text-align: right">10,000 XEC</p></td>')
+      expect(out).not.toContain('colgroup')
+      expect(out).not.toContain('<col')
+      expect(out).not.toContain('min-width')
+    })
+
+    it('keeps thead/tbody from pasted tables', () => {
+      const out = sanitizePostBodyHtml(
+        '<table><thead><tr><th>a</th></tr></thead><tbody><tr><td>b</td></tr></tbody></table>',
+      )
+      expect(out).toBe('<table><thead><tr><th>a</th></tr></thead><tbody><tr><td>b</td></tr></tbody></table>')
+    })
+
+    it('keeps only small whole-number spans', () => {
+      const out = sanitizePostBodyHtml(
+        '<table><tbody><tr><td colspan="2" rowspan="999">a</td><td colspan="x" rowspan="3">b</td></tr></tbody></table>',
+      )
+      expect(out).toContain('<td colspan="2">a</td>')
+      expect(out).toContain('<td rowspan="3">b</td>')
+    })
+
+    it('still strips scripts, handlers and unsafe styles inside cells', () => {
+      const out = sanitizePostBodyHtml(
+        '<table><tbody><tr><td onclick="steal()" style="background:url(x)"><p>hi</p><script>alert(1)</script></td></tr></tbody></table>',
+      )
+      expect(out).toBe('<table><tbody><tr><td><p>hi</p></td></tr></tbody></table>')
+    })
+  })
 })
