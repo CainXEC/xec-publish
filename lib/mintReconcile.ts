@@ -11,14 +11,16 @@
 //       is mid-retry. Re-run them (oldest attempt first).
 //    B. Payments on-chain to the mint address whose 'pending' row was never
 //       flipped to paid (the closed-tab case): match each tx's OP_RETURN mintId
-//       to its row, record the proven payer, flip to paid, and deliver.
+//       to its row, record the proven payer, flip to paid, and deliver. A plain
+//       send with no tag (copy-address) is paired with the payer's own open
+//       intent instead — only when exactly one fits (see mintPayments).
 //
 //  Bounded per invocation (mints are serialized and slow) — the backlog drains
 //  over successive runs.
 // =============================================================================
 
 import { adminDb } from "@/lib/db";
-import { scanMintPayments, findPowMintPayment } from "@/lib/mintPayments";
+import { scanMintPayments, findPowMintPayment, pickUntaggedMintRow, type ScannedMintPayment } from "@/lib/mintPayments";
 import { processPaidMint, claimPaidOrRefund, refundContended } from "@/lib/mintProcessor";
 
 const MINT_ADDRESS = process.env.MINT_PAYMENT_ADDRESS;
@@ -38,6 +40,28 @@ export interface MintReconcileResult {
   contendedRetried: number; // pass C: contended losers whose refund we retried
   stuck: number;         // paid rows currently parked for manual review
   skippedBusy: boolean;  // hit the per-run work cap (more remain)
+}
+
+/** The one open XEC intent an untagged payment belongs to: one the PAYER made while
+ *  logged in (their address is in expected_payers), whose pay window contains the
+ *  payment. Skips a payment some mint already consumed. Ambiguous → null. */
+async function untaggedMintRowFor(supabase: ReturnType<typeof adminDb>, p: ScannedMintPayment): Promise<string | null> {
+  if (!p.seenAt) return null; // can't place it in a pay window
+  const { data: used } = await supabase.from("pending_mints").select("id").eq("payment_txid", p.txid).limit(1).maybeSingle();
+  if (used) return null;
+  // Narrow to intents whose window could contain the payment (±2 min skew), so a
+  // pile of abandoned 'pending' rows can't crowd the right one out of the limit.
+  const skewMs = 120_000;
+  const { data: rows } = await supabase
+    .from("pending_mints")
+    .select("id, expected_sats, created_at, expires_at")
+    .eq("status", "pending")
+    .eq("pay_token", "xec")
+    .contains("expected_payers", [p.payerAddress])
+    .lte("created_at", new Date(p.seenAt * 1000 + skewMs).toISOString())
+    .gte("expires_at", new Date(p.seenAt * 1000 - skewMs).toISOString())
+    .limit(10);
+  return pickUntaggedMintRow(rows ?? [], p)?.id ?? null;
 }
 
 export async function runMintReconcile(): Promise<MintReconcileResult> {
@@ -71,7 +95,17 @@ export async function runMintReconcile(): Promise<MintReconcileResult> {
     const payments = await scanMintPayments(MINT_ADDRESS, since, SCAN_LIMIT);
     for (const p of payments) {
       if (budget <= 0) { out.skippedBusy = true; break; }
-      if (!p.mintId || !p.isFinal) continue; // untagged/foreign, or not yet final
+      if (!p.isFinal) continue; // not yet final
+      if (!p.mintId) {
+        // A plain send (copy-address / a wallet that drops op_return_raw): pair it
+        // with the payer's own open intent, if exactly one fits. Foreign OP_RETURNs skip.
+        const rowId = p.untagged ? await untaggedMintRowFor(supabase, p) : null;
+        if (!rowId) continue;
+        budget -= 1;
+        out.detected += 1;
+        tally((await claimPaidOrRefund(rowId, p.payerAddress, p.txid)).status);
+        continue;
+      }
       const { data: row } = await supabase
         .from("pending_mints")
         .select("id, status, expected_sats")

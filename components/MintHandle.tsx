@@ -477,6 +477,15 @@ export default function MintHandle({
               <button type="button" className="cta" onClick={openCashtab}>Open in Cashtab</button>
               <p className="addr" title={intent.address}>{intent.address}</p>
               <button className="copybtn" onClick={copyAddr}>{copied ? "copied \u2713" : "copy address"}</button>
+              {/* A hand-typed send carries no mint tag, so it's matched by the
+                  logged-in buyer's wallet instead \u2014 anonymous, it can't be. */}
+              {intent.payWith !== "pow" && (
+                <p className="copyhint">
+                  {signedIn
+                    ? "Sending by hand? Send from the wallet you\u2019re logged in with."
+                    : "Sending by hand? Log in first so we can match it \u2014 or use Open in Cashtab."}
+                </p>
+              )}
               <p className="poll">{statusMsg}{secondsLeft != null && secondsLeft > 0 && <span className="timer"> · pay within {mm}:{ss}</span>}</p>
               <p className="mintnote">First paid mint wins — if someone mints this name before your payment finalizes, your XEC is refunded automatically.</p>
 
@@ -587,6 +596,7 @@ const CSS = `
 .pow-mint .copybtn{background:transparent;border:1px solid var(--line);color:var(--cyan);border-radius:8px;
   padding:6px 14px;font:inherit;font-size:12px;cursor:pointer;margin:0 0 10px;transition:border-color .15s;}
 .pow-mint .copybtn:hover{border-color:var(--cyan);}
+.pow-mint .copyhint{font-size:11px;color:var(--dim);line-height:1.5;margin:0 0 10px;}
 .pow-mint .mintnote{font-size:12px;color:var(--dim);line-height:1.5;margin:10px 0 0;}
 .pow-mint .poll{font-size:14px;color:var(--text);margin:10px 0 0;}
 .pow-mint .poll::after{content:"\\2588";margin-left:3px;color:var(--neon);animation:pow-blink 1s steps(1) infinite;}

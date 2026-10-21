@@ -4,6 +4,14 @@
 //  same Chronik failover, same nodejs runtime, same "read the payer off the tx".
 //  Matching is by op_return_raw (mintId UUID) — same tagging as the paywall —
 //  with sats treated as a >= floor rather than an exact amount.
+//
+//  UNTAGGED FALLBACK: a buyer who copies the address and sends by hand (or pays
+//  from a wallet that ignores op_return_raw) produces a plain send with NO
+//  OP_RETURN, so the tag can never match. When the intent was made while logged
+//  in, it records the account's proven addresses (expected_payers, same as a POW
+//  mint), and a plain send from one of them is accepted for that intent. A tx
+//  carrying ANY OP_RETURN (another mint's tag, a feed action, an SLP send) never
+//  takes this path. One payment still funds one mint (claimPaidOrRefund).
 // =============================================================================
 
 import { ChronikClient } from "chronik-client";
@@ -76,47 +84,82 @@ function taggedMintId(tx: any): string | null {
   return null;
 }
 
+/** The slice of a Chronik tx the XEC mint matcher reads. */
+type MintTxLike = {
+  txid: string;
+  inputs?: { outputScript?: string }[];
+  outputs?: { outputScript?: string; sats?: bigint | number | string }[];
+  isFinal?: boolean;
+};
+
+/** True if the tx has no OP_RETURN output at all — a plain send. */
+function hasNoOpReturn(tx: MintTxLike): boolean {
+  return !(tx.outputs ?? []).some((out) => String(out.outputScript ?? "").toLowerCase().startsWith("6a"));
+}
+
+/** Does this tx pay THIS XEC mint? Pure (no Chronik), so the rules are testable.
+ *  'tagged' = its OP_RETURN carries mintId; 'untagged' = a plain send from one of
+ *  the intent's expected payers (see the header). null mintId = no tag check. */
+export function matchXecMintTx(
+  tx: MintTxLike,
+  mintAddress: string,
+  mintId: string | null,
+  minSats: number,
+  expectedPayers: string[] = [],
+): (DetectedPayment & { match: "tagged" | "untagged" }) | null {
+  if (spentByAddress(tx, mintAddress)) return null; // our own mint/refund/split
+  const sats = satsToAddress(tx, mintAddress);
+  if (sats < minSats) return null; // amount is a floor, not exact
+  const payerAddress = payerOf(tx);
+  if (!payerAddress) return null;
+  const found = { txid: tx.txid, payerAddress, sats, isFinal: txIsFinal(tx) };
+  if (!mintId || taggedMintId(tx) === mintId) return { ...found, match: "tagged" };
+  if (hasNoOpReturn(tx) && expectedPayers.includes(payerAddress)) return { ...found, match: "untagged" };
+  return null;
+}
+
 /** Verify a specific txid pays the mint address at least minSats (manual "I've paid" path).
- *  If expectMintId is given, the tx's OP_RETURN tag must also match it. */
+ *  If expectMintId is given, the tx's OP_RETURN tag must also match it — or, for a
+ *  plain send, its payer must be one of expectedPayers. */
 export async function verifyMintTxid(
   txid: string,
   mintAddress: string,
   minSats: number,
   expectMintId?: string,
+  expectedPayers: string[] = [],
 ): Promise<DetectedPayment | null> {
   try {
     const tx = await chronik().tx(txid);
-    if (expectMintId && taggedMintId(tx) !== expectMintId) return null;
-    const sats = satsToAddress(tx, mintAddress);
-    if (sats < minSats) return null;
-    const payerAddress = payerOf(tx);
-    if (!payerAddress) return null;
-    return { txid, payerAddress, sats, isFinal: txIsFinal(tx) };
+    const m = matchXecMintTx(tx, mintAddress, expectMintId ?? null, minSats, expectedPayers);
+    return m ? { txid, payerAddress: m.payerAddress, sats: m.sats, isFinal: m.isFinal } : null;
   } catch {
     return null;
   }
 }
 
 /** Auto-detect: scan recent txs to the mint address for the one whose OP_RETURN
- *  is tagged with THIS mintId and which pays at least expectedSats. */
+ *  is tagged with THIS mintId and which pays at least expectedSats. A tagged match
+ *  wins; otherwise the newest plain send from an expected payer. */
 export async function findMintPayment(
   mintAddress: string,
   mintId: string | null,
   expectedSats: number,
   sinceUnix: number,
+  expectedPayers: string[] = [],
 ): Promise<DetectedPayment | null> {
   try {
     const page = await chronik().address(mintAddress).history(0, 25);
+    let untagged: DetectedPayment | null = null;
     for (const tx of page.txs ?? []) {
       const seen = Number(tx.timeFirstSeen ?? 0);
       if (seen && seen < sinceUnix - 120) continue; // small clock skew allowance
-      if (mintId && taggedMintId(tx) !== mintId) continue;      // match on the tag, not the amount
-      const sats = satsToAddress(tx, mintAddress);
-      if (sats < expectedSats) continue;              // amount is a floor now, not exact
-      const payerAddress = payerOf(tx);
-      if (payerAddress) return { txid: tx.txid, payerAddress, sats, isFinal: txIsFinal(tx) };
+      const m = matchXecMintTx(tx, mintAddress, mintId, expectedSats, expectedPayers);
+      if (!m) continue;
+      const found = { txid: m.txid, payerAddress: m.payerAddress, sats: m.sats, isFinal: m.isFinal };
+      if (m.match === "tagged") return found;
+      untagged ??= found;
     }
-    return null;
+    return untagged;
   } catch {
     return null;
   }
@@ -204,6 +247,39 @@ export async function findPowMintPayment(
 export interface ScannedMintPayment extends DetectedPayment {
   /** The mintId tagged in the tx's OP_RETURN, or null for a foreign/untagged tx. */
   mintId: string | null;
+  /** True for a plain send with no OP_RETURN at all (the copy-address case). */
+  untagged: boolean;
+  /** Chronik first-seen time (unix seconds), 0 if unknown. */
+  seenAt: number;
+}
+
+/** An open XEC intent the reconciler can pair an untagged payment with. */
+export interface UntaggedCandidateRow {
+  id: string;
+  expected_sats: number | string;
+  created_at: string;
+  expires_at: string;
+}
+
+/** Pick the ONE intent an untagged payment belongs to, or null. Candidates are
+ *  the payer's own open XEC intents (already filtered by expected_payers); this
+ *  keeps those whose pay window contains the payment and whose price it covers.
+ *  More than one → ambiguous (which handle did they mean?) → null, left for a
+ *  person to sort out rather than guessed. */
+export function pickUntaggedMintRow<T extends UntaggedCandidateRow>(
+  rows: T[],
+  payment: { sats: number; seenAt: number },
+  skewSec = 120,
+): T | null {
+  const seenMs = payment.seenAt * 1000;
+  const fits = rows.filter((r) => {
+    if (payment.sats < Number(r.expected_sats)) return false;
+    if (!payment.seenAt) return false; // no timestamp → can't place it in a window
+    const from = new Date(r.created_at).getTime() - skewSec * 1000;
+    const to = new Date(r.expires_at).getTime() + skewSec * 1000;
+    return seenMs >= from && seenMs <= to;
+  });
+  return fits.length === 1 ? fits[0] : null;
 }
 
 /** Sweep recent payments to the mint address (newest first), tagging each with
@@ -227,7 +303,15 @@ export async function scanMintPayments(
       if (sats <= 0) continue; // not a payment TO the mint address
       const payerAddress = payerOf(tx);
       if (!payerAddress) continue;
-      out.push({ txid: tx.txid, payerAddress, sats, isFinal: txIsFinal(tx), mintId: taggedMintId(tx) });
+      out.push({
+        txid: tx.txid,
+        payerAddress,
+        sats,
+        isFinal: txIsFinal(tx),
+        mintId: taggedMintId(tx),
+        untagged: hasNoOpReturn(tx),
+        seenAt: seen,
+      });
     }
   } catch {
     /* leave whatever we collected */

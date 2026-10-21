@@ -43,7 +43,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, status: "expired" });
   }
 
-  // awaiting payment -> look for it. XEC matches on the mintId OP_RETURN tag; a
+  // awaiting payment -> look for it. XEC matches on the mintId OP_RETURN tag (or,
+  // for a plain untagged send, a payer among the logged-in buyer's addresses); a
   // POW (SLP) payment can't carry that tag, so it matches by SENDER ∈ the
   // account's proven addresses (recorded on the row) with atoms ≥ expected_atoms.
   if (m.status === "pending") {
@@ -54,8 +55,8 @@ export async function GET(req: NextRequest) {
         ? await verifyPowMintTxid(txid, MINT_ADDRESS, BigInt(m.expected_atoms ?? 0), m.expected_payers ?? [])
         : await findPowMintPayment(MINT_ADDRESS, BigInt(m.expected_atoms ?? 0), m.expected_payers ?? [], since)
       : txid
-        ? await verifyMintTxid(txid, MINT_ADDRESS, Number(m.expected_sats), mintId)
-        : await findMintPayment(MINT_ADDRESS, mintId, Number(m.expected_sats), since);
+        ? await verifyMintTxid(txid, MINT_ADDRESS, Number(m.expected_sats), mintId, m.expected_payers ?? [])
+        : await findMintPayment(MINT_ADDRESS, mintId, Number(m.expected_sats), since, m.expected_payers ?? []);
 
     if (!found) return NextResponse.json({ ok: true, status: "awaiting_payment" });
 

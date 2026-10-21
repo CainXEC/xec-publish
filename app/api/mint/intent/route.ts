@@ -126,12 +126,24 @@ export async function POST(req: NextRequest) {
   // flat per-tier price — disambiguation is the op_return_raw (mintId), not amount.
   const expectedSats = priceSats;
 
+  // Logged in? Record the account's proven addresses, so a plain send from one of
+  // them (copy-address, no op_return_raw tag) can still be matched to this intent.
+  // Anonymous intents stay tag-only. Best-effort: a lookup failure just means no
+  // fallback, never a blocked mint.
+  let expectedPayers: string[] | null = null;
+  try {
+    const acct = await getAuthedAccount();
+    if (acct) expectedPayers = await accountUnlockAddressForms(supabase, acct.accountId, acct.address);
+  } catch {
+    expectedPayers = null;
+  }
+
   // Create the payment-tracking row. Multiple unpaid intents for the same name
   // may coexist now (the name is only held once one is paid); a real DB error is
   // a 500, not a "someone else is minting" signal.
   const { data: row, error } = await supabase
     .from("pending_mints")
-    .insert({ handle: display, handle_skeleton: sk, price_sats: priceSats, expected_sats: expectedSats, status: "pending", expires_at: expiresAt })
+    .insert({ handle: display, handle_skeleton: sk, price_sats: priceSats, expected_sats: expectedSats, status: "pending", expires_at: expiresAt, expected_payers: expectedPayers })
     .select("id")
     .single();
 
