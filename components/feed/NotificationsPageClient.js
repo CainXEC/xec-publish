@@ -131,7 +131,7 @@ const TABS = [
   { key: 'mentions', label: 'Mentions', filter: 'mentions' },
 ]
 
-export default function NotificationsPageClient({ initialItems, initialCursor, agentPending }) {
+export default function NotificationsPageClient({ initialItems, initialCursor, agentPending, mintAttention }) {
   const [tab, setTab] = useState('all')
   // Per-tab list + keyset cursor + whether it's been fetched. Both tabs are
   // SEEDED from the same SSR page (the 'all' snapshot filtered to conversational
@@ -263,6 +263,12 @@ export default function NotificationsPageClient({ initialItems, initialCursor, a
         <Link href="/admin/agent" className="notif-agent" style={{ margin: '16px 0 0' }}>
           <span className="notif-agent-dot" aria-hidden />
           {agentPending} agent draft{agentPending === 1 ? '' : 's'} awaiting review →
+        </Link>
+      ) : null}
+      {mintAttention ? (
+        <Link href="/admin/mints" className="notif-agent" style={{ margin: '16px 0 0' }}>
+          <span className="notif-agent-dot" aria-hidden />
+          {mintAttention} mint payment{mintAttention === 1 ? '' : 's'} need{mintAttention === 1 ? 's' : ''} attention →
         </Link>
       ) : null}
 

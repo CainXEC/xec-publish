@@ -5,6 +5,7 @@ import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { getFeedNotifications } from '@/lib/feedNotifications'
 import { CONVERSATIONAL_TYPES } from '@/lib/notifFormat'
+import { countMintAttention } from '@/lib/mintPaymentAlerts'
 
 /**
  * The signed-in account's recent feed notifications + unread count, for the
@@ -32,21 +33,23 @@ export async function GET(request) {
     { before, types },
   )
 
-  // Admin sessions also get the AI_SATOSHI review-queue count, folded into the
-  // same bell (a standing to-do, distinct from read/unread notifications).
-  // The field is ABSENT for everyone else — their payload is unchanged.
-  let agentPending
+  // Admin sessions also get two standing to-dos folded into the same bell
+  // (distinct from read/unread notifications): the AI_SATOSHI review-queue
+  // count, and mint money that needs a person (lib/mintPaymentAlerts). Both
+  // fields are ABSENT for everyone else — their payload is unchanged.
   if (acct.isAdmin) {
-    const { count } = await supabase
-      .from('agent_queue')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'pending')
-    agentPending = count ?? 0
+    const [{ count }, mintAttention] = await Promise.all([
+      supabase.from('agent_queue').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+      countMintAttention(supabase),
+    ])
+    return NextResponse.json({
+      notifications,
+      unreadCount,
+      nextCursor,
+      agentPending: count ?? 0,
+      mintAttention,
+    })
   }
 
-  return NextResponse.json(
-    agentPending === undefined
-      ? { notifications, unreadCount, nextCursor }
-      : { notifications, unreadCount, nextCursor, agentPending },
-  )
+  return NextResponse.json({ notifications, unreadCount, nextCursor })
 }

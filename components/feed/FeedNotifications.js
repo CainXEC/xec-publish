@@ -18,11 +18,13 @@ const POLL_MS = 60_000
  * Admin sessions additionally fold in the AI_SATOSHI review-queue count: the API
  * returns `agentPending` (absent for everyone else), which adds to the badge.
  * `onAgentPending` reports it up to FeedTopbar, which reveals the admin "agent"
- * hamburger item.
+ * hamburger item. Likewise `mintAttention` (mint money that needs a person, see
+ * lib/mintPaymentAlerts), which also adds to the badge.
  */
 export default function FeedNotifications({ signedIn = false, onAgentPending }) {
   const [unread, setUnread] = useState(0)
   const [agentPending, setAgentPending] = useState(null) // null = not an admin session
+  const [mintAttention, setMintAttention] = useState(0)
 
   const onAgentPendingRef = useRef(onAgentPending)
   useEffect(() => {
@@ -37,6 +39,7 @@ export default function FeedNotifications({ signedIn = false, onAgentPending }) 
       const pending = typeof data.agentPending === 'number' ? data.agentPending : null
       setAgentPending(pending)
       onAgentPendingRef.current?.(pending)
+      setMintAttention(Number(data.mintAttention) || 0)
       setUnread(Number(data.unreadCount) || 0)
     } catch {
       /* best-effort; the badge just won't update this cycle */
@@ -51,13 +54,17 @@ export default function FeedNotifications({ signedIn = false, onAgentPending }) 
     return () => clearInterval(id)
   }, [signedIn, refresh])
 
-  // Approve/veto on /admin/agent fires this so the queue count updates
-  // instantly instead of waiting for the next poll.
+  // Approve/veto on /admin/agent (and dismiss on /admin/mints) fire these so the
+  // admin counts update instantly instead of waiting for the next poll.
   useEffect(() => {
     if (!signedIn) return
     const onQueueChange = () => void refresh()
     window.addEventListener('agent-queue-changed', onQueueChange)
-    return () => window.removeEventListener('agent-queue-changed', onQueueChange)
+    window.addEventListener('mint-alerts-changed', onQueueChange)
+    return () => {
+      window.removeEventListener('agent-queue-changed', onQueueChange)
+      window.removeEventListener('mint-alerts-changed', onQueueChange)
+    }
   }, [signedIn, refresh])
 
   // Read /notifications in ANOTHER tab → clear this tab's badge too, instead
@@ -69,9 +76,10 @@ export default function FeedNotifications({ signedIn = false, onAgentPending }) 
     return onNotificationsReadElsewhere(() => setUnread(0))
   }, [signedIn])
 
-  // The badge is unread notifications + pending agent drafts (admin only) —
-  // the queue part survives mark-read; only judging the drafts clears it.
-  const badgeCount = signedIn ? unread + (agentPending ?? 0) : 0
+  // The badge is unread notifications + pending agent drafts + mint money that
+  // needs a person (both admin only) — those parts survive mark-read; only
+  // dealing with them clears it.
+  const badgeCount = signedIn ? unread + (agentPending ?? 0) + mintAttention : 0
 
   // X-style tab signals, mirrored from the same count and called before the
   // signed-out early return so hook order stays stable (badgeCount is 0 when

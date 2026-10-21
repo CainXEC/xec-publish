@@ -6,6 +6,7 @@ import { getFeedNotifications, markFeedNotificationsRead } from '@/lib/feedNotif
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import NotificationsPageClient from '@/components/feed/NotificationsPageClient'
+import { countMintAttention } from '@/lib/mintPaymentAlerts'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +25,7 @@ export default async function NotificationsPage() {
   // Capture the current read state BEFORE marking read, so this render can
   // still highlight what was unread a moment ago (mirrors the old bell
   // dropdown's ordering) — then mark everything read for next time.
-  const [{ notifications, unreadCount, nextCursor }, agentPending] = await Promise.all([
+  const [{ notifications, unreadCount, nextCursor }, agentPending, mintAttention] = await Promise.all([
     getFeedNotifications(supabase, acct.accountId, { limit: PAGE_SIZE }),
     acct.isAdmin
       ? supabase
@@ -33,6 +34,7 @@ export default async function NotificationsPage() {
           .eq('status', 'pending')
           .then((r) => r.count ?? 0)
       : Promise.resolve(null),
+    acct.isAdmin ? countMintAttention(supabase) : Promise.resolve(null),
   ])
   // Don't block the render on the read-marking WRITE — the render already
   // captured the pre-mark state above (so it still highlights what was unread).
@@ -51,6 +53,7 @@ export default async function NotificationsPage() {
           initialItems={notifications}
           initialCursor={nextCursor}
           agentPending={agentPending}
+          mintAttention={mintAttention}
         />
       </main>
     </div>

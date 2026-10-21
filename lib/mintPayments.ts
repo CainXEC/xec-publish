@@ -318,3 +318,68 @@ export async function scanMintPayments(
   }
   return out;
 }
+
+// ---- Unclaimed-payment alert (lib/mintPaymentAlerts) ------------------------
+
+/** One incoming payment to the mint wallet, as the unclaimed-payment alert sees it. */
+export interface MintWalletReceipt {
+  txid: string;
+  sats: number;           // XEC sats paid to the mint address (a POW send carries 546 dust)
+  powAtoms: bigint;       // POW atoms paid to the mint address
+  payerAddress: string | null;
+  mintId: string | null;  // the mintId tag in its OP_RETURN, if it carries one
+  seenAt: number;         // unix seconds: first seen, else block time; 0 if unknown
+  isFinal: boolean;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Read one Chronik tx as a payment INTO the mint wallet. null for the wallet's
+ *  own txs (mints, refunds, splits) and for anything that pays it neither XEC nor
+ *  POW. Pure (no Chronik), so the alert's rules are testable. */
+export function readMintWalletReceipt(
+  tx: any,
+  mintAddress: string,
+  tokenId: string = POW_TOKEN_ID,
+): MintWalletReceipt | null {
+  if (spentByAddress(tx, mintAddress)) return null;
+  const sats = satsToAddress(tx, mintAddress);
+  const powAtoms = tokenAtomsToAddress(tx, tokenId, mintAddress);
+  if (sats <= 0 && powAtoms <= 0n) return null;
+  // The legacy decoder reads any short push as a "tag" (an SLP send yields
+  // "SLP"), so only a real UUID counts.
+  const tag = taggedMintId(tx);
+  return {
+    txid: tx.txid,
+    sats,
+    powAtoms,
+    payerAddress: payerOf(tx),
+    mintId: tag && UUID_RE.test(tag) ? tag : null,
+    seenAt: Number(tx.timeFirstSeen || tx.block?.timestamp || 0),
+    isFinal: txIsFinal(tx),
+  };
+}
+
+/** Every payment into the mint wallet since `sinceUnix` (newest first), paging
+ *  back through history up to `maxPages` × 200 txs. Throws on a Chronik failure
+ *  (unlike the matchers above) so the caller can tell "nothing found" from
+ *  "couldn't look". */
+export async function scanMintWalletReceipts(
+  mintAddress: string,
+  sinceUnix: number,
+  maxPages = 3,
+): Promise<MintWalletReceipt[]> {
+  const out: MintWalletReceipt[] = [];
+  for (let page = 0; page < maxPages; page++) {
+    const h = await chronik().address(mintAddress).history(page, 200);
+    let reachedCutoff = false;
+    for (const tx of h.txs ?? []) {
+      const seen = Number(tx.timeFirstSeen || tx.block?.timestamp || 0);
+      if (seen && seen < sinceUnix) { reachedCutoff = true; continue; }
+      const r = readMintWalletReceipt(tx, mintAddress);
+      if (r) out.push(r);
+    }
+    if (reachedCutoff || page + 1 >= (h.numPages ?? 1)) break;
+  }
+  return out;
+}

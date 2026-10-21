@@ -7,6 +7,7 @@ import { adminDb } from '@/lib/db'
 import { txFinalityState } from '@/lib/ecash/finality'
 import { pruneOldFeedNotifications } from '@/lib/feedNotifications'
 import { runMintReconcile } from '@/lib/mintReconcile'
+import { runMintPaymentAlerts } from '@/lib/mintPaymentAlerts'
 
 // Feed notifications never expire on their own; the cron prunes anything past
 // this age (read or unread) so the table stays bounded.
@@ -136,7 +137,19 @@ export async function GET(request) {
         olderThanDays: NOTIF_RETENTION_DAYS,
       })
     }
-    return NextResponse.json({ ok: true, ...result, prunedNotifications })
+    // Unclaimed-payment alert (lib/mintPaymentAlerts): trusted cron only — it
+    // reads a page of mint-wallet history, which the feed's opportunistic
+    // triggers have no business spending. Isolated like the mint sweep: a
+    // failure (e.g. sql/mint_payment_alerts.sql not run yet) is logged loudly
+    // and reported, never allowed to abort the sweep.
+    let mintAlerts
+    if (trusted) {
+      mintAlerts = await runMintPaymentAlerts().catch((e) => {
+        console.error('[feed-reconcile] mint payment alerts failed', e?.message ?? e)
+        return { error: String(e?.message ?? e) }
+      })
+    }
+    return NextResponse.json({ ok: true, ...result, prunedNotifications, mintAlerts })
   } catch (e) {
     console.error('[feed-reconcile] sweep failed', e)
     return NextResponse.json({ error: 'Sweep failed' }, { status: 500 })
