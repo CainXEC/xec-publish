@@ -34,9 +34,8 @@ describe('pendingPollPlan (status poll on a pending row)', () => {
   const inWindow = at('2026-10-21T01:00:00Z')
   const minute16 = at('2026-10-21T01:07:03Z')
 
-  it('inside the window: normal matching, XEC or POW', () => {
+  it('inside the window: normal XEC matching', () => {
     expect(pendingPollPlan(xec(), inWindow)).toBe('match')
-    expect(pendingPollPlan(pow(), inWindow)).toBe('match')
   })
 
   it('window closed, XEC: look for a tagged payment before expiring (the regression)', () => {
@@ -48,8 +47,9 @@ describe('pendingPollPlan (status poll on a pending row)', () => {
     expect(pendingPollPlan(xec({ pay_token: undefined }), minute16)).toBe('tagged')
   })
 
-  it('window closed, POW: no tag to go on, so it expires as before', () => {
-    expect(pendingPollPlan(pow(), minute16)).toBe('expire')
+  it('POW uses its attribution rule in AND past the window (no more expiring on the tick)', () => {
+    expect(pendingPollPlan(pow(), inWindow)).toBe('pow')
+    expect(pendingPollPlan(pow(), minute16)).toBe('pow')
   })
 })
 

@@ -9,21 +9,16 @@
 //      matching on the op_return_raw (mintId) tag instead of a unique amount
 //   3. once paid, records payer + flips to 'paid', then runs the serialized
 //      processor (mint -> record -> image -> or auto-refund on failure)
-//  Past the pay window it still looks for a TAGGED payment before expiring the
-//  row, so a last-second (or slow-to-finalize) payment is delivered, not stranded.
+//  Past the pay window it still looks for a TAGGED payment (or, for POW, one the
+//  attribution rule says is this quote's) before expiring the row, so a
+//  last-second (or slow-to-finalize) payment is delivered, not stranded.
 // =============================================================================
 
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/db";
-import {
-  verifyMintTxid,
-  findMintPayment,
-  verifyPowMintTxid,
-  findPowMintPayment,
-  type DetectedPayment,
-  type DetectedPowPayment,
-} from "@/lib/mintPayments";
-import { pendingPollPlan } from "@/lib/mintLatePayment";
+import { verifyMintTxid, findMintPayment } from "@/lib/mintPayments";
+import { pendingPollPlan, pastPayWindow } from "@/lib/mintLatePayment";
+import { findOwnPowPayment } from "@/lib/mintPowAttribution";
 import { processPaidMint, claimPaidOrRefund } from "@/lib/mintProcessor";
 import { autoLoginByPayment } from "@/lib/payAutoLogin";
 
@@ -49,7 +44,7 @@ export async function GET(req: NextRequest) {
 
   // A payment was found for this still-pending intent: hold it until Avalanche
   // finalizes, then claim the name and deliver (or refund a double-buy loser).
-  const settle = async (found: DetectedPayment | DetectedPowPayment) => {
+  const settle = async (found: { txid: string; payerAddress: string; isFinal: boolean }) => {
     // Payment seen, but hold the mint until Avalanche finalizes it. A 0-conf tx
     // can still be replaced by a conflicting double-spend; minting the NFT now
     // would let an attacker claw the payment back. Don't flip to paid — the
@@ -67,44 +62,42 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, ...claimed });
   };
 
-  // Pay window closed. Before calling it expired, look for a payment TAGGED with
-  // this mintId: a buyer who sent at the last second, or whose payment is still
-  // finalizing, has paid — and a paid mint is delivered, never dropped. Tag-only
-  // past the window (lib/mintLatePayment.ts); a POW intent just expires.
-  const plan = m.status === "pending" ? pendingPollPlan(m, Date.now()) : null;
-  if (plan === "tagged" || plan === "expire") {
+  // awaiting payment -> look for it (lib/mintLatePayment pendingPollPlan):
+  //  • XEC in the window: the mintId OP_RETURN tag, or a plain untagged send from
+  //    one of the logged-in buyer's addresses.
+  //  • XEC past the window: the tag ONLY — a buyer who sent at the last second, or
+  //    whose payment is still finalizing, has paid, and a paid mint is delivered.
+  //  • POW, in or past the window: an SLP send can't carry the tag, so it's this
+  //    quote's only if the attribution rule says so (lib/mintPowAttribution) —
+  //    the same rule the reconciler uses, so the two never disagree.
+  // The row expires only when nothing turned up AND the window has closed.
+  if (m.status === "pending") {
     const since = Math.floor(new Date(m.created_at).getTime() / 1000);
-    // Deliberately no expected_payers: past the window only the tag counts.
-    const late =
-      plan === "tagged"
-        ? txid
-          ? await verifyMintTxid(txid, MINT_ADDRESS, Number(m.expected_sats), mintId)
-          : await findMintPayment(MINT_ADDRESS, mintId, Number(m.expected_sats), since)
-        : null;
-    if (late) return settle(late);
+    const plan = pendingPollPlan(m, Date.now());
+    let found: { txid: string; payerAddress: string; isFinal: boolean } | null;
+    if (plan === "pow") {
+      try {
+        found = await findOwnPowPayment(supabase, m, MINT_ADDRESS, txid);
+      } catch {
+        // Couldn't read the chain: say nothing yet rather than expire on a failed look.
+        return NextResponse.json({ ok: true, status: "awaiting_payment" });
+      }
+    } else if (plan === "tagged") {
+      // Deliberately no expected_payers: past the window only the tag counts.
+      found = txid
+        ? await verifyMintTxid(txid, MINT_ADDRESS, Number(m.expected_sats), mintId)
+        : await findMintPayment(MINT_ADDRESS, mintId, Number(m.expected_sats), since);
+    } else {
+      found = txid
+        ? await verifyMintTxid(txid, MINT_ADDRESS, Number(m.expected_sats), mintId, m.expected_payers ?? [])
+        : await findMintPayment(MINT_ADDRESS, mintId, Number(m.expected_sats), since, m.expected_payers ?? []);
+    }
+
+    if (found) return settle(found);
+    if (!pastPayWindow(m.expires_at, Date.now())) return NextResponse.json({ ok: true, status: "awaiting_payment" });
     // Conditional, so it can never overwrite a row a concurrent poll just claimed.
     await supabase.from("pending_mints").update({ status: "expired" }).eq("id", mintId).eq("status", "pending");
     return NextResponse.json({ ok: true, status: "expired" });
-  }
-
-  // awaiting payment -> look for it. XEC matches on the mintId OP_RETURN tag (or,
-  // for a plain untagged send, a payer among the logged-in buyer's addresses); a
-  // POW (SLP) payment can't carry that tag, so it matches by SENDER ∈ the
-  // account's proven addresses (recorded on the row) with atoms ≥ expected_atoms.
-  if (m.status === "pending") {
-    const since = Math.floor(new Date(m.created_at).getTime() / 1000);
-    const isPow = m.pay_token === "pow";
-    const found = isPow
-      ? txid
-        ? await verifyPowMintTxid(txid, MINT_ADDRESS, BigInt(m.expected_atoms ?? 0), m.expected_payers ?? [])
-        : await findPowMintPayment(MINT_ADDRESS, BigInt(m.expected_atoms ?? 0), m.expected_payers ?? [], since)
-      : txid
-        ? await verifyMintTxid(txid, MINT_ADDRESS, Number(m.expected_sats), mintId, m.expected_payers ?? [])
-        : await findMintPayment(MINT_ADDRESS, mintId, Number(m.expected_sats), since, m.expected_payers ?? []);
-
-    if (!found) return NextResponse.json({ ok: true, status: "awaiting_payment" });
-
-    return settle(found);
   }
 
   // status was already 'paid' on entry (a prior poll flipped it) -> run the processor.

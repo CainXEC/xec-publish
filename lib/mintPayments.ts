@@ -166,8 +166,9 @@ export async function findMintPayment(
 }
 
 // ---- POW (SLP token) mint payments ----------------------------------------
-// An SLP send can't carry the mintId OP_RETURN tag, so a POW mint payment is
-// matched by SENDER ∈ the account's proven addresses (recorded on the intent).
+// An SLP send can't carry the mintId OP_RETURN tag. readMintWalletReceipt (below)
+// reads a POW payment's sender, amount and time; which quote it's for is decided
+// by lib/mintPowAttribution, never by "any POW send from this wallet".
 
 const POW_TOKEN_ID =
   process.env.POW_TOKEN_ID || "f36e1b3d9a2aaf74f132fef3834e9743b945a667a4204e761b85f2e7b65fd41a";
@@ -185,63 +186,6 @@ function tokenAtomsToAddress(tx: any, tokenId: string, toAddress: string): bigin
     }
   }
   return atoms;
-}
-
-export interface DetectedPowPayment {
-  txid: string;
-  payerAddress: string; // where the NFT is delivered (and, if refunded, the POW returns)
-  atoms: bigint; // POW atoms received at the mint address
-  isFinal: boolean;
-}
-
-/** Verify a specific txid is a POW send to the mint address of at least `minAtoms`,
- *  from one of `expectedPayers` (the intent's account addresses). */
-export async function verifyPowMintTxid(
-  txid: string,
-  mintAddress: string,
-  minAtoms: bigint,
-  expectedPayers: string[],
-  tokenId: string = POW_TOKEN_ID,
-): Promise<DetectedPowPayment | null> {
-  try {
-    const tx = await chronik().tx(txid);
-    const atoms = tokenAtomsToAddress(tx, tokenId, mintAddress);
-    if (atoms < minAtoms) return null;
-    const payerAddress = payerOf(tx);
-    if (!payerAddress) return null;
-    if (expectedPayers.length && !expectedPayers.includes(payerAddress)) return null;
-    return { txid, payerAddress, atoms, isFinal: txIsFinal(tx) };
-  } catch {
-    return null;
-  }
-}
-
-/** Auto-detect a POW mint payment: scan recent txs to the mint address for a POW
- *  send of ≥ minAtoms whose sender is one of expectedPayers. */
-export async function findPowMintPayment(
-  mintAddress: string,
-  minAtoms: bigint,
-  expectedPayers: string[],
-  sinceUnix: number,
-  tokenId: string = POW_TOKEN_ID,
-): Promise<DetectedPowPayment | null> {
-  try {
-    const page = await chronik().address(mintAddress).history(0, 25);
-    for (const tx of page.txs ?? []) {
-      const seen = Number(tx.timeFirstSeen ?? 0);
-      if (seen && seen < sinceUnix - 120) continue;
-      if (spentByAddress(tx, mintAddress)) continue; // our own mint/refund/split
-      const atoms = tokenAtomsToAddress(tx, tokenId, mintAddress);
-      if (atoms < minAtoms) continue;
-      const payerAddress = payerOf(tx);
-      if (!payerAddress) continue;
-      if (expectedPayers.length && !expectedPayers.includes(payerAddress)) continue;
-      return { txid: tx.txid, payerAddress, atoms, isFinal: txIsFinal(tx) };
-    }
-    return null;
-  } catch {
-    return null;
-  }
 }
 
 export interface ScannedMintPayment extends DetectedPayment {
@@ -361,17 +305,18 @@ export function readMintWalletReceipt(
 }
 
 /** Every payment into the mint wallet since `sinceUnix` (newest first), paging
- *  back through history up to `maxPages` × 200 txs. Throws on a Chronik failure
- *  (unlike the matchers above) so the caller can tell "nothing found" from
- *  "couldn't look". */
+ *  back through history up to `maxPages` × `pageSize` txs. Throws on a Chronik
+ *  failure (unlike the matchers above) so the caller can tell "nothing found"
+ *  from "couldn't look". */
 export async function scanMintWalletReceipts(
   mintAddress: string,
   sinceUnix: number,
   maxPages = 3,
+  pageSize = 200,
 ): Promise<MintWalletReceipt[]> {
   const out: MintWalletReceipt[] = [];
   for (let page = 0; page < maxPages; page++) {
-    const h = await chronik().address(mintAddress).history(page, 200);
+    const h = await chronik().address(mintAddress).history(page, pageSize);
     let reachedCutoff = false;
     for (const tx of h.txs ?? []) {
       const seen = Number(tx.timeFirstSeen || tx.block?.timestamp || 0);
@@ -382,4 +327,11 @@ export async function scanMintWalletReceipts(
     if (reachedCutoff || page + 1 >= (h.numPages ?? 1)) break;
   }
   return out;
+}
+
+/** One tx by id, read as a payment into the mint wallet (null if it isn't one).
+ *  Throws on a Chronik failure, like scanMintWalletReceipts. */
+export async function readMintWalletReceiptByTxid(txid: string, mintAddress: string): Promise<MintWalletReceipt | null> {
+  if (!/^[0-9a-f]{64}$/i.test(txid)) return null;
+  return readMintWalletReceipt(await chronik().tx(txid), mintAddress);
 }

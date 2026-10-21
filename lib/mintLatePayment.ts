@@ -10,10 +10,12 @@
 //  second (or whose payment was still finalizing) ended up with an 'expired' row
 //  and their money parked at the mint wallet: no NFT, no refund.
 //
-//  The grace is TAG-ONLY on purpose. Past the window, only the mintId tag in the
-//  OP_RETURN ties a tx to THIS intent beyond doubt. A POW (SLP) send can't carry
-//  the tag and an untagged XEC send is matched by sender — both could just as
-//  well belong to a newer intent from the same wallet, so they get no grace.
+//  For XEC the grace is TAG-ONLY on purpose. Past the window, only the mintId tag
+//  in the OP_RETURN ties a tx to THIS intent beyond doubt; an untagged XEC send is
+//  matched by sender and could just as well belong to a newer intent from the
+//  same wallet, so it gets no grace. A POW (SLP) send can never carry the tag, so
+//  POW has its own rule for which quote a payment is for — the same in and past
+//  the window (lib/mintPowAttribution.ts).
 //  Pure (no DB, no Chronik) so the rules are testable.
 // =============================================================================
 
@@ -34,14 +36,16 @@ function isPowIntent(row: { pay_token?: string | null }): boolean {
   return row.pay_token === "pow";
 }
 
-/** How the status poll should look for a 'pending' row's payment:
- *   'match'  — inside the window: the normal matcher (tag, or POW by sender).
- *   'tagged' — window closed, XEC: look ONLY for a tx tagged with this mintId;
- *              expire the row only if there isn't one.
- *   'expire' — window closed, POW: no tag to go on, expire as before. */
-export function pendingPollPlan(row: IntentRow & { expires_at: string }, nowMs: number): "match" | "tagged" | "expire" {
-  if (!pastPayWindow(row.expires_at, nowMs)) return "match";
-  return isPowIntent(row) ? "expire" : "tagged";
+/** How the status poll should look for a 'pending' row's payment (the row
+ *  expires only if none turns up AND the window has closed):
+ *   'match'  — XEC inside the window: the normal matcher (tag, or a plain send
+ *              from the buyer's own wallet).
+ *   'tagged' — XEC, window closed: look ONLY for a tx tagged with this mintId.
+ *   'pow'    — POW, in or past the window: a POW send this quote's attribution
+ *              rule (lib/mintPowAttribution) says is its own. */
+export function pendingPollPlan(row: IntentRow & { expires_at: string }, nowMs: number): "match" | "tagged" | "pow" {
+  if (isPowIntent(row)) return "pow";
+  return pastPayWindow(row.expires_at, nowMs) ? "tagged" : "match";
 }
 
 /** What the reconciler should do with the intent row a FINAL, mintId-tagged

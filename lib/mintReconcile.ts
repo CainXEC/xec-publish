@@ -15,18 +15,25 @@
 //       send with no tag (copy-address) is paired with the payer's own open
 //       intent instead — only when exactly one fits (see mintPayments).
 //
+//    B2. POW (SLP) payments, which can't carry the tag: each payment is
+//       attributed to the payer's quote it's for (lib/mintPowAttribution — the
+//       same rule the status poll uses), then claimed. Payment-first, so an
+//       abandoned quote can never grab a payment the buyer made for another name.
+//
 //  LATE PAYMENTS: a tagged payment whose row already EXPIRED (sent at the last
 //  second, or finality landed after the window) reopens the row to 'pending' and
-//  is claimed the same way in pass B (see lib/mintLatePayment).
+//  is claimed the same way in pass B (see lib/mintLatePayment); so does a POW
+//  payment attributed to an expired quote in pass B2.
 //
 //  Bounded per invocation (mints are serialized and slow) — the backlog drains
 //  over successive runs.
 // =============================================================================
 
 import { adminDb } from "@/lib/db";
-import { scanMintPayments, findPowMintPayment, pickUntaggedMintRow, type ScannedMintPayment } from "@/lib/mintPayments";
+import { scanMintPayments, scanMintWalletReceipts, pickUntaggedMintRow, type ScannedMintPayment } from "@/lib/mintPayments";
 import { processPaidMint, claimPaidOrRefund, refundContended } from "@/lib/mintProcessor";
 import { taggedPaymentPlan } from "@/lib/mintLatePayment";
+import { powIntentForPayment, type PowReceipt } from "@/lib/mintPowAttribution";
 
 const MINT_ADDRESS = process.env.MINT_PAYMENT_ADDRESS;
 
@@ -40,7 +47,7 @@ const SCAN_LIMIT = 50;
 export interface MintReconcileResult {
   paidRetried: number;   // pass A: 'paid' rows re-run
   detected: number;      // pass B: on-chain payments claimed pending→paid
-  reopened: number;      // pass B: of those, late payments whose row had expired
+  reopened: number;      // pass B/B2: of those, late payments whose row had expired
   delivered: number;     // mints that completed this run
   refunded: number;      // refunds issued (genuine unavailability + double-buy losers)
   contendedRetried: number; // pass C: contended losers whose refund we retried
@@ -68,6 +75,19 @@ async function untaggedMintRowFor(supabase: ReturnType<typeof adminDb>, p: Scann
     .gte("expires_at", new Date(p.seenAt * 1000 - skewMs).toISOString())
     .limit(10);
   return pickUntaggedMintRow(rows ?? [], p)?.id ?? null;
+}
+
+/** Flip an 'expired' row back to 'pending' so a late payment can claim it.
+ *  Conditional on 'expired': false if the row changed since it was read — the
+ *  next run re-reads it. */
+async function reopenExpired(supabase: ReturnType<typeof adminDb>, id: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("pending_mints")
+    .update({ status: "pending" })
+    .eq("id", id)
+    .eq("status", "expired")
+    .select("id");
+  return Boolean(data?.length);
 }
 
 export async function runMintReconcile(): Promise<MintReconcileResult> {
@@ -122,15 +142,7 @@ export async function runMintReconcile(): Promise<MintReconcileResult> {
       const plan = taggedPaymentPlan(row, p.sats);
       if (plan === "skip") continue;
       if (plan === "reopen") {
-        // Conditional on 'expired': if the row changed since we read it, leave
-        // it — the next run re-reads it.
-        const { data: reopened } = await supabase
-          .from("pending_mints")
-          .update({ status: "pending" })
-          .eq("id", p.mintId)
-          .eq("status", "expired")
-          .select("id");
-        if (!reopened?.length) continue;
+        if (!(await reopenExpired(supabase, p.mintId))) continue;
         out.reopened += 1;
       }
 
@@ -142,31 +154,28 @@ export async function runMintReconcile(): Promise<MintReconcileResult> {
     }
   }
 
-  // ---- Pass B2: undetected POW (SLP) payments for still-'pending' pow rows ----
-  // POW sends carry no mintId tag, so they aren't in scanMintPayments; match each
-  // open pow intent by its recorded proven-payer set (the closed-tab case).
+  // ---- Pass B2: POW (SLP) payments, attributed to the quote they're for ----
+  // A POW send carries no mintId tag — it says only who paid and how much — so
+  // start from each payment and ask which of the payer's quotes it's for, rather
+  // than letting any open quote take any payment from that wallet.
   if (budget > 0 && MINT_ADDRESS) {
-    const cutoff = new Date(Date.now() - SCAN_LOOKBACK_HOURS * 3600 * 1000).toISOString();
-    const { data: powRows } = await supabase
-      .from("pending_mints")
-      .select("id, expected_atoms, expected_payers, created_at")
-      .eq("status", "pending")
-      .eq("pay_token", "pow")
-      .gte("created_at", cutoff)
-      .limit(MAX_DELIVERIES_PER_RUN * 2);
-    for (const row of powRows ?? []) {
+    const since = Math.floor(Date.now() / 1000) - SCAN_LOOKBACK_HOURS * 3600;
+    const receipts = await scanMintWalletReceipts(MINT_ADDRESS, since, 1, SCAN_LIMIT).catch(() => []);
+    for (const r of receipts) {
       if (budget <= 0) { out.skippedBusy = true; break; }
-      const since = Math.floor(new Date(row.created_at as string).getTime() / 1000);
-      const found = await findPowMintPayment(
-        MINT_ADDRESS,
-        BigInt((row.expected_atoms as number) ?? 0),
-        (row.expected_payers as string[]) ?? [],
-        since,
-      );
-      if (!found || !found.isFinal) continue;
+      if (r.powAtoms <= 0n || !r.isFinal || !r.payerAddress) continue;
+      const p = r as PowReceipt;
+      // null: an order already claimed it, or no quote is clearly its own (the
+      // unclaimed-payment alert, lib/mintPaymentAlerts, flags that for a person).
+      const intent = await powIntentForPayment(supabase, p).catch(() => null);
+      if (!intent) continue;
+      if (intent.status === "expired") {
+        if (!(await reopenExpired(supabase, intent.id))) continue;
+        out.reopened += 1;
+      }
       budget -= 1;
       out.detected += 1;
-      tally((await claimPaidOrRefund(row.id as string, found.payerAddress, found.txid)).status);
+      tally((await claimPaidOrRefund(intent.id, p.payerAddress, p.txid)).status);
     }
   }
 
