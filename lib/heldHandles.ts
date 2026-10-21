@@ -18,7 +18,7 @@
 //  reason to CLEAR an existing valid choice.
 // =============================================================================
 
-import { unstable_cache } from "next/cache";
+import { unstable_cache, revalidateTag } from "next/cache";
 import { adminDb } from "@/lib/db";
 import { ChronikClient } from "chronik-client";
 import { CHRONIK_URLS } from "@/lib/ecash/chronikEndpoints";
@@ -107,6 +107,27 @@ export async function heldHandlesForAddress(address: string): Promise<HeldHandle
 // reads this.
 const HELD_HANDLES_DISPLAY_CACHE_S = 300;
 
+/** Cache tag for one wallet's profile handle strip. Prefix- and case-insensitive,
+ *  so the mint side (payer_address, "ecash:…") and the profile side (whatever
+ *  form resolveProfile hands over) name the same entry. */
+export function heldHandlesCacheTag(address: string): string {
+  return `held-handles:${(address ?? "").trim().toLowerCase().replace(/^ecash:/, "")}`;
+}
+
+/** Drop a wallet's cached handle strip right after a handle lands in it (a mint
+ *  delivery), so the new card shows on the very next profile visit instead of
+ *  after the 5-minute window. expire:0 = gone now, not stale-while-revalidate.
+ *  Best-effort: outside a Next request (scripts, tests) revalidateTag throws,
+ *  and the window still covers it — never fail a delivered mint over a cache. */
+export function forgetHeldHandlesDisplay(address: string | null | undefined): void {
+  if (!address) return;
+  try {
+    revalidateTag(heldHandlesCacheTag(address), { expire: 0 });
+  } catch {
+    /* no request store — the 5-minute window still covers it */
+  }
+}
+
 /** heldHandlesForAddress for the PROFILE CAROUSEL (display only), cached briefly
  *  in the Next Data Cache so the handle strip pops in fast on repeat visits
  *  instead of paying the ~2.5s Chronik enumeration every time — the single
@@ -120,7 +141,8 @@ const HELD_HANDLES_DISPLAY_CACHE_S = 300;
  *
  *  The authoritative paths — login auto-bind, the display-handle picker, and
  *  addressHoldsToken's binding check — keep calling the UNcached functions, so
- *  a freshly minted/received handle is reflected there immediately. */
+ *  a freshly minted/received handle is reflected there immediately. A mint
+ *  delivery also drops this cache for the buyer (forgetHeldHandlesDisplay). */
 export async function cachedHeldHandlesForDisplay(address: string): Promise<HeldHandle[]> {
   const addr = (address ?? "").trim();
   if (!addr) return [];
@@ -132,7 +154,7 @@ export async function cachedHeldHandlesForDisplay(address: string): Promise<Held
         return held;
       },
       ["held-handles-display", addr],
-      { revalidate: HELD_HANDLES_DISPLAY_CACHE_S },
+      { revalidate: HELD_HANDLES_DISPLAY_CACHE_S, tags: [heldHandlesCacheTag(addr)] },
     )();
   } catch {
     return [];

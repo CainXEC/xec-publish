@@ -35,6 +35,7 @@ import { priceForHandle } from "./handlePricing";
 import { loadMintWallet, mintHandleChild } from "./mintHandleChild";
 import { hostAsciiCard } from "./nft-art/hostAsciiCard"; // Gen 1 ASCII card, seed = mint txid (matches mintProcessor)
 import { findMintPayment, verifyMintTxid } from "./mintPayments";
+import { forgetHeldHandlesDisplay } from "./heldHandles";
 import { encodePostIdOpReturnRaw } from "./opReturnEncode";
 import { mintCapSoldOut, recordMintAgainstCap } from "./mintCap";
 import { resolveOfficialAccount } from "./officialAccount";
@@ -256,6 +257,7 @@ async function runMint(sk: string, grant: any, address: string): Promise<PollRes
       status: "claimed", claimed_address: address, claimed_account_id: accountId,
       claimed_token_id: childTokenId, claimed_at: new Date().toISOString(),
     }).eq("handle_skeleton", sk);
+    forgetHeldHandlesDisplay(address); // show the new card on their profile now, not in 5 min
 
     // Announce the claim as a native feed card, exactly like a paid mint
     // (mintProcessor) — same card_kind/content so it presents identically.

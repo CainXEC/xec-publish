@@ -29,7 +29,7 @@ import { handleReservedByGrant } from "./grantReservation";
 import { resolveOfficialAccount } from "./officialAccount";
 import { contentHashHex } from "./feedProtocol";
 import { CHRONIK_URLS } from "./ecash/chronikEndpoints";
-import { addressHoldsToken } from "./heldHandles";
+import { addressHoldsToken, forgetHeldHandlesDisplay } from "./heldHandles";
 
 const OFFICIAL_HANDLE = "proofofwriting"; // byline for handle-mint feed cards
 const PROFILE_URL_BASE = "https://proofofwriting.com/@"; // matches mintHandleChild's genesis url
@@ -190,11 +190,13 @@ async function finalizeDelivered(
     try { imageUrl = await hostAsciiCard(m.handle, childTokenId); } catch { imageUrl = null; }
   }
 
-  // 4. mark the mint delivered
+  // 4. mark the mint delivered, and drop the buyer's cached profile handle strip
+  //    so the new card shows on their next visit (not after the 5-min window)
   await supabase
     .from("pending_mints")
     .update({ status: "minted", child_token_id: childTokenId, image_url: imageUrl })
     .eq("id", m.id);
+  forgetHeldHandlesDisplay(m.payer_address);
 
   // 5. mint feed card — dedup on txid so a retry/adopt can't double-post it.
   try {
