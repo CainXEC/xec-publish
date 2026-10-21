@@ -15,6 +15,10 @@
 //       send with no tag (copy-address) is paired with the payer's own open
 //       intent instead — only when exactly one fits (see mintPayments).
 //
+//  LATE PAYMENTS: a tagged payment whose row already EXPIRED (sent at the last
+//  second, or finality landed after the window) reopens the row to 'pending' and
+//  is claimed the same way in pass B (see lib/mintLatePayment).
+//
 //  Bounded per invocation (mints are serialized and slow) — the backlog drains
 //  over successive runs.
 // =============================================================================
@@ -22,6 +26,7 @@
 import { adminDb } from "@/lib/db";
 import { scanMintPayments, findPowMintPayment, pickUntaggedMintRow, type ScannedMintPayment } from "@/lib/mintPayments";
 import { processPaidMint, claimPaidOrRefund, refundContended } from "@/lib/mintProcessor";
+import { taggedPaymentPlan } from "@/lib/mintLatePayment";
 
 const MINT_ADDRESS = process.env.MINT_PAYMENT_ADDRESS;
 
@@ -35,6 +40,7 @@ const SCAN_LIMIT = 50;
 export interface MintReconcileResult {
   paidRetried: number;   // pass A: 'paid' rows re-run
   detected: number;      // pass B: on-chain payments claimed pending→paid
+  reopened: number;      // pass B: of those, late payments whose row had expired
   delivered: number;     // mints that completed this run
   refunded: number;      // refunds issued (genuine unavailability + double-buy losers)
   contendedRetried: number; // pass C: contended losers whose refund we retried
@@ -66,7 +72,7 @@ async function untaggedMintRowFor(supabase: ReturnType<typeof adminDb>, p: Scann
 
 export async function runMintReconcile(): Promise<MintReconcileResult> {
   const supabase = adminDb();
-  const out: MintReconcileResult = { paidRetried: 0, detected: 0, delivered: 0, refunded: 0, contendedRetried: 0, stuck: 0, skippedBusy: false };
+  const out: MintReconcileResult = { paidRetried: 0, detected: 0, reopened: 0, delivered: 0, refunded: 0, contendedRetried: 0, stuck: 0, skippedBusy: false };
   let budget = MAX_DELIVERIES_PER_RUN;
 
   const tally = (status: string) => {
@@ -108,11 +114,25 @@ export async function runMintReconcile(): Promise<MintReconcileResult> {
       }
       const { data: row } = await supabase
         .from("pending_mints")
-        .select("id, status, expected_sats")
+        .select("id, status, expected_sats, pay_token")
         .eq("id", p.mintId)
         .maybeSingle();
-      if (!row || row.status !== "pending") continue; // paid rows handled in pass A; terminal rows skip
-      if (p.sats < Number(row.expected_sats)) continue; // underpaid
+      // pending → claim; expired (a late payment) → reopen, then claim; anything
+      // else skips (paid rows are pass A's, terminal rows are done, underpaid).
+      const plan = taggedPaymentPlan(row, p.sats);
+      if (plan === "skip") continue;
+      if (plan === "reopen") {
+        // Conditional on 'expired': if the row changed since we read it, leave
+        // it — the next run re-reads it.
+        const { data: reopened } = await supabase
+          .from("pending_mints")
+          .update({ status: "pending" })
+          .eq("id", p.mintId)
+          .eq("status", "expired")
+          .select("id");
+        if (!reopened?.length) continue;
+        out.reopened += 1;
+      }
 
       // Atomically claim the name for this payment and deliver — or refund it if
       // an earlier payment already claimed the name (double-buy loser).

@@ -9,11 +9,21 @@
 //      matching on the op_return_raw (mintId) tag instead of a unique amount
 //   3. once paid, records payer + flips to 'paid', then runs the serialized
 //      processor (mint -> record -> image -> or auto-refund on failure)
+//  Past the pay window it still looks for a TAGGED payment before expiring the
+//  row, so a last-second (or slow-to-finalize) payment is delivered, not stranded.
 // =============================================================================
 
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/db";
-import { verifyMintTxid, findMintPayment, verifyPowMintTxid, findPowMintPayment } from "@/lib/mintPayments";
+import {
+  verifyMintTxid,
+  findMintPayment,
+  verifyPowMintTxid,
+  findPowMintPayment,
+  type DetectedPayment,
+  type DetectedPowPayment,
+} from "@/lib/mintPayments";
+import { pendingPollPlan } from "@/lib/mintLatePayment";
 import { processPaidMint, claimPaidOrRefund } from "@/lib/mintProcessor";
 import { autoLoginByPayment } from "@/lib/payAutoLogin";
 
@@ -37,9 +47,43 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, status: m.status, childTokenId: m.child_token_id, imageUrl: m.image_url, error: m.error });
   }
 
-  // expired lock
-  if (m.status === "pending" && new Date(m.expires_at).getTime() < Date.now()) {
-    await supabase.from("pending_mints").update({ status: "expired" }).eq("id", mintId);
+  // A payment was found for this still-pending intent: hold it until Avalanche
+  // finalizes, then claim the name and deliver (or refund a double-buy loser).
+  const settle = async (found: DetectedPayment | DetectedPowPayment) => {
+    // Payment seen, but hold the mint until Avalanche finalizes it. A 0-conf tx
+    // can still be replaced by a conflicting double-spend; minting the NFT now
+    // would let an attacker claw the payment back. Don't flip to paid — the
+    // client keeps polling and we re-check finality each time (~2-3s to final).
+    if (!found.isFinal) {
+      return NextResponse.json({ ok: true, status: "finalizing" }, { status: 202 });
+    }
+
+    // Atomically claim the name for this payment, then deliver — or refund it if
+    // an earlier payment already claimed the name (double-buy race).
+    m.payer_address = found.payerAddress; // carry the proven payer for auto-login below
+    const claimed = await claimPaidOrRefund(mintId, found.payerAddress, found.txid);
+    // Mint done: paying from your wallet doubles as login (see autoLoginMinter).
+    if (claimed.status === "minted") await autoLoginByPayment(req, m.payer_address);
+    return NextResponse.json({ ok: true, ...claimed });
+  };
+
+  // Pay window closed. Before calling it expired, look for a payment TAGGED with
+  // this mintId: a buyer who sent at the last second, or whose payment is still
+  // finalizing, has paid — and a paid mint is delivered, never dropped. Tag-only
+  // past the window (lib/mintLatePayment.ts); a POW intent just expires.
+  const plan = m.status === "pending" ? pendingPollPlan(m, Date.now()) : null;
+  if (plan === "tagged" || plan === "expire") {
+    const since = Math.floor(new Date(m.created_at).getTime() / 1000);
+    // Deliberately no expected_payers: past the window only the tag counts.
+    const late =
+      plan === "tagged"
+        ? txid
+          ? await verifyMintTxid(txid, MINT_ADDRESS, Number(m.expected_sats), mintId)
+          : await findMintPayment(MINT_ADDRESS, mintId, Number(m.expected_sats), since)
+        : null;
+    if (late) return settle(late);
+    // Conditional, so it can never overwrite a row a concurrent poll just claimed.
+    await supabase.from("pending_mints").update({ status: "expired" }).eq("id", mintId).eq("status", "pending");
     return NextResponse.json({ ok: true, status: "expired" });
   }
 
@@ -60,21 +104,7 @@ export async function GET(req: NextRequest) {
 
     if (!found) return NextResponse.json({ ok: true, status: "awaiting_payment" });
 
-    // Payment seen, but hold the mint until Avalanche finalizes it. A 0-conf tx
-    // can still be replaced by a conflicting double-spend; minting the NFT now
-    // would let an attacker claw the payment back. Don't flip to paid — the
-    // client keeps polling and we re-check finality each time (~2-3s to final).
-    if (!found.isFinal) {
-      return NextResponse.json({ ok: true, status: "finalizing" }, { status: 202 });
-    }
-
-    // Atomically claim the name for this payment, then deliver — or refund it if
-    // an earlier payment already claimed the name (double-buy race).
-    m.payer_address = found.payerAddress; // carry the proven payer for auto-login below
-    const claimed = await claimPaidOrRefund(mintId, found.payerAddress, found.txid);
-    // Mint done: paying from your wallet doubles as login (see autoLoginMinter).
-    if (claimed.status === "minted") await autoLoginByPayment(req, m.payer_address);
-    return NextResponse.json({ ok: true, ...claimed });
+    return settle(found);
   }
 
   // status was already 'paid' on entry (a prior poll flipped it) -> run the processor.
