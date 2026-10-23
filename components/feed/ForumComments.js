@@ -7,6 +7,8 @@ import ComposeBox from '@/components/feed/ComposeBox'
 import EngagementBar from '@/components/feed/EngagementBar'
 import PostCopyLink from '@/components/feed/PostCopyLink'
 import TranslateButton from '@/components/TranslateButton'
+import YouTubeEmbed from '@/components/feed/YouTubeEmbed'
+import { youTubeIdForPost, stripYouTubeLink } from '@/lib/youtubeLinks'
 
 function truncateAddress(addr) {
   const t = String(addr ?? '').trim()
@@ -56,6 +58,11 @@ function CommentNode({ comment, childrenByParent, viewerAccountId, onReplyAdded,
   const [translated, setTranslated] = useState(null)
   const kids = childrenByParent.get(comment.txid) ?? []
   const isOwn = !!viewerAccountId && comment.author_account_id === viewerAccountId
+  // A YouTube link in a comment embeds a player (each comment pays the same
+  // +1000 XEC surcharge as any reply); the raw URL is stripped from the text.
+  const ytId = youTubeIdForPost(comment)
+  const rawBody = typeof comment.content === 'string' ? comment.content : ''
+  const shownBody = ytId ? stripYouTubeLink(rawBody) : rawBody
 
   return (
     <div
@@ -90,9 +97,14 @@ function CommentNode({ comment, childrenByParent, viewerAccountId, onReplyAdded,
         {comment.deleted ? (
           <p className="fcomment-body tombstone">This comment was deleted.</p>
         ) : (
-          <p className="fcomment-body">
-            <FeedBody text={translated ?? (typeof comment.content === 'string' ? comment.content : '')} />
-          </p>
+          <>
+            {translated || shownBody ? (
+              <p className="fcomment-body">
+                <FeedBody text={translated ?? shownBody} />
+              </p>
+            ) : null}
+            <YouTubeEmbed id={ytId} />
+          </>
         )}
 
         {!comment.deleted ? (
