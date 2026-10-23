@@ -26,7 +26,7 @@ import {
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
 import { extractForumSlug, stripForumLink } from '@/lib/forumLinks'
-import { extractYouTubeId, stripYouTubeLink } from '@/lib/youtubeLinks'
+import { youTubeIdForPost, stripYouTubeLink } from '@/lib/youtubeLinks'
 import YouTubeEmbed from '@/components/feed/YouTubeEmbed'
 import { FEED_ACTION } from '@/lib/feedProtocol'
 import { markSeen } from '@/lib/feedSeenStore'
@@ -285,7 +285,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   // A YouTube link embeds a player on posts, quotes, top-level forum posts, AND
   // replies (each pays the +1000 XEC surcharge, priceFeedPost). Article comments
   // are a separate surface and don't reach here.
-  const ytId = extractYouTubeId(body)
+  const ytId = youTubeIdForPost(post)
   // On-site links render as an embed/card that IS the link, so strip the raw URL
   // from the displayed text (an article link → ArticleCard; a feed-post link →
   // QuotedEmbed). Keep `body` intact for the card's slug/txid detection.

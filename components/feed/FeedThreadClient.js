@@ -32,7 +32,7 @@ import {
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
 import { extractForumSlug, stripForumLink } from '@/lib/forumLinks'
-import { extractYouTubeId, stripYouTubeLink } from '@/lib/youtubeLinks'
+import { youTubeIdForPost, stripYouTubeLink } from '@/lib/youtubeLinks'
 import ForumCard from '@/components/feed/ForumCard'
 import ForumComments from '@/components/feed/ForumComments'
 import YouTubeEmbed from '@/components/feed/YouTubeEmbed'
@@ -109,9 +109,9 @@ function AncestorNode({ post, top = false, onOpenThread = null }) {
   const textRef = useRef(null)
   const [expanded, setExpanded] = useState(false)
   const [clamped, setClamped] = useState(false)
-  // Ancestor posts embed their YouTube video — replies too, now (consistent with
+  // Ancestor posts embed their YouTube video — replies too (consistent with
   // the reply rows and their +1000 XEC surcharge).
-  const ancestorYtId = extractYouTubeId(post.content)
+  const ancestorYtId = youTubeIdForPost(post)
 
   // Keep a translated parent translated: if the viewer has translated this post,
   // show that translation here too. Ancestors used to always render the original,
@@ -539,10 +539,9 @@ export default function FeedThreadClient({
                     <h1 className="focustitle">{translatedTitle ?? post.title}</h1>
                   ) : null}
                   {(() => {
-                    // A YouTube link embeds a player on a top-level post (never a
-                    // reply/comment) — strip its URL from the body when it does.
-                    const ytId =
-                      post.action !== FEED_ACTION.REPLY ? extractYouTubeId(post.content) : null
+                    // A YouTube link embeds a player on the focused post — a reply
+                    // included — so strip its URL from the body when it does.
+                    const ytId = youTubeIdForPost(post)
                     let focusText = displayTextFor(post.content)
                     if (ytId) focusText = stripYouTubeLink(focusText)
                     return focusText ? (
@@ -566,9 +565,7 @@ export default function FeedThreadClient({
                   ) : null}
                   <ArticleCard card={post.articleCard ?? null} content={post.content} />
                   <ForumCard card={post.forumCard ?? null} content={post.content} />
-                  {post.action !== FEED_ACTION.REPLY ? (
-                    <YouTubeEmbed id={extractYouTubeId(post.content)} />
-                  ) : null}
+                  <YouTubeEmbed id={youTubeIdForPost(post)} />
                 </>
               )}
               <div className="actions">
