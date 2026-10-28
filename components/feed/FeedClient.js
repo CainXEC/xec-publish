@@ -27,8 +27,10 @@ export default function FeedClient({
   initialScope = 'foryou',
   // Onboarding (walletless funnel): a brand-new, unfunded logged-in account is
   // `starterEligible` and sees the welcome-gift (faucet) card. Logged-out
-  // visitors see the get-started strip.
+  // visitors see the get-started strip, which promises the gift only while
+  // `faucetOffer.open` (lib/faucetConfig.ts).
   starterEligible = false,
+  faucetOffer = null,
 }) {
   const [scope, setScope] = useState(initialScope) // 'foryou' | 'forums'
 
@@ -626,7 +628,7 @@ export default function FeedClient({
         {/* Onboarding (Pieces 1 & 3): a logged-out visitor gets the get-started
             strip; a brand-new, unfunded logged-in account gets the claim card.
             Both sit at the very top of the feed column, above the composer. */}
-        {scope !== 'forums' && !signedIn ? <OnboardingStrip /> : null}
+        {scope !== 'forums' && !signedIn ? <OnboardingStrip offer={faucetOffer} /> : null}
         {scope !== 'forums' && signedIn && starterEligible ? (
           <StarterXecCard />
         ) : null}

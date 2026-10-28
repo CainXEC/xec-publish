@@ -8,15 +8,22 @@ import GetStartedButton from '@/components/onboarding/GetStartedModal'
  * whole point for someone who hasn't logged in, so it stays until they do — the
  * parent only renders it while signed out, so logging in makes it disappear on
  * its own.
+ *
+ * `offer` is the server's faucetOffer() (lib/faucetConfig.ts): the welcome gift
+ * is only promised while it's switched on. Handed to the modal so it doesn't
+ * have to ask again.
  */
-export default function OnboardingStrip() {
+export default function OnboardingStrip({ offer = null }) {
+  const gift = offer?.open
+    ? `Get ${Number(offer.xec).toLocaleString('en-US')} XEC + ${Number(offer.pow).toLocaleString('en-US')} POW free — start in 3 steps.`
+    : 'Get set up in 2 steps.'
   return (
     <div className="onboard-strip">
       <style>{STRIP_CSS}</style>
-      <span className="onboard-strip-text">
-        New to Proof of Writing? Get 2,500 XEC + 10 POW free — start in 3 steps.
-      </span>
-      <GetStartedButton className="onboard-strip-btn">Get started</GetStartedButton>
+      <span className="onboard-strip-text">New to Proof of Writing? {gift}</span>
+      <GetStartedButton className="onboard-strip-btn" offer={offer ?? { open: false }}>
+        Get started
+      </GetStartedButton>
     </div>
   )
 }

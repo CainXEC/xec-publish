@@ -220,6 +220,8 @@ export default function FeedThreadClient({
   // Set when this thread is a forum post (or a reply within one): renders a
   // "← /f/<slug>" back link so the thread returns to its forum, not the feed.
   forumSlug = null,
+  // Logged-out get-started strip: the server's faucetOffer() (lib/faucetConfig.ts).
+  faucetOffer = null,
   // Reading-pane hosting: embedded=true renders just the thread (no page
   // chrome — the host owns the shell), and onOpenThread swaps the pane to
   // another thread instead of navigating (ancestors, replies, quote-jumps).
@@ -778,7 +780,7 @@ export default function FeedThreadClient({
               feed uses, ABOVE the post so the thread is still fully visible. The
               strip's own button opens the Get Started explainer on click; it
               disappears once they're signed in. */}
-          {viewerAccountId == null ? <OnboardingStrip /> : null}
+          {viewerAccountId == null ? <OnboardingStrip offer={faucetOffer} /> : null}
           {content}
         </main>
         <aside className="feed-rail" aria-label="Live on-chain activity">

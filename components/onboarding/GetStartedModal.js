@@ -14,13 +14,46 @@ import {
 // 42 XEC free, enough to cover the 6-XEC login challenge.
 const CASHTAB_URL = 'https://cashtab.com'
 
+// The welcome gift (step 3) is switched on/off live (lib/faucetConfig.ts), so the
+// modal asks rather than promising it. One shared fetch per page load; a failure
+// reads as "off" and is retried on the next open.
+let offerPromise = null
+function loadFaucetOffer() {
+  if (!offerPromise) {
+    offerPromise = fetch('/api/faucet/offer')
+      .then((r) => r.json())
+      .then((d) => (d?.ok ? d : { open: false }))
+      .catch(() => {
+        offerPromise = null
+        return { open: false }
+      })
+  }
+  return offerPromise
+}
+
 /**
  * The three-step onboarding explainer for a walletless visitor, shown in a modal
  * so they never leave the page. Controlled: `open` + `onClose`. Pieces 1–2 of the
  * onboarding plan (get a wallet → log in → get starter XEC).
+ *
+ * `offer` ({ open, xec, pow }) decides whether step 3 — the welcome gift — shows.
+ * The feed strip passes the server's answer; elsewhere (the topbar) it's left
+ * out and fetched when the modal opens.
  */
-export function GetStartedModal({ open, onClose }) {
+export function GetStartedModal({ open, onClose, offer: offerProp = null }) {
   const router = useRouter()
+  const [fetchedOffer, setFetchedOffer] = useState(null)
+  useEffect(() => {
+    if (!open || offerProp) return undefined
+    let on = true
+    loadFaucetOffer().then((o) => {
+      if (on) setFetchedOffer(o)
+    })
+    return () => {
+      on = false
+    }
+  }, [open, offerProp])
+  const offer = offerProp ?? fetchedOffer
   // The Cashtab tab this modal's "Get Cashtab" step opened. We can't close or
   // focus it on iOS, but we CAN navigate it — so login redirects it to POW once
   // logged in, and the self-closing payment tab lands on POW, not on Cashtab.
@@ -97,18 +130,23 @@ export function GetStartedModal({ open, onClose }) {
             </div>
           </li>
 
-          <li className="ob-step">
-            <span className="ob-num" aria-hidden>3</span>
-            <div className="ob-body">
-              <h3 className="ob-h">Claim your welcome gift</h3>
-              <p className="ob-p">
-                Once you&rsquo;re in, tap <strong>Claim</strong> at the top of the feed to get{' '}
-                <strong>2,500 XEC + 10 POW</strong>{' '}free — enough to post, react, unlock stories,
-                try one-tap payments with your Pocket, and mint your own @handle. (A limited number of gifts go out each day; if
-                they&rsquo;re gone, the faucet resets at 00:00 UTC.)
-              </p>
-            </div>
-          </li>
+          {offer?.open ? (
+            <li className="ob-step">
+              <span className="ob-num" aria-hidden>3</span>
+              <div className="ob-body">
+                <h3 className="ob-h">Claim your welcome gift</h3>
+                <p className="ob-p">
+                  Once you&rsquo;re in, tap <strong>Claim</strong> at the top of the feed to get{' '}
+                  <strong>
+                    {Number(offer.xec).toLocaleString('en-US')} XEC + {Number(offer.pow).toLocaleString('en-US')} POW
+                  </strong>{' '}
+                  free — enough to post, react, unlock stories, try one-tap payments with your Pocket,
+                  and mint your own @handle. (A limited number of gifts go out each day; if
+                  they&rsquo;re gone, the faucet resets at 00:00 UTC.)
+                </p>
+              </div>
+            </li>
+          ) : null}
         </ol>
       </div>
     </div>
@@ -127,7 +165,7 @@ export function GetStartedModal({ open, onClose }) {
  * in the dead-end WebView. iOS keeps the in-place modal — it has no reliable
  * WebView escape.
  */
-export default function GetStartedButton({ className = '', children = 'Get started', onClick }) {
+export default function GetStartedButton({ className = '', children = 'Get started', onClick, offer = null }) {
   const [open, setOpen] = useState(false)
 
   const handleClick = useCallback(() => {
@@ -163,7 +201,7 @@ export default function GetStartedButton({ className = '', children = 'Get start
       <button type="button" className={className} onClick={handleClick}>
         {children}
       </button>
-      <GetStartedModal open={open} onClose={() => setOpen(false)} />
+      <GetStartedModal open={open} onClose={() => setOpen(false)} offer={offer} />
     </>
   )
 }

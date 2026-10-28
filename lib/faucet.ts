@@ -19,8 +19,10 @@
 //    • The route adds an IP rate limit.
 //
 //  Config is DB-driven (pow_reward_config id='faucet', live, no deploy) with
-//  DEFAULT_FAUCET_CONFIG as the fallback. The sender key is the Vercel env
-//  PATRON_WALLET_MNEMONIC; the loaded wallet must equal FAUCET_WALLET_ADDRESS
+//  DEFAULT_FAUCET_CONFIG as the fallback, both in lib/faucetConfig.ts — which
+//  also serves the public offer the logged-out copy reads, so switching the
+//  config off stops the site promising the gift. The sender key is the Vercel
+//  env PATRON_WALLET_MNEMONIC; the loaded wallet must equal FAUCET_WALLET_ADDRESS
 //  (default: the patron wallet) or nothing is sent.
 //
 //  ⚠ If anything else ever spends from this wallet concurrently (the ai-satoshi
@@ -37,40 +39,12 @@ import { CHRONIK_URLS } from "@/lib/ecash/chronikEndpoints";
 import { loadWallet } from "@/lib/ecash/powToken";
 import { buildResolver } from "@/lib/powRewards/accounts";
 import { isBrandNewUnfunded } from "@/lib/onboarding";
+import { loadFaucetConfig, walletConfigured, type FaucetConfig } from "@/lib/faucetConfig";
 
 // The POW SLP token (0-decimal → atoms == whole tokens).
 export const POW_TOKEN_ID = "f36e1b3d9a2aaf74f132fef3834e9743b945a667a4204e761b85f2e7b65fd41a";
 const PATRON_ADDRESS = "ecash:qzxr8qtmaycth603fqhg780cymu0sm0ysuj05ephls";
 const DUST = 546n;
-
-export interface FaucetConfig {
-  enabled: boolean;
-  xecPerClaim: number; // whole XEC
-  powPerClaim: number; // whole POW
-  dailyXecCap: number; // whole XEC per UTC day
-  dailyPowCap: number; // whole POW per UTC day
-  sourceAddress: string; // Cashtab's new-wallet faucet
-  sourceMinSats: number; // min plain payment from it that counts (4200 = 42 XEC)
-}
-
-export const DEFAULT_FAUCET_CONFIG: FaucetConfig = {
-  enabled: true,
-  xecPerClaim: 2500, // room to post/react/unlock AND fund the Pocket's 1,000 XEC preset
-  powPerClaim: 10, // == the base-tier handle price in POW
-  dailyXecCap: 25000, // 10 claims/day at 2,500
-  dailyPowCap: 100,
-  sourceAddress: "ecash:qzppgpav9xfls6zzyuqy7syxpqhnlqqa5u68m4qw6l",
-  sourceMinSats: 4200,
-};
-
-export async function loadFaucetConfig(): Promise<FaucetConfig> {
-  try {
-    const { data } = await adminDb().from("pow_reward_config").select("config").eq("id", "faucet").maybeSingle();
-    return { ...DEFAULT_FAUCET_CONFIG, ...((data?.config ?? {}) as Partial<FaucetConfig>) };
-  } catch {
-    return DEFAULT_FAUCET_CONFIG;
-  }
-}
 
 /** Next 00:00 UTC — when the daily cap resets. */
 export function nextResetIso(now: Date = new Date()): string {
@@ -98,10 +72,6 @@ export interface FaucetStatus {
   pow: number;
   resetsAt: string;
   txid?: string | null;
-}
-
-function walletConfigured(): boolean {
-  return !!process.env.PATRON_WALLET_MNEMONIC?.trim();
 }
 
 async function accountAddresses(accountId: string): Promise<{ address: string; is_primary: boolean }[]> {

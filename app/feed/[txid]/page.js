@@ -4,6 +4,7 @@ import { getFeedThread, forumRootTxid } from '@/lib/getFeed'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { adminDb } from '@/lib/db'
 import { getForumById } from '@/lib/forums'
+import { faucetOffer } from '@/lib/faucetConfig'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,9 @@ export default async function FeedThreadPage({ params }) {
   }
 
   const acct = await getAuthedAccount()
+  // Logged-out: the get-started strip's gift copy (see lib/faucetConfig.ts).
+  // Started now so it overlaps the thread fetch below.
+  const offerPromise = acct?.accountId ? null : faucetOffer()
 
   // Cheap pre-check: is this post in a forum? Decides BOTH the "← /f/<slug>" back
   // link AND the deep fetch — a forum thread pulls its WHOLE descendant tree for
@@ -43,6 +47,7 @@ export default async function FeedThreadPage({ params }) {
   if (!thread) {
     notFound()
   }
+  const offer = offerPromise ? await offerPromise : null
 
   return (
     <FeedThreadClient
@@ -52,6 +57,7 @@ export default async function FeedThreadPage({ params }) {
       viewerAccountId={acct?.accountId ?? null}
       isAuthor={acct?.authorId != null}
       forumSlug={forumSlug}
+      faucetOffer={offer}
     />
   )
 }
