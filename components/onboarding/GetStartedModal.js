@@ -32,6 +32,17 @@ function loadFaucetOffer() {
 }
 
 /**
+ * Where the modal mounts. Never in place: the topbar has a backdrop-filter, which
+ * makes it a containing block for fixed children, so the overlay would be clipped
+ * to the bar (and, in the hover menu, hide with it). Not <body> either: the theme
+ * tokens (and light mode) live on the .pow-feed scope, so outside it the modal
+ * falls back to off-palette colors. So: the nearest .pow-feed.
+ */
+function modalHost(from) {
+  return from?.closest('.pow-feed') ?? document.querySelector('.pow-feed') ?? document.body
+}
+
+/**
  * The three-step onboarding explainer for a walletless visitor, shown in a modal
  * so they never leave the page. Controlled: `open` + `onClose`. Pieces 1–2 of the
  * onboarding plan (get a wallet → log in → get starter XEC).
@@ -167,8 +178,10 @@ export function GetStartedModal({ open, onClose, offer: offerProp = null }) {
  */
 export default function GetStartedButton({ className = '', children = 'Get started', onClick, offer = null }) {
   const [open, setOpen] = useState(false)
+  const [host, setHost] = useState(null)
 
-  const handleClick = useCallback(() => {
+  const handleClick = useCallback((e) => {
+    setHost(modalHost(e.currentTarget))
     onClick?.() // let a caller close its own menu first
     if (isAndroidInAppBrowser()) {
       breakOutToChrome()
@@ -201,7 +214,9 @@ export default function GetStartedButton({ className = '', children = 'Get start
       <button type="button" className={className} onClick={handleClick}>
         {children}
       </button>
-      <GetStartedModal open={open} onClose={() => setOpen(false)} offer={offer} />
+      {open && host
+        ? createPortal(<GetStartedModal open onClose={() => setOpen(false)} offer={offer} />, host)
+        : null}
     </>
   )
 }
@@ -210,9 +225,7 @@ export default function GetStartedButton({ className = '', children = 'Get start
  * Pops the onboarding modal on load when the URL carries ?getstarted=1 — set by
  * the Android→Chrome break-out (breakOutToChrome), and usable as a plain deep
  * link too. Mounted ONCE from the topbar (present on every page a break-out can
- * start from), but PORTALED to document.body: the topbar has a backdrop-filter,
- * which makes it a containing block for fixed children, so an overlay rendered
- * inside it would be clipped to the topbar's box instead of filling the viewport.
+ * start from), and portaled out of it like every Get started modal (modalHost).
  */
 export function OnboardingAutoModal() {
   const [open, setOpen] = useState(false)
@@ -239,7 +252,7 @@ export function OnboardingAutoModal() {
   if (!open || typeof document === 'undefined') return null
   return createPortal(
     <GetStartedModal open onClose={() => setOpen(false)} />,
-    document.body,
+    modalHost(null),
   )
 }
 
@@ -255,8 +268,7 @@ const OB_MODAL_CSS = `
   position: relative;
   width: 100%; max-width: 460px;
   max-height: calc(100vh - 40px); overflow-y: auto;
-  /* Left-justified regardless of where the modal is mounted — it's a DOM child of
-     the get-started button, which may sit inside a centered strip. */
+  /* Left-justified regardless of the alignment of the scope it's mounted in. */
   text-align: left;
   background: var(--panel, #111);
   border: 1px solid var(--line, #333);
