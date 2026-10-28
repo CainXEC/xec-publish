@@ -46,6 +46,14 @@ const fmtDate = (iso) => {
   }
 }
 
+// "3 unlocks" / "1 comment" — or "– unlocks" when the server's count lookup
+// failed (null), rather than a made-up 0.
+function countLabel(n, word) {
+  if (n == null) return `– ${word}s`
+  const num = Number(n) || 0
+  return `${num} ${word}${num === 1 ? '' : 's'}`
+}
+
 export default function HomeReader({ slug, onClose, backLabel = '← Feed' }) {
   const [state, setState] = useState({ loading: true })
   // Translated view ({ translated: html, title }); null = original. The parent
@@ -256,11 +264,11 @@ export default function HomeReader({ slug, onClose, backLabel = '← Feed' }) {
                 aria-expanded={unlockersOpen}
                 title="See who unlocked this article"
               >
-                {Number(d.unlockCount ?? 0)} unlock{d.unlockCount === 1 ? '' : 's'}
+                {countLabel(d.unlockCount, 'unlock')}
                 {unlockersOpen ? ' ▲' : ' ▼'}
               </button>
             ) : (
-              `${Number(d.unlockCount ?? 0)} unlock${d.unlockCount === 1 ? '' : 's'}`
+              countLabel(d.unlockCount, 'unlock')
             )}
             {' · '}
             {d.unlocked ? (
@@ -273,10 +281,10 @@ export default function HomeReader({ slug, onClose, backLabel = '← Feed' }) {
                   document.getElementById('comments')?.scrollIntoView({ behavior: 'smooth' })
                 }
               >
-                {Number(d.commentCount ?? 0)} comment{d.commentCount === 1 ? '' : 's'}
+                {countLabel(d.commentCount, 'comment')}
               </button>
             ) : (
-              `${Number(d.commentCount ?? 0)} comment${d.commentCount === 1 ? '' : 's'}`
+              countLabel(d.commentCount, 'comment')
             )}
           </p>
 

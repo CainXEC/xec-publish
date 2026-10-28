@@ -68,8 +68,9 @@ export async function GET(_req, { params }) {
       priceXec: p.price_xec ?? null,
       readMinutes: p.reading_time_minutes ?? null,
       publishedAt: p.published_at ?? p.created_at ?? null,
-      unlockCount: Number(cached.unlockCount) || 0,
-      commentCount: Number(cached.commentCount) || 0,
+      // null = unknown (the lookup failed) — the pane shows "–", not 0.
+      unlockCount: cached.unlockCount == null ? null : Number(cached.unlockCount) || 0,
+      commentCount: cached.commentCount == null ? null : Number(cached.commentCount) || 0,
       author: {
         handle: author?.display_handle?.trim() || null,
         username: author?.username?.trim() || null,

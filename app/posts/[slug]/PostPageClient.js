@@ -377,6 +377,15 @@ export default function PostPageClient({
     }
   }, [])
 
+  // The server sends a count as null when its lookup failed (never a fake 0 —
+  // see lib/getPublishedPostBySlug.js). Fetch the live number instead; "–"
+  // shows until it lands.
+  useEffect(() => {
+    if (!post?.id) return
+    if (initialUnlockCount == null) void fetchUnlockCount(post.id)
+    if (initialCommentCount == null) void fetchCommentCount(post.id)
+  }, [post?.id, initialUnlockCount, initialCommentCount, fetchUnlockCount, fetchCommentCount])
+
   // Author-only: the list of readers who unlocked this article. Loaded lazily
   // the first time the author opens the "who unlocked" panel (the API is gated
   // to the post's author server-side; a non-author never sees the toggle).
@@ -987,14 +996,14 @@ export default function PostPageClient({
                 aria-expanded={unlockersOpen}
                 title="See who unlocked this article"
               >
-                🔓 <span>{unlockCount}</span>
+                🔓 <span>{unlockCount ?? '–'}</span>
                 <span className="unlockers-caret" aria-hidden>
                   {unlockersOpen ? '▲' : '▼'}
                 </span>
               </button>
             ) : (
               <span className="metaitem">
-                🔓 <span>{unlockCount}</span>
+                🔓 <span>{unlockCount ?? '–'}</span>
               </span>
             )}
 
@@ -1005,7 +1014,7 @@ export default function PostPageClient({
               }
               className="metaitem"
             >
-              💬 <span>{commentCount}</span>
+              💬 <span>{commentCount ?? '–'}</span>
             </button>
 
             <TranslateButton
