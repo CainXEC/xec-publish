@@ -9,6 +9,7 @@
 // =============================================================================
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { prewarmPaymentWatch } from "@/lib/ecash/watchPaymentAddress";
 import { pollUntil } from "@/lib/ecash/pollUntil";
 import {
@@ -33,6 +34,7 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
   const [started, setStarted] = useState<Started | null>(null);
   const [notice, setNotice] = useState("");
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const [showQr, setShowQr] = useState(false);
   const startedOnceRef = useRef(false);
   const cashtabOpenedRef = useRef(false);
   // A window pre-opened by the "Login" tap (see loginLaunch). On iOS Safari this
@@ -72,6 +74,14 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
     void payWithCashtab({ bip21: started.bip21Url, cashtabUrl });
   }, [started, cashtabUrl]);
 
+  // "Cashtab didn't open?" — the auto-open can be blocked (pop-up blockers, or
+  // /login reached without a tap), so this tap is the fallback. A real gesture,
+  // so the new tab is allowed even where the auto-open wasn't.
+  const reopenCashtab = useCallback(() => {
+    if (!started) return;
+    void payWithCashtab({ bip21: started.bip21Url, cashtabUrl });
+  }, [started, cashtabUrl]);
+
   // Bail out of login (changed their mind). Abort any Cashtab window the "Login"
   // tap pre-opened so we don't leave a stray tab, then go home. Navigating away
   // unmounts this component, tearing down the payment poller + countdown.
@@ -84,6 +94,7 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
     setNotice("");
     setPhase("starting");
     cashtabOpenedRef.current = false;
+    setShowQr(false);
     prewarmPaymentWatch(); // warm the shared socket during auth start + Cashtab approval
     try {
       const r = await fetch("/api/auth/start", { method: "POST" });
@@ -114,8 +125,8 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
   }, [startLogin]);
 
   // As soon as the nonce is ready, pop Cashtab open with the login payment
-  // pre-filled. If the browser blocks the auto-open, the "Open Cashtab" button
-  // on the waiting screen is the manual fallback.
+  // pre-filled. If the browser blocks the auto-open, the waiting screen's
+  // "Cashtab didn't open?" line (reopen / QR) is the manual fallback.
   useEffect(() => {
     if (phase === "proving" && started && !cashtabOpenedRef.current) {
       openCashtab();
@@ -220,6 +231,22 @@ export default function WalletLogin({ redirectTo = "/" }: { redirectTo?: string 
           {/* Cashtab opens automatically with the payment pre-filled; this button
               is just an escape hatch if you changed your mind. */}
           <button type="button" className="cta ghost" onClick={cancelLogin}>Cancel</button>
+          {/* The fallback, kept to one quiet line so the happy path stays clean.
+              No copy-address: a hand-typed send can't carry the login tag. */}
+          <p className="fallback">
+            Cashtab didn’t open?{" "}
+            <button type="button" className="linkbtn" onClick={reopenCashtab}>Open it</button>
+            {" · "}
+            <button type="button" className="linkbtn" aria-expanded={showQr} onClick={() => setShowQr((v) => !v)}>
+              {showQr ? "Hide QR code" : "Scan a QR code"}
+            </button>
+          </p>
+          {showQr && (
+            <>
+              <div className="qr"><QRCodeSVG value={started.bip21Url} size={188} bgColor="#dffff2" fgColor="#05130d" /></div>
+              <p className="qrhint">Scan it with Cashtab on another device.</p>
+            </>
+          )}
           {notice && <p className="notice">{notice}</p>}
         </div>
       )}
@@ -269,6 +296,15 @@ const CSS = `
 .pow-mint .cta.ghost{border-color:var(--line);color:var(--dim);box-shadow:none;}
 .pow-mint .cta.ghost:hover{background:transparent;border-color:var(--neon);color:var(--neon);box-shadow:none;}
 .pow-mint .notice{color:var(--no);font-size:14px;margin:14px 0 0;}
+/* "Cashtab didn't open?" — a dim footnote with two text-link buttons. */
+.pow-mint .fallback{font-size:12.5px;color:var(--dim);margin:16px 0 0;}
+.pow-mint .linkbtn{background:none;border:0;padding:0;font:inherit;color:var(--cyan);cursor:pointer;
+  text-decoration:underline;text-underline-offset:3px;}
+.pow-mint .linkbtn:hover{color:var(--neon);}
+.pow-mint .qr{display:inline-block;padding:12px;background:#dffff2;border-radius:12px;margin:16px 0 0;
+  box-shadow:0 0 0 1px var(--neon),0 0 24px rgba(0,255,156,.28);}
+.pow-mint .qr svg{display:block;}
+.pow-mint .qrhint{font-size:12px;color:var(--dim);margin:10px 0 0;}
 
 .pow-mint .poll{font-size:14px;color:var(--text);margin:10px 0 0;}
 .pow-mint .pay .poll{margin:0 0 16px;}
@@ -299,4 +335,6 @@ html:not(.dark) .pow-mint .cta{box-shadow:var(--paper-shadow);}
 html:not(.dark) .pow-mint .cta:hover{background:var(--neon);color:#fdfcf8;box-shadow:var(--paper-shadow);}
 /* Cancel stays a quiet ghost in light mode too (don't fill it on hover). */
 html:not(.dark) .pow-mint .cta.ghost:hover{background:transparent;color:var(--neon);}
+/* QR: a clean near-white plate with a hairline, not a mint tile with a halo. */
+html:not(.dark) .pow-mint .qr{background:#fff;box-shadow:0 0 0 1px var(--line),var(--paper-shadow);}
 `;
