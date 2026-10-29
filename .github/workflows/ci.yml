@@ -40,7 +40,10 @@ jobs:
         if: always()
 
   e2e:
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moved to 26.04 (Oct 2026), which Playwright 1.59
+    # can't install browsers on. Unpin after upgrading Playwright to a release
+    # that supports 26.04.
+    runs-on: ubuntu-24.04
     needs: test
 
     steps:
