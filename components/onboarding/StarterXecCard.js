@@ -92,10 +92,17 @@ export default function StarterXecCard({ preview = null } = {}) {
           {/* The mint flow, NOT /claim-handle (that's the grandfathered-author
               claim and needs a one-time code). Pre-selects Pay with POW: the
               gift's POW covers a handle, its XEC doesn't. */}
-          <Link href={mintHandleHref({ payWith: 'pow' })} className="starter-btn">
+          {/* Both lit, both open in a new tab — the feed (and this card) stay put
+              in the first tab, so there's no Back to hit afterwards. */}
+          <Link
+            href={mintHandleHref({ payWith: 'pow' })}
+            className="starter-btn"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Mint your handle →
           </Link>
-          <Link href="/pocket" className="starter-btn ghost">
+          <Link href="/pocket" className="starter-btn" target="_blank" rel="noopener noreferrer">
             Set up your Pocket →
           </Link>
         </div>
@@ -191,8 +198,6 @@ const STARTER_CSS = `
 .starter-btn:hover { box-shadow: 0 0 12px rgba(0,255,156,.25); }
 .starter-btn:disabled { opacity: .6; cursor: wait; box-shadow: none; }
 .starter-ctas { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
-.starter-btn.ghost { border-color: var(--line, #444); color: var(--dim, #aaa); }
-.starter-btn.ghost:hover { box-shadow: none; border-color: var(--neon, #7CFF6B); color: var(--neon, #7CFF6B); }
 .starter-tx { display: block; margin-top: 10px; font-size: 12px; color: var(--dim, #aaa); }
 .starter-tx:hover { color: var(--cyan, #3df0ff); }
 .starter-err { margin: 10px 0 0; font-size: 12.5px; color: var(--no, #ff5c6c); }

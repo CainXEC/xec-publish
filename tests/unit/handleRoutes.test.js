@@ -69,4 +69,11 @@ describe('no UI link to /claim-handle', () => {
     const src = readFileSync(path.join(ROOT, 'components/onboarding/StarterXecCard.js'), 'utf8')
     expect(src).toMatch(/href=\{mintHandleHref\(\{ payWith: 'pow' \}\)\}[^>]*>\s*Mint your handle/)
   })
+
+  it('both post-gift buttons open in a new tab, so the feed stays put', () => {
+    const src = readFileSync(path.join(ROOT, 'components/onboarding/StarterXecCard.js'), 'utf8')
+    for (const label of ['Mint your handle', 'Set up your Pocket']) {
+      expect(src).toMatch(new RegExp(`<Link[^>]*target="_blank"[^>]*>\\s*${label}`))
+    }
+  })
 })
