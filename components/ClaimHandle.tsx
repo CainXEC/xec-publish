@@ -16,6 +16,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { renderMysteryCard } from "@/lib/renderHandleCard";
 import { watchPaymentAddress, prewarmPaymentWatch } from "@/lib/ecash/watchPaymentAddress";
 import { payWithCashtab } from "@/lib/ecash/cashtabPay";
+import { MINT_HANDLE_PATH } from "@/lib/handleRoutes";
 
 type Started = {
   ok: true;
@@ -142,6 +143,14 @@ export default function ClaimHandle({ signedIn = false }: { signedIn?: boolean }
       <p className="eyebrow"><Link href="/" className="eyebrowlink">proofofwriting</Link> // claim</p>
       <h1 className="title">Claim your handle</h1>
       <p className="sub">For grandfathered authors. Enter your handle and the one-time code we sent you, then prove the wallet is yours — your handle NFT is delivered to that wallet.</p>
+      {/* Everyone else (a new user, a mistyped link) has no code to enter, so
+          this page is a dead end for them — point them at the real mint flow. */}
+      {phase === "enter" && (
+        <p className="nocode">
+          No claim code? This page is only for authors who had a username before handles moved on-chain.{" "}
+          <Link href={MINT_HANDLE_PATH} className="nocodelink">Mint a new handle →</Link>
+        </p>
+      )}
 
       {phase !== "done" && (
         <div className="stage">
@@ -267,6 +276,9 @@ const CSS = `
 .pow-mint .title{font-size:42px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--neon);margin:0 0 12px;
   text-shadow:0 0 8px rgba(0,255,156,.55),0 0 26px rgba(0,255,156,.28);}
 .pow-mint .sub{color:#a6d8c9;font-size:14.5px;line-height:1.55;margin:0 0 30px;}
+.pow-mint .nocode{font-size:13px;line-height:1.55;color:var(--dim);margin:-16px 0 28px;}
+.pow-mint .nocodelink{color:var(--cyan);text-decoration:none;white-space:nowrap;border-bottom:1px solid transparent;transition:border-color .15s;}
+.pow-mint .nocodelink:hover{border-color:var(--cyan);}
 
 .pow-mint .stage{display:flex;justify-content:center;margin:0 0 28px;}
 .pow-mint .card{width:260px;height:260px;border-radius:14px;overflow:hidden;

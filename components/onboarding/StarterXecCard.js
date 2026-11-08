@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { mintHandleHref } from '@/lib/handleRoutes'
 
 /**
  * Welcome-gift card for a logged-in, brand-new account (onboarding Piece 3).
@@ -88,7 +89,10 @@ export default function StarterXecCard({ preview = null } = {}) {
           1,000 XEC top-up sets up your Pocket for one-tap payments.
         </p>
         <div className="starter-ctas">
-          <Link href="/claim-handle" className="starter-btn">
+          {/* The mint flow, NOT /claim-handle (that's the grandfathered-author
+              claim and needs a one-time code). Pre-selects Pay with POW: the
+              gift's POW covers a handle, its XEC doesn't. */}
+          <Link href={mintHandleHref({ payWith: 'pow' })} className="starter-btn">
             Mint your handle →
           </Link>
           <Link href="/pocket" className="starter-btn ghost">

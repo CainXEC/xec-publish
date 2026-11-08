@@ -17,6 +17,7 @@ import { renderMysteryCard } from "@/lib/renderHandleCard";
 import { watchPaymentAddress, prewarmPaymentWatch } from "@/lib/ecash/watchPaymentAddress";
 import { payWithCashtab, beginCashtabPayment, completeCashtabPayment, abortCashtabPayment } from "@/lib/ecash/cashtabPay";
 import MintCounter from "@/components/MintCounter";
+import { initialPayWith } from "@/lib/handleRoutes";
 
 type Availability = { available?: boolean; status: string; priceXec?: number; powAtoms?: number; tier?: string; auctionOnly?: boolean; reason?: string };
 type Intent = { mintId: string; handle: string; amountXec?: string; powAtoms?: number; payWith?: "xec" | "pow"; address: string; bip21Url: string; expiresAt: string };
@@ -46,6 +47,12 @@ export default function MintHandle({
   // carry the mintId tag, so the server matches by the account's proven addresses),
   // so the toggle only appears when signedIn.
   const [payWith, setPayWith] = useState<"xec" | "pow">("xec");
+  // A deep link can pre-select POW (/marketplace?pay=pow — the welcome-gift card,
+  // whose 10 POW pays for a handle). Read after mount: the page is SSR'd, so
+  // reading location during render would mismatch hydration.
+  useEffect(() => {
+    setPayWith(initialPayWith(window.location.search, signedIn));
+  }, [signedIn]);
   const [avail, setAvail] = useState<Availability | null>(null);
   const [checking, setChecking] = useState(false);
   const [phase, setPhase] = useState<"choose" | "pay" | "done">("choose");
