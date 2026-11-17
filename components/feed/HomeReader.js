@@ -29,6 +29,7 @@ import { takePrefetchedReader } from '@/lib/readerPrefetch'
 import { setTranslation, setArticleIntent } from '@/lib/translateStore'
 import { fetchTranslation } from '@/lib/translateClient'
 import { ARTICLE_CSS } from '@/app/posts/[slug]/articleTheme'
+import ArticleProse from '@/components/ArticleProse'
 import { actorLabel, timeAgo } from '@/lib/notifFormat'
 import { profileHrefForIdentity } from '@/lib/contentLinks'
 
@@ -341,7 +342,7 @@ export default function HomeReader({ slug, onClose, backLabel = '← Feed' }) {
 
           {/* Server-prepared HTML: public part only unless this viewer is
               entitled — the same bytes the article page would render. */}
-          <div className="prose" dangerouslySetInnerHTML={{ __html: tr?.translated ?? d.bodyHtml }} />
+          <ArticleProse html={tr?.translated ?? d.bodyHtml} />
 
           {!d.unlocked && Number(d.priceXec) > 0 ? (
             <PaneUnlock

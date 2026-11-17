@@ -8,6 +8,7 @@ import { isSelectingWithin, wasDrag } from '@/lib/selectionGuard'
 import { extractArticleSlug, stripArticleLink } from '@/lib/articleLinks'
 import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
 import { extractYouTubeId, stripYouTubeLink } from '@/lib/youtubeLinks'
+import { extractXPostId, stripXPostLink } from '@/lib/xLinks'
 
 function timeAgo(iso) {
   if (!iso) return ''
@@ -37,6 +38,7 @@ function previewTextFor(content) {
   let text = extractArticleSlug(content) ? stripArticleLink(content) : content
   text = extractFeedPostTxid(text) ? stripFeedPostLink(text) : text
   text = extractYouTubeId(text) ? stripYouTubeLink(text) : text
+  text = extractXPostId(text) ? stripXPostLink(text) : text
   return text
 }
 
@@ -88,6 +90,8 @@ export default function ForumPostCard({ post }) {
   // A video is shown as a compact chip on the card (the full player is on the
   // post's page) so the directory list stays scannable, not a wall of players.
   const hasVideo = extractYouTubeId(post.content ?? '') != null
+  // Same for an embedded X post: a chip here, the full card on the post page.
+  const hasXPost = extractXPostId(post.content ?? '') != null
 
   return (
     <article
@@ -114,6 +118,7 @@ export default function ForumPostCard({ post }) {
       ) : null}
 
       {hasVideo ? <span className="forumcard-video">▶ Video</span> : null}
+      {hasXPost ? <span className="forumcard-video">𝕏 Post</span> : null}
 
       <div className="forumcard-foot">
         <span className="forumcard-comments">

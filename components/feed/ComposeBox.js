@@ -1,7 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
-import { priceFeedPost, FEED_MAX_CHARS, FEED_YOUTUBE_SURCHARGE_XEC } from '@/lib/feedPricing'
+import {
+  priceFeedPost,
+  FEED_MAX_CHARS,
+  FEED_YOUTUBE_SURCHARGE_XEC,
+  FEED_X_EMBED_SURCHARGE_XEC,
+} from '@/lib/feedPricing'
 import { normalizePoll } from '@/lib/feedPoll'
 import QuotedEmbed from '@/components/feed/QuotedEmbed'
 import EmojiPicker from '@/components/EmojiPicker'
@@ -803,6 +808,14 @@ export default function ComposeBox({
               title={`Posting a YouTube embed adds a flat ${FEED_YOUTUBE_SURCHARGE_XEC.toLocaleString()} XEC fee`}
             >
               🎬 +{FEED_YOUTUBE_SURCHARGE_XEC.toLocaleString()}
+            </span>
+          ) : null}
+          {priced.xEmbed ? (
+            <span
+              className="count-yt"
+              title={`Embedding an X post adds a flat ${FEED_X_EMBED_SURCHARGE_XEC.toLocaleString()} XEC fee`}
+            >
+              𝕏 +{FEED_X_EMBED_SURCHARGE_XEC.toLocaleString()}
             </span>
           ) : null}
           {withTitle && titleClean.length === 0 && content.trim().length > 0 ? (

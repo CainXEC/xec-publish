@@ -1358,6 +1358,7 @@ html:not(.dark) .pow-feed .forumsort-create:hover{box-shadow:0 0 0 1px var(--neo
 /* Compact "has a video" chip on a forum card (the full player is on the post page). */
 .pow-feed .forumcard-video{display:inline-flex;align-items:center;gap:4px;margin-top:8px;font-size:11.5px;
   font-weight:700;letter-spacing:.04em;color:var(--cyan);}
+.pow-feed .forumcard-video + .forumcard-video{margin-left:12px;}
 
 /* Embedded YouTube player (feed posts + top-level forum posts). Responsive 16:9. */
 .pow-feed .ytembed{position:relative;margin:12px 0 0;width:100%;aspect-ratio:16/9;border-radius:12px;

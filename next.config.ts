@@ -28,6 +28,10 @@ const CSP_REPORT_ONLY = [
   // player's own redirects. No frame-src otherwise falls back to default-src
   // 'self', which would block the embed when this CSP is enforced.
   "frame-src https://www.youtube-nocookie.com https://www.youtube.com",
+  // Embedded X posts (components/feed/XEmbed) are drawn by us, not framed: their
+  // data comes from our own /api/x-post (connect-src 'self'), photos/avatars from
+  // pbs.twimg.com (covered by img-src https:), and video plays from X's CDN.
+  "media-src 'self' blob: https://video.twimg.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

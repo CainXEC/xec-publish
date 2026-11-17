@@ -109,19 +109,25 @@ export const ARTICLE_CSS = `
      boxes fill it. Let the prose span the full column so both edges line up. */
   max-width:none;}
 .pow-article .prose > :first-child{margin-top:0;}
-.pow-article .prose p{margin:0 0 1.1em;}
+.pow-article .prose p:not(:where(.xembed p)){margin:0 0 1.1em;}
 /* YouTube embed inside an article body (matches the feed's .ytembed): a
    responsive 16:9 player the publish-time transform drops in for an own-line
    YouTube URL. */
 .pow-article .prose .ytembed{position:relative;margin:1.4em 0;width:100%;aspect-ratio:16/9;
   border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#000;}
 .pow-article .prose .ytembed iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
+/* Embedded X post inside an article body: an empty placeholder the publish-time
+   transform drops in (lib/articleBodyLinks), filled by ArticleProse → XEmbed.
+   The :not(:where(.xembed …)) guards on the p/img rules keep this page's prose
+   typography out of the card without changing those rules' specificity. */
+.pow-article .prose .xembed-slot{margin:1.4em 0;}
+.pow-article .prose .xembed-slot .xembed{margin:0;}
 /* Book-style justified body text: the running text fills the column to BOTH
    margins (a crisp right edge like the comment cards, not a ragged one).
    hyphens:auto keeps the inter-word spacing even — important on the narrow
    mobile column where justify alone would open big gaps. Headings, code and
    lists stay left-aligned. */
-.pow-article .prose p{text-align:justify;hyphens:auto;}
+.pow-article .prose p:not(:where(.xembed p)){text-align:justify;hyphens:auto;}
 .pow-article .prose h1,.pow-article .prose h2,.pow-article .prose h3,
 .pow-article .prose h4{color:var(--text);line-height:1.3;margin:1.6em 0 .5em;font-weight:700;
   font-family:'JetBrains Mono',ui-monospace,monospace;}
@@ -141,7 +147,7 @@ export const ARTICLE_CSS = `
   border:1px solid var(--line);border-radius:5px;padding:.1em .4em;color:var(--cyan);}
 .pow-article .prose pre{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:16px;overflow:auto;}
 .pow-article .prose pre code{background:none;border:none;padding:0;color:var(--ink);}
-.pow-article .prose img{max-width:100%;height:auto;border-radius:12px;border:1px solid var(--line);}
+.pow-article .prose img:not(:where(.xembed img)){max-width:100%;height:auto;border-radius:12px;border:1px solid var(--line);}
 .pow-article .prose hr{border:none;border-top:1px solid var(--line);margin:2em 0;}
 .pow-article .prose ul,.pow-article .prose ol{padding-left:1.4em;margin:0 0 1.1em;}
 .pow-article .prose li{margin:.3em 0;}

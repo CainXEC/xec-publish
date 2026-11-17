@@ -36,6 +36,8 @@ import { youTubeIdForPost, stripYouTubeLink } from '@/lib/youtubeLinks'
 import ForumCard from '@/components/feed/ForumCard'
 import ForumComments from '@/components/feed/ForumComments'
 import YouTubeEmbed from '@/components/feed/YouTubeEmbed'
+import { xPostIdForPost, stripXPostLink } from '@/lib/xLinks'
+import XEmbed from '@/components/feed/XEmbed'
 import { FEED_ACTION } from '@/lib/feedProtocol'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
 import { FEED_CSS } from '@/components/feed/feedTheme'
@@ -104,6 +106,15 @@ function ThreadByline({ identity, color = null }) {
  * rail with a node dot and a connecting line down to the next post. The whole
  * card navigates to that post's own thread.
  */
+// An ancestor's body with each embedded link's raw URL removed (the embed below
+// IS the link).
+function ancestorText(content, ytId, xId) {
+  let text = displayTextFor(content)
+  if (ytId) text = stripYouTubeLink(text)
+  if (xId) text = stripXPostLink(text)
+  return text
+}
+
 function AncestorNode({ post, top = false, onOpenThread = null }) {
   const router = useRouter()
   const textRef = useRef(null)
@@ -112,6 +123,7 @@ function AncestorNode({ post, top = false, onOpenThread = null }) {
   // Ancestor posts embed their YouTube video — replies too (consistent with
   // the reply rows and their +1000 XEC surcharge).
   const ancestorYtId = youTubeIdForPost(post)
+  const ancestorXId = xPostIdForPost(post)
 
   // Keep a translated parent translated: if the viewer has translated this post,
   // show that translation here too. Ancestors used to always render the original,
@@ -171,12 +183,7 @@ function AncestorNode({ post, top = false, onOpenThread = null }) {
             <span className="tombstone">This post was deleted.</span>
           ) : (
             <FeedBody
-              text={
-                tr ??
-                (ancestorYtId
-                  ? stripYouTubeLink(displayTextFor(post.content))
-                  : displayTextFor(post.content))
-              }
+              text={tr ?? ancestorText(post.content, ancestorYtId, ancestorXId)}
             />
           )}
         </p>
@@ -206,6 +213,7 @@ function AncestorNode({ post, top = false, onOpenThread = null }) {
           <ForumCard card={post.forumCard ?? null} content={post.content} />
         ) : null}
         {!post.deleted && ancestorYtId ? <YouTubeEmbed id={ancestorYtId} /> : null}
+        {!post.deleted && ancestorXId ? <XEmbed id={ancestorXId} /> : null}
       </div>
     </div>
   )
@@ -546,6 +554,7 @@ export default function FeedThreadClient({
                     const ytId = youTubeIdForPost(post)
                     let focusText = displayTextFor(post.content)
                     if (ytId) focusText = stripYouTubeLink(focusText)
+                    if (xPostIdForPost(post)) focusText = stripXPostLink(focusText)
                     return focusText ? (
                       <p className="focusbody">
                         <FeedBody text={translated ?? focusText} />
@@ -568,6 +577,7 @@ export default function FeedThreadClient({
                   <ArticleCard card={post.articleCard ?? null} content={post.content} />
                   <ForumCard card={post.forumCard ?? null} content={post.content} />
                   <YouTubeEmbed id={youTubeIdForPost(post)} />
+                  <XEmbed id={xPostIdForPost(post)} />
                 </>
               )}
               <div className="actions">

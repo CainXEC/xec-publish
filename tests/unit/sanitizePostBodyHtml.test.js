@@ -79,6 +79,23 @@ describe('sanitizePostBodyHtml', () => {
     })
   })
 
+  describe('x post embed placeholder', () => {
+    it('keeps an xembed-slot div with an all-digit id', () => {
+      const html = '<div class="xembed-slot" data-x-id="1585341984679469056"></div>'
+      expect(sanitizePostBodyHtml(html)).toBe(html)
+    })
+
+    it('drops a non-numeric data-x-id', () => {
+      const out = sanitizePostBodyHtml('<div class="xembed-slot" data-x-id="1&quot;><script>"></div>')
+      expect(out).not.toContain('data-x-id')
+      expect(out).not.toContain('<script')
+    })
+
+    it('still strips any other class', () => {
+      expect(sanitizePostBodyHtml('<div class="pow-feed">x</div>')).toBe('<div>x</div>')
+    })
+  })
+
   describe('youtube embed', () => {
     it('keeps a validated youtube-nocookie iframe in a .ytembed wrapper', () => {
       const out = sanitizePostBodyHtml(

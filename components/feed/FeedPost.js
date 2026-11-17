@@ -28,6 +28,8 @@ import { extractFeedPostTxid, stripFeedPostLink } from '@/lib/contentLinks'
 import { extractForumSlug, stripForumLink } from '@/lib/forumLinks'
 import { youTubeIdForPost, stripYouTubeLink } from '@/lib/youtubeLinks'
 import YouTubeEmbed from '@/components/feed/YouTubeEmbed'
+import { xPostIdForPost, stripXPostLink } from '@/lib/xLinks'
+import XEmbed from '@/components/feed/XEmbed'
 import { FEED_ACTION } from '@/lib/feedProtocol'
 import { markSeen } from '@/lib/feedSeenStore'
 import { useConfirmDialog } from '@/components/ConfirmDialog'
@@ -286,6 +288,8 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   // replies (each pays the +1000 XEC surcharge, priceFeedPost). Article comments
   // are a separate surface and don't reach here.
   const ytId = youTubeIdForPost(post)
+  // Same rule for an X post link: it embeds as a card (+1000 XEC, priceFeedPost).
+  const xId = xPostIdForPost(post)
   // On-site links render as an embed/card that IS the link, so strip the raw URL
   // from the displayed text (an article link → ArticleCard; a feed-post link →
   // QuotedEmbed). Keep `body` intact for the card's slug/txid detection.
@@ -293,6 +297,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
   displayBody = extractFeedPostTxid(displayBody) ? stripFeedPostLink(displayBody) : displayBody
   displayBody = extractForumSlug(displayBody) ? stripForumLink(displayBody) : displayBody
   displayBody = ytId ? stripYouTubeLink(displayBody) : displayBody
+  displayBody = xId ? stripXPostLink(displayBody) : displayBody
   const isLong = displayBody.length > FEED_CLAMP_CHARS
   const shownBody =
     !isLong || expanded ? displayBody : `${displayBody.slice(0, FEED_CLAMP_CHARS).trimEnd()}…`
@@ -650,6 +655,7 @@ export default function FeedPost({ post, onReplied, onQuoted, viewerAccountId = 
           ) : null}
 
           {!post.deleted && ytId ? <YouTubeEmbed id={ytId} /> : null}
+          {!post.deleted && xId ? <XEmbed id={xId} /> : null}
         </>
       )}
 

@@ -27,6 +27,7 @@ import {
 import { formatReadingTimeLabel } from '@/lib/getReadingTime'
 import { actorLabel, timeAgo } from '@/lib/notifFormat'
 import { profileHrefForIdentity } from '@/lib/contentLinks'
+import ArticleProse from '@/components/ArticleProse'
 
 // Server and client must render the SAME text on first paint, or React throws
 // a hydration mismatch (#418): the server runs in UTC, the browser in the
@@ -1102,10 +1103,7 @@ export default function PostPageClient({
                   ) : null}
                 </h2>
               ) : null}
-              <div
-                className="prose"
-                dangerouslySetInnerHTML={{ __html: tr?.translated ?? bodyHtml }}
-              />
+              <ArticleProse html={tr?.translated ?? bodyHtml} />
 
               {paywallCard}
             </section>
@@ -1113,12 +1111,7 @@ export default function PostPageClient({
 
           {canViewFullPost ? (
             <section className="section">
-              <div
-                className="prose"
-                dangerouslySetInnerHTML={{
-                  __html: tr?.translated ?? bodyHtml,
-                }}
-              />
+              <ArticleProse html={tr?.translated ?? bodyHtml} />
 
               <ArticleComments
                 postId={post.id}
@@ -1133,10 +1126,7 @@ export default function PostPageClient({
           {showPaywall && !hasPaywallMarker ? (
             <section className="section">
               {bodyHtml ? (
-                <div
-                  className="prose"
-                  dangerouslySetInnerHTML={{ __html: tr?.translated ?? bodyHtml }}
-                />
+                <ArticleProse html={tr?.translated ?? bodyHtml} />
               ) : null}
               {paywallCard}
             </section>

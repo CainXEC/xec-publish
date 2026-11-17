@@ -3,6 +3,7 @@ import {
   FEED_MIN_XEC,
   FEED_MAX_CHARS,
   FEED_YOUTUBE_SURCHARGE_XEC,
+  FEED_X_EMBED_SURCHARGE_XEC,
   countChars,
   priceFeedPost,
 } from '@/lib/feedPricing'
@@ -30,12 +31,12 @@ describe('priceFeedPost', () => {
   })
 
   it('charges the 100 XEC floor for short posts', () => {
-    expect(priceFeedPost('hi')).toEqual({ ok: true, chars: 2, pollChars: 0, costXec: FEED_MIN_XEC, youtube: false })
+    expect(priceFeedPost('hi')).toEqual({ ok: true, chars: 2, pollChars: 0, costXec: FEED_MIN_XEC, youtube: false, xEmbed: false })
   })
 
   it('charges 1 XEC per character above the floor', () => {
     const content = 'x'.repeat(150)
-    expect(priceFeedPost(content)).toEqual({ ok: true, chars: 150, pollChars: 0, costXec: 150, youtube: false })
+    expect(priceFeedPost(content)).toEqual({ ok: true, chars: 150, pollChars: 0, costXec: 150, youtube: false, xEmbed: false })
   })
 
   it('accepts a post exactly at the cap', () => {
@@ -46,6 +47,7 @@ describe('priceFeedPost', () => {
       pollChars: 0,
       costXec: FEED_MAX_CHARS,
       youtube: false,
+      xEmbed: false,
     })
   })
 
@@ -119,5 +121,31 @@ describe('priceFeedPost — YouTube surcharge', () => {
     const r = priceFeedPost(long, { action: 'post' })
     expect(r.youtube).toBe(true)
     expect(r.costXec).toBe(r.chars + FEED_YOUTUBE_SURCHARGE_XEC)
+  })
+})
+
+describe('priceFeedPost — X post embed surcharge', () => {
+  const X = 'https://x.com/jack/status/20'
+  const base = `So true ${X}`
+
+  it('adds the flat surcharge to a post / quote / reply that embeds an X post', () => {
+    for (const action of ['post', 'quote', 'reply', 1, 2, 3]) {
+      const r = priceFeedPost(base, { action })
+      expect(r.xEmbed).toBe(true)
+      expect(r.costXec).toBe(FEED_MIN_XEC + FEED_X_EMBED_SURCHARGE_XEC)
+    }
+  })
+
+  it('does NOT surcharge a comment, a non-post X link, or a lookalike host', () => {
+    expect(priceFeedPost(base).xEmbed).toBe(false) // article comment: no action
+    expect(priceFeedPost('follow https://x.com/jack', { action: 'post' }).xEmbed).toBe(false)
+    expect(priceFeedPost('https://fox.com/a/status/20', { action: 'post' }).xEmbed).toBe(false)
+  })
+
+  it('charges both surcharges when a post embeds YouTube AND an X post', () => {
+    const r = priceFeedPost(`${base} https://youtu.be/dQw4w9WgXcQ`, { action: 'post' })
+    expect(r.youtube).toBe(true)
+    expect(r.xEmbed).toBe(true)
+    expect(r.costXec).toBe(FEED_MIN_XEC + FEED_YOUTUBE_SURCHARGE_XEC + FEED_X_EMBED_SURCHARGE_XEC)
   })
 })

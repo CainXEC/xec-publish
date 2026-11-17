@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { transformArticleBodyLinks } from '@/lib/articleBodyLinks'
+import { transformArticleBodyLinks, restoreArticleBodyForEditing } from '@/lib/articleBodyLinks'
 import { sanitizePostBodyHtml } from '@/lib/sanitizePostBodyHtml'
 
 describe('transformArticleBodyLinks — feed link parity in article bodies', () => {
@@ -17,10 +17,12 @@ describe('transformArticleBodyLinks — feed link parity in article bodies', () 
     expect(out).toContain('noopener')
   })
 
-  it('marks an X anchor as an external new-tab link', () => {
-    const out = transformArticleBodyLinks('<p><a href="https://x.com/jack/status/20">t</a></p>')
+  it('marks an X (non-post) anchor as an external new-tab link', () => {
+    // An X POST link embeds instead (see the X embed tests below); any other X
+    // URL — a profile, a search — stays an outbound link.
+    const out = transformArticleBodyLinks('<p><a href="https://x.com/jack">t</a></p>')
     expect(out).toContain('data-pow-ext')
-    expect(out).toContain('href="https://x.com/jack/status/20"')
+    expect(out).toContain('href="https://x.com/jack"')
   })
 
   it('unwraps a disallowed external anchor to inert text', () => {
@@ -113,6 +115,51 @@ describe('transformArticleBodyLinks — feed link parity in article bodies', () 
     const rendered = sanitizePostBodyHtml(stored)
     expect(rendered).toContain('src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"')
     expect(rendered).toContain('class="ytembed"')
+  })
+
+  it('embeds an own-line X post URL as an empty id placeholder', () => {
+    const out = transformArticleBodyLinks('<p>https://x.com/jack/status/20</p>')
+    expect(out).toBe('<div class="xembed-slot" data-x-id="20"></div>')
+  })
+
+  it('embeds an inline X post URL, keeping the prose and its spacing', () => {
+    const out = transformArticleBodyLinks(
+      '<p>As <strong>he</strong> said https://x.com/jack/status/20 back then</p>',
+    )
+    expect(out).toContain('data-x-id="20"')
+    expect(out).toContain('<strong>he</strong> said ') // no words glued together
+    expect(out).toContain('back then')
+    expect(out).not.toContain('x.com/jack')
+  })
+
+  it('embeds a TipTap autolinked X anchor; a worded anchor keeps its words', () => {
+    const auto = transformArticleBodyLinks(
+      '<p><a href="https://x.com/jack/status/20">https://x.com/jack/status/20</a></p>',
+    )
+    expect(auto).toBe('<div class="xembed-slot" data-x-id="20"></div>')
+    const worded = transformArticleBodyLinks('<p>read <a href="https://x.com/jack/status/20">this post</a></p>')
+    expect(worded).toContain('read this post')
+    expect(worded).toContain('data-x-id="20"')
+  })
+
+  it('leaves an X post URL inside a table cell as a link (no card in a cell)', () => {
+    const out = transformArticleBodyLinks(
+      '<table><tbody><tr><td><p>https://x.com/jack/status/20</p></td></tr></tbody></table>',
+    )
+    expect(out).not.toContain('xembed-slot')
+    expect(out).toContain('data-pow-ext')
+  })
+
+  it('round-trips an X embed through the editor restore and re-publish', () => {
+    const stored = transformArticleBodyLinks('<p>https://x.com/jack/status/20</p>')
+    const editable = restoreArticleBodyForEditing(stored)
+    expect(editable).toBe('<p>https://x.com/i/status/20</p>')
+    expect(transformArticleBodyLinks(editable)).toBe(stored)
+  })
+
+  it('keeps the X placeholder through the read-time sanitizer', () => {
+    const rendered = sanitizePostBodyHtml(transformArticleBodyLinks('<p>https://x.com/jack/status/20</p>'))
+    expect(rendered).toBe('<div class="xembed-slot" data-x-id="20"></div>')
   })
 
   it('returns blank/whitespace input unchanged', () => {

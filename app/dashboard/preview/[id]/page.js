@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import FeedTopbar from '@/components/feed/FeedTopbar'
 import { FEED_CSS } from '@/components/feed/feedTheme'
 import { ARTICLE_CSS } from '@/app/posts/[slug]/articleTheme'
+import ArticleProse from '@/components/ArticleProse'
 import { adminDb } from '@/lib/db'
 import { getAuthedAccount } from '@/lib/authHelpers'
 import { sanitizePostBodyHtml } from '@/lib/sanitizePostBodyHtml'
@@ -115,7 +116,7 @@ export default async function DraftPreviewPage({ params, searchParams }) {
               {/* The free preview: exactly what a reader sees before paying. */}
               <section className="section">
                 <p className="preview-head">Preview — what readers see free</p>
-                <div className="prose" dangerouslySetInnerHTML={{ __html: publicHtml }} />
+                <ArticleProse html={publicHtml} />
               </section>
 
               {/* The paywall line, then the locked remainder ONCE (you can read
@@ -130,7 +131,7 @@ export default async function DraftPreviewPage({ params, searchParams }) {
 
               {lockedHtml ? (
                 <section className="section lockedsection">
-                  <div className="prose" dangerouslySetInnerHTML={{ __html: lockedHtml }} />
+                  <ArticleProse html={lockedHtml} />
                 </section>
               ) : null}
             </>
@@ -139,7 +140,7 @@ export default async function DraftPreviewPage({ params, searchParams }) {
             // say so, since a reader would get all of it without paying.
             <section className="section">
               <p className="preview-head">No paywall — readers see the whole article free</p>
-              <div className="prose" dangerouslySetInnerHTML={{ __html: publicHtml }} />
+              <ArticleProse html={publicHtml} />
             </section>
           )}
         </article>

@@ -9,6 +9,8 @@ import PostCopyLink from '@/components/feed/PostCopyLink'
 import TranslateButton from '@/components/TranslateButton'
 import YouTubeEmbed from '@/components/feed/YouTubeEmbed'
 import { youTubeIdForPost, stripYouTubeLink } from '@/lib/youtubeLinks'
+import XEmbed from '@/components/feed/XEmbed'
+import { xPostIdForPost, stripXPostLink } from '@/lib/xLinks'
 
 function truncateAddress(addr) {
   const t = String(addr ?? '').trim()
@@ -62,7 +64,10 @@ function CommentNode({ comment, childrenByParent, viewerAccountId, onReplyAdded,
   // +1000 XEC surcharge as any reply); the raw URL is stripped from the text.
   const ytId = youTubeIdForPost(comment)
   const rawBody = typeof comment.content === 'string' ? comment.content : ''
-  const shownBody = ytId ? stripYouTubeLink(rawBody) : rawBody
+  // Same for an X post link → an embedded post card.
+  const xId = xPostIdForPost(comment)
+  let shownBody = ytId ? stripYouTubeLink(rawBody) : rawBody
+  if (xId) shownBody = stripXPostLink(shownBody)
 
   return (
     <div
@@ -104,6 +109,7 @@ function CommentNode({ comment, childrenByParent, viewerAccountId, onReplyAdded,
               </p>
             ) : null}
             <YouTubeEmbed id={ytId} />
+            <XEmbed id={xId} />
           </>
         )}
 
